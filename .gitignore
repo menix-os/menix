@@ -1,3 +1,12 @@
+# IDE Files
+.vscode/
+.idea/
+
+# Output files
+cmake-build*/
+out*/
+build*/
+
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
