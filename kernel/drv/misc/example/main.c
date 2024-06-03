@@ -22,8 +22,7 @@ static void exit()
 	printf("bye!\n");
 }
 
-MENIX_MODULE_INFO
-{
+MENIX_MODULE_INFO {
 	.load = load,
 	.exit = exit,
 };

@@ -1,62 +1,78 @@
-Language: C
+Language: Cpp
+Standard: Latest
 
-BasedOnStyle: LLVM
 IndentWidth: 4
 TabWidth: 4
 UseTab: Always
 ColumnLimit: 120
 BreakBeforeBraces: Allman
-AllowShortFunctionsOnASingleLine: false
-AllowShortIfStatementsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
 AllowShortLoopsOnASingleLine: false
 AlwaysBreakTemplateDeclarations: Yes
-IndentCaseLabels: false
+IndentCaseLabels: true
+IndentCaseBlocks: false
 IndentGotoLabels: false
-IndentPPDirectives: AfterHash
+IndentPPDirectives: None
 IndentWrappedFunctionNames: false
 SpaceAfterTemplateKeyword: true
 SpaceBeforeAssignmentOperators: true
 SpaceBeforeCpp11BracedList: true
 SpaceBeforeParens: ControlStatements
-SpaceInEmptyParentheses: false
-SpacesBeforeTrailingComments: 1
-SpacesInAngles: false
-SpacesInCStyleCastParentheses: false
-SpacesInContainerLiterals: false
-SpacesInParentheses: false
-Standard: C23
+SpacesBeforeTrailingComments: 4
+SpaceBeforeSquareBrackets: false
+SpacesInParens: Custom
+SpacesInParensOptions:
+  InConditionalStatements: false
+  InEmptyParentheses: false
+  InCStyleCasts: false
+  Other: false
+SpacesInSquareBrackets: false
 
-# Additional configurations to match specific rules
+AlignConsecutiveMacros: AcrossComments
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AlignCompound: true
+  AcrossComments: true
+  AlignFunctionPointers: true
 AlignAfterOpenBracket: Align
 AlignEscapedNewlines: Right
-AlignOperands: true
+AlignOperands: Align
 AlignTrailingComments: true
-BinPackArguments: false
-BinPackParameters: false
+BreakAdjacentStringLiterals: true
+BreakAfterAttributes: Always
+
+BinPackArguments: true
+BinPackParameters: true
+BitFieldColonSpacing: None
 BraceWrapping:
   AfterClass: true
-  AfterControlStatement: true
+  AfterControlStatement: Always
+  AfterCaseLabel: true
   AfterEnum: true
   AfterFunction: true
   AfterNamespace: true
   AfterStruct: true
+  AfterExternBlock: true
   AfterUnion: true
   BeforeCatch: true
   BeforeElse: true
   BeforeLambdaBody: true
   BeforeWhile: true
   IndentBraces: false
+  SplitEmptyFunction: false
+  SplitEmptyRecord: false
 BreakBeforeBinaryOperators: None
-BreakBeforeTernaryOperators: true
-BreakConstructorInitializersBeforeComma: false
-ConstructorInitializerAllOnOneLineOrOnePerLine: true
-Cpp11BracedListStyle: true
+BreakBeforeTernaryOperators: false
+BreakStringLiterals: false
 DerivePointerAlignment: false
 FixNamespaceComments: true
 PointerAlignment: Left
 SpaceAfterLogicalNot: false
 
 # Custom header sorting
+IncludeBlocks: Regroup
 IncludeCategories:
   - Regex: '^<.*\.h>'
     Priority: 1
@@ -64,30 +80,18 @@ IncludeCategories:
     Priority: 2
   - Regex: '^".*\.h"'
     Priority: 3
-SortIncludes: true
+SortIncludes: CaseInsensitive
 
 # Comment style
 CommentPragmas: '^//.*'
-ReflowComments: false
+ReflowComments: true
 
-# Typedefs and structs
-TypenameMacros: ['typedef', 'struct']
 AllowShortEnumsOnASingleLine: false
-
-# Naming conventions
-VariableCase: lower_case
-FunctionCase: lower_case
-TypeCase: PascalCase
-MacroCase: UPPER_CASE
-
-# Doxygen style comments
-CommentStyle:
-  Doxygen: true
-  Slash: true
 
 # Additional formatting options
 MaxEmptyLinesToKeep: 1
 KeepEmptyLinesAtTheStartOfBlocks: false
-InsertTrailingCommas: false
+InsertTrailingCommas: None
 AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
+InsertNewlineAtEOF: true
