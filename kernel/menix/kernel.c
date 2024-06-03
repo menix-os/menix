@@ -2,18 +2,18 @@
 Kernel entry point
 ----------------*/
 
-#include <menix/stdio.h>
 #include <menix/arch.h>
-#include <menix/module.h>
-
 #include <menix/config.h>
+#include <menix/module.h>
+#include <menix/stdio.h>
 
 void kernel_main(void)
 {
 	// Init platform.
 	arch_init();
 
-	printf("menix v" MENIX_VERSION " (" MENIX_ARCH ")" "\n");
+	printf("menix v" MENIX_VERSION " (" MENIX_ARCH ")"
+		   "\n");
 
 #if CFG_ENABLED(example)
 	hello_world_say_hello();
