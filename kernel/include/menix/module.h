@@ -15,18 +15,13 @@ Utilities for kernel modularization
 #endif
 
 // Module information. Every module needs this exactly once!
-#define MENIX_MODULE_INFO \
-	static const \
-	MENIX_MODULE_ATTR(used) \
-	MENIX_MODULE_ATTR(section(".mod")) \
-	Module module_info =
+#define MENIX_MODULE_INFO static const MENIX_MODULE_ATTR(used) MENIX_MODULE_ATTR(section(".mod")) Module module_info =
 
-typedef int32_t(*ModLoadFn)();
-typedef void(*ModExitFn)();
+typedef int32_t (*ModLoadFn)();
+typedef void	(*ModExitFn)();
 
 // Module information.
-typedef struct
-MENIX_ATTR(packed)
+typedef struct MENIX_ATTR(packed)
 {
 	// Function to call during module loading. Should return a status code.
 	const ModLoadFn load;

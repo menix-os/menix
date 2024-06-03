@@ -74,9 +74,9 @@ SpaceAfterLogicalNot: false
 # Custom header sorting
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<.*\.h>'
-    Priority: 1
   - Regex: '^<menix/.*>'
+    Priority: 1
+  - Regex: '^<.*\.h>'
     Priority: 2
   - Regex: '^".*\.h"'
     Priority: 3

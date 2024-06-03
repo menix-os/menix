@@ -4,8 +4,8 @@ Kernel C library - stdio.h
 
 #pragma once
 
-#include <menix/stdint.h>
 #include <menix/common.h>
+#include <menix/stdint.h>
 
 #define EOF (-1)
 

@@ -1,7 +1,7 @@
 #include <menix/common.h>
 #include <menix/module.h>
-#include <menix/stdio.h>
 #include <menix/stdint.h>
+#include <menix/stdio.h>
 
 #include "mod.h"
 

@@ -16,7 +16,7 @@ size_t strlen(const char* str)
 
 int memcmp(const void* s1, const void* s2, size_t size)
 {
-	int diff = 0;
+	int	  diff = 0;
 	char* s1ptr = (char*)s1;
 	char* s2ptr = (char*)s2;
 
@@ -30,7 +30,7 @@ int memcmp(const void* s1, const void* s2, size_t size)
 
 void* memmove(void* dstptr, const void* srcptr, size_t size)
 {
-	uint8_t* dst = (uint8_t*)dstptr;
+	uint8_t*	   dst = (uint8_t*)dstptr;
 	const uint8_t* src = (const uint8_t*)srcptr;
 	if (dst < src)
 	{

@@ -2,17 +2,17 @@
 x86 VGA mode serial interface
 ---------------------------*/
 
-#include <menix/string.h>
 #include <menix/serial.h>
 #include <menix/stdint.h>
+#include <menix/string.h>
 
-#define VGA_WIDTH 80
+#define VGA_WIDTH  80
 #define VGA_HEIGHT 25
 
 static uint16_t* volatile const VGA_MEMORY = (uint16_t*)0xB8000;
 
-static size_t vga_row;
-static size_t vga_column;
+static size_t  vga_row;
+static size_t  vga_column;
 static uint8_t vga_current_col;
 
 enum vga_color
@@ -70,27 +70,27 @@ void serial_putchar(char c)
 {
 	switch (c)
 	{
-	case '\0':
-		break;
-	case '\n':
-		vga_column = 0;
-		vga_row++;
-		break;
-	case '\t':
-		vga_column += 4 - vga_column % 4;
-		break;
-	case '\r':
-		vga_column = 0;
-		break;
-	case '\b':
-		if (vga_column > 0)
-			vga_column -= 1;
-		vga_putentryat(' ', vga_current_col, vga_column, vga_row);
-		break;
-	default:
-		vga_putentryat((uint8_t)c, vga_current_col, vga_column, vga_row);
-		vga_column++;
-		break;
+		case '\0':
+			break;
+		case '\n':
+			vga_column = 0;
+			vga_row++;
+			break;
+		case '\t':
+			vga_column += 4 - vga_column % 4;
+			break;
+		case '\r':
+			vga_column = 0;
+			break;
+		case '\b':
+			if (vga_column > 0)
+				vga_column -= 1;
+			vga_putentryat(' ', vga_current_col, vga_column, vga_row);
+			break;
+		default:
+			vga_putentryat((uint8_t)c, vga_current_col, vga_column, vga_row);
+			vga_column++;
+			break;
 	}
 
 	// If at the end of the line, wrap to the next.
@@ -107,7 +107,7 @@ void serial_putchar(char c)
 		memmove(VGA_MEMORY, VGA_MEMORY + (VGA_WIDTH * 2), (VGA_WIDTH * 2) * (VGA_HEIGHT - 1));
 
 		// Clear the last line.
-		vga_row -= 2; // 1: OOB line. 2: Moved line.
+		vga_row -= 2;	 // 1: OOB line. 2: Moved line.
 		for (uint8_t i = 0; i < VGA_WIDTH; i++)
 			vga_putentryat(' ', vga_current_col, i, VGA_HEIGHT - 1);
 	}

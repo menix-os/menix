@@ -6,5 +6,4 @@ Menix abstracted driver model
 
 typedef struct
 {
-
 } Driver;

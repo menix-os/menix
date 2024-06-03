@@ -4,10 +4,10 @@ Serial console output
 
 #pragma once
 
-#include <menix/stddef.h>
-#include <menix/stdint.h>
 #include <menix/common.h>
 #include <menix/config.h>
+#include <menix/stddef.h>
+#include <menix/stdint.h>
 
 void serial_initialize(void);
 void serial_putchar(char c);
