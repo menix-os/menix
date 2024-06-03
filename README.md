@@ -1,2 +1,8 @@
 # menix
-A monolithic and essential Unix-like operating system
+A minimal and expandable Unix-like operating system.
+
+## Building
+See [Building](doc/building.md)
+
+## Contributing
+See [Contributing](doc/contributing.md)

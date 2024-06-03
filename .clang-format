@@ -1,0 +1,93 @@
+Language: C
+
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Always
+ColumnLimit: 120
+BreakBeforeBraces: Allman
+AllowShortFunctionsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AllowShortLoopsOnASingleLine: false
+AlwaysBreakTemplateDeclarations: Yes
+IndentCaseLabels: false
+IndentGotoLabels: false
+IndentPPDirectives: AfterHash
+IndentWrappedFunctionNames: false
+SpaceAfterTemplateKeyword: true
+SpaceBeforeAssignmentOperators: true
+SpaceBeforeCpp11BracedList: true
+SpaceBeforeParens: ControlStatements
+SpaceInEmptyParentheses: false
+SpacesBeforeTrailingComments: 1
+SpacesInAngles: false
+SpacesInCStyleCastParentheses: false
+SpacesInContainerLiterals: false
+SpacesInParentheses: false
+Standard: C23
+
+# Additional configurations to match specific rules
+AlignAfterOpenBracket: Align
+AlignEscapedNewlines: Right
+AlignOperands: true
+AlignTrailingComments: true
+BinPackArguments: false
+BinPackParameters: false
+BraceWrapping:
+  AfterClass: true
+  AfterControlStatement: true
+  AfterEnum: true
+  AfterFunction: true
+  AfterNamespace: true
+  AfterStruct: true
+  AfterUnion: true
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: true
+  BeforeWhile: true
+  IndentBraces: false
+BreakBeforeBinaryOperators: None
+BreakBeforeTernaryOperators: true
+BreakConstructorInitializersBeforeComma: false
+ConstructorInitializerAllOnOneLineOrOnePerLine: true
+Cpp11BracedListStyle: true
+DerivePointerAlignment: false
+FixNamespaceComments: true
+PointerAlignment: Left
+SpaceAfterLogicalNot: false
+
+# Custom header sorting
+IncludeCategories:
+  - Regex: '^<.*\.h>'
+    Priority: 1
+  - Regex: '^<menix/.*>'
+    Priority: 2
+  - Regex: '^".*\.h"'
+    Priority: 3
+SortIncludes: true
+
+# Comment style
+CommentPragmas: '^//.*'
+ReflowComments: false
+
+# Typedefs and structs
+TypenameMacros: ['typedef', 'struct']
+AllowShortEnumsOnASingleLine: false
+
+# Naming conventions
+VariableCase: lower_case
+FunctionCase: lower_case
+TypeCase: PascalCase
+MacroCase: UPPER_CASE
+
+# Doxygen style comments
+CommentStyle:
+  Doxygen: true
+  Slash: true
+
+# Additional formatting options
+MaxEmptyLinesToKeep: 1
+KeepEmptyLinesAtTheStartOfBlocks: false
+InsertTrailingCommas: false
+AllowAllArgumentsOnNextLine: false
+AllowAllParametersOfDeclarationOnNextLine: false

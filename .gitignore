@@ -1,11 +1,27 @@
+# IDE Files
+.vscode/
+.idea/
+.cache/
+
+# Output files
+cmake-build*/
+out/
+build/
+bin/
+*.iso
+
+# CMake cache files
 CMakeLists.txt.user
 CMakeCache.txt
 CMakeFiles
 CMakeScripts
 Testing
-Makefile
 cmake_install.cmake
 install_manifest.txt
 compile_commands.json
 CTestTestfile.cmake
 _deps
+
+# Generated config headers
+kernel/include/generated/
+kernel/config.cmake
