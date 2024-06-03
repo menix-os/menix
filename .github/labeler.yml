@@ -1,0 +1,13 @@
+docs:
+  - docs/*
+  - README.md
+
+kernel:
+  - kernel/*
+
+maintenance:
+  - .github/*
+  - .gitignore
+  - README.md
+  - LICENSE
+

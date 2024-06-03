@@ -1,0 +1,5 @@
+# This file contains all Codeowners. The owners of the specified
+# files will be automatically requested for review when a PR is opened.
+
+*               @marv7000
+.github/*       @ByteOtter
