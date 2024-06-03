@@ -5,7 +5,7 @@
 
 #include "mod.h"
 
-void hello_world_say_hello()
+void example_say_hello()
 {
 	printf("Hello, world!\n");
 }
@@ -13,7 +13,7 @@ void hello_world_say_hello()
 static int32_t load()
 {
 	printf("loaded the hello_world module!\n");
-	hello_world_say_hello();
+	example_say_hello();
 	return 0;
 }
 

@@ -12,11 +12,10 @@ void kernel_main(void)
 	// Init platform.
 	arch_init();
 
-	printf("menix v" MENIX_VERSION " (" MENIX_ARCH ")"
-		   "\n");
+	printf("menix v" MENIX_VERSION " (" MENIX_ARCH ")\n");
 
 #if CFG_ENABLED(example)
-	hello_world_say_hello();
+	example_say_hello();
 #endif
 
 	// TODO:
