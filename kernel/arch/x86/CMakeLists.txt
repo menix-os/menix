@@ -1,8 +1,8 @@
 include(${MENIX_UTIL_PATH})
 add_library(menix_arch_x86
+	boot/entry.asm
 	boot/gdt.asm
 	boot/idt.asm
-	boot/boot.asm
 	vga.c
 	idt.c
 	error.c

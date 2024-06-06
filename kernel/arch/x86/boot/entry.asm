@@ -15,7 +15,8 @@ boot_page_directory:
 boot_page_table1:
 	.skip 4096
 
-.section .text, "a"
+.section .entry, "a"
+.code32							# 32-bit bootstrap
 .global _start
 .type _start, @function
 _start:
@@ -23,7 +24,6 @@ kernel_init:
 	cli							# Disable interrupts.
 	mov $stack_top, %esp		# Setup the stack.
 	call kernel_main			# Call the kernel entry point.
-	cli
 kernel_hang:
+	cli
 	hlt							# Hang once kernel exits.
-	jmp kernel_hang

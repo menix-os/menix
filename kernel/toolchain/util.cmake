@@ -11,6 +11,12 @@ endfunction(build_module)
 
 # Setup a new module.
 function(add_module name author license modular default has_exports)
+	if (NOT DEFINED MENIX_HAS_CONFIG)
+		file(APPEND ${MENIX_CONFIG_SRC} "config_option(${MENIX_CUR_MODULE} ${default})\n")
+	else()
+		include(${MENIX_CONFIG_SRC})
+	endif()
+
 	# If the option is not in cache yet, use the default value.
 	if (NOT DEFINED CACHE{${MENIX_CUR_MODULE}})
 		set(${MENIX_CUR_MODULE} ${default} CACHE INTERNAL "")
@@ -55,9 +61,9 @@ function(add_module name author license modular default has_exports)
 endfunction(add_module)
 
 function(define_option optname)
-if(${${optname}} STREQUAL ON)
-	file(APPEND ${MENIX_CONFIG} "#define CFG_${optname}\n")
-endif()
+	if(${${optname}} STREQUAL ON)
+		file(APPEND ${MENIX_CONFIG} "#define CFG_${optname}\n")
+	endif()
 endfunction(define_option)
 
 # Configuration function for adding options to a module.
@@ -79,11 +85,11 @@ endfunction(config_option)
 function(require_option optname)
 	# If the option is not explicitly turned off, just define it.
 	if (NOT DEFINED CACHE{${optname}})
-		message(STATUS "     | - Auto-selecting: ${optname}")
 		set(${optname} ON CACHE INTERNAL "")
-		define_option(${optname})
 	# If it's explicitly turned off, we can't compile.
 	elseif (NOT ${optname} STREQUAL ON)
 		message(FATAL_ERROR "\"${MENIX_CUR_MODULE}\" requires \"${optname}\" to build, but this was explicitly turned off!")
 	endif()
+	message(STATUS "AUTO | ${optname}")
+	define_option(${optname})
 endfunction(require_option)

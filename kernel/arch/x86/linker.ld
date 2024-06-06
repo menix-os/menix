@@ -23,6 +23,7 @@ SECTIONS
 	.text ALIGN(4K):
 	{
   		KEEP(*(.multiboot))
+  		KEEP(*(.entry))
 		*(.text)
 	} :text
 
@@ -43,4 +44,10 @@ SECTIONS
 		*(.bootstrap_stack)
 	}
 	_kernel_end = .;
+
+	/* Remove all unwanted notes as they can break code layout. */
+	/DISCARD/ :
+	{
+		*(.note*)
+	}
 }

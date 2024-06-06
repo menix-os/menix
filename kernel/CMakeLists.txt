@@ -4,8 +4,11 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-# Target architecture.
-set(MENIX_ARCH "x86")
+# Target architecture. Default to x86 if none given.
+if (NOT DEFINED MENIX_ARCH)
+	message(STATUS "Using x86 as default architecture")
+	set(MENIX_ARCH "x86")
+endif()
 
 # Current version.
 set(MENIX_VERSION "0.1")
@@ -27,6 +30,8 @@ set(MENIX_UTIL_PATH ${MENIX_SRC}/toolchain/util.cmake)
 set(MENIX_CONFIG_SRC ${MENIX_SRC}/config.cmake)
 if (NOT EXISTS ${MENIX_CONFIG_SRC})
 	file(WRITE ${MENIX_CONFIG_SRC} "# Build configuration\n\n")
+else()
+	set(MENIX_HAS_CONFIG TRUE)
 endif()
 
 set(MENIX_CONFIG ${MENIX_SRC}/include/generated/config.h)

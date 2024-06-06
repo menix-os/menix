@@ -1,5 +1,17 @@
 # This file contains all Codeowners. The owners of the specified
 # files will be automatically requested for review when a PR is opened.
 
-*               @marv7000
-.github/*       @ByteOtter
+*								@marv7000
+.github/*						@ByteOtter
+
+# Kernel subsystems
+kernel/drv/acpi/				@drv-acpi
+kernel/drv/gpu/					@drv-gpu
+kernel/drv/net/					@drv-net
+kernel/drv/pci/					@drv-pci
+kernel/drv/spi/					@drv-spi
+kernel/drv/usb/					@drv-usb
+kernel/drv/misc/				@drv-misc
+
+# File systems
+kernel/fs/initfs/				@fs-initfs
