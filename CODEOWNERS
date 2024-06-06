@@ -5,13 +5,13 @@
 .github/*						@ByteOtter
 
 # Kernel subsystems
-kernel/drv/acpi/				@drv-acpi
-kernel/drv/gpu/					@drv-gpu
-kernel/drv/net/					@drv-net
-kernel/drv/pci/					@drv-pci
-kernel/drv/spi/					@drv-spi
-kernel/drv/usb/					@drv-usb
-kernel/drv/misc/				@drv-misc
+kernel/drv/acpi/				@menix-os/drv-acpi
+kernel/drv/gpu/					@menix-os/drv-gpu
+kernel/drv/net/					@menix-os/drv-net
+kernel/drv/pci/					@menix-os/drv-pci
+kernel/drv/spi/					@menix-os/drv-spi
+kernel/drv/usb/					@menix-os/drv-usb
+kernel/drv/misc/				@menix-os/drv-misc
 
 # File systems
-kernel/fs/initfs/				@fs-initfs
+kernel/fs/initfs/				@menix-os/fs-initfs
