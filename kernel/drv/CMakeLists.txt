@@ -2,7 +2,9 @@
 # Driver Sub-Systems
 # ------------------
 
-add_library(menix_drv INTERFACE)
+add_library(menix_drv
+	driver.c
+)
 
 include(${MENIX_UTIL_PATH})
 include(${MENIX_CONFIG_SRC}) # Configuration

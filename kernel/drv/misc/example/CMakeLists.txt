@@ -2,6 +2,6 @@
 # Minimal driver example
 # ----------------------
 
-add_module(example "Marvin Friedrich" "MIT" TRUE ON TRUE
-    main.c
+add_driver(example "Marvin Friedrich" "MIT" TRUE FALSE OFF
+	main.c
 )

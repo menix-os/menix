@@ -32,6 +32,13 @@ SECTIONS
 		*(.rodata)
 	} :rodata
 
+	.drv ALIGN(4K):
+	{
+		drv_start = .;
+		KEEP(*(.drv)); /* Driver data goes here. */
+		drv_end = .;
+	} :data
+
 	.data ALIGN(4K):
 	{
 		*(.data)

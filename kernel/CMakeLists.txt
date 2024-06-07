@@ -4,10 +4,11 @@
 
 cmake_minimum_required(VERSION 3.20)
 
-# Target architecture. Default to x86 if none given.
-if (NOT DEFINED MENIX_ARCH)
-	message(STATUS "Using x86 as default architecture")
+# Target architecture.
+if(NOT DEFINED MENIX_ARCH)
+	# Default to x86 if none given.
 	set(MENIX_ARCH "x86")
+	message(STATUS "Using \"${MENIX_ARCH}\" as default architecture")
 endif()
 
 # Current version.
@@ -28,7 +29,8 @@ set(MENIX_UTIL_PATH ${MENIX_SRC}/toolchain/util.cmake)
 
 # Configuration file. Create one if it doesn't exist.
 set(MENIX_CONFIG_SRC ${MENIX_SRC}/config.cmake)
-if (NOT EXISTS ${MENIX_CONFIG_SRC})
+
+if(NOT EXISTS ${MENIX_CONFIG_SRC})
 	file(WRITE ${MENIX_CONFIG_SRC} "# Build configuration\n\n")
 else()
 	set(MENIX_HAS_CONFIG TRUE)
@@ -52,6 +54,7 @@ add_subdirectory(arch/${MENIX_ARCH_DIR}/)
 add_subdirectory(drv)
 add_subdirectory(fs)
 add_subdirectory(lib)
+add_subdirectory(tree)
 
 # Link against all sub-directories.
 target_link_libraries(kernel PUBLIC
@@ -59,6 +62,7 @@ target_link_libraries(kernel PUBLIC
 	menix_drv
 	menix_fs
 	menix_lib
+	menix_tree
 )
 
 # Compile time definitions

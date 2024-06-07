@@ -4,7 +4,7 @@ USB driver
 
 #pragma once
 
-#include <menix/device.h>
+#include <menix/drv/device.h>
 
 typedef struct
 {

@@ -1,28 +1,29 @@
 #include <menix/common.h>
-#include <menix/module.h>
+#include <menix/drv/driver.h>
 #include <menix/stdint.h>
 #include <menix/stdio.h>
 
-#include "mod.h"
-
-void example_say_hello()
+static void example_say_hello()
 {
 	printf("Hello, world!\n");
 }
 
-static int32_t load()
+static int32_t bind(Device* d)
 {
-	printf("loaded the hello_world module!\n");
+	printf("loaded the example driver!\n");
 	example_say_hello();
 	return 0;
 }
 
-static void exit()
+static int32_t unbind(Device* d)
 {
 	printf("bye!\n");
+	return 0;
 }
 
-MENIX_MODULE_INFO {
-	.load = load,
-	.exit = exit,
+MENIX_DRIVER(example) = {
+	.name = "my_example_driver",
+	.type = DeviceType_Misc,
+	.bind = bind,
+	.unbind = unbind,
 };

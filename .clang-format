@@ -63,6 +63,8 @@ BraceWrapping:
   IndentBraces: false
   SplitEmptyFunction: false
   SplitEmptyRecord: false
+AlignArrayOfStructures: Left
+Cpp11BracedListStyle: false
 BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: false
 BreakStringLiterals: false
@@ -74,7 +76,7 @@ SpaceAfterLogicalNot: false
 # Custom header sorting
 IncludeBlocks: Regroup
 IncludeCategories:
-  - Regex: '^<menix/.*>'
+  - Regex: "^<menix/.*>"
     Priority: 1
   - Regex: '^<.*\.h>'
     Priority: 2
@@ -83,7 +85,7 @@ IncludeCategories:
 SortIncludes: CaseInsensitive
 
 # Comment style
-CommentPragmas: '^//.*'
+CommentPragmas: "^//.*"
 ReflowComments: true
 
 AllowShortEnumsOnASingleLine: false
