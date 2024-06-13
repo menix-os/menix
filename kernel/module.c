@@ -20,7 +20,6 @@ void module_init()
 	// Initialize all modules.
 	for (size_t i = 0; i < module_count; i++)
 	{
-		printf("[MOD]\t%s:\t%s\n", modules[i].name, modules[i].description);
 		// Init.
 		modules[i].init();
 	}

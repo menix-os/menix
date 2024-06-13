@@ -8,7 +8,7 @@ Kernel C library - stddef.h
 #define offsetof(type, member) ((size_t)(&((type*)0)->member))
 
 // ptrdiff_t
-#if (MENIX_BITS == 64)
+#ifdef CONFIG_64bit
 typedef signed long long ptrdiff_t;
 #else
 typedef signed long ptrdiff_t;
@@ -18,7 +18,7 @@ typedef signed long ptrdiff_t;
 typedef unsigned int wchar_t;
 
 // size_t
-#if (MENIX_BITS == 64)
+#ifdef CONFIG_64bit
 typedef unsigned long long size_t;
 #else
 typedef unsigned int size_t;

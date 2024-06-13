@@ -2,6 +2,8 @@
 Sets the global descriptor table
 ------------------------------*/
 
+.intel_syntax noprefix
+
 .align 16
 gdtr:
 	.short	0
@@ -10,17 +12,17 @@ gdtr:
 .global gdt_set
 gdt_set:
 	cli
-	movw	4(%esp), %ax 	# Limit
-	movw	%ax, [gdtr]
-	movl	8(%esp), %eax	# Base
-	movl	%eax, [gdtr + 2]
+	mov		ax, [esp + 4] 	# Limit
+	mov		[gdtr], ax
+	mov		eax, [esp + 8]	# Base
+	mov		[gdtr + 2], eax
 	lgdt 	[gdtr]
-	movw	$0x10, %ax
-	movw	%ax, %ds
-	movw	%ax, %es
-	movw	%ax, %fs
-	movw	%ax, %gs
-	movw	%ax, %ss
-	jmp		$0x08,$flush
+	mov		ax, 0x10
+	mov		ds, ax
+	mov		es, ax
+	mov		fs, ax
+	mov		gs, ax
+	mov		ss, ax
+	jmp		0x08:flush
 flush:
 	ret

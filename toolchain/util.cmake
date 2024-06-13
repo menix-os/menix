@@ -10,6 +10,7 @@
 # * modular		Can the module be loaded dynamically or not? (TRUE/FALSE)
 # * default		Default configuration value (ON/MOD/OFF)
 function(add_module name author desc license modular default)
+	# Generate a config entry if there is none already. If there is, include its values.
 	if(NOT DEFINED MENIX_HAS_CONFIG)
 		file(APPEND ${MENIX_CONFIG_SRC} "config_option(${MENIX_CURRENT_MOD} ${default})\n")
 	else()

@@ -37,7 +37,7 @@ AlignConsecutiveDeclarations:
   AcrossComments: true
   AlignFunctionPointers: true
 AlignAfterOpenBracket: Align
-AlignEscapedNewlines: Right
+AlignEscapedNewlines: DontAlign
 AlignOperands: Align
 AlignTrailingComments: true
 BreakAdjacentStringLiterals: true
