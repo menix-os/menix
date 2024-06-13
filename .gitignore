@@ -23,5 +23,5 @@ CTestTestfile.cmake
 _deps
 
 # Generated config headers
-kernel/include/generated/
-kernel/config.cmake
+include/generated/
+config.cmake
