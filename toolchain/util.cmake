@@ -55,7 +55,6 @@ function(add_module name author desc license modular default)
 		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE
 			MODULE_NAME="${name}"
 			MODULE_AUTHOR="${author}"
-			MODULE_LICENSE=License_${license}
 			MODULE_DESCRIPTION="${desc}"
 			MODULE_VERSION="${version}"
 		)
@@ -70,7 +69,6 @@ function(build_module name)
 	set(MENIX_CURRENT_MOD ${name} CACHE INTERNAL "")
 
 	if(NOT "${${MENIX_CURRENT_MOD}}" STREQUAL OFF)
-		message(STATUS "${${MENIX_CURRENT_MOD}}\t| " ${name})
 		add_subdirectory(${name})
 	endif()
 endfunction(build_module)
