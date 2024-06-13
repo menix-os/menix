@@ -16,6 +16,6 @@ void arch_init()
 	// Install the Interrupt Descriptor Table.
 	idt_init();
 
-	// Init output.
+	// Init console output.
 	serial_initialize();
 }
