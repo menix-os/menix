@@ -15,12 +15,9 @@ void module_init()
 	// TODO: Use Device Tree to filter compatible strings.
 	// TODO: Bind drivers to devices.
 
-	printf("initializing modules:\n---\n");
-
 	// Initialize all modules.
 	for (size_t i = 0; i < module_count; i++)
 	{
-		// Init.
 		modules[i].init();
 	}
 }

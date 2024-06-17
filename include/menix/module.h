@@ -23,10 +23,10 @@ typedef struct
 // Define a new module. Modules should use this at the end of their source.
 #define MENIX_MODULE(...) \
 	ATTR(used) ATTR(section(".mod")) static const Module this_module = { \
-		__VA_ARGS__, \
 		.name = MODULE_NAME, \
 		.author = MODULE_AUTHOR, \
 		.description = MODULE_DESCRIPTION, \
+		__VA_ARGS__, \
 	}; \
 	static_assert(this_module.init != NULL, "Init function has to be set!"); \
 	static_assert(this_module.exit != NULL, "Exit function has to be set!")

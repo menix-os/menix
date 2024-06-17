@@ -23,11 +23,11 @@ void kernel_main()
 	// Call init program.
 	// start("/usr/init");
 
-	printf("shutdown\n");
+	// Clean up all modules.
+	module_fini();
 
 	// TODO:
 	// Shut the system down.
 
-	// Clean up all modules.
-	module_fini();
+	printf("shutdown\n");
 }
