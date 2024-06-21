@@ -1,6 +1,4 @@
-/*--------------
-Multiboot header
---------------*/
+//? Multiboot header
 
 #pragma once
 
@@ -32,9 +30,7 @@ typedef struct ATTR(aligned(0x10)) ATTR(packed)
 	uint32_t vid_depth;
 } MultiBootHeader;
 
-ATTR(used)
-ATTR(section(".multiboot"))
-static const MultiBootHeader mb_header = {
+ATTR(used) ATTR(section(".multiboot")) static const MultiBootHeader mb_header = {
 	.magic = MB_MAGIC,
 	.flags = MB_FLAGS,
 	.checksum = MB_CHECKSUM,

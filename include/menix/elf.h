@@ -1,6 +1,4 @@
-/*-------------------------------
-Universal ELF spec implementation
--------------------------------*/
+//? Universal ELF spec implementation
 
 #pragma once
 

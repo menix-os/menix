@@ -1,6 +1,4 @@
-/*---------------------------
-x86 VGA mode serial interface
----------------------------*/
+//? x86 VGA mode serial interface
 
 #include <menix/serial.h>
 #include <menix/stdint.h>

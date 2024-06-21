@@ -1,9 +1,6 @@
-# ------------
-# ACPI Drivers
-# ------------
+# ? ACPI System
 
-set(MENIX_PARENT_CAT menix_drv_acpi)
-add_library(${MENIX_PARENT_CAT} INTERFACE)
-include(${MENIX_UTIL_PATH})
+add_library(menix_drv_acpi INTERFACE
+)
 
-# ----------
+# TODO: Convert to Static library since ACPI is one module by itself.

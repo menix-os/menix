@@ -1,6 +1,4 @@
-/*-------------------------
-Kernel C library - stdlib.h
--------------------------*/
+//? Kernel C library - stdlib.h
 
 #pragma once
 

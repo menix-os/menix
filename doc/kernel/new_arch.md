@@ -32,8 +32,6 @@ include(${MENIX_UTIL_PATH})
 add_library(menix_arch_<arch>
 	<src>
 )
-
-target_include_directories(menix_arch_<arch> PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld" CACHE INTERNAL "")
 ```
 
@@ -53,7 +51,7 @@ U-Boot or GRUB. In this case, add `require_option(device_tree)` to `/kernel/arch
 ## Example structure
 The final structure should look something like this:
 ```
-/kernel/arch/<arch>/boot/entry.asm
+/kernel/arch/<arch>/boot/entry.s
 				   /CMakeLists.txt
 				   /linker.ld
 	   /toolchain/arch/<arch>.cmake

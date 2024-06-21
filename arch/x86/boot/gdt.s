@@ -1,6 +1,4 @@
-/*------------------------------
-Sets the global descriptor table
-------------------------------*/
+/*? Sets the global descriptor table */
 
 .intel_syntax noprefix
 

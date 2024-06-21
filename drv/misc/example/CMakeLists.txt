@@ -1,6 +1,4 @@
-# ---------------------
-# Simple example module
-# ---------------------
+# ? Simple example module
 
 add_module(example "marv7000" "Simple example module" LGPL TRUE OFF
 	main.c

@@ -1,7 +1,8 @@
-/*--------------------------------
-Interrupt descriptor table setting
---------------------------------*/
+//? Interrupt descriptor table setting
 
+#include <menix/syscalls.h>
+
+#include <arch_bits.h>
 #include <idt.h>
 
 void idt_fill(uint8_t idx, uint32_t offset, uint16_t selector, uint8_t type_attr)
@@ -20,17 +21,21 @@ void idt_init()
 	for (uint8_t i = 0; i < 0x20; i++)
 		idt_fill(i, (uint32_t)error_handler, KERNEL_CODE_SEGMENT_OFFSET, IDT_INTERRUPT_GATE_32);
 
-	io_out(PIC1_COMMAND_PORT, 0x11);
-	io_out(PIC2_COMMAND_PORT, 0x11);
-	io_out(PIC1_DATA_PORT, 0x20);
-	io_out(PIC2_DATA_PORT, 0x28);
-	io_out(PIC1_DATA_PORT, 0x0);
-	io_out(PIC2_DATA_PORT, 0x0);
-	io_out(PIC1_DATA_PORT, 0x1);
-	io_out(PIC1_DATA_PORT, 0x1);
-	io_out(PIC1_DATA_PORT, 0xFF);
-	io_out(PIC1_DATA_PORT, 0xFF);
+	// Interrupt 0x80 is syscall.
+	idt_fill(0x80, (uint32_t)syscall_handler, KERNEL_CODE_SEGMENT_OFFSET, IDT_INTERRUPT_GATE_32);
 
+	write8(PIC1_COMMAND_PORT, 0x11);
+	write8(PIC2_COMMAND_PORT, 0x11);
+	write8(PIC1_DATA_PORT, 0x20);
+	write8(PIC2_DATA_PORT, 0x28);
+	write8(PIC1_DATA_PORT, 0x0);
+	write8(PIC2_DATA_PORT, 0x0);
+	write8(PIC1_DATA_PORT, 0x1);
+	write8(PIC1_DATA_PORT, 0x1);
+	write8(PIC1_DATA_PORT, 0xFF);
+	write8(PIC1_DATA_PORT, 0xFF);
+
+	interrupt_disable();
 	idt_set((sizeof(IdtEntry) * IDT_MAX_SIZE) - 1, (uint32_t)idt_table);
-	enable_interrupts();
+	interrupt_enable();
 }

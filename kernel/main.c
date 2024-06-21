@@ -1,6 +1,4 @@
-/*----------------
-Kernel entry point
-----------------*/
+//? Kernel entry point
 
 #include <menix/arch.h>
 #include <menix/module.h>

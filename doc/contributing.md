@@ -23,9 +23,8 @@ to make it easier to read for other people.
   main license.
   **Example:**
   ```c
-  /*------------------
-  Example Code [BSD-3]
-  ------------------*/
+  //? Example Code
+  //* BSD-3
   ```
 - Write comments and messages in present tense and easy to understand English.
 - Split your code into paragraphs where it makes sense and comment what

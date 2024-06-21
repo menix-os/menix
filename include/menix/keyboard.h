@@ -1,6 +1,4 @@
-/*--------------------
-Basic PS/2 Keyboard IO
---------------------*/
+//? Basic PS/2 Keyboard IO
 
 #pragma once
 
@@ -35,7 +33,8 @@ unsigned char keyboard_map[128] = {
 	// Pad
 	'\0', '\0', '\0',
 	// F11, F12
-	'\0', '\0'};
+	'\0', '\0'
+};
 
 unsigned char keyboard_shift_map[128] = {
 	// Nothing, Escape
@@ -61,4 +60,5 @@ unsigned char keyboard_shift_map[128] = {
 	// Pad
 	'\0', '\0', '\0',
 	// F11, F12
-	'\0', '\0'};
+	'\0', '\0'
+};

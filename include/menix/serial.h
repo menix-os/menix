@@ -1,6 +1,4 @@
-/*-------------------
-Serial console output
--------------------*/
+//? Serial console output
 
 #pragma once
 

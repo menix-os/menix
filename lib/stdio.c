@@ -1,6 +1,4 @@
-/*-----------------------------------------
-Kernel C library - "stdio.h" implementation
------------------------------------------*/
+//? Kernel C library - "stdio.h" implementation
 
 #include <menix/serial.h>
 #include <menix/stdint.h>
@@ -26,46 +24,50 @@ int32_t putchar(int32_t ic)
 	return ic;
 }
 
-int printf(const char* restrict format, ...)
+int32_t puts(const char* str)
 {
-	va_list parameters;
-	va_start(parameters, format);
+	const size_t written = strlen(str);
+	serial_write(str, written);
+	return written;
+}
 
+int32_t vprintf(const char* restrict fmt, va_list args)
+{
 	// Amount of bytes written.
 	int written = 0;
 
-	while (*format != '\0')
+	while (*fmt != '\0')
 	{
 		size_t maxrem = INT32_MAX - written;
 
-		if (format[0] != '%' || format[1] == '%')
+		if (fmt[0] != '%' || fmt[1] == '%')
 		{
-			if (format[0] == '%')
-				format++;
+			if (fmt[0] == '%')
+				fmt++;
 			size_t amount = 1;
-			while (format[amount] && format[amount] != '%')
+			while (fmt[amount] && fmt[amount] != '%')
 				amount++;
 			if (maxrem < amount)
 			{
 				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
-			if (!print(format, amount))
+			if (!print(fmt, amount))
 				return -1;
-			format += amount;
+			fmt += amount;
 			written += amount;
 			continue;
 		}
 
-		const char* format_begun_at = format++;
+		const char* format_begun_at = fmt++;
 
-		switch (*format)
+		switch (*fmt)
 		{
 				// Character
 			case 'c':
 			{
-				format++;
-				char c = (char)va_arg(parameters, int32_t);
+				fmt++;
+				char c = (char)va_arg(args, int32_t);
 
 				if (!print(&c, sizeof(c)))
 					return -1;
@@ -76,8 +78,8 @@ int printf(const char* restrict format, ...)
 			// String of characters
 			case 's':
 			{
-				format++;
-				const char* str = va_arg(parameters, const char*);
+				fmt++;
+				const char* str = va_arg(args, const char*);
 
 				size_t len = strlen(str);
 				if (!print(str, len))
@@ -89,8 +91,8 @@ int printf(const char* restrict format, ...)
 			case 'i':
 			case 'd':
 			{
-				format++;
-				const int32_t num = va_arg(parameters, int32_t);
+				fmt++;
+				const int32_t num = va_arg(args, int32_t);
 
 				// The largest signed integer is 2^32, which uses
 				// 10 digits + NUL.
@@ -105,8 +107,8 @@ int printf(const char* restrict format, ...)
 			}
 			case 'u':
 			{
-				format++;
-				const uint32_t num = va_arg(parameters, uint32_t);
+				fmt++;
+				const uint32_t num = va_arg(args, uint32_t);
 
 				// The largest signed integer is 2^32, which uses
 				// 10 digits + NUL.
@@ -121,8 +123,8 @@ int printf(const char* restrict format, ...)
 			}
 			case 'x':
 			{
-				format++;
-				const uint32_t num = va_arg(parameters, uint32_t);
+				fmt++;
+				const uint32_t num = va_arg(args, uint32_t);
 
 				char str[sizeof(uint32_t) * 2 + 1];
 				itoa(num, str, 16);
@@ -135,8 +137,8 @@ int printf(const char* restrict format, ...)
 			}
 			case 'p':
 			{
-				format++;
-				const uintptr_t num = va_arg(parameters, uintptr_t);
+				fmt++;
+				const uintptr_t num = va_arg(args, uintptr_t);
 
 				// Get the hex value, but with all other bytes explicitly
 				// written out.
@@ -154,19 +156,28 @@ int printf(const char* restrict format, ...)
 			}
 			default:
 			{
-				format = format_begun_at;
-				size_t len = strlen(format);
+				fmt = format_begun_at;
+				size_t len = strlen(fmt);
 
-				if (!print(format, len))
+				if (!print(fmt, len))
 					return -1;
 
 				written += len;
-				format += len;
+				fmt += len;
 				break;
 			}
 		}
 	}
+	return written;
+}
 
-	va_end(parameters);
+int32_t printf(const char* restrict fmt, ...)
+{
+	va_list args;
+	va_start(args, fmt);
+
+	int32_t written = vprintf(fmt, args);
+
+	va_end(args);
 	return written;
 }

@@ -1,6 +1,6 @@
-# ----------------------
-# Common CMake functions
-# ----------------------
+# ? ----------------------
+# ? Common CMake functions
+# ? ----------------------
 
 # Setup a new module for the build process.
 # * name		Name of the module (e.g. example)

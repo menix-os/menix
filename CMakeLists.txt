@@ -1,6 +1,6 @@
-# -----------------------
-# Main configuration file
-# -----------------------
+# ? -----------------------
+# ? Main configuration file
+# ? -----------------------
 
 cmake_minimum_required(VERSION 3.25)
 
@@ -46,8 +46,11 @@ file(WRITE ${MENIX_MODULES} "#pragma once\n// This file is automatically generat
 
 # Global include directories.
 include_directories(${MENIX_SRC}/include/)
+include_directories(${MENIX_SRC}/arch/${MENIX_ARCH}/include/)
 
 project(menix-kernel C ASM)
+
+add_compile_options(-Werror -Wpedantic -Wall)
 
 add_executable(kernel
 	kernel/main.c

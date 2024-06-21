@@ -1,6 +1,4 @@
-/*-----------
-x86 Bootstrap
------------*/
+/*? x86 Bootstrap */
 
 .intel_syntax noprefix
 

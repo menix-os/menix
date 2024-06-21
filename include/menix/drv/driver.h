@@ -1,6 +1,4 @@
-/*-----------------
-Device driver model
------------------*/
+//? Device driver model
 
 #pragma once
 

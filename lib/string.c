@@ -1,6 +1,4 @@
-/*------------------------------------------
-Kernel C library - "string.h" implementation
-------------------------------------------*/
+//? Kernel C library - "string.h" implementation
 
 #include <menix/string.h>
 

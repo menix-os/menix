@@ -1,6 +1,4 @@
-/*------------------------------------------
-Kernel C library - "stdlib.h" implementation
-------------------------------------------*/
+//? Kernel C library - "stdlib.h" implementation
 
 #include <menix/stdint.h>
 #include <menix/stdlib.h>
@@ -43,8 +41,7 @@ char* itoa(int32_t value, char* str, uint32_t base)
 
 char* utoa(uint32_t value, char* str, uint32_t base)
 {
-	int i, sign;
-	i = 0;
+	int i = 0;
 	do
 	{
 		char c = value % base;

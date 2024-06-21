@@ -1,6 +1,4 @@
-/*--------------------------
-Linker script for x86 builds
---------------------------*/
+/*? Linker script for x86 builds */
 
 ENTRY(_start);
 

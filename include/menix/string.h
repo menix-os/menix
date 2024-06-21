@@ -1,11 +1,8 @@
-/*-------------------------------
-Kernel C library - String utility
--------------------------------*/
+//? Kernel C library - string.h
 
 #pragma once
 
-#include <menix/stddef.h>
-#include <menix/stdint.h>
+#include <menix/common.h>
 
 void*	memccpy(void* restrict, const void* restrict, int32_t, size_t);
 void*	memchr(const void*, int32_t, size_t);

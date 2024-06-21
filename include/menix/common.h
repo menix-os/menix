@@ -1,6 +1,4 @@
-/*---------------------
-Common types and macros
----------------------*/
+//? Common types and macros
 
 #pragma once
 
@@ -11,5 +9,8 @@ Common types and macros
 #define ATTR(x) __attribute__((x))
 
 // Macro pasting glue
-#define __GLU2(x, y) x##y
+#define __PASTE(x)	 x
+#define __GLU2(x, y) __PASTE(x)##__PASTE(y)
 #define GLUE(x, y)	 __GLU2(x, y)
+
+#define asm __asm__
