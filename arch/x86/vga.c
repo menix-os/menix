@@ -1,8 +1,8 @@
 //? x86 VGA mode serial interface
 
 #include <menix/serial.h>
-#include <menix/stdint.h>
-#include <menix/string.h>
+#include <stdint.h>
+#include <string.h>
 
 #define VGA_WIDTH  80
 #define VGA_HEIGHT 25

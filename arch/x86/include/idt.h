@@ -3,7 +3,6 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/stdint.h>
 
 #define IDT_MAX_SIZE			   256
 #define KERNEL_CODE_SEGMENT_OFFSET 0x8

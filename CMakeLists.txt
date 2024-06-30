@@ -1,6 +1,4 @@
-# ? -----------------------
 # ? Main configuration file
-# ? -----------------------
 
 cmake_minimum_required(VERSION 3.25)
 
@@ -48,29 +46,35 @@ file(WRITE ${MENIX_MODULES} "#pragma once\n// This file is automatically generat
 include_directories(${MENIX_SRC}/include/)
 include_directories(${MENIX_SRC}/arch/${MENIX_ARCH}/include/)
 
+# Strip the kernel if we're building for smallest size.
+if(${CMAKE_BUILD_TYPE} STREQUAL MinSizeRel OR ${CMAKE_BUILD_TYPE} STREQUAL Release)
+	message(STATUS "Stripping kernel...")
+	add_link_options(-s)
+endif()
+
 project(menix-kernel C ASM)
 
-add_compile_options(-Werror -Wpedantic -Wall)
+add_compile_options(-Wall -Wno-unused-command-line-argument)
+add_compile_options(-ffreestanding -nostdlib -nostdinc -nostartfiles)
+add_link_options(-ffreestanding -nostdlib -z noexecstack)
 
-add_executable(kernel
-	kernel/main.c
-	kernel/module.c
-)
+add_executable(menix kernel/main.c)
 
 add_subdirectory(arch/${MENIX_ARCH_DIR})
+add_subdirectory(kernel)
 add_subdirectory(drv)
 add_subdirectory(fs)
-add_subdirectory(lib)
+add_subdirectory(klibc)
 
 # Link against all sub-directories.
-target_link_libraries(kernel PRIVATE
+target_link_libraries(menix PRIVATE
 	menix_arch_${MENIX_ARCH_DIR}
+	menix_kernel
 	menix_drv
 	menix_fs
-	menix_lib
+	menix_klibc
 )
 
 # Compile time definitions
-add_compile_definitions(MENIX_ARCH="${MENIX_ARCH}")
-add_compile_definitions(MENIX_BITS=${MENIX_BITS})
 add_compile_definitions(MENIX_VERSION="${MENIX_VERSION}")
+add_compile_definitions(MENIX_ARCH="${MENIX_ARCH}")

@@ -59,7 +59,7 @@
 #define ELF_ST_TYPE(i)	  ((i) & 0xf)
 #define ELF_ST_INFO(b, t) (((b) << 4) + ((t) & 0xf))
 
-#ifdef CONFIG_64bit
+#ifdef CONFIG_64_bit
 #define ELF_R_SYM(i)	 ((i) >> 32)
 #define ELF_R_TYPE(i)	 ((i) & 0xffffffffL)
 #define ELF_R_INFO(s, t) (((s) << 32) + ((t) & 0xffffffffL))
@@ -69,7 +69,7 @@
 #define ELF_R_INFO(s, t) (((s) << 8) + (uint8_t)(t))
 #endif
 
-#ifdef CONFIG_64bit
+#ifdef CONFIG_64_bit
 #define Elf_Phdr Elf64_Phdr
 #define Elf_Dyn	 Elf64_Dyn
 #define Elf_Ehdr Elf64_Ehdr
@@ -111,7 +111,7 @@ typedef struct
 } ATTR(packed) Elf_Hdr;
 
 // Program header. Field structure is different between bit sizes.
-#ifdef CONFIG_64bit
+#ifdef CONFIG_64_bit
 typedef struct
 {
 	uint32_t   p_type;
@@ -138,7 +138,7 @@ typedef struct
 #endif
 
 // Section header
-#ifdef CONFIG_64bit
+#ifdef CONFIG_64_bit
 typedef struct
 {
 	uint32_t   sh_name;			// Section name
@@ -169,7 +169,7 @@ typedef struct
 #endif
 
 // Symbol
-#ifdef CONFIG_64bit
+#ifdef CONFIG_64_bit
 typedef struct
 {
 	uint32_t   st_name;
@@ -191,7 +191,7 @@ typedef struct
 } ATTR(packed) Elf32_Sym;
 #endif
 
-#ifdef CONFIG_64bit
+#ifdef CONFIG_64_bit
 typedef struct
 {
 	Elf64_Addr r_offset;

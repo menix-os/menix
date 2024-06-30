@@ -1,12 +1,11 @@
 //? Kernel C library - "stdio.h" implementation
 
 #include <menix/serial.h>
-#include <menix/stdint.h>
-#include <menix/stdio.h>
-#include <menix/stdlib.h>
-#include <menix/string.h>
-
-#include <stdarg.h>	   // TODO: Port header.
+#include <stdarg.h>
+#include <stdint.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 static bool print(const char* data, size_t length)
 {
@@ -34,7 +33,7 @@ int32_t puts(const char* str)
 int32_t vprintf(const char* restrict fmt, va_list args)
 {
 	// Amount of bytes written.
-	int written = 0;
+	int32_t written = 0;
 
 	while (*fmt != '\0')
 	{
@@ -60,10 +59,25 @@ int32_t vprintf(const char* restrict fmt, va_list args)
 		}
 
 		const char* format_begun_at = fmt++;
+		bool		write_prefix = false;
+		// int32_t		write_limit = -1;
 
+check_fmt:
 		switch (*fmt)
 		{
-				// Character
+			// Format prefixes, fall throuh is intended.
+			case '#':
+			{
+				fmt++;
+				write_prefix = true;
+				goto check_fmt;
+			}
+			case '.':
+			{
+				fmt++;
+				goto check_fmt;
+			}
+			// Character
 			case 'c':
 			{
 				fmt++;
@@ -128,7 +142,40 @@ int32_t vprintf(const char* restrict fmt, va_list args)
 
 				char str[sizeof(uint32_t) * 2 + 1];
 				itoa(num, str, 16);
+
+				// Make letters lowercase.
+				for (uint32_t i = 0; i < sizeof(str); i++)
+				{
+					if (str[i] >= 'A' && str[i] <= 'F')
+						str[i] ^= 0x20;
+				}
+
 				const size_t len = strlen(str);
+
+				// Print prefix if '#' was previous format.
+				if (write_prefix)
+					if (!print("0x", 2))
+						return -1;
+				if (!print(str, len))
+					return -1;
+
+				written += len;
+				break;
+			}
+			case 'X':
+			{
+				fmt++;
+				const uint32_t num = va_arg(args, uint32_t);
+
+				char str[sizeof(uint32_t) * 2 + 1];
+				itoa(num, str, 16);
+
+				const size_t len = strlen(str);
+
+				// Print prefix if '#' was previous format.
+				if (write_prefix)
+					if (!print("0x", 2))
+						return -1;
 				if (!print(str, len))
 					return -1;
 

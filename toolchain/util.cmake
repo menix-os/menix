@@ -1,6 +1,14 @@
-# ? ----------------------
 # ? Common CMake functions
-# ? ----------------------
+
+# Setup a new CPU architecture.
+# * name		Name of the architecture (and current subdir)
+function(add_architecture name)
+	add_library(menix_arch_${name} STATIC ${ARGN})
+	# Set linker script.
+	set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld" CACHE INTERNAL "")
+	require_option(arch_${name})
+	require_option(${MENIX_BITS}_bit)
+endfunction(add_architecture)
 
 # Setup a new module for the build process.
 # * name		Name of the module (e.g. example)
@@ -111,3 +119,12 @@ function(require_option optname)
 	message(STATUS "AUTO | ${optname}")
 	define_option(${optname})
 endfunction(require_option)
+
+# This option can not be enabled while another is active.
+function(conflicts_option optname)
+	if(DEFINED CACHE{${optname}})
+		if(${optname} STREQUAL ON)
+			message(FATAL_ERROR "Option \"${MENIX_CURRENT_MOD}\" conflicts with \"${optname}\", you can't have both enabled at once!")
+		endif()
+	endif()
+endfunction(conflicts_option)

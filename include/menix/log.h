@@ -10,7 +10,4 @@
 #define LOG_ERR	  3
 
 // Print a message to the kernel log.
-void klog(int32_t level, const char* fmt, ...);
-
-// Throw an unrecoverable error.
-void kerror(const char* fmt, ...);
+void kmesg(int32_t level, const char* fmt, ...);

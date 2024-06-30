@@ -1,8 +1,8 @@
 //? Kernel C library - "stdlib.h" implementation
 
-#include <menix/stdint.h>
-#include <menix/stdlib.h>
-#include <menix/string.h>
+#include <stdint.h>
+#include <stdlib.h>
+#include <string.h>
 
 void reverse(char* s)
 {

@@ -1,14 +1,21 @@
 //? PCI IO implementation
 
+#include <menix/common.h>
 #include <menix/drv/pci.h>
 #include <menix/log.h>
 
 void pci_init()
 {
-	for (int i = 0; i < 4; i++)
+	// Scan all buses
+	for (uint16_t bus = 0; bus < 256; bus++)
 	{
-		PciDevice d = pci_get_info(0, i);
-		klog(LOG_DEBUG, "%x, %x\n", d.class, d.subclass);
+		for (uint8_t slot = 0; slot < 32; slot++)
+		{
+			const PciDevice dev = pci_get_info(bus, slot);
+			if (dev.vendor_id != 0xFFFF)
+				pci_log("New device %x:%x (vendor: %#x, device: %#x)\n", (uint32_t)bus, (uint32_t)slot, dev.vendor_id,
+						dev.device_id);
+		}
 	}
 }
 
@@ -18,34 +25,28 @@ void pci_fini()
 
 uint16_t pci_read16(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 {
-	uint32_t address;
-	uint32_t lbus = (uint32_t)bus;
-	uint32_t lslot = (uint32_t)slot;
-	uint32_t lfunc = (uint32_t)func;
-	uint16_t tmp = 0;
-
-	// Create configuration address as per Figure 1
-	address = (uint32_t)((lbus << 16) | (lslot << 11) | (lfunc << 8) | (offset & 0xFC) | ((uint32_t)0x80000000));
+	const uint32_t address =
+#ifdef CONFIG_arch_x86
+		0x80000000 | (uint32_t)((uint32_t)bus << 16 | (uint32_t)slot << 11 | (uint32_t)func << 8 | (offset & 0xfc));
+#elif defined(CONFIG_device_tree)
+	// TODO: Read from device tree
+#else
+#error "Need either x86 or device tree support!"
+#endif
 
 	// Write out the address
-	write32(0xCF8, address);
-	// Read in the data
-	// (offset & 2) * 8) = 0 will choose the first word of the 32-bit register
-	tmp = (uint16_t)((read32(0xCFC) >> ((offset & 2) * 8)) & 0xFFFF);
-	return tmp;
+	write32(0xcf8, address);
+	return (read32(0xcfc) >> ((offset & 2) * 8)) & 0xffff;
 }
 
 PciDevice pci_get_info(uint8_t bus, uint8_t slot)
 {
-	PciDevice result = {
+	const PciDevice result = {
 		.vendor_id = pci_read16(bus, slot, 0, 0),
 		.device_id = pci_read16(bus, slot, 0, 2),
-		.class = pci_read16(bus, slot, 0, 12),
-		.subclass = pci_read16(bus, slot, 0, 16),
+		.subclass = pci_read16(bus, slot, 0, 12),
+		.class = pci_read16(bus, slot, 0, 16),
 	};
-
-	if (result.vendor_id == 0xFFFF)
-		klog(LOG_WARN, "Non-existant PCI device\n");
 
 	return result;
 }

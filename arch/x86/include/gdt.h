@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <menix/stdint.h>
+#include <stdint.h>
 
 // Encodes a GDT entry to be in the correct format.
 #define GDT_ENTRY(base, limit, access, flags) \

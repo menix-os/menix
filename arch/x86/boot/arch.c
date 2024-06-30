@@ -2,7 +2,7 @@
 
 #include <menix/arch.h>
 #include <menix/serial.h>
-#include <menix/stdio.h>
+#include <stdio.h>
 
 #include <arch_bits.h>
 #include <gdt.h>
@@ -12,7 +12,7 @@
 void arch_init()
 {
 	// Install the Global Descriptor Table.
-	gdt_set(sizeof(gdt_table), (uint32_t)gdt_table);
+	gdt_set(sizeof(gdt_table), (size_t)gdt_table);
 	// Install the Interrupt Descriptor Table.
 	idt_init();
 

@@ -3,8 +3,6 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/stdint.h>
-
 #include <stdarg.h>
 
 #define EOF (-1)

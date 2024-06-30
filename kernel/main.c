@@ -1,15 +1,16 @@
 //? Kernel entry point
 
 #include <menix/arch.h>
+#include <menix/boot.h>
 #include <menix/module.h>
-#include <menix/stdio.h>
+#include <menix/log.h>
 
 void kernel_main()
 {
 	// Init platform.
 	arch_init();
 
-	printf("menix v" MENIX_VERSION " (" MENIX_ARCH ")\n");
+	kmesg(LOG_INFO, "menix v" MENIX_VERSION " (" MENIX_ARCH ")\n");
 
 	// TODO:
 	// Initialize modules.
@@ -27,5 +28,5 @@ void kernel_main()
 	// TODO:
 	// Shut the system down.
 
-	printf("shutdown\n");
+	kmesg(LOG_INFO, "shutdown\n");
 }

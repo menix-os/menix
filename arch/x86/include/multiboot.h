@@ -3,7 +3,6 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/stdint.h>
 
 #define MB_FLAG_ALIGN	1 << 0
 #define MB_FLAG_MEMINFO 1 << 1

@@ -1,6 +1,6 @@
 //? Kernel C library - "string.h" implementation
 
-#include <menix/string.h>
+#include <string.h>
 
 size_t strlen(const char* str)
 {

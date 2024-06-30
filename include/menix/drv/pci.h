@@ -19,6 +19,9 @@ typedef struct
 	uint8_t subclass;
 } PciDevice;
 
+// Log PCI related messages.
+#define pci_log(fmt, ...) kmesg(LOG_INFO, "PCI: " fmt, ##__VA_ARGS__)
+
 // Read 16 bits from a PCI device.
 uint16_t pci_read16(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset);
 

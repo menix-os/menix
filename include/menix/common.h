@@ -2,8 +2,10 @@
 
 #pragma once
 
-#include <menix/stddef.h>
-#include <menix/stdint.h>
+#include <generated/config.h>
+
+#include <stddef.h>
+#include <stdint.h>
 
 // Attributes/Decorators
 #define ATTR(x) __attribute__((x))

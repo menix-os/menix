@@ -1,15 +1,14 @@
 # Adding a new CPU architecture target
 
 ## Toolchain file
-Create a new file in `/kernel/toolchain/arch/<cpu>.cmake`.
+Create a new file in `/kernel/toolchain/arch/<arch>.cmake`.
 Use this template and fill in the `<placeholders>`:
 
 ```cmake
 set(CMAKE_SYSTEM_NAME Generic)
-set(CMAKE_C_COMPILER clang)				# Path to the clang binary
 set(CMAKE_C_COMPILER_TARGET <triple>)	# C Target triple, e.g. "i386-none-elf"
 set(CMAKE_ASM_COMPILER_TARGET <triple>)	# ASM Target triple, should be the same as C
-set(MENIX_BITS <bits>)					# Word size in bits. 32, 64 or 128
+set(MENIX_BITS <bits>)					# Word size in bits. 32 or 64
 set(MENIX_ARCH_DIR <dir>) 				# CPU specific code directory, relative to /kernel/arch/
 
 # Architecture specific compiler/linker flags
@@ -29,10 +28,9 @@ Create a `CMakeLists.txt` and fill it with this template:
 
 ```cmake
 include(${MENIX_UTIL_PATH})
-add_library(menix_arch_<arch>
+add_architecture(<arch>
 	<src>
 )
-set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld" CACHE INTERNAL "")
 ```
 
 ## Boot setup
@@ -43,10 +41,6 @@ This stub should be located in `/kernel/arch/<arch>/boot/entry.asm`.
 ## Linker script
 Create a file called `linker.ld`. Here, the platform specific kernel layout should be determined.
 You can use the x86 linker script as a reference.
-
-## Device trees
-On some platforms, you need to use a device tree. In `menix`, these get passed by the boot loader, like
-U-Boot or GRUB. In this case, add `require_option(device_tree)` to `/kernel/arch/<arch>/CMakeLists.txt`.
 
 ## Example structure
 The final structure should look something like this:

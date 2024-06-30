@@ -1,7 +1,7 @@
-# ? PCI/PCIe Drivers
+# ? PCI(e) Drivers
 
 set(MENIX_PARENT_CAT menix_drv_pci)
-add_library(${MENIX_PARENT_CAT} STATIC
-	pci.c
-)
+add_library(${MENIX_PARENT_CAT} STATIC pci.c)
 include(${MENIX_UTIL_PATH})
+require_option(pci)
+

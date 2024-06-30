@@ -15,8 +15,8 @@
 
 void interrupt_syscall()
 {
-	klog(LOG_INFO, "Hello from system call!\n");
 	int32_t num;
 	asm volatile("movl %%eax, %0" : "=r"(num));
-	klog(LOG_INFO, "SYSCALL(%i)\n", num);
+	kmesg(LOG_INFO, "Hello from system call!\n");
+	kmesg(LOG_INFO, "SYSCALL(%i)\n", num);
 }

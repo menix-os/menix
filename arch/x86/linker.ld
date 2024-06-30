@@ -1,23 +1,24 @@
 /*? Linker script for x86 builds */
 
-ENTRY(_start);
+OUTPUT_FORMAT(elf64-x86-64)
+OUTPUT_ARCH(i386:x86-64)
+ENTRY(kernel_boot);
 
 FLAGS_READ	= 1 << 2;
 FLAGS_WRITE	= 1 << 1;
 FLAGS_EXEC	= 1 << 0;
 
-KERNEL_OFFSET = 1M;
-
 PHDRS
 {
-	text	PT_LOAD FLAGS(FLAGS_READ | FLAGS_EXEC);
-	data	PT_LOAD FLAGS(FLAGS_READ | FLAGS_WRITE);
-	rodata	PT_LOAD FLAGS(FLAGS_READ);
+	text	PT_LOAD		FLAGS(FLAGS_READ | FLAGS_EXEC);
+	rodata	PT_LOAD		FLAGS(FLAGS_READ);
+	data	PT_LOAD		FLAGS(FLAGS_READ | FLAGS_WRITE);
+	dynamic PT_DYNAMIC	FLAGS(FLAGS_READ | FLAGS_WRITE);
 }
 
 SECTIONS
 {
-	. = KERNEL_OFFSET;
+	. = 0xffffffff80000000;
 	__ld_kernel_start = .;
 
 	/* General kernel code */
@@ -28,14 +29,6 @@ SECTIONS
 		*(.text)
 	} :text
 
-	/* Built-in module data goes here. */
-	.mod ALIGN(4K):
-	{
-		__ld_sect_mod_start = .;
-		KEEP(*(.mod*));
-		__ld_sect_mod_end = .;
-	} :data
-
 	.data ALIGN(4K):
 	{
 		*(.data)
@@ -44,14 +37,27 @@ SECTIONS
 	.rodata ALIGN(4K):
 	{
 		*(.rodata)
+		*(.rodata.*)
 	} :rodata
+
+	/* Built-in module data goes here. */
+	.mod ALIGN(4K):
+	{
+		__ld_sect_mod_start = .;
+		KEEP(*(.mod*));
+		__ld_sect_mod_end = .;
+	} :data
+
+	.dynamic ALIGN(4K):
+	{
+        *(.dynamic)
+    } :data :dynamic
 
 	.bss ALIGN(4K):
 	{
 		*(COMMON)
 		*(.bss)
-		*(.bootstrap_stack)
-	}
+	} :data
 
 	__ld_kernel_end = .;
 
@@ -63,5 +69,6 @@ SECTIONS
     	*(.gcc_except_table*)
     	*(.note*)
     	*(.rel.eh_frame*)
+		*(.interp)
 	}
 }

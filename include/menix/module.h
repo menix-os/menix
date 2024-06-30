@@ -3,7 +3,6 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/stdint.h>
 
 typedef int32_t (*ModuleInitFn)(void);
 typedef void	(*ModuleExitFn)(void);

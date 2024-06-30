@@ -1,14 +1,15 @@
 //? Kernel error output
 
 #include <menix/log.h>
-#include <menix/stdio.h>
-
 #include <stdarg.h>
+#include <stdio.h>
 
-void klog(int32_t level, const char* fmt, ...)
+void kmesg(int32_t level, const char* fmt, ...)
 {
+	// TODO: Add timer to output
+
 	va_list args;
-	va_start(args, format);
+	va_start(args, fmt);
 
 	switch (level)
 	{
@@ -30,11 +31,4 @@ void klog(int32_t level, const char* fmt, ...)
 
 	vprintf(fmt, args);
 	va_end(args);
-}
-
-void kerror(const char* str, ...)
-{
-	// If we have a message, print it.
-	// Otherwise, we don't know.
-	printf("[ERROR]\t%s\n", str ? str : "Unknown error!");
 }
