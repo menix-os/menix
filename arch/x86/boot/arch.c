@@ -7,7 +7,6 @@
 #include <arch_bits.h>
 #include <gdt.h>
 #include <idt.h>
-#include <multiboot.h>
 
 void arch_init()
 {

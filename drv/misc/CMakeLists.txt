@@ -7,5 +7,6 @@ include(${MENIX_UTIL_PATH})
 # Bootloader selection
 build_module(boot_efi)
 build_module(boot_limine)
+build_module(boot_mb2)
 
 build_module(example)

@@ -1,7 +1,6 @@
 /*? Sets the interrupt descriptor table */
 
 .intel_syntax noprefix
-.code32
 
 /* Temporary storage to hold the IDTR */
 .align 16

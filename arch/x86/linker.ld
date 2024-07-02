@@ -1,7 +1,5 @@
 /*? Linker script for x86 builds */
 
-OUTPUT_FORMAT(elf64-x86-64)
-OUTPUT_ARCH(i386:x86-64)
 ENTRY(kernel_boot);
 
 FLAGS_READ	= 1 << 2;

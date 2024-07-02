@@ -4,7 +4,6 @@
 #include <menix/drv/pci.h>
 #include <menix/log.h>
 #include <menix/module.h>
-#include <stdio.h>
 
 void module_init()
 {

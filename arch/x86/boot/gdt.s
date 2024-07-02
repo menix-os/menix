@@ -1,7 +1,6 @@
 /*? Sets the global descriptor table */
 
 .intel_syntax noprefix
-.code32
 
 .align 16
 gdtr:
