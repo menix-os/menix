@@ -1,8 +1,9 @@
 ---
 name: Bug report
-description: Report a bug
+about: Report a bug
 title: "[Bug]"
 labels: ["bug", "pending"]
+assignees: ''
 body:
     - type: markdown
       attributes:
