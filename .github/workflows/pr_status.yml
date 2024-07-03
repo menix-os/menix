@@ -1,0 +1,19 @@
+name: Manage Labels Based on PR Status
+on:
+  pull_request:
+    types: [opened]
+  pull_request_review:
+    types: [edited, submitted]
+
+jobs:
+  manage-labels:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove pending label on approval
+        if: github.event_name == 'pull_request_review' && github.event.action == 'submitted'
+        uses: TobKed/label-when-approved-action@master
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          label: 'pending'
+          require_committers_approval: 'false'
+          remove_label_when_approval_missing: 'true'
