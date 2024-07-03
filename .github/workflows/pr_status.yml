@@ -3,7 +3,7 @@ on:
   pull_request:
     types: [opened]
   pull_request_review:
-    types: [submitted]
+    types: [edited, submitted]
 
 jobs:
   manage-labels:
@@ -25,7 +25,7 @@ jobs:
 
       - name: Remove pending label on approval
         if: github.event_name == 'pull_request_review' && github.event.action == 'submitted'
-        uses: TobKed/label-when-approved-action@v1.2
+        uses: TobKed/label-when-approved-action@master
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           label: 'pending'
