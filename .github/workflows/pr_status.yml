@@ -9,20 +9,6 @@ jobs:
   manage-labels:
     runs-on: ubuntu-latest
     steps:
-      - name: Add pending label on PR open
-        if: github.event_name == 'pull_request' && github.event.action == 'opened'
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const { owner, repo } = context.repo;
-            const prNumber = context.issue.number;
-            await github.rest.issues.addLabels({
-              owner,
-              repo,
-              issue_number: prNumber,
-              labels: ['pending']
-            });
-
       - name: Remove pending label on approval
         if: github.event_name == 'pull_request_review' && github.event.action == 'submitted'
         uses: TobKed/label-when-approved-action@master

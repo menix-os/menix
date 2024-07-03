@@ -2,7 +2,7 @@
 name: PR template
 about: Submit changes to Menix
 title: ''
-labels: ''
+labels: ["pending"]
 assignees: ''
 
 
