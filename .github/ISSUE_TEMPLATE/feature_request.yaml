@@ -1,5 +1,5 @@
 ---
-name: Feature request
+name: Feature Request
 description: Suggest a new feature to Menix
 title: "[Feature]"
 labels: ["enhancement"]
@@ -61,7 +61,6 @@ body:
         description: >
             Describe your proposal in detail. Include any specific requirements
             for your plan to work as well as the supposed benefit your feature will bring.
-
             Also include a step by step actionplan you have drawn up to achieve this goal.
             Feature request with unclear or missing action plans cannot be acted upon.
       validations:
