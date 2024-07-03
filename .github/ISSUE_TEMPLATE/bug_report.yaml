@@ -1,9 +1,8 @@
 ---
 name: Bug report
-about: Report a bug
+description: Report a bug
 title: "[Bug]"
 labels: ["bug", "pending"]
-assignees: ''
 body:
     - type: markdown
       attributes:
@@ -21,8 +20,8 @@ body:
                 - aarch64/arm64
                 - riscv64
                 - None/Multiple
-            validations:
-              required: true
+      validations:
+        required: true
     - type: input
       attributes:
             label: Menix Version
@@ -40,22 +39,22 @@ body:
                 - Main
                 - Build System
                 - Other
-            validations:
-                required: true
+      validations:
+        required: true
     - type: textarea
       attributes:
             label: Bug Description
             description: >
                 Please describe in detail what issue you encountered.
-            validations:
+      validations:
                 required: true
     - type: textarea
       attributes:
             label: Expected Behavior
             description: >
                 Please describe how you expected the system to behave.
-            validations:
-                required: true
+      validations:
+        required: true
     - type: textarea
       attributes:
             label: Steps to Reproduce
@@ -66,6 +65,5 @@ body:
             placeholder: |
                 1. Build image using this command ...
                 2. Boot system ...
-            validations:
-                required: true
----
+      validations:
+         required: true
