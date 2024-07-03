@@ -1,0 +1,28 @@
+name: PR Description Validation
+
+on:
+  pull_request:
+    types: [opened, edited, reopened]
+
+jobs:
+  validate-pr-description:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check PR Description Against Template
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const fs = require('fs');
+            const { owner, repo } = context.repo;
+            const prNumber = context.issue.number;
+            const prTitle = context.issue.title;
+            const prBody = context.issue.body;
+
+            const prTemplatePath = `${process.env.GITHUB_WORKSPACE}../.github/PULL_REQUEST_TEMPLATE.md`;
+            const prTemplateContent = fs.readFileSync(prTemplatePath, 'utf8');
+
+            if(!prBody.includes("Reason for choosing New Feature") && !prTitle.match(/(New Feature|Feature Iteration|Bug Fix)/)) {
+              throw new Error('PR description does not comply with the template.');
+            }
+
+            console.log(`PR ${prNumber} validated successfully.`);

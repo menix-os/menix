@@ -2,7 +2,7 @@
 name: Bug report
 about: Create a bug report
 title: "[Bug]"
-labels: bug
+labels: [bug, pending]
 assignees: marv7000
 
 ---
