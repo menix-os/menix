@@ -16,7 +16,7 @@ Create a build directory and configure CMake.
 ```sh
 mkdir build
 cd build
-cmake ../kernel -D CMAKE_BUILD_TYPE=Release
+cmake ../ -D CMAKE_BUILD_TYPE=Release
 # To cross-compile, add: -D MENIX_ARCH="<arch>"
 ```
 
