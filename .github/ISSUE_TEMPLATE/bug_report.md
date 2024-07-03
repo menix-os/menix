@@ -1,24 +1,70 @@
 ---
 name: Bug report
-about: Create a bug report
+description: Report a bug
 title: "[Bug]"
 labels: ["bug", "pending"]
-assignees: marv7000
-
+body:
+    - type: markdown
+      attributes:
+            value: >
+                **NOTE**: This form is only for reporting _reproducible bus_ in Menix.
+                If you have any trouble with building or are looking for assistance,
+                please post your question in our [discussion section](https://github.com/menix-os/kernel/discussions).
+    - type: dropdown
+      attributes:
+            label: Architecture
+            description: >
+                Which CPU architecture does this bug affect?
+            options:
+                - x86_64
+                - aarch64/arm64
+                - riscv64
+                - None/Multiple
+            validations:
+              required: true
+    - type: input
+      attributes:
+            label: Menix Version
+            description: What version of Menix did you use?
+            placeholder: master
+    - type: dropdown
+      attributes:
+            label: Affected Area
+            description: > 
+                What sub system of Menix does this issue affect?
+            options:
+                - Boot
+                - Drivers
+                - File System
+                - Main
+                - Build System
+                - Other
+            validations:
+                required: true
+    - type: textarea
+      attributes:
+            label: Bug Description
+            description: >
+                Please describe in detail what issue you encountered.
+            validations:
+                required: true
+    - type: textarea
+      attributes:
+            label: Expected Behavior
+            description: >
+                Please describe how you expected the system to behave.
+            validations:
+                required: true
+    - type: textarea
+      attributes:
+            label: Steps to Reproduce
+            description: >
+                Describe in detail the exact steps we can take to reproduce this bug.
+                Please also provide details to you exact environment. Hardware specifications,
+                virtualization hosts as well as any error logs you might have.
+            placeholder: |
+                1. Build image using this command ...
+                2. Boot system ...
+            validations:
+                required: true
 ---
-
-## **Affected system**
-<!-- Which system is this bug related to? 
-Use the path to the related directory, e.g. kernel/arch/x86 -->
-
-
-## **Description**
-<!-- Describe the bug -->
-
-
-## **Expected behavior**
-<!-- A clear and concise description of what you expected to happen. -->
-
-
-## **Reproduction**
-<!-- Steps to reproduce the behavior. Also include the config options needed to trigger it. -->
