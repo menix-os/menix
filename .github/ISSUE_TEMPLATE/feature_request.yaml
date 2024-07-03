@@ -1,9 +1,8 @@
 ---
 name: Feature request
-about: Suggest a new feature to Menix
+description: Suggest a new feature to Menix
 title: "[Feature]"
-labels: enhancement
-assignees: ''
+labels: ["enhancement"]
 body:
     - type: markdown
       attributes:
@@ -28,8 +27,8 @@ body:
             - Change existing functionality
             - Change to the build system
             - Other
-        validations:
-            required: true
+      validations:
+        required: true
     - type: dropdown
       attributes:
         label: Architecture
@@ -54,16 +53,16 @@ body:
             - Main
             - Build System
             - Other
-        validations:
-            required: true
+      validations:
+        required: true
     - type: textarea
       attributes:
+        label: Proposal
         description: >
             Describe your proposal in detail. Include any specific requirements
             for your plan to work as well as the supposed benefit your feature will bring.
 
             Also include a step by step actionplan you have drawn up to achieve this goal.
             Feature request with unclear or missing action plans cannot be acted upon.
-        validations:
-            required: true
----
+      validations:
+        required: true
