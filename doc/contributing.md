@@ -3,7 +3,7 @@ This document explains how to format and submit contributions to
 the `menix` project.
 
 ## General rules
-- **NO** politics, sexism, or other discriminatory behavior.
+- **NO** discriminatory behavior, everyone should be welcome to contribute.
 - Every submission should solve exactly **ONE** problem.
 - Your submission **HAS** to be written by you.
 - Your code **HAS** to be licensed under the project's main license, or
@@ -45,7 +45,8 @@ to make it easier to read for other people.
 - Structs and unions are to be declared via `typedef`. They should be anonymous.
 - Multi-line `typedef`s have the alias name and closing brace on the same line.
 - Pointer stars are part of the type and should be written as `Type*`.
-- Comments use doxygen with `\` as delimiter.
+- Documentation comments use doxygen with `\` as delimiter.
+- Avoid raw and inline assembly at all costs to keep the codebase portable.
 - Prefer clear and descriptive variable names over short ones.
 - Local variables and fields use `snake_case`.
 - Defines use `SCREAMING_CASE`.

@@ -3,7 +3,6 @@
 #pragma once
 
 #include <generated/config.h>
-
 #include <stddef.h>
 #include <stdint.h>
 
@@ -11,8 +10,10 @@
 #define ATTR(x) __attribute__((x))
 
 // Macro pasting glue
-#define __PASTE(x)	 x
+#define __PASTE(x)	 #x
 #define __GLU2(x, y) __PASTE(x)##__PASTE(y)
 #define GLUE(x, y)	 __GLU2(x, y)
 
 #define asm __asm__
+
+typedef size_t bits;

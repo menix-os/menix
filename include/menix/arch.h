@@ -8,3 +8,6 @@
 
 // Initializes the CPU for use by the kernel.
 void arch_init();
+
+// Shuts off the machine.
+void arch_shutdown();

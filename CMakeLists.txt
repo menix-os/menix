@@ -55,24 +55,24 @@ endif()
 project(menix-kernel C ASM)
 
 add_compile_options(-Wall -Wno-unused-command-line-argument)
-add_compile_options(-ffreestanding -nostdlib -nostdinc -nostartfiles)
-add_link_options(-ffreestanding -nostdlib -z noexecstack)
+add_compile_options(-ffreestanding -nostdlib -nostdinc -nostartfiles -fPIC)
+add_link_options(-ffreestanding -nostdlib -z noexecstack -fPIE)
 
 add_executable(menix kernel/main.c)
 
 add_subdirectory(arch/${MENIX_ARCH_DIR})
 add_subdirectory(kernel)
+add_subdirectory(klibc)
 add_subdirectory(drv)
 add_subdirectory(fs)
-add_subdirectory(klibc)
 
 # Link against all sub-directories.
-target_link_libraries(menix PRIVATE
+target_link_libraries(menix PUBLIC
 	menix_arch_${MENIX_ARCH_DIR}
 	menix_kernel
+	menix_klibc
 	menix_drv
 	menix_fs
-	menix_klibc
 )
 
 # Compile time definitions

@@ -17,4 +17,5 @@ MENIX_MODULE = {
 	.name = MODULE_NAME,
 	.init = init_fn,
 	.exit = exit_fn,
+	.meta = MENIX_MOULE_META(name, MODULE_NAME),
 };

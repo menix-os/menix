@@ -1,6 +1,6 @@
 # ? Self contained EFI bootloader.
 
-add_module(boot_efi "marv7000" "Use EFI for booting" MAIN FALSE OFF
+add_module(boot_efi "marv7000" "Boot using the EFI loader" MAIN FALSE OFF
 	efi_entry.c
 )
 conflicts_option(boot_*)

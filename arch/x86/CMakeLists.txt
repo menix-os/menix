@@ -2,9 +2,11 @@
 
 include(${MENIX_UTIL_PATH})
 add_architecture(x86
-	boot/gdt.s
-	boot/idt.s
+	boot/gdt.c
+	boot/interrupts.s
 	boot/idt.c
-	boot/arch.c
+	arch.c
 	vga.c
+	pci.c
 )
+require_option(uefi)

@@ -4,6 +4,8 @@
 #include <menix/drv/pci.h>
 #include <menix/log.h>
 
+#ifdef CONFIG_pci
+
 void pci_init()
 {
 	// Scan all buses
@@ -23,22 +25,6 @@ void pci_fini()
 {
 }
 
-uint16_t pci_read16(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
-{
-	const uint32_t address =
-#ifdef CONFIG_arch_x86
-		0x80000000 | (uint32_t)((uint32_t)bus << 16 | (uint32_t)slot << 11 | (uint32_t)func << 8 | (offset & 0xfc));
-#elif defined(CONFIG_device_tree)
-	// TODO: Read from device tree
-#else
-#error "Need either x86 or device tree support!"
-#endif
-
-	// Write out the address
-	write32(0xcf8, address);
-	return (read32(0xcfc) >> ((offset & 2) * 8)) & 0xffff;
-}
-
 PciDevice pci_get_info(uint8_t bus, uint8_t slot)
 {
 	const PciDevice result = {
@@ -50,3 +36,5 @@ PciDevice pci_get_info(uint8_t bus, uint8_t slot)
 
 	return result;
 }
+
+#endif

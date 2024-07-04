@@ -14,7 +14,5 @@ void write8(uint16_t port, uint8_t value);
 void write16(uint16_t port, uint16_t value);
 void write32(uint16_t port, uint32_t value);
 
-// CLI
-void interrupt_enable();
-// STI
-void interrupt_disable();
+#define interrupt_disable() asm volatile("cli")
+#define interrupt_enable()	asm volatile("sti")

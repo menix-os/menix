@@ -2,31 +2,29 @@
 
 #include <menix/arch.h>
 #include <menix/boot.h>
-#include <menix/module.h>
 #include <menix/log.h>
+#include <menix/module.h>
 
 void kernel_main()
 {
-	// Init platform.
 	arch_init();
 
+	// Say hello to the console.
 	kmesg(LOG_INFO, "menix v" MENIX_VERSION " (" MENIX_ARCH ")\n");
 
-	// TODO:
-	// Initialize modules.
+	// Initialize all modules.
 	module_init();
 
 	// Init basic file system.
 
-	// TODO:
-	// Call init program.
-	// start("/usr/init");
+	// TODO: Call init program.
+	// exec("/usr/init");
 
 	// Clean up all modules.
 	module_fini();
 
-	// TODO:
-	// Shut the system down.
+	// TODO: Shut the system down.
 
+	// Say goodbye.
 	kmesg(LOG_INFO, "shutdown\n");
 }

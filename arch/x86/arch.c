@@ -1,8 +1,8 @@
 //? x86 platform initialization
 
 #include <menix/arch.h>
+#include <menix/log.h>
 #include <menix/serial.h>
-#include <stdio.h>
 
 #include <arch_bits.h>
 #include <gdt.h>
@@ -11,34 +11,21 @@
 void arch_init()
 {
 	// Install the Global Descriptor Table.
-	gdt_set(sizeof(gdt_table), (size_t)gdt_table);
+	gdt_init();
 	// Install the Interrupt Descriptor Table.
 	idt_init();
-
 	// Init console output.
 	serial_initialize();
 }
 
-void interrupt_disable()
-{
-	asm volatile("cli");
-}
-
-void interrupt_enable()
-{
-	asm volatile("sti");
-}
-
 ATTR(noreturn) void interrupt_error(void)
 {
-	printf("\nunhandled kernel error!");
+	kmesg(LOG_ERR, "\nunhandled kernel error!");
 
 	// Stop the kernel.
-	asm volatile("cli\n"
-				 "hlt");
+	asm volatile("cli\nhlt");
 	while (1)
-	{
-	}
+		;
 }
 
 uint8_t read8(uint16_t port)

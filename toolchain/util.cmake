@@ -4,8 +4,9 @@
 # * name		Name of the architecture (and current subdir)
 function(add_architecture name)
 	add_library(menix_arch_${name} STATIC ${ARGN})
+
 	# Set linker script.
-	set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld" CACHE INTERNAL "")
+	set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/linker.ld -L ${MENIX_SRC}" CACHE INTERNAL "")
 	require_option(arch_${name})
 	require_option(${MENIX_BITS}_bit)
 endfunction(add_architecture)
@@ -50,7 +51,7 @@ function(add_module name author desc license modular default)
 			target_link_libraries(${MENIX_PARENT_CAT} INTERFACE $<TARGET_OBJECTS:${MENIX_CURRENT_MOD}>)
 
 			# Define a macro to check for presence of this module.
-			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${MENIX_CURRENT_MOD}\n")
+			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${MENIX_CURRENT_MOD} 1\n")
 		else()
 			add_executable(${MENIX_CURRENT_MOD} ${ARGN})
 
@@ -83,8 +84,12 @@ function(build_module name)
 endfunction(build_module)
 
 function(define_option optname)
-	if(${${optname}} STREQUAL ON)
-		file(APPEND ${MENIX_CONFIG} "#define CONFIG_${optname}\n")
+	if(NOT ${${optname}} STREQUAL OFF)
+		if(${${optname}} STREQUAL ON)
+			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${optname} 1\n")
+		else()
+			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${optname} ${${optname}}\n")
+		endif()
 	endif()
 endfunction(define_option)
 
@@ -94,11 +99,15 @@ function(add_option optname default)
 		set(${optname} ${default} CACHE INTERNAL "")
 	endif()
 
+	if(NOT DEFINED MENIX_HAS_CONFIG)
+		file(APPEND ${MENIX_CONFIG_SRC} "config_option(${optname} ${default})\n")
+	endif()
+
 	define_option(${optname})
 endfunction(add_option)
 
 # Overwrite default values for including modules.
-# Values: ON, OFF, MOD
+# Values: ON, OFF, String, Number
 function(config_option name status)
 	# Set a global variable to be evaluated before any other.
 	set(${name} ${status} CACHE INTERNAL "")
@@ -120,16 +129,18 @@ function(require_option optname)
 	define_option(${optname})
 endfunction(require_option)
 
-# This option can not be enabled while another is active.
+# This module can not be enabled while another option is active.
 function(conflicts_option optname)
 	get_cmake_property(all_variables VARIABLES)
+
 	foreach(var ${all_variables})
 		string(REGEX MATCH "${optname}" match ${var})
+
 		if(match)
 			if(DEFINED CACHE{${var}})
 				# Check if option is enabled and not the named the same as our current option.
-				if(${var} STREQUAL ON AND ${MENIX_CURRENT_MOD} STREQUAL ON AND NOT ${var} STREQUAL ${MENIX_CURRENT_MOD})
-					message(FATAL_ERROR "Option \"${MENIX_CURRENT_MOD}\" conflicts with \"${optname}\", you can't have both enabled at once!")
+				if(${var} STREQUAL ON AND ${MENIX_CURRENT_MOD} STREQUAL ON AND NOT var STREQUAL MENIX_CURRENT_MOD)
+					message(FATAL_ERROR "Module \"${MENIX_CURRENT_MOD}\" conflicts with \"${var}\", you can't have both enabled at once!")
 				endif()
 			endif()
 		endif()
