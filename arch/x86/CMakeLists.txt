@@ -9,4 +9,4 @@ add_architecture(x86
 	vga.c
 	pci.c
 )
-require_option(uefi)
+require_option(efi)

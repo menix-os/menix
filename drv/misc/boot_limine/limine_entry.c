@@ -1,17 +1,28 @@
 //? Limine bootloader entry point.
 
-#include <menix/common.h>
+#include <menix/arch.h>
 #include <menix/boot.h>
+#include <menix/common.h>
+
 #include "limine.h"
 
-ATTR(used) ATTR(section(".requests")) static volatile LIMINE_BASE_REVISION(2);
+#define LIMINE_REQUEST ATTR(section(".requests")) ATTR(used) static volatile
 
-ATTR(used) ATTR(section(".requests")) static volatile struct limine_framebuffer_request framebuffer_request = {
+// Start requests
+ATTR(used) ATTR(section(".requests_start_marker")) static volatile LIMINE_REQUESTS_START_MARKER;
+
+LIMINE_REQUEST LIMINE_BASE_REVISION(2);
+
+LIMINE_REQUEST struct limine_framebuffer_request framebuffer_request = {
 	.id = LIMINE_FRAMEBUFFER_REQUEST,
-	.revision = 0
+	.revision = 0,
+};
+LIMINE_REQUEST struct limine_boot_time_request time_request = {
+	.id = LIMINE_BOOT_TIME_REQUEST,
+	.revision = 0,
 };
 
-ATTR(used) ATTR(section(".requests_start_marker")) static volatile LIMINE_REQUESTS_START_MARKER;
+// End requests
 ATTR(used) ATTR(section(".requests_end_marker")) static volatile LIMINE_REQUESTS_END_MARKER;
 
 void kernel_boot()

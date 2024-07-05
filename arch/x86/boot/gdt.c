@@ -22,14 +22,10 @@ void gdt_fill(GdtDesc* target, void* base, uint32_t limit, uint8_t access, uint8
 #endif
 }
 
-void gdt_set()
-{
-	asm("lgdt %0" ::"m"(gdtr));
-}
-
-// clang-format off
 void gdt_init()
 {
+	// clang-format off
+
 	// Kernel Code
 	gdt_fill(&gdt_table[GDT_KERNEL_CODE],
 			 NULL, 0xFFFFF,
@@ -77,5 +73,8 @@ void gdt_init()
 			 &tss, sizeof(TaskStateSegment),
 			 GDTA_PRESENT | GDTA_EXECUTABLE | GDTA_ACCESSED,
 			 0);
+
+	// clang-format on
+
+	gdt_set(gdtr);
 }
-// clang-format on

@@ -52,6 +52,9 @@ if(${CMAKE_BUILD_TYPE} STREQUAL MinSizeRel OR ${CMAKE_BUILD_TYPE} STREQUAL Relea
 	add_link_options(-s)
 endif()
 
+# Write kernel version
+file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/version "${MENIX_VERSION} (${MENIX_ARCH})")
+
 project(menix-kernel C ASM)
 
 add_compile_options(-Wall -Wno-unused-command-line-argument)

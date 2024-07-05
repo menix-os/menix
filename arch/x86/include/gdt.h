@@ -55,3 +55,5 @@ void gdt_set();
 
 /// \brief Fills the GDT with predefined values.
 void gdt_init();
+
+#define gdt_set(table) asm("lgdt %0" ::"m"(table))

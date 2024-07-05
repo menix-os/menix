@@ -12,7 +12,7 @@
 // Macro pasting glue
 #define __PASTE(x)	 #x
 #define __GLU2(x, y) __PASTE(x)##__PASTE(y)
-#define GLUE(x, y)	 __GLU2(x, y)
+#define __GLUE(x, y) __GLU2(x, y)
 
 #define asm __asm__
 
