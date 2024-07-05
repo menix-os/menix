@@ -3,6 +3,7 @@
 
 #include <menix/common.h>
 #include <menix/drv/pci.h>
+#include <menix/io.h>
 
 #ifdef CONFIG_pci
 

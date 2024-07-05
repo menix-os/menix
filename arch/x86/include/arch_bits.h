@@ -4,15 +4,19 @@
 
 #include <menix/common.h>
 
-// Reads 8 bits from a given IO port.
-uint8_t	 read8(uint16_t port);
-uint16_t read16(uint16_t port);
-uint32_t read32(uint16_t port);
+uint8_t	 arch_read8(uint16_t port);
+uint16_t arch_read16(uint16_t port);
+uint32_t arch_read32(uint16_t port);
+#ifdef CONFIG_64_bit
+uint32_t arch_read64(uint16_t port);
+#endif
 
-// Writes 8 bits to a given IO port.
-void write8(uint16_t port, uint8_t value);
-void write16(uint16_t port, uint16_t value);
-void write32(uint16_t port, uint32_t value);
+void arch_write8(uint16_t port, uint8_t value);
+void arch_write16(uint16_t port, uint16_t value);
+void arch_write32(uint16_t port, uint32_t value);
+#ifdef CONFIG_64_bit
+void arch_write64(uint16_t port, uint32_t value);
+#endif
 
 #define interrupt_disable() asm volatile("cli")
 #define interrupt_enable()	asm volatile("sti")

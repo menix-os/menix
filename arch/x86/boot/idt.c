@@ -1,5 +1,6 @@
 //? Interrupt descriptor table setting
 
+#include <menix/io.h>
 #include <menix/syscalls.h>
 
 #include <arch_bits.h>

@@ -8,5 +8,6 @@ add_architecture(x86
 	arch.c
 	vga.c
 	pci.c
+	io.c
 )
 require_option(efi)
