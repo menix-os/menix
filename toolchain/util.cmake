@@ -5,13 +5,13 @@
 function(add_architecture name)
 	add_library(menix_arch_${name} STATIC ${ARGN})
 
-	# Set linker script.
+	# Set linker script and common search paths.
 	set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ld -L ${MENIX_SRC} -L ${MENIX_SRC}/toolchain/linker" CACHE INTERNAL "")
 	require_option(arch_${name})
 	require_option(${MENIX_BITS}_bit)
 endfunction(add_architecture)
 
-# Append this directory to the Linker Script include search path
+# Appends this directory to the Linker Script include search path.
 function(add_linker_dir)
 	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L ${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
 endfunction(add_linker_dir)
@@ -55,13 +55,16 @@ function(add_module name author desc license modular default)
 
 			target_link_libraries(${MENIX_PARENT_CAT} INTERFACE $<TARGET_OBJECTS:${MENIX_CURRENT_MOD}>)
 
+			# If built-in, define MODULE_TYPE to let the module know.
+			target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_TYPE='B')
+
 			# Define a macro to check for presence of this module.
 			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${MENIX_CURRENT_MOD} 1\n")
 		else()
 			add_executable(${MENIX_CURRENT_MOD} ${ARGN})
 
-			# If compiling as a module, define MENIX_MODULE to let the module know.
-			target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE IS_MODULE=1)
+			# If compiling as a module, define MODULE_TYPE to let the module know.
+			target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_TYPE='M')
 
 			# Module should be completely relocatable.
 			target_link_options(${MENIX_CURRENT_MOD} PRIVATE -r)
@@ -71,8 +74,14 @@ function(add_module name author desc license modular default)
 			MODULE_NAME="${name}"
 			MODULE_AUTHOR="${author}"
 			MODULE_DESCRIPTION="${desc}"
-			MODULE_VERSION="${version}"
 		)
+
+		# Evaluate module license
+		if(${license} STREQUAL "MAIN")
+			target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_LICENSE="${MENIX_LICENSE}")
+		else()
+			target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_LICENSE="${license}")
+		endif()
 
 		# Add local include directory to search path.
 		target_include_directories(${MENIX_CURRENT_MOD} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

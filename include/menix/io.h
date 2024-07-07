@@ -6,11 +6,13 @@
 // [read,write][8,16,32,64] functions are declared as macros.
 // The implementation for these functions should be defined in /arch/<arch>/io.c
 
-#define read8(addr)			 arch_read8(addr)
-#define read16(addr)		 arch_read16(addr)
-#define read32(addr)		 arch_read32(addr)
-#define read64(addr)		 arch_read64(addr)
-#define write8(addr, value)	 arch_write8(addr, value)
-#define write16(addr, value) arch_write16(addr, value)
-#define write32(addr, value) arch_write32(addr, value)
-#define write64(addr, value) arch_write64(addr, value)
+#include <arch_bits.h>
+
+#define read8(addr)			 read8(addr)
+#define read16(addr)		 read16(addr)
+#define read32(addr)		 read32(addr)
+#define read64(addr)		 read64(addr)
+#define write8(addr, value)	 write8(addr, value)
+#define write16(addr, value) write16(addr, value)
+#define write32(addr, value) write32(addr, value)
+#define write64(addr, value) write64(addr, value)

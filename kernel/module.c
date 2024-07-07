@@ -12,6 +12,7 @@ SECTION_DECLARE_SYMBOLS(mod)
 void module_init()
 {
 	// Initialize all subsystem managers.
+	module_log("Initializing subsystems...\n");
 #ifdef CONFIG_pci
 	pci_init();
 #endif
@@ -20,15 +21,13 @@ void module_init()
 	const uint32_t module_count = SECTION_SIZE(mod) / sizeof(Module);
 	const Module*  modules = (Module*)SECTION_START(mod);
 
-	// TODO: Use Device Tree to filter compatible strings.
-	// TODO: Bind drivers to devices.
-
 	// Initialize all modules.
 	for (size_t i = 0; i < module_count; i++)
 	{
+		module_log("Loading \"%s\"\n", modules[i].name);
 		const int32_t ret = modules[i].init();
-		if (ret)
-			kmesg(LOG_ERR, "Module \"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
+		if (ret != 0)
+			module_err("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
 	}
 }
 
@@ -41,6 +40,7 @@ void module_fini()
 	// Clean up all modules.
 	for (size_t i = 0; i < module_count; i++)
 	{
+		module_log("Unloading \"%s\"\n", modules[i].name);
 		modules[i].exit();
 	}
 

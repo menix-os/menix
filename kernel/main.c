@@ -1,14 +1,13 @@
 //? Kernel entry point
 
-#include <menix/arch.h>
 #include <menix/boot.h>
+#include <menix/format.h>
+#include <menix/gpu/fb.h>
 #include <menix/log.h>
 #include <menix/module.h>
 
-void kernel_main()
+void kernel_main(BootInfo* info)
 {
-	arch_init();
-
 	// Say hello to the console.
 	kmesg(LOG_INFO, "menix v" MENIX_VERSION " (" MENIX_ARCH ")\n");
 

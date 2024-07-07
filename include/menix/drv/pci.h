@@ -4,12 +4,11 @@
 
 #include <menix/arch.h>
 #include <menix/common.h>
+#include <menix/log.h>
 
-#define PCI_UNCLASSIFIED	  0x00
-#define PCI_MASS_STORAGE_CTRL 0x01
-#define PCI_NETWORK_CTRL	  0x02
-#define PCI_DISPLAY_CTRL	  0x03
-#define PCI_MULTIMEDIA_CTRL	  0x04
+// Log PCI related messages.
+#define pci_log(fmt, ...) kmesg_cat(LOG_INFO, "PCI", fmt, ##__VA_ARGS__)
+#define pci_err(fmt, ...) kmesg_cat(LOG_ERR, "PCI", fmt, ##__VA_ARGS__)
 
 typedef struct
 {
@@ -19,8 +18,7 @@ typedef struct
 	uint8_t subclass;
 } PciDevice;
 
-// Log PCI related messages.
-#define pci_log(fmt, ...) kmesg(LOG_INFO, "PCI: " fmt, ##__VA_ARGS__)
+const char* pci_get_class_name(const PciDevice* pci);
 
 // Read 16 bits from a PCI device.
 uint16_t pci_read16(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset);

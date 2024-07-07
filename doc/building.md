@@ -7,7 +7,6 @@ You need to install the following packages and make sure they're available in `$
 ```
 cmake
 clang
-dtc
 ```
 
 ## Building steps
@@ -20,7 +19,7 @@ cmake ../ -D CMAKE_BUILD_TYPE=Release
 # To cross-compile, add: -D MENIX_ARCH="<arch>"
 ```
 
-This will generate `/kernel/config.cmake` for you with default values.
+This will generate `config.cmake` for you with default values.
 
 > **Note:**
 >

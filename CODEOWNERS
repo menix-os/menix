@@ -5,13 +5,10 @@
 .github/*				@ByteOtter
 
 # Kernel subsystems
-drv/acpi/				@marv7000
-drv/gpu/				@marv7000
-drv/net/				@tiltingpenguin
-drv/pci/				@marv7000
-drv/spi/				@mtravitzky
-drv/usb/				@marv7000
-drv/misc/				@marv7000
+kernel/drv/pci/			@marv7000
+kernel/drv/spi/			@mtravitzky
+kernel/drv/usb/			@marv7000
+kernel/drv/misc/		@marv7000
 
 # File systems
-fs/initfs/				@marv7000
+kernel/fs/initfs/		@marv7000
