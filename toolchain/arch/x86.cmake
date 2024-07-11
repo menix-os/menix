@@ -5,7 +5,7 @@ set(MENIX_BITS 64)
 set(MENIX_ARCH_DIR x86)
 
 add_compile_options(-Wall -Wno-unused-command-line-argument)
-add_compile_options(-ffreestanding -nostdlib -nostdinc -nostartfiles -mgeneral-regs-only)
+add_compile_options(-ffreestanding -nostdlib -nostdinc -fPIC -nostartfiles -mgeneral-regs-only)
 add_link_options(-ffreestanding -nostdlib -z noexecstack)
 
 include_directories(/usr/include/efi/)
