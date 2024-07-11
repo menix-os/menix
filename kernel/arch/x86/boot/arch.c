@@ -19,8 +19,9 @@ void arch_init()
 	// Install the Interrupt Descriptor Table.
 	idt_init();
 
+#ifndef NDEBUG
 	kmesg(LOG_DEBUG, "Testing syscall...\n");
-
-	asm("mov $1, %rax");
+	asm("mov $0, %rax");
 	asm("int $0x80");
+#endif
 }
