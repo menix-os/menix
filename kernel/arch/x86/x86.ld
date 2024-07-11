@@ -17,11 +17,6 @@ SECTIONS
 		*(.fini)
 	} :text
 
-	.data ALIGN(4K):
-	{
-		*(.data)
-	} :data
-
 	.rodata ALIGN(4K):
 	{
 		*(.rodata)
@@ -33,12 +28,19 @@ SECTIONS
 		__ld_sect_mod_start = .;
 		KEEP(*(.mod))
 		__ld_sect_mod_end = .;
-	}
+	} :data
+
+	.data ALIGN(4K):
+	{
+		*(.data)
+		*(.data.*)
+	} :data
 
 	.bss ALIGN(4K):
 	{
-		*(COMMON)
 		*(.bss)
+		*(.bss.*)
+		*(COMMON)
 	}
 
 	__ld_kernel_end = .;

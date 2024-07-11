@@ -1,10 +1,11 @@
 //? Kernel entry point
 
 #include <menix/boot.h>
-#include <menix/format.h>
-#include <menix/gpu/fb.h>
 #include <menix/log.h>
 #include <menix/module.h>
+#include <menix/syscall.h>
+
+#include <errno.h>
 
 void kernel_main(BootInfo* info)
 {
@@ -26,4 +27,9 @@ void kernel_main(BootInfo* info)
 
 	// Say goodbye.
 	kmesg(LOG_INFO, "shutdown\n");
+}
+
+SYSCALL_IMPL(null)
+{
+	return -ENOSYS;
 }

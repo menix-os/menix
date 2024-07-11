@@ -8,7 +8,7 @@ set(MENIX_VERSION "0.1.1")
 # Project root path.
 set(MENIX_SRC ${CMAKE_CURRENT_SOURCE_DIR})
 
-# Project license
+# Project license.
 set(MENIX_LICENSE "LGPL")
 
 # Target architecture.
@@ -49,9 +49,11 @@ file(WRITE ${MENIX_MODULES} "#pragma once\n// This file is automatically generat
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Strip the kernel if we're building for smallest size.
-if(${CMAKE_BUILD_TYPE} STREQUAL MinSizeRel OR ${CMAKE_BUILD_TYPE} STREQUAL Release)
-	message(STATUS "Stripping kernel...")
-	add_link_options(-s)
+if(DEFINED ${CMAKE_BUILD_TYPE})
+	if(${CMAKE_BUILD_TYPE} STREQUAL MinSizeRel OR ${CMAKE_BUILD_TYPE} STREQUAL Release)
+		message(STATUS "Stripping kernel...")
+		add_link_options(-s)
+	endif()
 endif()
 
 # Compile time definitions

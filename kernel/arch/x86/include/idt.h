@@ -40,7 +40,7 @@ typedef struct ATTR(packed)
 void idt_init();
 
 /// \brief Sets the gate for one entry in the IDT.
-void idt_set(IdtDesc* gate, void* offset, uint8_t type_attr);
+void idt_set(uint8_t idx, void* offset, uint8_t type_attr);
 
 /// \brief Loads the IDT into its register.
 void idt_reload();

@@ -3,6 +3,7 @@
 add_executable(menix
 	main.c
 	module.c
+	syscall_table.c
 )
 
 # Global include directories.

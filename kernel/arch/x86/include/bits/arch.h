@@ -4,7 +4,7 @@
 
 #include <menix/common.h>
 
-/// \brief Contains all accessible x86 registers. Used for system calls.
+/// \brief Contains all accessible x86_64 registers.
 typedef struct
 {
 	uint64_t r15;
@@ -23,8 +23,8 @@ typedef struct
 	uint64_t rbx;
 	uint64_t rax;
 	uint64_t core;
-	uint64_t isrNumber;
-	uint64_t errorCode;
+	uint64_t isr;
+	uint64_t error;
 	uint64_t rip;
 	uint64_t cs;
 	uint64_t rflags;
@@ -48,9 +48,6 @@ void write64(uint16_t port, uint64_t value);
 
 #define interrupt_disable() asm volatile("cli")
 #define interrupt_enable()	asm volatile("sti")
-#define far_jump(segment, label) \
-	asm volatile("jmp %0, $L_ljmp_" #label "\n" \
-				 "L_ljmp_" #label ":\n" ::"i"(segment))
 
 #define PIC1_COMMAND_PORT 0x20
 #define PIC1_DATA_PORT	  0x21

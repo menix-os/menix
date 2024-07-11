@@ -14,11 +14,11 @@
 
 typedef struct
 {
-	const char* const  cmd;		  // Command line arguments
-	const size_t	   fb_num;	  // Amount of frame buffers
-	FrameBuffer* const fb;		  // Available frame buffers
+	const char*	 cmd;		// Command line arguments
+	size_t		 fb_num;	// Amount of frame buffers
+	FrameBuffer* fb;		// Available frame buffers
 #ifdef CONFIG_efi
-	EFI_SYSTEM_TABLE* const efi_st;	   // EFI System Table
+	EFI_SYSTEM_TABLE* efi_st;	 // EFI System Table
 #endif
 } BootInfo;
 

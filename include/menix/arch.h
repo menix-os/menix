@@ -4,7 +4,7 @@
 #pragma once
 
 // This file is included from arch/.../include/
-#include <arch_bits.h>
+#include <bits/arch.h>
 
 // Initializes the CPU for use by the kernel.
 void arch_init();

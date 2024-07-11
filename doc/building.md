@@ -13,10 +13,8 @@ clang
 Create a build directory and configure CMake.
 
 ```sh
-mkdir build
-cd build
-cmake ../ -D CMAKE_BUILD_TYPE=Release
-# To cross-compile, add: -D MENIX_ARCH="<arch>"
+cmake . -B build/
+# To cross-compile, add: -DMENIX_ARCH="<arch>"
 ```
 
 This will generate `config.cmake` for you with default values.
@@ -28,5 +26,5 @@ This will generate `config.cmake` for you with default values.
 Adjust its contents to your liking and save it.
 Then, to build:
 ```sh
-cmake --build .
+cmake --build build/
 ```

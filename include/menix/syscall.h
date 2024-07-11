@@ -1,13 +1,14 @@
 //? System call interface + prototypes
 
-#pragma once
-
 #include <menix/common.h>
+#include <menix/self.h>
 
-#define SYSCALL_DEFINE0(name)						  size_t name()
-#define SYSCALL_DEFINE1(name, a0)					  size_t name(a0)
-#define SYSCALL_DEFINE2(name, a0, a1)				  size_t name(a0, a1)
-#define SYSCALL_DEFINE3(name, a0, a1, a2)			  size_t name(a0, a1, a2)
-#define SYSCALL_DEFINE4(name, a0, a1, a2, a3)		  size_t name(a0, a1, a2, a3)
-#define SYSCALL_DEFINE5(name, a0, a1, a2, a3, a4)	  size_t name(a0, a1, a2, a3, a4)
-#define SYSCALL_DEFINE6(name, a0, a1, a2, a3, a4, a5) size_t name(a0, a1, a2, a3, a4, a5)
+#include <bits/syscall.h>
+
+#define SYSCALL_MAX 256
+
+// This macro should be used when implementing a syscall, so that the naming scheme stays portable.
+#define SYSCALL_IMPL(name) size_t syscall_##name(size_t a0, size_t a1, size_t a2, size_t a3, size_t a4, size_t a5)
+
+typedef size_t		   (*SyscallFn)(size_t a0, size_t a1, size_t a2, size_t a3, size_t a4, size_t a5);
+extern const SyscallFn syscall_table[];

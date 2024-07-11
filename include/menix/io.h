@@ -6,7 +6,7 @@
 // [read,write][8,16,32,64] functions are declared as macros.
 // The implementation for these functions should be defined in /arch/<arch>/io.c
 
-#include <arch_bits.h>
+#include <bits/arch.h>
 
 #define read8(addr)			 read8(addr)
 #define read16(addr)		 read16(addr)

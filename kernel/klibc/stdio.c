@@ -95,7 +95,8 @@ check_fmt:
 			{
 				fmt++;
 				const char* str = va_arg(args, const char*);
-
+				if (!str)
+					str = "(null)";
 				size_t len = strlen(str);
 				if (!print(str, len))
 					return -1;

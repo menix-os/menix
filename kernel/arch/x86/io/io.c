@@ -2,7 +2,7 @@
 
 #include <menix/common.h>
 
-#include <arch_bits.h>
+#include <bits/arch.h>
 
 uint8_t read8(uint16_t port)
 {

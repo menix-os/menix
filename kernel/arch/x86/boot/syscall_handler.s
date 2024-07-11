@@ -1,26 +1,13 @@
-/*? Interrupt definitions */
+/*? x86 System call handler. */
 
-.section text
+.section .text
 
-.global int_error_handler
-.align 0x10
-int_error_handler:
-	call	interrupt_error
-	iret
-
+/* Pushes all relevant registers onto the stack, then passes a pointer as the first argument. */
 .global int_syscall_handler
+.extern syscall_handler
 .align 0x10
 int_syscall_handler:
-	swapgs
-
-	push	0x1b
-	push	%gs:0016
-	push	%r11
-	push	0x23
-	push	%rcx
-
-	sub		$24, %rsp
-
+	sti
 	push	%rax
 	push	%rbx
 	push	%rcx
@@ -38,7 +25,7 @@ int_syscall_handler:
 	push	%r15
 
 	mov		%rsp, %rdi
-	call	interrupt_syscall
+	call	syscall_handler
 
 	pop		%r15
 	pop		%r14
@@ -55,9 +42,5 @@ int_syscall_handler:
 	pop		%rcx
 	pop		%rbx
 	pop		%rax
-
-	add		$24, %rsp
-
-	swapgs
-
-	iret
+	cli
+	iretq
