@@ -31,6 +31,6 @@ void kernel_main(BootInfo* info)
 
 SYSCALL_IMPL(null)
 {
-	kmesg(LOG_INFO, "menix v" MENIX_VERSION " (" MENIX_ARCH ")\n");
+	kmesg(LOG_DEBUG, "Syscall 0 invoked.\n");
 	return -ENOSYS;
 }
