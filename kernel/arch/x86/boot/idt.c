@@ -45,51 +45,51 @@ void idt_reload()
 	".align 0x10\n" \
 	"int_error_handler_" #num ":\n"
 
-#define INT_HANDLER(num) \
+#define INT_HANDLER(num, fn) \
 	INT_HANDLER_DECL(num) \
 	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %rdi\n" \
-								"call error_handler\n" \
+								"call " #fn "\n" \
 								"iretq\n")
 
-#define INT_HANDLER_WITH_CODE(num) \
+#define INT_HANDLER_WITH_CODE(num, fn) \
 	INT_HANDLER_DECL(num) \
 	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %rdi\n" \
 								"pop %rsi\n" \
-								"call error_handler_with_code\n" \
+								"call " #fn "\n" \
 								"iretq\n")
 
-INT_HANDLER(0);
-INT_HANDLER(1);
-INT_HANDLER(2);
-INT_HANDLER(3);
-INT_HANDLER(4);
-INT_HANDLER(5);
-INT_HANDLER(6);
-INT_HANDLER(7);
-INT_HANDLER_WITH_CODE(8);
-INT_HANDLER(9);
-INT_HANDLER_WITH_CODE(10);
-INT_HANDLER_WITH_CODE(11);
-INT_HANDLER_WITH_CODE(12);
-INT_HANDLER_WITH_CODE(13);
-INT_HANDLER_WITH_CODE(14);
-INT_HANDLER(15);
-INT_HANDLER(16);
-INT_HANDLER_WITH_CODE(17);
-INT_HANDLER(18);
-INT_HANDLER(19);
-INT_HANDLER(20);
-INT_HANDLER_WITH_CODE(21);
-INT_HANDLER(22);
-INT_HANDLER(23);
-INT_HANDLER(24);
-INT_HANDLER(25);
-INT_HANDLER(26);
-INT_HANDLER(27);
-INT_HANDLER(28);
-INT_HANDLER_WITH_CODE(29);
-INT_HANDLER_WITH_CODE(30);
-INT_HANDLER(31);
+INT_HANDLER(0, error_handler);
+INT_HANDLER(1, error_handler);
+INT_HANDLER(2, error_handler);
+INT_HANDLER(3, error_handler);
+INT_HANDLER(4, error_handler);
+INT_HANDLER(5, error_handler);
+INT_HANDLER(6, error_handler);
+INT_HANDLER(7, error_handler);
+INT_HANDLER_WITH_CODE(8, error_handler_with_code);
+INT_HANDLER(9, error_handler);
+INT_HANDLER_WITH_CODE(10, error_handler_with_code);
+INT_HANDLER_WITH_CODE(11, error_handler_with_code);
+INT_HANDLER_WITH_CODE(12, error_handler_with_code);
+INT_HANDLER_WITH_CODE(13, error_handler_with_code);
+INT_HANDLER_WITH_CODE(14, error_handler_with_code);
+INT_HANDLER(15, error_handler);
+INT_HANDLER(16, error_handler);
+INT_HANDLER_WITH_CODE(17, error_handler_with_code);
+INT_HANDLER(18, error_handler);
+INT_HANDLER(19, error_handler);
+INT_HANDLER(20, error_handler);
+INT_HANDLER_WITH_CODE(21, error_handler_with_code);
+INT_HANDLER(22, error_handler);
+INT_HANDLER(23, error_handler);
+INT_HANDLER(24, error_handler);
+INT_HANDLER(25, error_handler);
+INT_HANDLER(26, error_handler);
+INT_HANDLER(27, error_handler);
+INT_HANDLER(28, error_handler);
+INT_HANDLER_WITH_CODE(29, error_handler_with_code);
+INT_HANDLER_WITH_CODE(30, error_handler_with_code);
+INT_HANDLER(31, error_handler);
 
 void idt_init()
 {

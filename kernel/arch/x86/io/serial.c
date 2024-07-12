@@ -6,15 +6,15 @@
 
 #include <string.h>
 
-#define COM1_BASE			 0x3F8
-#define DATA_REG			 0	  // Data Register
-#define INT_ENABLE_REG		 1	  // Interrupt Enable Register
-#define DIV_LSB				 0	  // Divisor Latch LSB
-#define DIV_MSB				 1	  // Divisor Latch MSB
-#define INT_ID_FIFO_CTRL_REG 2	  // Interrupt Identification and FIFO Control Register
-#define LINE_CTRL_REG		 3	  // Line Control Register
-#define MODEM_CTRL_REG		 4	  // Modem Control Register
-#define LINE_STATUS_REG		 5	  // Line Status Register
+#define COM1_BASE			 0x3F8	  // Serial port
+#define DATA_REG			 0		  // Data Register
+#define INT_ENABLE_REG		 1		  // Interrupt Enable Register
+#define DIV_LSB				 0		  // Divisor Latch LSB
+#define DIV_MSB				 1		  // Divisor Latch MSB
+#define INT_ID_FIFO_CTRL_REG 2		  // Interrupt Identification and FIFO Control Register
+#define LINE_CTRL_REG		 3		  // Line Control Register
+#define MODEM_CTRL_REG		 4		  // Modem Control Register
+#define LINE_STATUS_REG		 5		  // Line Status Register
 
 #define TRANSMIT_FREE (read8(COM1_BASE + LINE_STATUS_REG) & 0x20)
 
