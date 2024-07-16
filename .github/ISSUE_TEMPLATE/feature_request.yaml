@@ -34,12 +34,12 @@ body:
         label: Architecture
         description: >
             What architecture will this proposal affect.
-            (If no specific or all are affected, select 'None'.)
+            (If no specific are affected, select 'N/A'.)
         options:
             - x86_64
             - aarch64/arm64
             - riscv64
-            - None
+            - N/A 
             - New Architecture
     - type: dropdown
       attributes:
