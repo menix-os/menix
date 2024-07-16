@@ -9,6 +9,8 @@ cmake
 clang
 ```
 
+You also need to install the `gnu-efi` package as a build dependency.
+
 ## Building steps
 Create a build directory and configure CMake.
 
