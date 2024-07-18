@@ -6,6 +6,9 @@ on:
     paths:
     - '**.c'
     - '**.h'
+  push:
+    branches:
+      - main
 
 jobs:
   formatting-check:
@@ -15,7 +18,7 @@ jobs:
     # Filter only files changed by the PR.
     - name: Filter changed files
       id: filter
-      uses: dorny/paths-filter@v2
+      uses: dorny/paths-filter@v3
       with:
         filters: |
           c_files:
