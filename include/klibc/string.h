@@ -2,7 +2,8 @@
 
 #pragma once
 
-#include <menix/common.h>
+#include <stddef.h>
+#include <stdint.h>
 
 void*	memccpy(void* restrict, const void* restrict, int32_t, size_t);
 void*	memchr(const void*, int32_t, size_t);

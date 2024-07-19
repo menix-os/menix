@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include <menix/common.h>
+#include <stdint.h>
 #include <stdarg.h>
 
 #define EOF (-1)
