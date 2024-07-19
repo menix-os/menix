@@ -8,6 +8,24 @@ the `menix` project.
 - Your submission **HAS** to be written by you.
 - Your code **HAS** to be licensed under the project's main license, or
   one that has less restrictions.
+- Currently, the following licenses are supported:
+	- LGPL-2.1-or-later
+	- BSD-2-Clause
+	- BSD-3-Clause
+	- MIT
+
+At the top of each file, include the following section. It should contain a
+very brief summary of the file's purpose, followed by the SPDX identifier of
+the code. If it is omitted, it's assumed to be the same as the project's
+main license.
+
+<!-- REUSE-IgnoreStart -->
+  **Example:**
+  ```c
+  //? Example Code
+  //* SPDX-License-Identifier: BSD-3-Clause
+  ```
+<!-- REUSE-IgnoreEnd -->
 
 ## Coding style
 The following section explains how code is expected to be formatted in order
@@ -17,15 +35,6 @@ to make it easier to read for other people.
 - Always use tabs for indentation.
 - All code should be less than 120 characters in width.
 - All code should end on an empty newline.
-- At the top of each file, include the following section. It should contain a
-  very brief summary of the file's purpose, followed by the SPDX identifier of
-  the code. If it is omitted, it's assumed to be the same as the project's
-  main license.
-  **Example:**
-  ```c
-  //? Example Code
-  //* BSD-3
-  ```
 - Write comments and messages in present tense and easy to understand English.
 - Split your code into paragraphs where it makes sense and comment what
   each one does.

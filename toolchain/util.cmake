@@ -79,8 +79,10 @@ function(add_module name author desc license modular default)
 		# Evaluate module license
 		if(${license} STREQUAL "MAIN")
 			target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_LICENSE="${MENIX_LICENSE}")
+			require_option(license_${MENIX_LICENSE})
 		else()
 			target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_LICENSE="${license}")
+			require_option(license_${license})
 		endif()
 
 		# Add local include directory to search path.
@@ -135,11 +137,10 @@ function(require_option optname)
 
 	# If it's explicitly turned off, we can't compile.
 	elseif(NOT ${optname} STREQUAL ON)
-		message(FATAL_ERROR "Something requires \"${optname}\" to build, but this was explicitly turned off in the config!\n"
+		message(FATAL_ERROR "\"${MENIX_CURRENT_MOD}\" requires \"${optname}\" to build, but this was explicitly turned off in the config!\n"
 			"You might want to rebuild the cache.")
 	endif()
 
-	message(STATUS "AUTO | ${optname}")
 	define_option(${optname})
 endfunction(require_option)
 

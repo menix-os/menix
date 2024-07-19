@@ -4,18 +4,18 @@ This document explains how to build `menix` on your machine from source code.
 ## Dependencies
 You need to install the following packages and make sure they're available in `$PATH`.
 
-```
+```sh
 cmake
 clang
+# If building with EFI support
+gnu-efi
 ```
 
-You also need to install the `gnu-efi` package as a build dependency.
-
 ## Building steps
-Create a build directory and configure CMake.
+Create a build directory and configure with CMake.
 
 ```sh
-cmake . -B build/
+cmake -DCMAKE_BUILD_TYPE=Release -B build -G "Ninja"
 # To cross-compile, add: -DMENIX_ARCH="<arch>"
 ```
 
@@ -23,10 +23,12 @@ This will generate `config.cmake` for you with default values.
 
 > **Note:**
 >
-> If you already have a `config.cmake` file, CMake won't override it.
+> If you already have a `config.cmake` file, CMake won't overwrite it.
 
-Adjust its contents to your liking and save it.
+Adjust the config to your liking and save it.
 Then, to build:
 ```sh
-cmake --build build/
+cmake --build build
 ```
+
+You can then find the final build results in `build/bin/`.

@@ -6,7 +6,7 @@ add_architecture(x86
 	boot/syscall_handler.s
 	boot/interrupts.c
 	boot/idt.c
-	boot/arch.c
+	boot/init.c
 	io/serial.c
 	io/pci.c
 	io/io.c

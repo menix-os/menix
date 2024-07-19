@@ -1,5 +1,3 @@
-# SPDX-FileCopyrightText: Menix-OS Team <info@menix-os.org>
-# SPDX-License-Identifier: LGPL-2.1-or-later
 name: clang-format Check
 
 on:
@@ -7,8 +5,8 @@ on:
     types: [opened, review_requested, synchronize]
     # Only trigger if C source files have been changed.
     paths:
-    - '**.c'
-    - '**.h'
+      - "**.c"
+      - "**.h"
   push:
     branches:
       - main
@@ -18,22 +16,22 @@ jobs:
     name: Formatting Check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
-    # Filter only files changed by the PR.
-    - name: Filter changed files
-      id: filter
-      uses: dorny/paths-filter@v3
-      with:
-        filters: |
-          c_files:
-            - '**.c'
-          h_files:
-            - '**.h'
-    # Check code.
-    - name: Run clang-format style check for C.
-      if: steps.filter.outputs.c_files == 'true' || steps.filter.outputs.h_files == 'true'
-      uses: jidicula/clang-format-action@v4.13.0
-      with:
-        clang-format-version: '18'
-        check-path: 'kernel'
-        fallback-style: llvm
+      - uses: actions/checkout@v4
+      # Filter only files changed by the PR.
+      - name: Filter changed files
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            c_files:
+              - '**.c'
+            h_files:
+              - '**.h'
+      # Check code.
+      - name: Run clang-format style check for C.
+        if: steps.filter.outputs.c_files == 'true' || steps.filter.outputs.h_files == 'true'
+        uses: jidicula/clang-format-action@v4.13.0
+        with:
+          clang-format-version: "18"
+          check-path: "kernel"
+          fallback-style: llvm

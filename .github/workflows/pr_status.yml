@@ -14,6 +14,6 @@ jobs:
         uses: TobKed/label-when-approved-action@master
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
-          label: 'pending'
-          require_committers_approval: 'false'
-          remove_label_when_approval_missing: 'true'
+          label: "pending"
+          require_committers_approval: "false"
+          remove_label_when_approval_missing: "true"

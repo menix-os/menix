@@ -31,6 +31,5 @@ void kernel_main(BootInfo* info)
 
 SYSCALL_IMPL(null)
 {
-	kmesg(LOG_DEBUG, "Syscall 0 invoked.\n");
 	return -ENOSYS;
 }

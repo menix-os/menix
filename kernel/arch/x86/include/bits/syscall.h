@@ -1,6 +1,4 @@
 //? x86 specific syscall declarations.
-//! syscall.h  -> This file
-//! syscalls.h -> Actual system call list
 
 #pragma once
 
@@ -23,4 +21,4 @@ typedef struct
 	uint64_t rcx;
 	uint64_t rbx;
 	uint64_t rax;
-} SyscallArgs;
+} SavedRegisters;

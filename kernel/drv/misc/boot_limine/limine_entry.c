@@ -87,7 +87,7 @@ void kernel_boot()
 			buffers[i].blue_shift = buf->blue_mask_shift;
 			buffers[i].blue_size = buf->blue_mask_size;
 
-			boot_log("\t[%u] Address: %#p\tWidth: %upx\tHeight: %upx\t Pitch: %u\n", i, buffers[i].base,
+			boot_log("\t[%u] Address: %#p\tWidth: %upx\tHeight: %upx\tPitch: %u\n", i, buffers[i].base,
 					 (uint32_t)buffers[i].width, (uint32_t)buffers[i].height, (uint32_t)buffers[i].pitch);
 
 			// Fill framebuffer with sample data.

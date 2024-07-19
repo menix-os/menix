@@ -12,3 +12,4 @@
 
 typedef size_t		   (*SyscallFn)(size_t a0, size_t a1, size_t a2, size_t a3, size_t a4, size_t a5);
 extern const SyscallFn syscall_table[];
+extern const size_t	   syscall_table_size;

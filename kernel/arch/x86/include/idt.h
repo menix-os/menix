@@ -9,7 +9,7 @@
 #define IDT_MAX_SIZE		 256
 #define IDT_GATE_INT		 0xE
 #define IDT_GATE_TRAP		 0xF
-#define IDT_TYPE(priv, gate) ((1 << 7) | ((priv) & 0x3) << 5 | (gate) & 0xF)
+#define IDT_TYPE(priv, gate) ((1 << 7) | (((priv) & 0x3) << 5) | ((gate) & 0xF))
 
 /// \brief IDT Interrupt Descriptor
 typedef struct ATTR(packed)

@@ -47,13 +47,13 @@ void idt_reload()
 
 #define INT_HANDLER(num, fn) \
 	INT_HANDLER_DECL(num) \
-	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %rdi\n" \
+	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %edi\n" \
 								"call " #fn "\n" \
 								"iretq\n")
 
 #define INT_HANDLER_WITH_CODE(num, fn) \
 	INT_HANDLER_DECL(num) \
-	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %rdi\n" \
+	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %edi\n" \
 								"pop %rsi\n" \
 								"call " #fn "\n" \
 								"iretq\n")
@@ -129,8 +129,24 @@ void idt_init()
 	idt_set(0x1E, int_error_handler_30, IDT_TYPE(0, IDT_GATE_INT));
 	idt_set(0x1F, int_error_handler_31, IDT_TYPE(0, IDT_GATE_INT));
 
-	// Interrupt 0x80 is syscall.
+	// Interrupt 0x80 is syscall (Only for legacy invocations using "int $0x80").
 	idt_set(0x80, int_syscall_handler, IDT_TYPE(0, IDT_GATE_INT));
+
+	// While we're at it, also enable syscall/sysret instructions.
+	// TODO: Actually set syscall entry point.
+	asm("mov $0xc0000082, %%ecx\n"	  // Syscall entry RIP
+		"wrmsr\n"					  //
+		"mov $0xc0000080, %%ecx\n"	  // Get IA32_EFER
+		"rdmsr\n"					  //
+		"or $1, %%eax\n"			  // Enable IA32_EFER.SCE bit
+		"wrmsr\n"					  //
+		"mov $0xc0000081, %%ecx\n"	  // Set segment selectors
+		"rdmsr\n"					  //
+		"mov %1, %%edx\n"			  // Low 16 bits: Ring 0 CS, High: Ring 3 CS
+		"wrmsr"						  //
+		:
+		: "p"(sc_syscall_handler), "i"((GDT_OFFSET(GDT_KERNEL_CODE)) | (GDT_OFFSET(GDT_USER_CODE) << 16))
+		: "rax", "rcx", "rdx");
 
 	write8(PIC1_COMMAND_PORT, 0x11);
 	write8(PIC2_COMMAND_PORT, 0x11);

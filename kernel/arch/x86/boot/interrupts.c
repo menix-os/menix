@@ -1,14 +1,13 @@
 //? Interrupt handlers (called by ASM stubs)
 
 #include <menix/arch.h>
+#include <menix/common.h>
 #include <menix/log.h>
 #include <menix/syscall.h>
 
-#include "menix/common.h"
-
 typedef struct
 {
-	bool		stop;	 // We cannot continue, we have to stop.
+	bool		stop;	 // Can we recover from the exception, or have to stop?
 	const char* name;	 // Name of the exception.
 } ExceptionTable;
 
@@ -42,11 +41,11 @@ static const ExceptionTable exception_names[] = {
 	[0x1F] = { .stop = true }, // Reserved
 };
 
-void error_handler(uint8_t fault)
+void error_handler(uint32_t fault)
 {
 	bool should_stop = true;
 	if (fault >= ARRAY_SIZE(exception_names))
-		kmesg(LOG_ERR, "Unknown error %u!\n", (uint32_t)fault);
+		kmesg(LOG_ERR, "Unknown error %u!\n", fault);
 	else
 	{
 		kmesg(LOG_ERR, "%s!\n", exception_names[fault].name);
@@ -84,16 +83,16 @@ void error_handler_with_code(uint32_t fault, uint32_t code)
 	}
 }
 
-void syscall_handler(SyscallArgs* regs)
+void syscall_handler(SavedRegisters* regs)
 {
 	// RAX contains the syscall number.
 	// Check if number is inside bounds.
-	if (regs->rax <= SYSCALL_MAX)
+	if (regs->rax < syscall_table_size)
 	{
 		SyscallFn fn = syscall_table[regs->rax];
 		// Invoke the respective system call if it's set.
 		if (fn != NULL)
-			// Just use the x86_64 ABI here.
-			fn(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
+			// Use the x86_64 SysV ABI here.
+			regs->rax = fn(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
 	}
 }

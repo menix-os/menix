@@ -1,0 +1,6 @@
+version = 1
+
+[[annotations]]
+path = "**"
+SPDX-FileCopyrightText = "2024 Marvin Friedrich and contributors"
+SPDX-License-Identifier = "LGPL-2.1-or-later"

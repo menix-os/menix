@@ -2,10 +2,10 @@
 
 #include <menix/common.h>
 
+#include <bits/arch.h>
 #include <gdt.h>
+#include <string.h>
 #include <tss.h>
-
-#include "bits/arch.h"
 
 ATTR(aligned(0x10)) GdtDesc		gdt_table[6];
 ATTR(aligned(0x10)) GdtRegister gdtr = {
@@ -49,7 +49,9 @@ void gdt_init()
 			 GDTF_GRANULARITY | GDTF_PROT_MODE);
 
 	// Task State Segment (TSS)
-	gdt_fill(GDT_TSS, &tss, sizeof(TaskStateSegment) - 1, GDTA_PRESENT | GDTA_EXECUTABLE | GDTA_ACCESSED, 0);
+	memset(&tss, 0, sizeof(TaskStateSegment));
+	gdt_fill(GDT_TSS, &tss, sizeof(TaskStateSegment), GDTA_PRESENT | GDTA_PRIV_LVL(0) | GDTA_EXECUTABLE | GDTA_ACCESSED,
+			 0);
 
 	gdt_set(gdtr);
 	gdt_flush_regs(GDT_OFFSET(GDT_KERNEL_CODE), GDT_OFFSET(GDT_KERNEL_DATA));
