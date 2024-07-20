@@ -43,3 +43,6 @@ endif()
 # Compile time definitions
 add_compile_definitions(MENIX_VERSION="${MENIX_VERSION}")
 add_compile_definitions(MENIX_ARCH="${MENIX_ARCH}")
+
+# Common build arguments
+add_compile_options(-Wall -Wno-unused-command-line-argument)
