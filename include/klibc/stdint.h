@@ -1,7 +1,7 @@
 //? Kernel C library - stdint.h
 
 #pragma once
-#include <generated/config.h>
+#include <menix/config.h>
 
 // Limits of exact-width integer types.
 

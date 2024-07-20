@@ -1,7 +1,7 @@
 //? Kernel C library - stddef.h
 
 #pragma once
-#include <generated/config.h>
+#include <menix/config.h>
 
 #define NULL				   ((void*)0)
 #define offsetof(type, member) ((size_t)(&((type*)0)->member))
@@ -14,9 +14,7 @@ typedef signed long ptrdiff_t;
 #endif
 
 // wchar_t
-#ifndef CONFIG_boot_efi
 typedef unsigned int wchar_t;
-#endif
 
 // size_t
 #ifdef CONFIG_64_bit

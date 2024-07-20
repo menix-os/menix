@@ -2,9 +2,8 @@
 
 #pragma once
 
-#include <generated/config.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <menix/config.h>
+#include <menix/types.h>
 
 // Attributes/Decorators
 #define ATTR(x) __attribute__((x))
@@ -22,6 +21,3 @@
 
 // Alias for inline assembly
 #define asm __asm__
-
-// Use the processor word size so we can squeeze as many bits as possible into one variable.
-typedef size_t bits;

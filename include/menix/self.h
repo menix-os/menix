@@ -1,8 +1,8 @@
-//? Compile-time information about the kernel binary itself
+//? Link-time information about the kernel binary itself
 
 #pragma once
 
-#include <menix/common.h>
+#include <menix/types.h>
 
 extern const uint8_t __ld_kernel_start;
 extern const uint8_t __ld_kernel_end;
