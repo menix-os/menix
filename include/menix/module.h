@@ -6,13 +6,13 @@
 #include <menix/log.h>
 
 #if defined(MODULE_TYPE) && defined(MODULE_NAME)
-#define module_log(fmt, ...) kmesg_cat(LOG_INFO, "Module\t] [" MODULE_NAME, fmt, ##__VA_ARGS__)
-#define module_err(fmt, ...) kmesg_cat(LOG_ERR, "Module\t] [" MODULE_NAME, fmt, ##__VA_ARGS__)
-#define module_dbg(fmt, ...) kmesg_cat(LOG_DEBUG, "Module\t] [" MODULE_NAME, fmt, ##__VA_ARGS__)
+#define module_log(fmt, ...) kmesg("[" MODULE_NAME "] " fmt, ##__VA_ARGS__)
+#define module_err(fmt, ...) kmesg("[" MODULE_NAME "] " fmt, ##__VA_ARGS__)
+#define module_dbg(fmt, ...) kmesg("[" MODULE_NAME "] " fmt, ##__VA_ARGS__)
 #else
-#define module_log(fmt, ...) kmesg_cat(LOG_INFO, "Module", fmt, ##__VA_ARGS__)
-#define module_err(fmt, ...) kmesg_cat(LOG_ERR, "Module", fmt, ##__VA_ARGS__)
-#define module_dbg(fmt, ...) kmesg_cat(LOG_DEBUG, "Module", fmt, ##__VA_ARGS__)
+#define module_log(fmt, ...) kmesg("[Module] " fmt, ##__VA_ARGS__)
+#define module_err(fmt, ...) kmesg("[Module] Error: ", fmt, ##__VA_ARGS__)
+#define module_dbg(fmt, ...) kmesg("[Module] " fmt, ##__VA_ARGS__)
 #endif
 
 typedef int32_t (*ModuleInitFn)(void);

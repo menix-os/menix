@@ -6,11 +6,13 @@
 #include <menix/gpu/fb.h>
 #include <menix/log.h>
 
+#ifdef CONFIG_efi
 #include <efi.h>
 #include <efiapi.h>
+#endif
 
-#define boot_log(fmt, ...) kmesg_cat(LOG_INFO, "Boot", fmt, ##__VA_ARGS__)
-#define boot_err(fmt, ...) kmesg_cat(LOG_ERR, "Boot", fmt, ##__VA_ARGS__)
+#define boot_log(fmt, ...) kmesg("[Boot] " fmt, ##__VA_ARGS__)
+#define boot_err(fmt, ...) kmesg("[Boot] " fmt, ##__VA_ARGS__)
 
 typedef struct
 {

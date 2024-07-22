@@ -7,8 +7,8 @@
 #include <menix/log.h>
 
 // Log PCI related messages.
-#define pci_log(fmt, ...) kmesg_cat(LOG_INFO, "PCI", fmt, ##__VA_ARGS__)
-#define pci_err(fmt, ...) kmesg_cat(LOG_ERR, "PCI", fmt, ##__VA_ARGS__)
+#define pci_log(fmt, ...) kmesg("[PCI] " fmt, ##__VA_ARGS__)
+#define pci_err(fmt, ...) kmesg("[PCI] " fmt, ##__VA_ARGS__)
 
 typedef struct
 {

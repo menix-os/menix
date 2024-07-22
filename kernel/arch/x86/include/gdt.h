@@ -27,7 +27,7 @@
 #define GDTF_PROT_MODE	 (1 << 2)
 #define GDTF_LONG_MODE	 (1 << 1)
 
-/// \brief GDT Segment Descriptor
+// GDT Segment Descriptor
 typedef struct ATTR(packed)
 {
 	bits limit_0_15:16;
@@ -38,23 +38,26 @@ typedef struct ATTR(packed)
 	bits base_24_31:8;
 } GdtDesc;
 
-/// \brief GDT Register emulation so it can be accessed from C.
+// GDT Register emulation so it can be accessed from C.
 typedef struct ATTR(packed)
 {
 	uint16_t limit;
 	GdtDesc* base;
 } GdtRegister;
 
-/// \brief Encodes a GDT entry to be in the correct format.
+// Encodes a GDT entry to be in the correct format.
 void gdt_fill(uint8_t idx, void* base, uint32_t limit, uint8_t access, uint8_t flags);
 
-/// \brief Sets the GDT on the CPU.
+// Sets the GDT on the CPU.
 void gdt_set();
 
-/// \brief Fills the GDT with predefined values.
+// Fills the GDT with predefined values.
 void gdt_init();
 
+// Loads the GDT.
 #define gdt_set(table) asm("lgdt %0" ::"m"(table))
+
+// Flushes all segment registers and refreshes them.
 #define gdt_flush_regs(code_seg, data_seg) \
 	asm("push %0\n" \
 		"movq $L_reload_cs, %%rax\n" \

@@ -1,4 +1,4 @@
-//? Common system calls.
+//? A global list of all system calls available.
 
 #ifdef SYSCALL_TABLE_INSERT
 #define SYSCALL(num, name) [num] = syscall_##name,

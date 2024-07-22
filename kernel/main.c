@@ -10,12 +10,13 @@
 void kernel_main(BootInfo* info)
 {
 	// Say hello to the console.
-	kmesg(LOG_INFO, "menix v" MENIX_VERSION " (" MENIX_ARCH ")\n");
+	kmesg("menix v" MENIX_VERSION " (" MENIX_ARCH ")\n");
 
 	// Initialize all modules.
 	module_init();
 
 	// Init basic file system.
+	// vfs_init();
 
 	// TODO: Call init program.
 	// exec("/usr/init");
@@ -26,7 +27,7 @@ void kernel_main(BootInfo* info)
 	// TODO: Shut the system down.
 
 	// Say goodbye.
-	kmesg(LOG_INFO, "shutdown\n");
+	kmesg("shutdown\n");
 }
 
 SYSCALL_IMPL(null)

@@ -1,4 +1,4 @@
-//? Data Input/Output abstraction
+// MMIO read/write functions
 
 // Some architectures like x86 use ports to write/read data with their own
 // instructions, while others like riscv64 write to memory mapped addresses.

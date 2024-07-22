@@ -45,10 +45,10 @@ void error_handler(uint32_t fault)
 {
 	bool should_stop = true;
 	if (fault >= ARRAY_SIZE(exception_names))
-		kmesg(LOG_ERR, "Unknown error %u!\n", fault);
+		kmesg("Unknown error %u!\n", fault);
 	else
 	{
-		kmesg(LOG_ERR, "%s!\n", exception_names[fault].name);
+		kmesg("%s!\n", exception_names[fault].name);
 		should_stop = exception_names[fault].stop;
 	}
 
@@ -65,11 +65,9 @@ void error_handler(uint32_t fault)
 void error_handler_with_code(uint32_t fault, uint32_t code)
 {
 	bool should_stop = true;
-	if (fault >= ARRAY_SIZE(exception_names))
-		kmesg(LOG_ERR, "Unknown error!\n");
-	else
+	kassert(fault < ARRAY_SIZE(exception_names), "Unknown error!\n") else
 	{
-		kmesg(LOG_ERR, "%s! (Code: %u)\n", exception_names[fault].name, code);
+		kmesg("%s! (Code: %u)\n", exception_names[fault].name, code);
 		should_stop = exception_names[fault].stop;
 	}
 

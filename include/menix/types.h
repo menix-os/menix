@@ -1,4 +1,4 @@
-//? Common typedefs
+//? Commonly used types
 
 #pragma once
 
@@ -10,3 +10,5 @@ typedef size_t bits;
 
 // Memory mapped IO address.
 typedef void* mmio;
+
+

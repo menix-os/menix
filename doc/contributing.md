@@ -22,8 +22,8 @@ main license.
 <!-- REUSE-IgnoreStart -->
   **Example:**
   ```c
-  //? Example Code
-  //* SPDX-License-Identifier: BSD-3-Clause
+  // Example Code
+  // SPDX-License-Identifier: BSD-3-Clause
   ```
 <!-- REUSE-IgnoreEnd -->
 
@@ -38,8 +38,7 @@ to make it easier to read for other people.
 - Write comments and messages in present tense and easy to understand English.
 - Split your code into paragraphs where it makes sense and comment what
   each one does.
-- Always use single line (aka C++ style) comments (except for long explanations
-  or ASCII art diagrams).
+- Always use single line (aka C++ style) comments.
 - Headers should always use `#pragma once` instead of header guards.
 - Headers should first include standard libary headers, then `menix` headers,
   then relative headers.
@@ -54,7 +53,6 @@ to make it easier to read for other people.
 - Structs and unions are to be declared via `typedef`. They should be anonymous.
 - Multi-line `typedef`s have the alias name and closing brace on the same line.
 - Pointer stars are part of the type and should be written as `Type*`.
-- Documentation comments use doxygen with `\` as delimiter.
 - Avoid raw and inline assembly at all costs to keep the codebase portable.
 - Prefer clear and descriptive variable names over short ones.
 - Local variables and fields use `snake_case`.
