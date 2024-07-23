@@ -4,7 +4,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-void reverse(char* s)
+static void reverse(char* s)
 {
 	int i, j;
 	char c;

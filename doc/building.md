@@ -15,8 +15,8 @@ gnu-efi
 Create a build directory and configure with CMake.
 
 ```sh
-cmake -DCMAKE_BUILD_TYPE=Release -B build -G "Ninja"
-# To cross-compile, add: -DMENIX_ARCH="<arch>"
+cmake -D CMAKE_BUILD_TYPE=Release -B build -G "Ninja"
+# To cross-compile, add: -D MENIX_ARCH="<arch>"
 ```
 
 This will generate `config.cmake` for you with default values.

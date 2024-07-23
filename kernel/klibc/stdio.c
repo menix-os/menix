@@ -31,6 +31,9 @@ int32_t puts(const char* str)
 	return written;
 }
 
+// TODO: The *printf family needs a proper rewrite that is more accurate.
+//       Or look into completely replacing the klibc interface and use chained format calls.
+//       Then we could get rid of variadic arguments which is conceptually unsafe.
 int32_t vprintf(const char* restrict fmt, va_list args)
 {
 	// Amount of bytes written.
@@ -236,9 +239,3 @@ int32_t printf(const char* restrict fmt, ...)
 	va_end(args);
 	return written;
 }
-
-void format_str(char* x);
-void format_u32(uint32_t u);
-void format_null();
-
-#define format(x) _Generic((x), char*: format_str, uint32_t: format_u32, default: format_null)(x)

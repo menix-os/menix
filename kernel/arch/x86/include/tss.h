@@ -22,3 +22,9 @@ typedef struct ATTR(packed)
 	uint32_t reserved4;
 	uint32_t iopb;
 } TaskStateSegment;
+
+// Initializes the TSS.
+void tss_init(TaskStateSegment* tss);
+
+// Sets the RSP fields in the TSS to the given stack pointer.
+void tss_set_stack(TaskStateSegment* tss, void* rsp);

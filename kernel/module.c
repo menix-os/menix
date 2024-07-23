@@ -17,11 +17,11 @@ void module_init()
 	pci_init();
 #endif
 
-	// Calculate the driver count.
-	const uint32_t module_count = SECTION_SIZE(mod) / sizeof(Module);
+	// Calculate the module count.
+	const size_t module_count = SECTION_SIZE(mod) / sizeof(Module);
 	const Module* modules = (Module*)SECTION_START(mod);
 
-	// Initialize all modules.
+	// Initialize all built-in modules.
 	for (size_t i = 0; i < module_count; i++)
 	{
 		module_log("Loading \"%s\"\n", modules[i].name);
@@ -33,8 +33,8 @@ void module_init()
 
 void module_fini()
 {
-	// Calculate the driver count.
-	const uint32_t module_count = SECTION_SIZE(mod) / sizeof(Module);
+	// Calculate the module count.
+	const size_t module_count = SECTION_SIZE(mod) / sizeof(Module);
 	const Module* modules = (Module*)SECTION_START(mod);
 
 	// Clean up all modules.

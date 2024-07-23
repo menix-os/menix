@@ -2,9 +2,6 @@
 
 cmake_minimum_required(VERSION 3.25)
 
-# Current version.
-set(MENIX_VERSION "0.1.2")
-
 # Project root path.
 set(MENIX_SRC ${CMAKE_CURRENT_SOURCE_DIR})
 
@@ -25,7 +22,10 @@ set(CMAKE_C_COMPILER clang)
 include(${MENIX_SRC}/toolchain/arch/${MENIX_ARCH}.cmake)
 include(${MENIX_SRC}/toolchain/kernel.cmake)
 
-project(menix-kernel C ASM)
+project(menix-kernel
+	VERSION 0.1.3
+	LANGUAGES C ASM
+)
 
 add_subdirectory(kernel)
 

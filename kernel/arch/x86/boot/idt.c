@@ -1,13 +1,14 @@
 // Interrupt descriptor table setting
 
-#include <menix/io.h>
 #include <menix/log.h>
+#include <menix/memory/io.h>
 
-#include <bits/arch.h>
+#include <bits/asm.h>
+#include <gdt.h>
 #include <idt.h>
 #include <interrupts.h>
-
-#include "gdt.h"
+#include <io.h>
+#include <pic.h>
 
 ATTR(aligned(0x10)) static IdtDesc idt_table[IDT_MAX_SIZE];
 ATTR(aligned(0x10)) static IdtRegister idtr;
@@ -148,16 +149,16 @@ void idt_init()
 		: "p"(sc_syscall_handler), "i"((GDT_OFFSET(GDT_KERNEL_CODE)) | (GDT_OFFSET(GDT_USER_CODE) << 16))
 		: "rax", "rcx", "rdx");
 
-	write8(PIC1_COMMAND_PORT, 0x11);
-	write8(PIC2_COMMAND_PORT, 0x11);
-	write8(PIC1_DATA_PORT, 0x20);
-	write8(PIC2_DATA_PORT, 0x28);
-	write8(PIC1_DATA_PORT, 0x0);
-	write8(PIC2_DATA_PORT, 0x0);
-	write8(PIC1_DATA_PORT, 0x1);
-	write8(PIC1_DATA_PORT, 0x1);
-	write8(PIC1_DATA_PORT, 0xFF);
-	write8(PIC1_DATA_PORT, 0xFF);
+	arch_write8(PIC1_COMMAND_PORT, 0x11);
+	arch_write8(PIC2_COMMAND_PORT, 0x11);
+	arch_write8(PIC1_DATA_PORT, 0x20);
+	arch_write8(PIC2_DATA_PORT, 0x28);
+	arch_write8(PIC1_DATA_PORT, 0x0);
+	arch_write8(PIC2_DATA_PORT, 0x0);
+	arch_write8(PIC1_DATA_PORT, 0x1);
+	arch_write8(PIC1_DATA_PORT, 0x1);
+	arch_write8(PIC1_DATA_PORT, 0xFF);
+	arch_write8(PIC1_DATA_PORT, 0xFF);
 
 	idt_reload();
 	interrupt_enable();

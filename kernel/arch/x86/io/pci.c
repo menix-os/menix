@@ -6,7 +6,8 @@
 #ifdef CONFIG_pci
 
 #include <menix/drv/pci.h>
-#include <menix/io.h>
+
+#include <io.h>
 
 void pci_init()
 {
@@ -77,8 +78,8 @@ uint16_t pci_read16(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
 	address |= offset & 0xfc;
 
 	// Write out the address
-	write32(0xcf8, address);
-	return (read32(0xcfc) >> ((offset & 2) * 8)) & 0xffff;
+	arch_write32(0xcf8, address);
+	return (arch_read32(0xcfc) >> ((offset & 2) * 8)) & 0xffff;
 }
 
 #endif

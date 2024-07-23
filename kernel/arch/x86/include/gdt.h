@@ -27,49 +27,61 @@
 #define GDTF_PROT_MODE	 (1 << 2)
 #define GDTF_LONG_MODE	 (1 << 1)
 
-// GDT Segment Descriptor
+#define GDT_ENCODE(target, base, limit, access_byte, flags_attr) \
+	target = (GdtDesc) \
+	{ \
+		.limit0 = (limit) & 0xFFFF, .base0 = (base) & 0xFFFFFF, .access = (access_byte), \
+		.limit1 = (limit >> 16) & 0xF, .flags = (flags_attr), .base1 = (base >> 24) & 0xFFFFFF, \
+	}
+
+#define GDT_ENCODE_LONG(target, base, limit, access_byte, flags_attr) \
+	target = (GdtLongDesc) \
+	{ \
+		.limit0 = (limit) & 0xFFFF, .base0 = (base) & 0xFFFFFF, .access = (access_byte), \
+		.limit1 = (limit >> 16) & 0xF, .flags = (flags_attr), .base1 = (base >> 24) & 0xFFFFFF, \
+		.base2 = (base >> 32) & 0xFFFFFFFF, \
+	}
+
+// GDT segment descriptor
 typedef struct ATTR(packed)
 {
-	bits limit_0_15:16;
-	bits base_0_23:24;
-	bits access:8;
-	bits limit_16_19:4;
-	bits flags:4;
-	bits base_24_31:8;
+	Bits limit0:16;	   // Limit[0..15]
+	Bits base0:24;	   // Base[0..23]
+	Bits access:8;	   // Access modifider
+	Bits limit1:4;	   // Limit[16..19]
+	Bits flags:4;	   // Flags
+	Bits base1:8;	   // Base[24..31]
 } GdtDesc;
 
-// GDT Register emulation so it can be accessed from C.
+// Long mode GDT segment descriptor
 typedef struct ATTR(packed)
 {
-	uint16_t limit;
-	GdtDesc* base;
+	Bits limit0:16;	   // Limit[0..15]
+	Bits base0:24;	   // Base[0..23]
+	Bits access:8;	   // Access modifider
+	Bits limit1:4;	   // Limit[16..19]
+	Bits flags:4;	   // Flags
+	Bits base1:8;	   // Base[24..31]
+	Bits base2:32;	   // Base[32..63]
+	Bits reserved;	   // Reserved
+} GdtLongDesc;
+
+typedef struct ATTR(packed)
+{
+	GdtDesc null;
+	GdtDesc kernel_code;
+	GdtDesc kernel_data;
+	GdtDesc user_code;
+	GdtDesc user_data;
+	GdtLongDesc tss;
+} Gdt;
+
+// GDT register
+typedef struct ATTR(packed)
+{
+	uint16_t limit;	   // Should be set to the size of the GDT - 1.
+	Gdt* base;		   // Start of the GDT.
 } GdtRegister;
-
-// Encodes a GDT entry to be in the correct format.
-void gdt_fill(uint8_t idx, void* base, uint32_t limit, uint8_t access, uint8_t flags);
-
-// Sets the GDT on the CPU.
-void gdt_set();
 
 // Fills the GDT with predefined values.
 void gdt_init();
-
-// Loads the GDT.
-#define gdt_set(table) asm("lgdt %0" ::"m"(table))
-
-// Flushes all segment registers and refreshes them.
-#define gdt_flush_regs(code_seg, data_seg) \
-	asm("push %0\n" \
-		"movq $L_reload_cs, %%rax\n" \
-		"push %%rax\n" \
-		"lretq\n" \
-		"L_reload_cs:\n" \
-		"mov %1, %%ax\n" \
-		"mov %%ax, %%ds\n" \
-		"mov %%ax, %%es\n" \
-		"mov %%ax, %%fs\n" \
-		"mov %%ax, %%gs\n" \
-		"mov %%ax, %%ss\n" \
-		: \
-		: "i"(code_seg), "i"(data_seg) \
-		: "rax")

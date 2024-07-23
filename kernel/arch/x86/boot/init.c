@@ -13,9 +13,12 @@ void arch_init()
 	// Install the Global Descriptor Table.
 	gdt_init();
 
+	// Install the Interrupt Descriptor Table.
+	idt_init();
+
 	// Init COM1 for debug (or if we don't have a frame buffer).
 	serial_initialize();
 
-	// Install the Interrupt Descriptor Table.
-	idt_init();
+	asm("mov $0x00, %rax");
+	asm("int $0x80");
 }

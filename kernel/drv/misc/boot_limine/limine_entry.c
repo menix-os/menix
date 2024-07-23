@@ -57,7 +57,6 @@ void kernel_boot()
 	kassert(efi_st_request.response->address, "Unable to get EFI System Table!\n") else
 	{
 		boot_log("EFI System Table at 0x%p\n", efi_st_request.response->address);
-		info.efi_st = efi_st_request.response->address;
 	}
 #endif
 
