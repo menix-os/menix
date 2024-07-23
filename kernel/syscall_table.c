@@ -1,4 +1,4 @@
-//? System call lookup table.
+// System call lookup table.
 
 #include <menix/arch.h>
 #include <menix/common.h>
@@ -15,4 +15,5 @@ const SyscallFn syscall_table[] = {
 #include <menix/syscall_list.h>
 #undef SYSCALL_TABLE_INSERT
 };
+
 const size_t syscall_table_size = ARRAY_SIZE(syscall_table);

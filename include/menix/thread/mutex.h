@@ -1,4 +1,4 @@
-//? Mutual exclusion spin-lock
+// Mutual exclusion spin-lock
 
 #pragma once
 #include <menix/common.h>

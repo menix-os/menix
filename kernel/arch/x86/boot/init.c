@@ -1,4 +1,4 @@
-//? x86 platform initialization
+// x86 platform initialization
 
 #include <menix/arch.h>
 #include <menix/log.h>

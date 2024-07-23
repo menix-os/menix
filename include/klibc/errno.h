@@ -1,4 +1,4 @@
-//? Error code definitions.
+// Error code definitions.
 
 #pragma once
 

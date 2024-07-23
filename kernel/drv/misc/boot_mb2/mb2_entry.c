@@ -1,4 +1,4 @@
-//? Multiboot2 implementation.
+// Multiboot2 implementation.
 
 #include <menix/common.h>
 
@@ -37,7 +37,7 @@ void kernel_boot(uint32_t magic, uint32_t addr)
 	boot_log("Booting with MB2 successful!\n");
 	boot_log("magic: %u, addr: %u", magic, addr);
 
-	BootInfo info = { 0 };
+	BootInfo info = {0};
 
 	kernel_main(&info);
 }

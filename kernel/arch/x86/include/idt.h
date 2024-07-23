@@ -1,4 +1,4 @@
-//? Interrupt Descriptor Table management
+// Interrupt Descriptor Table management
 
 #pragma once
 
@@ -22,7 +22,7 @@ typedef struct ATTR(packed)
 #else
 	bits reserved:8;
 #endif
-	uint8_t	 type;
+	uint8_t type;
 	uint16_t base_16_31;
 #ifdef CONFIG_64_bit
 	uint32_t base_32_63;

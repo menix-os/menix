@@ -28,20 +28,14 @@ SpacesInParensOptions:
   InCStyleCasts: false
   Other: false
 SpacesInSquareBrackets: false
-
+AllowShortCaseLabelsOnASingleLine: true
 AlignConsecutiveMacros: AcrossComments
-AlignConsecutiveDeclarations:
-  Enabled: true
-  AcrossEmptyLines: false
-  AlignCompound: true
-  AcrossComments: true
-  AlignFunctionPointers: true
 AlignAfterOpenBracket: Align
 AlignEscapedNewlines: DontAlign
 AlignOperands: Align
 AlignTrailingComments: true
 BreakAdjacentStringLiterals: true
-BreakAfterAttributes: Always
+BreakAfterAttributes: Leave
 
 BinPackArguments: true
 BinPackParameters: true
@@ -64,7 +58,6 @@ BraceWrapping:
   SplitEmptyFunction: false
   SplitEmptyRecord: false
 AlignArrayOfStructures: Left
-Cpp11BracedListStyle: false
 BreakBeforeBinaryOperators: None
 BreakBeforeTernaryOperators: false
 BreakStringLiterals: false
@@ -93,7 +86,6 @@ AllowShortEnumsOnASingleLine: false
 # Additional formatting options
 MaxEmptyLinesToKeep: 1
 KeepEmptyLinesAtTheStartOfBlocks: false
-InsertTrailingCommas: None
 AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
 InsertNewlineAtEOF: true

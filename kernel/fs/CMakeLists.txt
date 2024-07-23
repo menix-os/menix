@@ -1,5 +1,6 @@
-# ? File systems
+# File systems
 
 include(${MENIX_UTIL_PATH})
-add_library(menix_fs INTERFACE)
-set(MENIX_CUR_CAT fs)
+add_library(menix_fs STATIC
+	vfs.c
+)

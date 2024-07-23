@@ -1,4 +1,4 @@
-# ? Graphics Drivers
+# Graphics Drivers
 
 include(${MENIX_UTIL_PATH})
 add_library(menix_gpu STATIC

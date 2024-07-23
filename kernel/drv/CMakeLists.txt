@@ -1,4 +1,4 @@
-# ? Driver Sub-Systems
+# Driver Sub-Systems
 
 include(${MENIX_UTIL_PATH})
 include(${MENIX_CONFIG_SRC})

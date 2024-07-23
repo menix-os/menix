@@ -1,4 +1,4 @@
-//? Kernel C library - stddef.h
+// Kernel C library - stddef.h
 
 #pragma once
 #include <menix/config.h>

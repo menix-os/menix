@@ -1,4 +1,5 @@
-//? Link-time information about the kernel binary itself
+// Link-time information about the kernel binary itself.
+// These should be defined in the respective linker scripts.
 
 #pragma once
 

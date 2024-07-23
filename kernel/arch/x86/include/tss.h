@@ -1,4 +1,4 @@
-//? Task State Segment
+// Task State Segment
 //! menix uses software multitasking, the TSS is only really used as a placeholder.
 
 #include <menix/common.h>

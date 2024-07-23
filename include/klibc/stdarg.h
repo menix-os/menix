@@ -1,4 +1,4 @@
-//? Kernel C library - stdarg.h
+// Kernel C library - stdarg.h
 
 #pragma once
 

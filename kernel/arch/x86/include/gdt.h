@@ -1,4 +1,4 @@
-//? Global Descriptor Table management
+// Global Descriptor Table management
 
 #pragma once
 

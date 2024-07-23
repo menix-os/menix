@@ -1,10 +1,10 @@
-//? Frame buffer operations
+// Frame buffer operations
 
 #include <menix/gpu/fb.h>
 
 void fb_fill_pixels(FrameBuffer* fb, uint8_t r, uint8_t g, uint8_t b)
 {
-	const size_t   bytes_pp = fb->bpp / 8;
+	const size_t bytes_pp = fb->bpp / 8;
 	const uint32_t pixel = (r << fb->red_shift) | (g << fb->green_shift) | (b << fb->blue_shift);
 
 	for (size_t x = 0; x < fb->width; x++)

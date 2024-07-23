@@ -1,4 +1,4 @@
-//? Kernel error output
+// Kernel error output
 
 #include <menix/common.h>
 #include <menix/log.h>

@@ -1,4 +1,4 @@
-# ? x86 architecture sources
+# x86 architecture sources
 
 include(${MENIX_UTIL_PATH})
 add_architecture(x86

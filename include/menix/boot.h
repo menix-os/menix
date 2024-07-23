@@ -1,4 +1,4 @@
-//? Entry point and boot procedures.
+// Entry point and boot procedures.
 
 #pragma once
 
@@ -16,9 +16,9 @@
 
 typedef struct
 {
-	const char*	 cmd;		// Command line arguments
-	size_t		 fb_num;	// Amount of frame buffers
-	FrameBuffer* fb;		// Available frame buffers
+	const char* cmd;	// Command line arguments
+	size_t fb_num;		// Amount of frame buffers
+	FrameBuffer* fb;	// Available frame buffers
 #ifdef CONFIG_efi
 	EFI_SYSTEM_TABLE* efi_st;	 // EFI System Table
 #endif

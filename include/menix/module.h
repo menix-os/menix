@@ -1,4 +1,4 @@
-//? Code modularization
+// Code modularization
 
 #pragma once
 
@@ -16,15 +16,15 @@
 #endif
 
 typedef int32_t (*ModuleInitFn)(void);
-typedef void	(*ModuleExitFn)(void);
+typedef void (*ModuleExitFn)(void);
 
 // Module metadata and init/exit hooks for loading modules.
 typedef struct ATTR(packed)
 {
-	ModuleInitFn init;		  // Called to initialize the module. Should return 0 upon success.
-	ModuleExitFn exit;		  // Called to unload the module.
-	const char	 name[64];	  // Name of the module.
-	const char	 meta[];	  // Optional information about the module (Can be NULL).
+	ModuleInitFn init;		// Called to initialize the module. Should return 0 upon success.
+	ModuleExitFn exit;		// Called to unload the module.
+	const char name[64];	// Name of the module.
+	const char meta[];		// Optional information about the module (Can be NULL).
 } Module;
 
 // Defines a new module. Modules should use this at the end of their source to export the entry.

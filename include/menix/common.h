@@ -1,4 +1,4 @@
-//? Common types and macros
+// Common types and macros
 
 #pragma once
 

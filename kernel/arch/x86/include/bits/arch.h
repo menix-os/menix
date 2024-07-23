@@ -1,4 +1,4 @@
-//? x86 specific bits of code
+// x86 specific bits of code
 
 #pragma once
 
@@ -32,7 +32,7 @@ typedef struct
 	uint64_t ss;
 } CpuRegisters;
 
-uint8_t	 read8(uint16_t port);
+uint8_t read8(uint16_t port);
 uint16_t read16(uint16_t port);
 uint32_t read32(uint16_t port);
 #ifdef CONFIG_64_bit

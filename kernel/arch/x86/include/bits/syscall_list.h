@@ -1,1 +1,1 @@
-//? x86 specific system calls.
+// x86 specific system calls.

@@ -1,4 +1,4 @@
-//? Driver initialization
+// Module and sub-system initialization.
 
 #include <menix/common.h>
 #include <menix/drv/pci.h>
@@ -19,7 +19,7 @@ void module_init()
 
 	// Calculate the driver count.
 	const uint32_t module_count = SECTION_SIZE(mod) / sizeof(Module);
-	const Module*  modules = (Module*)SECTION_START(mod);
+	const Module* modules = (Module*)SECTION_START(mod);
 
 	// Initialize all modules.
 	for (size_t i = 0; i < module_count; i++)
@@ -35,7 +35,7 @@ void module_fini()
 {
 	// Calculate the driver count.
 	const uint32_t module_count = SECTION_SIZE(mod) / sizeof(Module);
-	const Module*  modules = (Module*)SECTION_START(mod);
+	const Module* modules = (Module*)SECTION_START(mod);
 
 	// Clean up all modules.
 	for (size_t i = 0; i < module_count; i++)

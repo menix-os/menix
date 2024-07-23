@@ -1,4 +1,4 @@
-//? Limine bootloader entry point.
+// Limine bootloader entry point.
 
 #include <menix/arch.h>
 #include <menix/boot.h>
@@ -46,7 +46,7 @@ void kernel_boot()
 	boot_log("Booting using Limine protocol\n");
 	boot_log("Initialized architecture\n");
 
-	BootInfo info = { 0 };
+	BootInfo info = {0};
 
 	kassert(time_request.response, "Unable to get boot timestamp!\n") else
 	{
@@ -56,7 +56,7 @@ void kernel_boot()
 #ifdef CONFIG_efi
 	kassert(efi_st_request.response->address, "Unable to get EFI System Table!\n") else
 	{
-		boot_log("EFI System Table at %#p\n", efi_st_request.response->address);
+		boot_log("EFI System Table at 0x%p\n", efi_st_request.response->address);
 		info.efi_st = efi_st_request.response->address;
 	}
 #endif
@@ -71,7 +71,7 @@ void kernel_boot()
 	{
 		boot_log("Got frame buffers:\n");
 		FrameBuffer buffers[FB_MAX];
-		size_t		total_fbs = 0;
+		size_t total_fbs = 0;
 		for (uint64_t i = 0; i < framebuffer_request.response->framebuffer_count; i++)
 		{
 			const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
@@ -87,11 +87,11 @@ void kernel_boot()
 			buffers[i].blue_shift = buf->blue_mask_shift;
 			buffers[i].blue_size = buf->blue_mask_size;
 
-			boot_log("\t[%u] Address: %#p\tWidth: %upx\tHeight: %upx\tPitch: %u\n", i, buffers[i].base,
+			boot_log("    [%u] Address: 0x%p\tWidth: %upx\tHeight: %upx\tPitch: %u\n", i, buffers[i].base,
 					 (uint32_t)buffers[i].width, (uint32_t)buffers[i].height, (uint32_t)buffers[i].pitch);
 
 			// Fill framebuffer with sample data.
-			fb_fill_pixels(&buffers[i], 0x20, 0x7F, 0x70);
+			fb_fill_pixels(&buffers[i], 0xFF, 0x7F, 0x7F);
 
 			if (i >= FB_MAX - 1)
 			{

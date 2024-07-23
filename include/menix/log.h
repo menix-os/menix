@@ -1,4 +1,4 @@
-//? Kernel logging
+// Kernel logging
 
 #pragma once
 
@@ -12,7 +12,7 @@
 	}
 #else
 #define kassert(expr, msg) \
-	if (0) \
+	if (false) \
 	{ \
 	}
 #endif

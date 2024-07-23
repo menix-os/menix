@@ -1,9 +1,9 @@
-//? Kernel C library - stdlib.h
+// Kernel C library - stdlib.h
 
 #pragma once
 
 #include <stdint.h>
 
-void  abort();
+void abort();
 char* itoa(int32_t, char*, uint32_t);
 char* utoa(uint32_t, char*, uint32_t);

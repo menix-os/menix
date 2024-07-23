@@ -1,4 +1,4 @@
-//? Forwarding of build system generated headers.
+// Forwarding of build system generated headers.
 
 #pragma once
 

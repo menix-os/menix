@@ -1,4 +1,4 @@
-//? Global Descriptor table
+// Global Descriptor table
 
 #include <menix/common.h>
 
@@ -7,7 +7,7 @@
 #include <string.h>
 #include <tss.h>
 
-ATTR(aligned(0x10)) GdtDesc		gdt_table[6];
+ATTR(aligned(0x10)) GdtDesc gdt_table[6];
 ATTR(aligned(0x10)) GdtRegister gdtr = {
 	.limit = sizeof(gdt_table) - 1,
 	.base = gdt_table,
@@ -17,7 +17,7 @@ ATTR(aligned(0x10)) TaskStateSegment tss;
 void gdt_fill(uint8_t idx, void* base, uint32_t limit, uint8_t access, uint8_t flags)
 {
 	GdtDesc* const target = gdt_table + idx;
-	const size_t   ptr = (size_t)base;
+	const size_t ptr = (size_t)base;
 
 	target->limit_0_15 = limit & 0xFFFF;
 	target->base_0_23 = ptr & 0xFFFFFF;

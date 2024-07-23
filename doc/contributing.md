@@ -5,8 +5,8 @@ the `menix` project.
 ## General rules
 - **NO** discriminatory behavior, everyone should be welcome to contribute.
 - Every submission should solve exactly **ONE** problem.
-- Your submission **HAS** to be written by you.
-- Your code **HAS** to be licensed under the project's main license, or
+- Your submission **MUST** be written by you.
+- Your code **MUST** be licensed under the project's main license, or
   one that has less restrictions.
 - Currently, the following licenses are supported:
 	- LGPL-2.1-or-later
@@ -29,7 +29,8 @@ main license.
 
 ## Coding style
 The following section explains how code is expected to be formatted in order
-to make it easier to read for other people.
+to make it easier to read for other people. Use the `.clang-format` file in the
+project root to check if your code complies with these guidelines.
 
 - Tabs have a width of 4 characters.
 - Always use tabs for indentation.

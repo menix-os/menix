@@ -1,4 +1,4 @@
-//? PCI driver model
+// PCI driver model
 
 #pragma once
 

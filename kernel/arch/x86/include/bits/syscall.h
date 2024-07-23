@@ -1,4 +1,4 @@
-//? x86 specific syscall declarations.
+// x86 specific syscall declarations.
 
 #pragma once
 

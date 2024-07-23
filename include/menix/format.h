@@ -1,4 +1,4 @@
-//? Graphics format encoders and helpers
+// Graphics format encoders and helpers
 
 #pragma once
 

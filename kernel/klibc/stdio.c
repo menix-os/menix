@@ -1,4 +1,4 @@
-//? Kernel C library - "stdio.h" implementation
+// Kernel C library - "stdio.h" implementation
 
 #include <menix/serial.h>
 
@@ -60,7 +60,7 @@ int32_t vprintf(const char* restrict fmt, va_list args)
 		}
 
 		const char* format_begun_at = fmt++;
-		bool		write_prefix = false;
+		bool write_prefix = false;
 		// int32_t		write_limit = -1;
 
 check_fmt:
@@ -191,7 +191,7 @@ check_fmt:
 
 				// Get the hex value, but with all other bytes explicitly written out.
 				const size_t buf_size = sizeof(uintptr_t) * 2 + 1;
-				char		 str[buf_size];
+				char str[buf_size];
 				itoa(num, str, 16);
 				const size_t len = strlen(str);
 				for (int i = len; i < buf_size; i++)
@@ -236,3 +236,9 @@ int32_t printf(const char* restrict fmt, ...)
 	va_end(args);
 	return written;
 }
+
+void format_str(char* x);
+void format_u32(uint32_t u);
+void format_null();
+
+#define format(x) _Generic((x), char*: format_str, uint32_t: format_u32, default: format_null)(x)

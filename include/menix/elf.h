@@ -1,4 +1,4 @@
-//? Universal ELF spec implementation
+// Universal ELF spec implementation
 
 #pragma once
 
@@ -96,116 +96,116 @@ typedef uint32_t Elf32_Off;
 // The file header is located at the beginning of the file, and is used to locate the other parts of the file.
 typedef struct ATTR(packed)
 {
-	uint8_t	 e_ident[EI_NIDENT];	// ELF identification
-	uint16_t e_type;				// Object file type
-	uint16_t e_machine;				// Machine type
-	uint32_t e_version;				// Object file version
-	Elf_Addr e_entry;				// Entry point address
-	Elf_Off	 e_phoff;				// Program header offset
-	Elf_Off	 e_shoff;				// Section header offset
-	uint32_t e_flags;				// Processor-specific flags
-	uint16_t e_ehsize;				// ELF header size
-	uint16_t e_phentsize;			// Size of program header entry
-	uint16_t e_phnum;				// Number of program header entries
-	uint16_t e_shentsize;			// Size of section header entry
-	uint16_t e_shnum;				// Number of section header entries
-	uint16_t e_shstrndx;			// Section name string table index
+	uint8_t e_ident[EI_NIDENT];	   // ELF identification
+	uint16_t e_type;			   // Object file type
+	uint16_t e_machine;			   // Machine type
+	uint32_t e_version;			   // Object file version
+	Elf_Addr e_entry;			   // Entry point address
+	Elf_Off e_phoff;			   // Program header offset
+	Elf_Off e_shoff;			   // Section header offset
+	uint32_t e_flags;			   // Processor-specific flags
+	uint16_t e_ehsize;			   // ELF header size
+	uint16_t e_phentsize;		   // Size of program header entry
+	uint16_t e_phnum;			   // Number of program header entries
+	uint16_t e_shentsize;		   // Size of section header entry
+	uint16_t e_shnum;			   // Number of section header entries
+	uint16_t e_shstrndx;		   // Section name string table index
 } Elf_Hdr;
 
 // Program header. Field structure is different between bit sizes.
 typedef struct ATTR(packed)
 {
-	uint32_t   p_type;
-	uint32_t   p_flags;
-	Elf64_Off  p_offset;
+	uint32_t p_type;
+	uint32_t p_flags;
+	Elf64_Off p_offset;
 	Elf64_Addr p_vaddr;
 	Elf64_Addr p_paddr;
-	uint64_t   p_filesz;
-	uint64_t   p_memsz;
-	uint64_t   p_align;
+	uint64_t p_filesz;
+	uint64_t p_memsz;
+	uint64_t p_align;
 } Elf64_Phdr;
 typedef struct ATTR(packed)
 {
-	uint32_t   p_type;
-	Elf32_Off  p_offset;
+	uint32_t p_type;
+	Elf32_Off p_offset;
 	Elf32_Addr p_vaddr;
 	Elf32_Addr p_paddr;
-	uint32_t   p_filesz;
-	uint32_t   p_memsz;
-	uint32_t   p_flags;
-	uint32_t   p_align;
+	uint32_t p_filesz;
+	uint32_t p_memsz;
+	uint32_t p_flags;
+	uint32_t p_align;
 } Elf32_Phdr;
 
 // Section header
 typedef struct ATTR(packed)
 {
-	uint32_t   sh_name;			// Section name
-	uint32_t   sh_type;			// Section type
-	uint64_t   sh_flags;		// Section attributes
-	Elf64_Addr sh_addr;			// Virtual address in memory
-	Elf64_Off  sh_offset;		// Offset in file
-	uint64_t   sh_size;			// Size of section
-	uint32_t   sh_link;			// Link to other section
-	uint32_t   sh_info;			// Miscellaneous information
-	uint64_t   sh_addralign;	// Address alignment boundary
-	uint64_t   sh_entsize;		// Size of entries, if section has table
+	uint32_t sh_name;		  // Section name
+	uint32_t sh_type;		  // Section type
+	uint64_t sh_flags;		  // Section attributes
+	Elf64_Addr sh_addr;		  // Virtual address in memory
+	Elf64_Off sh_offset;	  // Offset in file
+	uint64_t sh_size;		  // Size of section
+	uint32_t sh_link;		  // Link to other section
+	uint32_t sh_info;		  // Miscellaneous information
+	uint64_t sh_addralign;	  // Address alignment boundary
+	uint64_t sh_entsize;	  // Size of entries, if section has table
 } Elf64_Shdr;
 typedef struct ATTR(packed)
 {
-	uint32_t   sh_name;			// Section name
-	uint32_t   sh_type;			// Section type
-	uint32_t   sh_flags;		// Section attributes
-	Elf32_Addr sh_addr;			// Virtual address in memory
-	Elf32_Off  sh_offset;		// Offset in file
-	uint32_t   sh_size;			// Size of section
-	uint32_t   sh_link;			// Link to other section
-	uint32_t   sh_info;			// Miscellaneous information
-	uint32_t   sh_addralign;	// Address alignment boundary
-	uint32_t   sh_entsize;		// Size of entries, if section has table
+	uint32_t sh_name;		  // Section name
+	uint32_t sh_type;		  // Section type
+	uint32_t sh_flags;		  // Section attributes
+	Elf32_Addr sh_addr;		  // Virtual address in memory
+	Elf32_Off sh_offset;	  // Offset in file
+	uint32_t sh_size;		  // Size of section
+	uint32_t sh_link;		  // Link to other section
+	uint32_t sh_info;		  // Miscellaneous information
+	uint32_t sh_addralign;	  // Address alignment boundary
+	uint32_t sh_entsize;	  // Size of entries, if section has table
 } Elf32_Shdr;
 
 // Symbol
 typedef struct ATTR(packed)
 {
-	uint32_t   st_name;
-	uint8_t	   st_info;
-	uint8_t	   st_other;
-	uint16_t   st_shndx;
+	uint32_t st_name;
+	uint8_t st_info;
+	uint8_t st_other;
+	uint16_t st_shndx;
 	Elf64_Addr st_value;
-	uint32_t   st_size;
+	uint32_t st_size;
 } Elf64_Sym;
 typedef struct ATTR(packed)
 {
-	uint32_t   st_name;
+	uint32_t st_name;
 	Elf32_Addr st_value;
-	uint32_t   st_size;
-	uint8_t	   st_info;
-	uint8_t	   st_other;
-	uint16_t   st_shndx;
+	uint32_t st_size;
+	uint8_t st_info;
+	uint8_t st_other;
+	uint16_t st_shndx;
 } Elf32_Sym;
 
 // Relocation
 typedef struct ATTR(packed)
 {
 	Elf64_Addr r_offset;
-	uint64_t   r_info;
+	uint64_t r_info;
 } Elf64_Rel;
 typedef struct ATTR(packed)
 {
 	Elf32_Addr r_offset;
-	uint32_t   r_info;
+	uint32_t r_info;
 } Elf32_Rel;
 
 // Relocation + addend
 typedef struct ATTR(packed)
 {
 	Elf64_Addr r_offset;
-	uint64_t   r_info;
-	int64_t	   r_addend;
+	uint64_t r_info;
+	int64_t r_addend;
 } Elf64_Rela;
 typedef struct ATTR(packed)
 {
 	Elf32_Addr r_offset;
-	uint32_t   r_info;
-	int32_t	   r_addend;
+	uint32_t r_info;
+	int32_t r_addend;
 } Elf32_Rela;

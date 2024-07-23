@@ -1,4 +1,4 @@
-//? Port IO for x86
+// Port IO for x86
 
 #include <menix/common.h>
 

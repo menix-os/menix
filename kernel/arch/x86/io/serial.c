@@ -1,4 +1,4 @@
-//? x86 Serial interface
+// x86 Serial interface
 
 #include <menix/common.h>
 #include <menix/io.h>
@@ -36,11 +36,8 @@ void serial_putchar(char c)
 		;
 	switch (c)
 	{
-		case '\0':
-			break;
-		default:
-			write8(COM1_BASE + DATA_REG, c);
-			break;
+		case '\0': break;
+		default: write8(COM1_BASE + DATA_REG, c); break;
 	}
 }
 

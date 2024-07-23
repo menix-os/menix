@@ -1,4 +1,4 @@
-# ? Main kernel sources
+# Main kernel sources
 
 add_executable(menix
 	main.c
@@ -23,11 +23,13 @@ add_subdirectory(arch/${MENIX_ARCH_DIR})
 add_subdirectory(klibc)
 add_subdirectory(drv)
 add_subdirectory(fs)
+add_subdirectory(sys)
 target_link_libraries(menix PUBLIC
 	menix_arch_${MENIX_ARCH_DIR}
 	menix_klibc
 	menix_drv
 	menix_fs
+	menix_sys
 )
 
 # Other subsystems.

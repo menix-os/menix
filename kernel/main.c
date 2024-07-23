@@ -1,11 +1,9 @@
-//? Kernel entry point
+// Kernel entry point
 
 #include <menix/boot.h>
+#include <menix/common.h>
 #include <menix/log.h>
 #include <menix/module.h>
-#include <menix/syscall.h>
-
-#include <errno.h>
 
 void kernel_main(BootInfo* info)
 {
@@ -15,7 +13,7 @@ void kernel_main(BootInfo* info)
 	// Initialize all modules.
 	module_init();
 
-	// Init basic file system.
+	// Init virtual file system.
 	// vfs_init();
 
 	// TODO: Call init program.
@@ -28,9 +26,4 @@ void kernel_main(BootInfo* info)
 
 	// Say goodbye.
 	kmesg("shutdown\n");
-}
-
-SYSCALL_IMPL(null)
-{
-	return -ENOSYS;
 }

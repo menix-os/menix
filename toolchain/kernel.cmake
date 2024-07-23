@@ -1,4 +1,4 @@
-# ? Main part of the build system
+# Main part of the build system
 
 message(STATUS "Project license: \"${MENIX_LICENSE}\"")
 

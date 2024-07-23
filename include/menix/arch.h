@@ -1,5 +1,5 @@
-//? Architecture specific operations
-//? Everything in this header is architecture dependent
+// Architecture specific operations
+// Everything in this header is architecture dependent
 
 #pragma once
 

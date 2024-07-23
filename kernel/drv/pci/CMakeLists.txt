@@ -1,4 +1,4 @@
-# ? PCI(e) Drivers
+# PCI(e) Drivers
 
 include(${MENIX_UTIL_PATH})
 set(MENIX_PARENT_CAT menix_drv_pci)

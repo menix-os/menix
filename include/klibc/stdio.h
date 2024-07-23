@@ -1,9 +1,9 @@
-//? Kernel C library - stdio.h
+// Kernel C library - stdio.h
 
 #pragma once
 
-#include <stdint.h>
 #include <stdarg.h>
+#include <stdint.h>
 
 #define EOF (-1)
 

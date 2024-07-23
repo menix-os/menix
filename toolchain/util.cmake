@@ -1,4 +1,4 @@
-# ? Common CMake functions
+# Common CMake functions
 
 # Setup a new CPU architecture.
 # * name		Name of the architecture (and current subdir)

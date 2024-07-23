@@ -1,4 +1,4 @@
-//? Interrupt descriptor table setting
+// Interrupt descriptor table setting
 
 #include <menix/io.h>
 #include <menix/log.h>
@@ -9,7 +9,7 @@
 
 #include "gdt.h"
 
-ATTR(aligned(0x10)) static IdtDesc	   idt_table[IDT_MAX_SIZE];
+ATTR(aligned(0x10)) static IdtDesc idt_table[IDT_MAX_SIZE];
 ATTR(aligned(0x10)) static IdtRegister idtr;
 
 void idt_set(uint8_t idx, void* handler, uint8_t type_attr)
@@ -17,7 +17,7 @@ void idt_set(uint8_t idx, void* handler, uint8_t type_attr)
 	kassert(handler != NULL, "IDT Entry: Function pointer is null???\n");
 
 	IdtDesc* const target = idt_table + idx;
-	const size_t   ptr = (size_t)handler;
+	const size_t ptr = (size_t)handler;
 
 	target->base_0_15 = ptr & 0xFFFF;
 	target->base_16_31 = (ptr >> 16) & 0xFFFF;

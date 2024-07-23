@@ -1,4 +1,4 @@
-//? Function prototypes for interrupts
+// Function prototypes for interrupts
 
 #pragma once
 

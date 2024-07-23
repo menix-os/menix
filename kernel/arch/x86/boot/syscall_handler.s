@@ -1,4 +1,4 @@
-//? x86 System call handler.
+// x86 System call handler.
 
 .section .text
 

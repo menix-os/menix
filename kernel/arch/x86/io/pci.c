@@ -1,4 +1,4 @@
-//? x86 specific PCI IO
+// x86 specific PCI IO
 // TODO: Replace with UEFI PCI access
 
 #include <menix/common.h>

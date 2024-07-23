@@ -1,4 +1,4 @@
-# ? Misc Drivers and utility
+# Misc Drivers and utility
 
 set(MENIX_PARENT_CAT menix_drv_misc)
 add_library(${MENIX_PARENT_CAT} INTERFACE)
