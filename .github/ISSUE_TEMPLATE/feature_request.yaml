@@ -35,6 +35,7 @@ body:
         description: >
             What architecture will this proposal affect.
             (If no specific are affected, select 'N/A'.)
+        multiple: true
         options:
             - x86_64
             - aarch64/arm64
@@ -46,6 +47,7 @@ body:
         label: Affected Area
         description: >
             What sub system of Menix does you proposal affect?
+        multiple: true
         options:
             - Boot
             - Drivers
