@@ -15,11 +15,12 @@ body:
             label: Architecture
             description: >
                 Which CPU architecture does this bug affect?
+            multiple: true
             options:
                 - x86_64
                 - aarch64/arm64
                 - riscv64
-                - None/Multiple
+                - N/A
       validations:
         required: true
     - type: input
@@ -32,6 +33,7 @@ body:
             label: Affected Area
             description: > 
                 What sub system of Menix does this issue affect?
+            multiple: true
             options:
                 - Boot
                 - Drivers
