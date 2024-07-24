@@ -16,4 +16,4 @@ const SyscallFn syscall_table[] = {
 #undef SYSCALL_TABLE_INSERT
 };
 
-const size_t syscall_table_size = ARRAY_SIZE(syscall_table);
+const usize syscall_table_size = ARRAY_SIZE(syscall_table);

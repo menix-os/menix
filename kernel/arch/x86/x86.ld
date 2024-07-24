@@ -1,4 +1,4 @@
-/*? Linker script for x86 builds */
+/* Linker script for x86 builds */
 
 . = 0xffffffff80000000 + SIZEOF_HEADERS;
 

@@ -2,8 +2,8 @@
 
 #pragma once
 
-#include <stdint.h>
+#include <menix/common.h>
 
 void abort();
-char* itoa(int32_t, char*, uint32_t);
-char* utoa(uint32_t, char*, uint32_t);
+char* itoa(i32, char*, u32);
+char* utoa(u32, char*, u32);

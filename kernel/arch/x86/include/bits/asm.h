@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <menix/common.h>
+
 // Loads the GDT.
 #define gdt_set(table) asm volatile("lgdt %0" ::"m"(table))
 

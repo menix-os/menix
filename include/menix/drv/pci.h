@@ -12,19 +12,19 @@
 
 typedef struct
 {
-	uint16_t vendor_id;
-	uint16_t device_id;
-	uint8_t class;
-	uint8_t subclass;
+	u16 vendor_id;
+	u16 device_id;
+	u8 class;
+	u8 subclass;
 } PciDevice;
 
 const char* pci_get_class_name(const PciDevice* pci);
 
 // Read 16 bits from a PCI device.
-uint16_t pci_read16(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset);
+u16 pci_read16(u8 bus, u8 slot, u8 func, u8 offset);
 
 // Get the info of a connected device.
-PciDevice pci_get_info(uint8_t bus, uint8_t slot);
+PciDevice pci_get_info(u8 bus, u8 slot);
 
 // Initializes the PCI subsystem.
 void pci_init();

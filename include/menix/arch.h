@@ -1,13 +1,14 @@
-// Architecture specific operations
-// Everything in this header is architecture dependent
+// Architecture dependent platform init and deinit
 
 #pragma once
 
-// This file is included from arch/.../include/
+#include <menix/boot.h>
+
 #include <bits/arch.h>
+#include <bits/asm.h>
 
-// Initializes the CPU for use by the kernel.
-void arch_init();
+// Initializes the CPU for use by the kernel and boot routines.
+void arch_early_init();
 
-// Shuts off the machine.
-void arch_shutdown();
+// Initializes the rest of the CPU after the boot routines have completed.
+void arch_init(BootInfo* info);

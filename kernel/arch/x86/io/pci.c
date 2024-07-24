@@ -12,13 +12,13 @@
 void pci_init()
 {
 	// Scan all buses
-	for (uint16_t bus = 0; bus < 256; bus++)
+	for (u16 bus = 0; bus < 256; bus++)
 	{
-		for (uint8_t slot = 0; slot < 32; slot++)
+		for (u8 slot = 0; slot < 32; slot++)
 		{
 			const PciDevice dev = pci_get_info(bus, slot);
 			if (dev.vendor_id != 0xFFFF)
-				pci_log("Device %x:%x (vendor: %#x, device: %#x) | %s\n", (uint32_t)bus, (uint32_t)slot, dev.vendor_id,
+				pci_log("Device %x:%x (vendor: %#x, device: %#x) | %s\n", (u32)bus, (u32)slot, dev.vendor_id,
 						dev.device_id, pci_get_class_name(&dev));
 		}
 	}
@@ -57,7 +57,7 @@ const char* pci_get_class_name(const PciDevice* pci)
 	return pci_class_names[pci->class];
 }
 
-PciDevice pci_get_info(uint8_t bus, uint8_t slot)
+PciDevice pci_get_info(u8 bus, u8 slot)
 {
 	const PciDevice result = {
 		.vendor_id = pci_read16(bus, slot, 0, 0),
@@ -69,12 +69,12 @@ PciDevice pci_get_info(uint8_t bus, uint8_t slot)
 	return result;
 }
 
-uint16_t pci_read16(uint8_t bus, uint8_t slot, uint8_t func, uint8_t offset)
+u16 pci_read16(u8 bus, u8 slot, u8 func, u8 offset)
 {
-	uint32_t address = 0x80000000;
-	address |= (uint32_t)bus << 16;
-	address |= (uint32_t)slot << 11;
-	address |= (uint32_t)func << 8;
+	u32 address = 0x80000000;
+	address |= (u32)bus << 16;
+	address |= (u32)slot << 11;
+	address |= (u32)func << 8;
 	address |= offset & 0xfc;
 
 	// Write out the address

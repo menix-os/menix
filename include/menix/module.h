@@ -15,7 +15,7 @@
 #define module_dbg(fmt, ...) kmesg("[Module] " fmt, ##__VA_ARGS__)
 #endif
 
-typedef int32_t (*ModuleInitFn)(void);
+typedef i32 (*ModuleInitFn)(void);
 typedef void (*ModuleExitFn)(void);
 
 // Module metadata and init/exit hooks for loading modules.

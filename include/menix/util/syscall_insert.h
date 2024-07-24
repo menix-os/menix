@@ -4,5 +4,5 @@
 #define SYSCALL(num, name) [num] = (SyscallFn)syscall_##name,
 #else
 #include <menix/common.h>
-#define SYSCALL(num, name) size_t syscall_##name(size_t a0, size_t a1, size_t a2, size_t a3, size_t a4, size_t a5);
+#define SYSCALL(num, name) usize syscall_##name(usize a0, usize a1, usize a2, usize a3, usize a4, usize a5);
 #endif

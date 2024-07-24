@@ -4,7 +4,7 @@
 
 #include <menix/common.h>
 
-typedef size_t ProcessId;
+typedef usize ProcessId;
 
 typedef struct
 {

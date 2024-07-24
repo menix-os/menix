@@ -46,10 +46,10 @@ project root to check if your code complies with these guidelines.
 - **DO NOT** include out of tree headers like `#include "../../random.h"`,
   always use `#include <path/to/random.h>` instead.
 - Scope braces `{ }` begin and end on a new line.
-- For primitives, always use standard types like `int32_t` and `uint8_t`
+- For primitives, always use standard types like `i32` and `u8`
   over built-in types like `int` or `unsigned char` (exception here is `char`).
-- Avoid `int64_t` and `uint64_t`, as they're not available on all platforms.
-  Consider using `size_t` instead.
+- Avoid `i64` and `u64`, as they're not available on all platforms.
+  Consider using `isize` and `usize` instead.
 - Function declarations are always in one line.
 - Structs and unions are to be declared via `typedef`. They should be anonymous.
 - Multi-line `typedef`s have the alias name and closing brace on the same line.

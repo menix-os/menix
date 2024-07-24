@@ -40,8 +40,8 @@ void serial_putchar(char c)
 	}
 }
 
-void serial_write(const char* data, size_t size)
+void serial_write(const char* data, usize size)
 {
-	for (size_t i = 0; i < size; i++)
+	for (usize i = 0; i < size; i++)
 		serial_putchar(data[i]);
 }

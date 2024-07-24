@@ -3,14 +3,14 @@
 
 #pragma once
 
-#include <menix/types.h>
+#include <menix/util/types.h>
 
-extern const uint8_t __ld_kernel_start;
-extern const uint8_t __ld_kernel_end;
+extern const u8 __ld_kernel_start;
+extern const u8 __ld_kernel_end;
 
 #define SECTION_DECLARE_SYMBOLS(section) \
-	extern const uint8_t __ld_sect_##section##_start; \
-	extern const uint8_t __ld_sect_##section##_end;
+	extern const u8 __ld_sect_##section##_start; \
+	extern const u8 __ld_sect_##section##_end;
 
 #define SECTION_START(section) (&__ld_sect_##section##_start)
 #define SECTION_END(section)   (&__ld_sect_##section##_end)

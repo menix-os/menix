@@ -16,7 +16,7 @@ void tss_init(TaskStateSegment* tss)
 void tss_set_stack(TaskStateSegment* tss, void* rsp)
 {
 	kassert(tss != NULL, "No valid TSS was provided!\n");
-	tss->rsp0 = (uint64_t)rsp;
-	tss->rsp1 = (uint64_t)rsp;
-	tss->rsp2 = (uint64_t)rsp;
+	tss->rsp0 = (u64)rsp;
+	tss->rsp1 = (u64)rsp;
+	tss->rsp2 = (u64)rsp;
 }

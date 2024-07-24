@@ -1,6 +1,7 @@
 // Kernel C library - "stdlib.h" implementation
 
-#include <stdint.h>
+#include <menix/common.h>
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -17,9 +18,9 @@ static void reverse(char* s)
 	}
 }
 
-char* itoa(int32_t value, char* str, uint32_t base)
+char* itoa(i32 value, char* str, u32 base)
 {
-	int32_t i, sign;
+	i32 i, sign;
 	sign = value;
 
 	if (base == 10 && sign < 0)
@@ -39,7 +40,7 @@ char* itoa(int32_t value, char* str, uint32_t base)
 	return str;
 }
 
-char* utoa(uint32_t value, char* str, uint32_t base)
+char* utoa(u32 value, char* str, u32 base)
 {
 	int i = 0;
 	do

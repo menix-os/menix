@@ -3,7 +3,7 @@
 #pragma once
 
 #include <menix/config.h>
-#include <menix/types.h>
+#include <menix/util/types.h>
 
 // Attributes/Decorators
 #define ATTR(x) __attribute__((x))

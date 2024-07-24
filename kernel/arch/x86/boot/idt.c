@@ -13,12 +13,12 @@
 ATTR(aligned(0x10)) static IdtDesc idt_table[IDT_MAX_SIZE];
 ATTR(aligned(0x10)) static IdtRegister idtr;
 
-void idt_set(uint8_t idx, void* handler, uint8_t type_attr)
+void idt_set(u8 idx, void* handler, u8 type_attr)
 {
 	kassert(handler != NULL, "IDT Entry: Function pointer is null???\n");
 
 	IdtDesc* const target = idt_table + idx;
-	const size_t ptr = (size_t)handler;
+	const usize ptr = (usize)handler;
 
 	target->base_0_15 = ptr & 0xFFFF;
 	target->base_16_31 = (ptr >> 16) & 0xFFFF;

@@ -33,7 +33,7 @@ target_link_libraries(menix PUBLIC
 )
 
 # Other subsystems.
-add_subdirectory(gpu)
+add_subdirectory(video)
 target_link_libraries(menix PUBLIC
-	menix_gpu
+	menix_video
 )

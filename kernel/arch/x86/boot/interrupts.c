@@ -41,7 +41,7 @@ static const ExceptionTable exception_names[] = {
 	[0x1F] = {.stop = true}, // Reserved
 };
 
-void error_handler(uint32_t fault)
+void error_handler(u32 fault)
 {
 	bool should_stop = true;
 	if (fault >= ARRAY_SIZE(exception_names))
@@ -62,7 +62,7 @@ void error_handler(uint32_t fault)
 	}
 }
 
-void error_handler_with_code(uint32_t fault, uint32_t code)
+void error_handler_with_code(u32 fault, u32 code)
 {
 	bool should_stop = true;
 	kassert(fault < ARRAY_SIZE(exception_names), "Unknown error!\n") else

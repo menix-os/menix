@@ -18,7 +18,7 @@ MB2_ENTRY struct multiboot_header mb2_header = {
 	.magic = MULTIBOOT2_HEADER_MAGIC,
 	.architecture = MULTIBOOT_ARCHITECTURE_I386,
 	.header_length = sizeof(struct multiboot_header),
-	.checksum = -(uint32_t)(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + sizeof(struct multiboot_header)),
+	.checksum = -(u32)(MULTIBOOT2_HEADER_MAGIC + MULTIBOOT_ARCHITECTURE_I386 + sizeof(struct multiboot_header)),
 };
 
 MB2_ENTRY struct multiboot_tag_efi64 mb2_tag_efi64 = {
@@ -31,7 +31,7 @@ MB2_ENTRY struct multiboot_tag mb2_tag_end = {
 	.size = sizeof(struct multiboot_tag),
 };
 
-void kernel_boot(uint32_t magic, uint32_t addr)
+void kernel_boot(u32 magic, u32 addr)
 {
 	arch_init();
 	boot_log("Booting with MB2 successful!\n");

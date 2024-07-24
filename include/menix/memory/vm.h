@@ -14,6 +14,6 @@ typedef struct
 // The boot function is responsible for providing this information before passing control to the kernel.
 typedef struct
 {
-	size_t num_blocks;
+	usize num_blocks;
 	PhysMemoryBlock blocks;
 } PhysMemoryMap;

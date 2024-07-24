@@ -42,21 +42,23 @@ ATTR(used) ATTR(section(".requests_end_marker")) static volatile LIMINE_REQUESTS
 
 void kernel_boot()
 {
-	arch_init();
-	boot_log("Booting using Limine protocol\n");
+	arch_early_init();
 	boot_log("Initialized architecture\n");
+	boot_log("Booting using Limine protocol\n");
 
 	BootInfo info = {0};
 
 	kassert(time_request.response, "Unable to get boot timestamp!\n") else
 	{
-		boot_log("Boot timestamp: %u\n", (uint32_t)time_request.response->boot_time);
+		boot_log("Boot timestamp: %u\n", (u32)time_request.response->boot_time);
 	}
 
 #ifdef CONFIG_efi
 	kassert(efi_st_request.response->address, "Unable to get EFI System Table!\n") else
 	{
-		boot_log("EFI System Table at 0x%p\n", efi_st_request.response->address);
+		info.efi_st = efi_st_request.response->address;
+		boot_log("[EFI] System Table at 0x%p\n", info.efi_st);
+		boot_log("[EFI] Number of table entries: %u\n", info.efi_st->NumberOfTableEntries);
 	}
 #endif
 
@@ -70,8 +72,8 @@ void kernel_boot()
 	{
 		boot_log("Got frame buffers:\n");
 		FrameBuffer buffers[FB_MAX];
-		size_t total_fbs = 0;
-		for (uint64_t i = 0; i < framebuffer_request.response->framebuffer_count; i++)
+		usize total_fbs = 0;
+		for (u64 i = 0; i < framebuffer_request.response->framebuffer_count; i++)
 		{
 			const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
 			buffers[i].base = buf->address;
@@ -87,7 +89,7 @@ void kernel_boot()
 			buffers[i].blue_size = buf->blue_mask_size;
 
 			boot_log("    [%u] Address: 0x%p\tWidth: %upx\tHeight: %upx\tPitch: %u\n", i, buffers[i].base,
-					 (uint32_t)buffers[i].width, (uint32_t)buffers[i].height, (uint32_t)buffers[i].pitch);
+					 (u32)buffers[i].width, (u32)buffers[i].height, (u32)buffers[i].pitch);
 
 			// Fill framebuffer with sample data.
 			fb_fill_pixels(&buffers[i], 0xFF, 0x7F, 0x7F);
@@ -101,6 +103,8 @@ void kernel_boot()
 		info.fb_num = total_fbs;
 		info.fb = buffers;
 	}
+
+	arch_init(&info);
 
 	boot_log("Handing control to main function\n");
 	kernel_main(&info);

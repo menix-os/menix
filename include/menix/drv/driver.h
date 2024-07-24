@@ -12,7 +12,7 @@ typedef struct Device
 } Device;
 
 // Callback for driver functions. The device argument is never NULL.
-typedef int32_t (*DriverFn)(Device* d);
+typedef i32 (*DriverFn)(Device* d);
 
 // Driver structure. Contains all core functionality of the driver.
 typedef struct Driver

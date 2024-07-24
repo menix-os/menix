@@ -2,24 +2,23 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
+#include <menix/common.h>
 
-void* memccpy(void* restrict, const void* restrict, int32_t, size_t);
-void* memchr(const void*, int32_t, size_t);
-int32_t memcmp(const void*, const void*, size_t);
-void* memcpy(void* restrict, const void* restrict, size_t);
-void* memmove(void*, const void*, size_t);
-void* memset(void*, int32_t, size_t);
+void* memccpy(void* restrict, const void* restrict, i32, usize);
+void* memchr(const void*, i32, usize);
+i32 memcmp(const void*, const void*, usize);
+void* memcpy(void* restrict, const void* restrict, usize);
+void* memmove(void*, const void*, usize);
+void* memset(void*, i32, usize);
 char* stpcpy(char* restrict, const char* restrict);
-char* stpncpy(char* restrict, const char* restrict, size_t);
+char* stpncpy(char* restrict, const char* restrict, usize);
 char* strcat(char* restrict, const char* restrict);
-char* strchr(const char*, int32_t);
-int32_t strcmp(const char*, const char*);
-int32_t strcoll(const char*, const char*);
+char* strchr(const char*, i32);
+i32 strcmp(const char*, const char*);
+i32 strcoll(const char*, const char*);
 char* strcpy(char* restrict, const char* restrict);
-size_t strcspn(const char*, const char*);
+usize strcspn(const char*, const char*);
 char* strdup(const char*);
-char* strerror(int32_t);
-int32_t strerror_r(int32_t, char*, size_t);
-size_t strlen(const char*);
+char* strerror(i32);
+i32 strerror_r(i32, char*, usize);
+usize strlen(const char*);

@@ -8,7 +8,7 @@
 #include <idt.h>
 #include <interrupts.h>
 
-void arch_init()
+void arch_early_init()
 {
 	// Install the Global Descriptor Table.
 	gdt_init();
@@ -18,7 +18,8 @@ void arch_init()
 
 	// Init COM1 for debug (or if we don't have a frame buffer).
 	serial_initialize();
+}
 
-	asm("mov $0x00, %rax");
-	asm("int $0x80");
+void arch_init(BootInfo* info)
+{
 }

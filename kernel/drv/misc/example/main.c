@@ -2,7 +2,7 @@
 #include <menix/log.h>
 #include <menix/module.h>
 
-MODULE_FN int32_t init_fn()
+MODULE_FN i32 init_fn()
 {
 	module_log("Hello, world!\n");
 	return 0;

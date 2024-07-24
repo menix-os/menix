@@ -14,33 +14,33 @@
 // IDT Interrupt Descriptor
 typedef struct ATTR(packed)
 {
-	uint16_t base_0_15;
-	uint16_t selector;
+	u16 base_0_15;
+	u16 selector;
 #ifdef CONFIG_64_bit
 	Bits ist:2;
 	Bits reserved:6;
 #else
 	bits reserved:8;
 #endif
-	uint8_t type;
-	uint16_t base_16_31;
+	u8 type;
+	u16 base_16_31;
 #ifdef CONFIG_64_bit
-	uint32_t base_32_63;
-	uint32_t reserved2;
+	u32 base_32_63;
+	u32 reserved2;
 #endif
 } IdtDesc;
 
 // IDT Register emulation so it can be accessed from C.
 typedef struct ATTR(packed)
 {
-	uint16_t limit;
+	u16 limit;
 	IdtDesc* base;
 } IdtRegister;
 
 void idt_init();
 
 // Sets the gate for one entry in the IDT.
-void idt_set(uint8_t idx, void* offset, uint8_t type_attr);
+void idt_set(u8 idx, void* offset, u8 type_attr);
 
 // Loads the IDT into its register.
 void idt_reload();

@@ -79,8 +79,8 @@ typedef struct ATTR(packed)
 // GDT register
 typedef struct ATTR(packed)
 {
-	uint16_t limit;	   // Should be set to the size of the GDT - 1.
-	Gdt* base;		   // Start of the GDT.
+	u16 limit;	  // Should be set to the size of the GDT - 1.
+	Gdt* base;	  // Start of the GDT.
 } GdtRegister;
 
 // Fills the GDT with predefined values.

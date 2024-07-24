@@ -2,12 +2,13 @@
 
 #pragma once
 
+#include <menix/common.h>
+
 #include <stdarg.h>
-#include <stdint.h>
 
 #define EOF (-1)
 
-int32_t printf(const char* restrict fmt, ...);
-int32_t vprintf(const char* restrict fmt, va_list args);
-int32_t putchar(int32_t ch);
-int32_t puts(const char* str);
+i32 printf(const char* restrict fmt, ...);
+i32 vprintf(const char* restrict fmt, va_list args);
+i32 putchar(i32 ch);
+i32 puts(const char* str);

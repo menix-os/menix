@@ -36,7 +36,7 @@ void gdt_init()
 
 	// Task State Segment (TSS)
 	tss_init(&tss);
-	GDT_ENCODE_LONG(gdt_table.tss, (uint64_t)&tss, sizeof(TaskStateSegment),
+	GDT_ENCODE_LONG(gdt_table.tss, (u64)&tss, sizeof(TaskStateSegment),
 					GDTA_PRESENT | GDTA_PRIV_LVL(0) | GDTA_EXECUTABLE | GDTA_ACCESSED, 0);
 
 	gdt_set(gdtr);

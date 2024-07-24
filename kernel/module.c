@@ -18,14 +18,14 @@ void module_init()
 #endif
 
 	// Calculate the module count.
-	const size_t module_count = SECTION_SIZE(mod) / sizeof(Module);
+	const usize module_count = SECTION_SIZE(mod) / sizeof(Module);
 	const Module* modules = (Module*)SECTION_START(mod);
 
 	// Initialize all built-in modules.
-	for (size_t i = 0; i < module_count; i++)
+	for (usize i = 0; i < module_count; i++)
 	{
 		module_log("Loading \"%s\"\n", modules[i].name);
-		const int32_t ret = modules[i].init();
+		const i32 ret = modules[i].init();
 		if (ret != 0)
 			module_err("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
 	}
@@ -34,11 +34,11 @@ void module_init()
 void module_fini()
 {
 	// Calculate the module count.
-	const size_t module_count = SECTION_SIZE(mod) / sizeof(Module);
+	const usize module_count = SECTION_SIZE(mod) / sizeof(Module);
 	const Module* modules = (Module*)SECTION_START(mod);
 
 	// Clean up all modules.
-	for (size_t i = 0; i < module_count; i++)
+	for (usize i = 0; i < module_count; i++)
 	{
 		module_log("Unloading \"%s\"\n", modules[i].name);
 		modules[i].exit();

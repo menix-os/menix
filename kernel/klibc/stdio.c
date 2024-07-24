@@ -3,30 +3,29 @@
 #include <menix/serial.h>
 
 #include <stdarg.h>
-#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static bool print(const char* data, size_t length)
+static bool print(const char* data, usize length)
 {
-	const uint8_t* bytes = (const uint8_t*)data;
-	for (size_t i = 0; i < length; i++)
+	const u8* bytes = (const u8*)data;
+	for (usize i = 0; i < length; i++)
 		if (putchar(bytes[i]) == EOF)
 			return false;
 	return true;
 }
 
-int32_t putchar(int32_t ic)
+i32 putchar(i32 ic)
 {
 	char c = (char)ic;
 	serial_write(&c, sizeof(c));
 	return ic;
 }
 
-int32_t puts(const char* str)
+i32 puts(const char* str)
 {
-	const size_t written = strlen(str);
+	const usize written = strlen(str);
 	serial_write(str, written);
 	return written;
 }
@@ -34,20 +33,20 @@ int32_t puts(const char* str)
 // TODO: The *printf family needs a proper rewrite that is more accurate.
 //       Or look into completely replacing the klibc interface and use chained format calls.
 //       Then we could get rid of variadic arguments which is conceptually unsafe.
-int32_t vprintf(const char* restrict fmt, va_list args)
+i32 vprintf(const char* restrict fmt, va_list args)
 {
 	// Amount of bytes written.
-	int32_t written = 0;
+	i32 written = 0;
 
 	while (*fmt != '\0')
 	{
-		size_t maxrem = INT32_MAX - written;
+		usize maxrem = INT32_MAX - written;
 
 		if (fmt[0] != '%' || fmt[1] == '%')
 		{
 			if (fmt[0] == '%')
 				fmt++;
-			size_t amount = 1;
+			usize amount = 1;
 			while (fmt[amount] && fmt[amount] != '%')
 				amount++;
 			if (maxrem < amount)
@@ -64,7 +63,7 @@ int32_t vprintf(const char* restrict fmt, va_list args)
 
 		const char* format_begun_at = fmt++;
 		bool write_prefix = false;
-		// int32_t		write_limit = -1;
+		// i32		write_limit = -1;
 
 check_fmt:
 		switch (*fmt)
@@ -85,7 +84,7 @@ check_fmt:
 			case 'c':
 			{
 				fmt++;
-				char c = (char)va_arg(args, int32_t);
+				char c = (char)va_arg(args, i32);
 
 				if (!print(&c, sizeof(c)))
 					return -1;
@@ -100,7 +99,7 @@ check_fmt:
 				const char* str = va_arg(args, const char*);
 				if (!str)
 					str = "(null)";
-				size_t len = strlen(str);
+				usize len = strlen(str);
 				if (!print(str, len))
 					return -1;
 
@@ -111,13 +110,13 @@ check_fmt:
 			case 'd':
 			{
 				fmt++;
-				const int32_t num = va_arg(args, int32_t);
+				const i32 num = va_arg(args, i32);
 
 				// The largest signed integer is 2^32, which uses
 				// 10 digits + NUL.
 				char str[10 + 1];
 				itoa(num, str, 10);
-				const size_t len = strlen(str);
+				const usize len = strlen(str);
 				if (!print(str, len))
 					return -1;
 
@@ -127,13 +126,13 @@ check_fmt:
 			case 'u':
 			{
 				fmt++;
-				const uint32_t num = va_arg(args, uint32_t);
+				const u32 num = va_arg(args, u32);
 
 				// The largest signed integer is 2^32, which uses
 				// 10 digits + NUL.
 				char str[10 + 1];
 				utoa(num, str, 10);
-				const size_t len = strlen(str);
+				const usize len = strlen(str);
 				if (!print(str, len))
 					return -1;
 
@@ -143,19 +142,19 @@ check_fmt:
 			case 'x':
 			{
 				fmt++;
-				const uint32_t num = va_arg(args, uint32_t);
+				const u32 num = va_arg(args, u32);
 
-				char str[sizeof(uint32_t) * 2 + 1];
+				char str[sizeof(u32) * 2 + 1];
 				itoa(num, str, 16);
 
 				// Make letters lowercase.
-				for (uint32_t i = 0; i < sizeof(str); i++)
+				for (u32 i = 0; i < sizeof(str); i++)
 				{
 					if (str[i] >= 'A' && str[i] <= 'F')
 						str[i] ^= 0x20;
 				}
 
-				const size_t len = strlen(str);
+				const usize len = strlen(str);
 
 				// Print prefix if '#' was previous format.
 				if (write_prefix)
@@ -170,12 +169,12 @@ check_fmt:
 			case 'X':
 			{
 				fmt++;
-				const uint32_t num = va_arg(args, uint32_t);
+				const u32 num = va_arg(args, u32);
 
-				char str[sizeof(uint32_t) * 2 + 1];
+				char str[sizeof(u32) * 2 + 1];
 				itoa(num, str, 16);
 
-				const size_t len = strlen(str);
+				const usize len = strlen(str);
 
 				// Print prefix if '#' was previous format.
 				if (write_prefix)
@@ -190,13 +189,13 @@ check_fmt:
 			case 'p':
 			{
 				fmt++;
-				const uintptr_t num = va_arg(args, uintptr_t);
+				const usize num = va_arg(args, usize);
 
 				// Get the hex value, but with all other bytes explicitly written out.
-				const size_t buf_size = sizeof(uintptr_t) * 2 + 1;
+				const usize buf_size = sizeof(usize) * 2 + 1;
 				char str[buf_size];
 				itoa(num, str, 16);
-				const size_t len = strlen(str);
+				const usize len = strlen(str);
 				for (int i = len; i < buf_size; i++)
 					str[i] = '0';
 				if (!print(str, buf_size))
@@ -208,14 +207,14 @@ check_fmt:
 			case 'n':
 			{
 				fmt++;
-				int32_t* const ptr = va_arg(args, int32_t*);
+				i32* const ptr = va_arg(args, i32*);
 				*ptr = written;
 				break;
 			}
 			default:
 			{
 				fmt = format_begun_at;
-				size_t len = strlen(fmt);
+				usize len = strlen(fmt);
 
 				if (!print(fmt, len))
 					return -1;
@@ -229,12 +228,12 @@ check_fmt:
 	return written;
 }
 
-int32_t printf(const char* restrict fmt, ...)
+i32 printf(const char* restrict fmt, ...)
 {
 	va_list args;
 	va_start(args, fmt);
 
-	int32_t written = vprintf(fmt, args);
+	i32 written = vprintf(fmt, args);
 
 	va_end(args);
 	return written;
