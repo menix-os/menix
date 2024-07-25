@@ -22,16 +22,20 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v3
         with:
+          list-files: csv
           filters: |
-            c_files:
+            c:
               - '**.c'
-            h_files:
+            h:
               - '**.h'
       # Check code.
-      - name: Run clang-format style check for C.
-        if: steps.filter.outputs.c_files == 'true' || steps.filter.outputs.h_files == 'true'
-        uses: jidicula/clang-format-action@v4.13.0
+      - name: Run clang-format style check for C sources.
+        if: steps.filter.outputs.c == 'true'
+        uses: RafikFarhad/clang-format-github-action@v4
         with:
-          clang-format-version: "18"
-          check-path: "kernel"
-          fallback-style: llvm
+          sources: ${{ steps.filter.outputs.c_files }}
+      - name: Run clang-format style check for C headers.
+        if: steps.filter.outputs.h == 'true'
+        uses: RafikFarhad/clang-format-github-action@v4
+        with:
+          sources: ${{ steps.filter.outputs.h_files }}
