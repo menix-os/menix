@@ -34,8 +34,10 @@ jobs:
         uses: RafikFarhad/clang-format-github-action@v4
         with:
           sources: ${{ steps.filter.outputs.c_files }}
+          style: file
       - name: Run clang-format style check for C headers.
         if: steps.filter.outputs.h == 'true'
         uses: RafikFarhad/clang-format-github-action@v4
         with:
           sources: ${{ steps.filter.outputs.h_files }}
+          style: file
