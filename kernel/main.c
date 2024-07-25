@@ -5,7 +5,7 @@
 #include <menix/log.h>
 #include <menix/module.h>
 
-void kernel_main(BootInfo * info)
+void kernel_main(BootInfo* info)
 {
 	// Say hello to the console.
 	kmesg("menix v" MENIX_VERSION " (" MENIX_ARCH ")\n");
