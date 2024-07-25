@@ -17,7 +17,7 @@ void gdt_init()
 {
 	interrupt_disable();
 	// Kernel Code
-	GDT_ENCODE(gdt_table.kernel_code, 1, 0xFFFFF,
+	GDT_ENCODE(gdt_table.kernel_code, 0, 0xFFFFF,
 			   GDTA_PRESENT | GDTA_PRIV_LVL(0) | GDTA_SEGMENT | GDTA_EXECUTABLE | GDTA_READ_WRITE,
 			   GDTF_GRANULARITY | GDTF_LONG_MODE);
 
