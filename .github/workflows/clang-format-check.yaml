@@ -35,3 +35,4 @@ jobs:
           clang-format-version: "18"
           check-path: "kernel"
           fallback-style: llvm
+          include-regex: ${{ steps.filter.outputs.c_files_files }} ${{ steps.filter.outputs.h_files_files }}
