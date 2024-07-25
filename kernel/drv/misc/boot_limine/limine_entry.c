@@ -31,7 +31,7 @@ LIMINE_REQUEST struct limine_efi_system_table_request efi_st_request = {
 	.revision = 0,
 };
 
-LIMINE_REQUEST struct limine_efi_memmap_request memmap_request = {
+LIMINE_REQUEST struct limine_efi_memmap_request efi_memmap_request = {
 	.id = LIMINE_EFI_MEMMAP_REQUEST,
 	.revision = 0,
 };
@@ -65,7 +65,7 @@ void kernel_boot()
 		boot_log("[EFI] System Table at 0x%p\n", info.efi_st);
 		boot_log("[EFI] Number of table entries: %u\n", info.efi_st->NumberOfTableEntries);
 	}
-	kassert(memmap_request.response, "Unable to get EFI memory map!\n") else
+	kassert(efi_memmap_request.response, "Unable to get EFI memory map!\n") else
 	{
 		// TODO: Build memory map
 	}
