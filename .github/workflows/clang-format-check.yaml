@@ -23,13 +23,13 @@ jobs:
         uses: dorny/paths-filter@v3
         with:
           filters: |
-            c_files:
+            c:
               - '**.c'
-            h_files:
+            h:
               - '**.h'
       # Check code.
       - name: Run clang-format style check for C.
-        if: steps.filter.outputs.c_files == 'true' || steps.filter.outputs.h_files == 'true'
+        if: steps.filter.outputs.c == 'true' || steps.filter.outputs.h == 'true'
         uses: jidicula/clang-format-action@v4.13.0
         with:
           clang-format-version: "18"
