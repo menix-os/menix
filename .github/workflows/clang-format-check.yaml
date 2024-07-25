@@ -31,13 +31,13 @@ jobs:
       # Check code.
       - name: Run clang-format style check for C sources.
         if: steps.filter.outputs.c == 'true'
-        uses: RafikFarhad/clang-format-github-action@v4
+        uses: marv7000/clang-format-github-action@v1
         with:
           sources: ${{ steps.filter.outputs.c_files }}
           style: file
       - name: Run clang-format style check for C headers.
         if: steps.filter.outputs.h == 'true'
-        uses: RafikFarhad/clang-format-github-action@v4
+        uses: marv7000/clang-format-github-action@v1
         with:
           sources: ${{ steps.filter.outputs.h_files }}
           style: file

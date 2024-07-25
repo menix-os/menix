@@ -38,7 +38,7 @@ typedef struct ATTR(packed)
 	u8 white_point_x;
 	u8 white_point_y;
 	// Timings
-	bits timings:24;
+	Bits timings:24;
 	u16 standard_timings[8];
 	// Timing descriptor
 	EdidDetailedTiming timing_detail[4];

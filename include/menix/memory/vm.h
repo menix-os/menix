@@ -3,17 +3,25 @@
 #pragma once
 #include <menix/common.h>
 
-// TODO
+typedef enum : usize
+{
+	PhysMemoryUsage_Free,		 // Free and usable memory.
+	PhysMemoryUsage_Reserved,	 // Reserved memory.
+	PhysMemoryUsage_Unknown,	 // Unknown memory region.
+} PhysMemoryUsage;
+
+// Describes a single block of physical memory.
 typedef struct
 {
-	void* phys_addr;
-
-} PhysMemoryBlock;
+	usize address;			  // Start address of the memory region.
+	usize length;			  // Length of the memory region in bytes.
+	PhysMemoryUsage usage;	  // How this memory region is used.
+} PhysMemory;
 
 // Contains information about available physical memory.
 // The boot function is responsible for providing this information before passing control to the kernel.
 typedef struct
 {
-	usize num_blocks;
-	PhysMemoryBlock blocks;
+	usize num_blocks;	   // Amount of memory blocks.
+	PhysMemory* blocks;	   // Array of `num_blocks` size.
 } PhysMemoryMap;

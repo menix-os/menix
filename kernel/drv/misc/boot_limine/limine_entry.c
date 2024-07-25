@@ -31,8 +31,8 @@ LIMINE_REQUEST struct limine_efi_system_table_request efi_st_request = {
 	.revision = 0,
 };
 
-LIMINE_REQUEST struct limine_efi_memmap_request efi_memmap_request = {
-	.id = LIMINE_EFI_MEMMAP_REQUEST,
+LIMINE_REQUEST struct limine_memmap_request memmap_request = {
+	.id = LIMINE_MEMMAP_REQUEST,
 	.revision = 0,
 };
 #endif
@@ -65,52 +65,77 @@ void kernel_boot()
 		boot_log("[EFI] System Table at 0x%p\n", info.efi_st);
 		boot_log("[EFI] Number of table entries: %u\n", info.efi_st->NumberOfTableEntries);
 	}
-	kassert(efi_memmap_request.response, "Unable to get EFI memory map!\n") else
-	{
-		// TODO: Build memory map
-	}
 #endif
+
+	kassert(memmap_request.response, "Unable to get memory map!\n") else
+	{
+		struct limine_memmap_response* const res = memmap_request.response;
+		boot_log("Bootloader provided memory map at 0x%p\n", res);
+
+		PhysMemory map[64];
+		info.memory_map.num_blocks = res->entry_count;
+		info.memory_map.blocks = map;
+
+		for (usize i = 0; i < res->entry_count; i++)
+		{
+			map[i].address = res->entries[i]->base;
+			map[i].length = res->entries[i]->length;
+
+			const char* typ = "Unknown";
+			switch (res->entries[i]->type)
+			{
+				case LIMINE_MEMMAP_USABLE:
+					map[i].usage = PhysMemoryUsage_Free;
+					typ = "Free";
+					break;
+				case LIMINE_MEMMAP_RESERVED:
+					map[i].usage = PhysMemoryUsage_Reserved;
+					typ = "Reserved";
+					break;
+				case LIMINE_MEMMAP_FRAMEBUFFER:
+					map[i].usage = PhysMemoryUsage_Reserved;
+					typ = "Framebuffer";
+					break;
+				default: map[i].usage = PhysMemoryUsage_Unknown; break;
+			}
+
+			boot_log("    Address = 0x%p Length = 0x%p Type = %s\n", map[i].address, map[i].length, typ);
+		}
+	}
 
 	kassert(kernel_file_request.response, "Unable to get kernel file info!\n") else
 	{
-		boot_log("Command line: \"%s\"\n", kernel_file_request.response->kernel_file->cmdline);
-		info.cmd = kernel_file_request.response->kernel_file->cmdline;
+		struct limine_kernel_file_response* const res = kernel_file_request.response;
+		boot_log("Kernel loaded at: 0x%p, Size = 0x%X\n", res->kernel_file->address, res->kernel_file->size);
+		boot_log("Command line: \"%s\"\n", res->kernel_file->cmdline);
+		info.cmd = res->kernel_file->cmdline;
 	}
 
 	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n") else
 	{
-		boot_log("Got frame buffers:\n");
-		FrameBuffer buffers[FB_MAX];
-		usize total_fbs = 0;
-		for (u64 i = 0; i < framebuffer_request.response->framebuffer_count; i++)
-		{
-			const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
-			buffers[i].base = buf->address;
-			buffers[i].width = buf->width;
-			buffers[i].height = buf->height;
-			buffers[i].bpp = buf->bpp;
-			buffers[i].pitch = buf->pitch;
-			buffers[i].red_shift = buf->red_mask_shift;
-			buffers[i].red_size = buf->red_mask_size;
-			buffers[i].green_shift = buf->green_mask_shift;
-			buffers[i].green_size = buf->green_mask_size;
-			buffers[i].blue_shift = buf->blue_mask_shift;
-			buffers[i].blue_size = buf->blue_mask_size;
+		boot_log("Got frame buffer:\n");
+		FrameBuffer buffer;
 
-			boot_log("    [%u] Address: 0x%p\tWidth: %upx\tHeight: %upx\tPitch: %u\n", i, buffers[i].base,
-					 (u32)buffers[i].width, (u32)buffers[i].height, (u32)buffers[i].pitch);
+		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[0];
+		buffer.base = buf->address;
+		buffer.width = buf->width;
+		buffer.height = buf->height;
+		buffer.bpp = buf->bpp;
+		buffer.pitch = buf->pitch;
+		buffer.red_shift = buf->red_mask_shift;
+		buffer.red_size = buf->red_mask_size;
+		buffer.green_shift = buf->green_mask_shift;
+		buffer.green_size = buf->green_mask_size;
+		buffer.blue_shift = buf->blue_mask_shift;
+		buffer.blue_size = buf->blue_mask_size;
 
-			// Fill framebuffer with sample data.
-			fb_fill_pixels(&buffers[i], 0xFF, 0x7F, 0x7F);
+		boot_log("    Address = 0x%p Width = %upx Height = %upx Pitch = %u\n", buffer.base, (u32)buffer.width,
+				 (u32)buffer.height, (u32)buffer.pitch);
 
-			if (i >= FB_MAX - 1)
-			{
-				total_fbs = i;
-				break;
-			}
-		};
-		info.fb_num = total_fbs;
-		info.fb = buffers;
+		// Fill framebuffer with sample data.
+		fb_fill_pixels(&buffer, 0x00, 0x00, 0xFF);
+		info.fb_num = 1;
+		info.fb = &buffer;
 	}
 
 	arch_init(&info);

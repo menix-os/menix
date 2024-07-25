@@ -23,16 +23,7 @@ i32 putchar(i32 ic)
 	return ic;
 }
 
-i32 puts(const char* str)
-{
-	const usize written = strlen(str);
-	serial_write(str, written);
-	return written;
-}
-
 // TODO: The *printf family needs a proper rewrite that is more accurate.
-//       Or look into completely replacing the klibc interface and use chained format calls.
-//       Then we could get rid of variadic arguments which is conceptually unsafe.
 i32 vprintf(const char* restrict fmt, va_list args)
 {
 	// Amount of bytes written.
@@ -51,7 +42,6 @@ i32 vprintf(const char* restrict fmt, va_list args)
 				amount++;
 			if (maxrem < amount)
 			{
-				// TODO: Set errno to EOVERFLOW.
 				return -1;
 			}
 			if (!print(fmt, amount))
@@ -63,7 +53,6 @@ i32 vprintf(const char* restrict fmt, va_list args)
 
 		const char* format_begun_at = fmt++;
 		bool write_prefix = false;
-		// i32		write_limit = -1;
 
 check_fmt:
 		switch (*fmt)
@@ -145,7 +134,7 @@ check_fmt:
 				const u32 num = va_arg(args, u32);
 
 				char str[sizeof(u32) * 2 + 1];
-				itoa(num, str, 16);
+				utoa(num, str, 16);
 
 				// Make letters lowercase.
 				for (u32 i = 0; i < sizeof(str); i++)
@@ -172,7 +161,7 @@ check_fmt:
 				const u32 num = va_arg(args, u32);
 
 				char str[sizeof(u32) * 2 + 1];
-				itoa(num, str, 16);
+				utoa(num, str, 16);
 
 				const usize len = strlen(str);
 
@@ -190,14 +179,15 @@ check_fmt:
 			{
 				fmt++;
 				const usize num = va_arg(args, usize);
-
-				// Get the hex value, but with all other bytes explicitly written out.
 				const usize buf_size = sizeof(usize) * 2 + 1;
 				char str[buf_size];
-				itoa(num, str, 16);
-				const usize len = strlen(str);
-				for (int i = len; i < buf_size; i++)
+				lutoa(num, str, 0x10);
+				const usize len = strlen(str);		  // Get the length of the final number.
+				for (int i = 0; i < buf_size; i++)	  // Fill with zeroes.
 					str[i] = '0';
+				char* offset = str + (sizeof(str) - len - 1);
+				lutoa(num, offset, 0x10);	 // Write the number again, but now at an offset.
+
 				if (!print(str, buf_size))
 					return -1;
 

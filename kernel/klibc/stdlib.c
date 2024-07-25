@@ -42,7 +42,22 @@ char* itoa(i32 value, char* str, u32 base)
 
 char* utoa(u32 value, char* str, u32 base)
 {
-	int i = 0;
+	i32 i = 0;
+	do
+	{
+		char c = value % base;
+		if (c > 9)
+			c += 7;	   // Skip to the letters for hex. ('9' + 7 = 'A')
+		str[i++] = c + '0';
+	} while ((value /= base) > 0);
+	str[i] = '\0';
+	reverse(str);
+	return str;
+}
+
+char* lutoa(u64 value, char* str, u32 base)
+{
+	i32 i = 0;
 	do
 	{
 		char c = value % base;

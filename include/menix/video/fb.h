@@ -4,9 +4,6 @@
 
 #include <menix/common.h>
 
-// We only support 8 buffers to draw to at once.
-#define FB_MAX 8
-
 // Stores information about a frame buffer.
 typedef struct
 {
