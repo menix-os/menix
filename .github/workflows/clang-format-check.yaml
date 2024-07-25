@@ -22,6 +22,7 @@ jobs:
         id: filter
         uses: dorny/paths-filter@v3
         with:
+          list-files: shell
           filters: |
             c:
               - '**.c'
