@@ -57,6 +57,8 @@ void kernel_boot()
 	boot_log("Booting using Limine protocol\n");
 
 	BootInfo info = {0};
+	File files[8];
+	FrameBuffer buffer;
 
 	kassert(time_request.response, "Unable to get boot timestamp!\n") else
 	{
@@ -123,7 +125,6 @@ void kernel_boot()
 	kassert(module_request.response, "Unable to get modules!\n") else
 	{
 		const struct limine_module_response* res = module_request.response;
-		File files[8];
 		boot_log("Got files:\n");
 		for (usize i = 0; i < res->module_count; i++)
 		{
@@ -139,7 +140,6 @@ void kernel_boot()
 	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n") else
 	{
 		boot_log("Got frame buffer:\n");
-		FrameBuffer buffer;
 
 		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[0];
 		buffer.base = buf->address;
