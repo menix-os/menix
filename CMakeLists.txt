@@ -19,8 +19,9 @@ set(CMAKE_C_STANDARD 23)
 
 # Set toolchain, only using clang for now.
 set(CMAKE_C_COMPILER clang)
-include(${MENIX_SRC}/toolchain/arch/${MENIX_ARCH}.cmake)
 include(${MENIX_SRC}/toolchain/kernel.cmake)
+include(${MENIX_SRC}/toolchain/arch/${MENIX_ARCH}.cmake)
+include(${MENIX_SRC}/toolchain/arch/defaults.cmake)
 
 project(menix-kernel
 	VERSION 0.1.3

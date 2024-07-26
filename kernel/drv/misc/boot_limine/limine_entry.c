@@ -3,8 +3,8 @@
 #include <menix/arch.h>
 #include <menix/boot.h>
 #include <menix/common.h>
-#include <menix/format.h>
 #include <menix/log.h>
+#include <menix/util/self.h>
 
 #include "limine.h"
 
@@ -25,17 +25,22 @@ LIMINE_REQUEST struct limine_kernel_file_request kernel_file_request = {
 	.revision = 0,
 };
 
+LIMINE_REQUEST struct limine_module_request module_request = {
+	.id = LIMINE_MODULE_REQUEST,
+	.revision = 0,
+};
+
 #ifdef CONFIG_efi
 LIMINE_REQUEST struct limine_efi_system_table_request efi_st_request = {
 	.id = LIMINE_EFI_SYSTEM_TABLE_REQUEST,
 	.revision = 0,
 };
+#endif
 
 LIMINE_REQUEST struct limine_memmap_request memmap_request = {
 	.id = LIMINE_MEMMAP_REQUEST,
 	.revision = 0,
 };
-#endif
 
 LIMINE_REQUEST struct limine_boot_time_request time_request = {
 	.id = LIMINE_BOOT_TIME_REQUEST,
@@ -72,7 +77,7 @@ void kernel_boot()
 		struct limine_memmap_response* const res = memmap_request.response;
 		boot_log("Bootloader provided memory map at 0x%p\n", res);
 
-		PhysMemory map[64];
+		PhysMemory map[res->entry_count];
 		info.memory_map.num_blocks = res->entry_count;
 		info.memory_map.blocks = map;
 
@@ -107,8 +112,28 @@ void kernel_boot()
 	{
 		struct limine_kernel_file_response* const res = kernel_file_request.response;
 		boot_log("Kernel loaded at: 0x%p, Size = 0x%X\n", res->kernel_file->address, res->kernel_file->size);
+
+		self_set_kernel(res->kernel_file->address);
+
 		boot_log("Command line: \"%s\"\n", res->kernel_file->cmdline);
+
 		info.cmd = res->kernel_file->cmdline;
+	}
+
+	kassert(module_request.response, "Unable to get modules!\n") else
+	{
+		const struct limine_module_response* res = module_request.response;
+		File files[8];
+		boot_log("Got files:\n");
+		for (usize i = 0; i < res->module_count; i++)
+		{
+			files[i].address = res->modules[i]->address;
+			files[i].size = res->modules[i]->size;
+			files[i].path = res->modules[i]->path;
+			boot_log("    Address: 0x%p, Size:0x%p Path: \"%s\"\n", files[i].address, files[i].size, files[i].path);
+		}
+		info.file_num = res->module_count;
+		info.files = files;
 	}
 
 	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n") else
@@ -132,14 +157,11 @@ void kernel_boot()
 		boot_log("    Address = 0x%p Width = %upx Height = %upx Pitch = %u\n", buffer.base, (u32)buffer.width,
 				 (u32)buffer.height, (u32)buffer.pitch);
 
-		// Fill framebuffer with sample data.
-		fb_fill_pixels(&buffer, 0x00, 0x00, 0xFF);
 		info.fb_num = 1;
 		info.fb = &buffer;
 	}
 
 	arch_init(&info);
-
 	boot_log("Handing control to main function\n");
 	kernel_main(&info);
 	boot_log("Got control back from main function\n");

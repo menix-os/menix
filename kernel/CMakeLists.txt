@@ -24,6 +24,7 @@ add_subdirectory(klibc)
 add_subdirectory(drv)
 add_subdirectory(fs)
 add_subdirectory(sys)
+add_subdirectory(util)
 add_subdirectory(video)
 target_link_libraries(menix PUBLIC
 	menix_arch_${MENIX_ARCH_DIR}
@@ -31,5 +32,6 @@ target_link_libraries(menix PUBLIC
 	menix_drv
 	menix_fs
 	menix_sys
+	menix_util
 	menix_video
 )

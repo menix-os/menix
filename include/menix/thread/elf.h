@@ -172,7 +172,7 @@ typedef struct ATTR(packed)
 	u8 st_other;
 	u16 st_shndx;
 	Elf64_Addr st_value;
-	u32 st_size;
+	u64 st_size;
 } Elf64_Sym;
 typedef struct ATTR(packed)
 {
@@ -201,7 +201,7 @@ typedef struct ATTR(packed)
 {
 	Elf64_Addr r_offset;
 	u64 r_info;
-	int64_t r_addend;
+	i64 r_addend;
 } Elf64_Rela;
 typedef struct ATTR(packed)
 {

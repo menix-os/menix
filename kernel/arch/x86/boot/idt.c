@@ -10,7 +10,7 @@
 #include <io.h>
 #include <pic.h>
 
-ATTR(aligned(0x10)) static IdtDesc idt_table[IDT_MAX_SIZE];
+ATTR(aligned(CONFIG_page_size)) static IdtDesc idt_table[IDT_MAX_SIZE];
 ATTR(aligned(0x10)) static IdtRegister idtr;
 
 void idt_set(u8 idx, void* handler, u8 type_attr)
@@ -37,27 +37,6 @@ void idt_reload()
 	idtr.base = idt_table;
 	asm volatile("lidt %0" ::"m"(idtr));
 }
-
-//! Here are a few inline assembly macros to create some stubs since we have so many of them.
-
-#define INT_HANDLER_DECL(num) extern void int_error_handler_##num(void);
-#define INT_HANDLER_COMMON(num) \
-	".global int_error_handler_" #num "\n" \
-	".align 0x10\n" \
-	"int_error_handler_" #num ":\n"
-
-#define INT_HANDLER(num, fn) \
-	INT_HANDLER_DECL(num) \
-	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %edi\n" \
-								"call " #fn "\n" \
-								"iretq\n")
-
-#define INT_HANDLER_WITH_CODE(num, fn) \
-	INT_HANDLER_DECL(num) \
-	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %edi\n" \
-								"pop %rsi\n" \
-								"call " #fn "\n" \
-								"iretq\n")
 
 INT_HANDLER(0, error_handler);
 INT_HANDLER(1, error_handler);
@@ -94,7 +73,7 @@ INT_HANDLER(31, error_handler);
 
 void idt_init()
 {
-	interrupt_disable();
+	asm_interrupt_disable();
 
 	// Set exception vector (0x00 - 0x1F)
 	idt_set(0x00, int_error_handler_0, IDT_TYPE(0, IDT_GATE_INT));
@@ -135,19 +114,19 @@ void idt_init()
 
 	// While we're at it, also enable syscall/sysret instructions.
 	// TODO: Actually set syscall entry point.
-	asm("mov $0xc0000082, %%ecx\n"	  // Syscall entry RIP
-		"wrmsr\n"					  //
-		"mov $0xc0000080, %%ecx\n"	  // Get IA32_EFER
-		"rdmsr\n"					  //
-		"or $1, %%eax\n"			  // Enable IA32_EFER.SCE bit
-		"wrmsr\n"					  //
-		"mov $0xc0000081, %%ecx\n"	  // Set segment selectors
-		"rdmsr\n"					  //
-		"mov %1, %%edx\n"			  // Low 16 bits: Ring 0 CS, High: Ring 3 CS
-		"wrmsr"						  //
-		:
-		: "p"(sc_syscall_handler), "i"((GDT_OFFSET(GDT_KERNEL_CODE)) | (GDT_OFFSET(GDT_USER_CODE) << 16))
-		: "rax", "rcx", "rdx");
+	asm volatile("mov $0xc0000082, %%ecx\n"	   // Syscall entry RIP
+				 "wrmsr\n"					   //
+				 "mov $0xc0000080, %%ecx\n"	   // Get IA32_EFER
+				 "rdmsr\n"					   //
+				 "or $1, %%eax\n"			   // Enable IA32_EFER.SCE bit
+				 "wrmsr\n"					   //
+				 "mov $0xc0000081, %%ecx\n"	   // Set segment selectors
+				 "rdmsr\n"					   //
+				 "mov %1, %%edx\n"			   // Low 16 bits: Ring 0 CS, High: Ring 3 CS
+				 "wrmsr"					   //
+				 :
+				 : "p"(sc_syscall_handler), "i"((offsetof(Gdt, kernel_code)) | (offsetof(Gdt, user_code) << 16))
+				 : "rax", "rcx", "rdx");
 
 	arch_write8(PIC1_COMMAND_PORT, 0x11);
 	arch_write8(PIC2_COMMAND_PORT, 0x11);
@@ -161,5 +140,5 @@ void idt_init()
 	arch_write8(PIC1_DATA_PORT, 0xFF);
 
 	idt_reload();
-	interrupt_enable();
+	asm_interrupt_enable();
 }

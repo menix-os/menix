@@ -1,7 +1,7 @@
 // System call interface + prototypes
 
 #include <menix/common.h>
-#include <menix/self.h>
+#include <menix/util/self.h>
 
 #include <bits/syscall.h>
 

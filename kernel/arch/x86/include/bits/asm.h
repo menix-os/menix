@@ -5,10 +5,10 @@
 #include <menix/common.h>
 
 // Loads the GDT.
-#define gdt_set(table) asm volatile("lgdt %0" ::"m"(table))
+#define asm_gdt_set(table) asm volatile("lgdt %0" ::"m"(table))
 
 // Flushes all segment registers and reloads them.
-#define flush_segment_regs(code_seg, data_seg) \
+#define asm_flush_segment_regs(code_seg, data_seg) \
 	asm volatile("push %0\n" \
 				 "movq $L_reload_cs, %%rax\n" \
 				 "push %%rax\n" \
@@ -24,5 +24,7 @@
 				 : "i"(code_seg), "i"(data_seg) \
 				 : "rax")
 
-#define interrupt_disable() asm volatile("cli")
-#define interrupt_enable()	asm volatile("sti")
+#define asm_interrupt_disable() asm volatile("cli")
+#define asm_interrupt_enable()	asm volatile("sti")
+
+#define asm_get_frame_pointer(x) asm volatile("mov %%rbp, %0" : "=m"(x));

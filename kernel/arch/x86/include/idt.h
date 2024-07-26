@@ -11,6 +11,28 @@
 #define IDT_GATE_TRAP		 0xF
 #define IDT_TYPE(priv, gate) ((1 << 7) | (((priv) & 0x3) << 5) | ((gate) & 0xF))
 
+//! Here are a few inline assembly macros to create some stubs since we have so many of them.
+
+// Declares an interrupt handler.
+#define INT_HANDLER_DECL(num) extern void int_error_handler_##num(void);
+#define INT_HANDLER_COMMON(num) \
+	".global int_error_handler_" #num "\n" \
+	".align 0x10\n" \
+	"int_error_handler_" #num ":\n"
+// Interrupt handler stub without error code. Calls `fn`.
+#define INT_HANDLER(num, fn) \
+	INT_HANDLER_DECL(num) \
+	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %edi\n" \
+								"call " #fn "\n" \
+								"iretq\n")
+// Interrupt handler stub with error code. Calls `fn`.
+#define INT_HANDLER_WITH_CODE(num, fn) \
+	INT_HANDLER_DECL(num) \
+	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %edi\n" \
+								"pop %rsi\n" \
+								"call " #fn "\n" \
+								"iretq\n")
+
 // IDT Interrupt Descriptor
 typedef struct ATTR(packed)
 {

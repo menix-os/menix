@@ -4,7 +4,7 @@
 #include <menix/drv/pci.h>
 #include <menix/log.h>
 #include <menix/module.h>
-#include <menix/self.h>
+#include <menix/util/self.h>
 
 // We need to see the location and size of the .mod section.
 SECTION_DECLARE_SYMBOLS(mod)

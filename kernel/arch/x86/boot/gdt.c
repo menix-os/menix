@@ -15,7 +15,7 @@ ATTR(aligned(0x10)) GdtRegister gdtr = {
 
 void gdt_init()
 {
-	interrupt_disable();
+	asm_interrupt_disable();
 	// Kernel Code
 	GDT_ENCODE(gdt_table.kernel_code, 0, 0xFFFFF,
 			   GDTA_PRESENT | GDTA_PRIV_LVL(0) | GDTA_SEGMENT | GDTA_EXECUTABLE | GDTA_READ_WRITE,
@@ -39,7 +39,7 @@ void gdt_init()
 	GDT_ENCODE_LONG(gdt_table.tss, (u64)&tss, sizeof(TaskStateSegment),
 					GDTA_PRESENT | GDTA_PRIV_LVL(0) | GDTA_EXECUTABLE | GDTA_ACCESSED, 0);
 
-	gdt_set(gdtr);
-	flush_segment_regs(offsetof(Gdt, kernel_code), offsetof(Gdt, kernel_data));
-	interrupt_enable();
+	asm_gdt_set(gdtr);
+	asm_flush_segment_regs(offsetof(Gdt, kernel_code), offsetof(Gdt, kernel_data));
+	asm_interrupt_enable();
 }
