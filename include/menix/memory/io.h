@@ -5,7 +5,7 @@
 typedef volatile u8 mmio8_t;
 typedef volatile u16 mmio16_t;
 typedef volatile u32 mmio32_t;
-#ifdef CONFIG_64_bit
+#if CONFIG_bits >= 64
 typedef volatile u64 mmio64_t;
 #endif
 
@@ -17,7 +17,7 @@ typedef volatile u64 mmio64_t;
 #define write16(addr, value) (*((mmio16_t*)(addr)) = (u16)(value))
 #define read32(addr)		 (*((mmio32_t*)(addr)))
 #define write32(addr, value) (*((mmio32_t*)(addr)) = (u32)(value))
-#ifdef CONFIG_64_bit
+#if CONFIG_bits >= 64
 #define read64(addr)		 (*((mmio64_t*)(addr)))
 #define write64(addr, value) (*((mmio64_t*)(addr)) = (u64)(value))
 #endif

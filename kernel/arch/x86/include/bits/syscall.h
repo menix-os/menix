@@ -21,4 +21,4 @@ typedef struct
 	u64 rcx;
 	u64 rbx;
 	u64 rax;
-} SavedRegisters;
+} SyscallArgs;

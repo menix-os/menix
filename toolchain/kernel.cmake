@@ -41,8 +41,10 @@ if(${CMAKE_BUILD_TYPE} STREQUAL MinSizeRel OR ${CMAKE_BUILD_TYPE} STREQUAL Relea
 endif()
 
 # Compile time definitions
+message(STATUS "menix v${CMAKE_PROJECT_VERSION} (${MENIX_ARCH})")
 add_compile_definitions(MENIX_VERSION="${CMAKE_PROJECT_VERSION}")
 add_compile_definitions(MENIX_ARCH="${MENIX_ARCH}")
 
 # Common build arguments
 add_compile_options(-Wall -Wno-unused-command-line-argument)
+add_link_options(-Wl,--build-id=none)

@@ -59,7 +59,7 @@
 #define ELF_ST_TYPE(i)	  ((i) & 0xf)
 #define ELF_ST_INFO(b, t) (((b) << 4) + ((t) & 0xf))
 
-#ifdef CONFIG_64_bit
+#if CONFIG_bits >= 64
 #define ELF_R_SYM(i)	 ((i) >> 32)
 #define ELF_R_TYPE(i)	 ((i) & 0xffffffffL)
 #define ELF_R_INFO(s, t) (((s) << 32) + ((t) & 0xffffffffL))
@@ -69,7 +69,7 @@
 #define ELF_R_INFO(s, t) (((s) << 8) + (u8)(t))
 #endif
 
-#ifdef CONFIG_64_bit
+#if CONFIG_bits >= 64
 #define Elf_Phdr Elf64_Phdr
 #define Elf_Dyn	 Elf64_Dyn
 #define Elf_Ehdr Elf64_Ehdr

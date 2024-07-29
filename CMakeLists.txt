@@ -32,4 +32,4 @@ add_subdirectory(kernel)
 
 # Write kernel version
 get_target_property(MENIX_BIN_DIR menix RUNTIME_OUTPUT_DIRECTORY)
-file(WRITE ${MENIX_BIN_DIR}/version "${MENIX_VERSION} (${MENIX_ARCH})")
+file(WRITE ${MENIX_BIN_DIR}/version "${CMAKE_PROJECT_VERSION} (${MENIX_ARCH})")

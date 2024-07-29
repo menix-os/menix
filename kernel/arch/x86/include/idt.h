@@ -38,7 +38,7 @@ typedef struct ATTR(packed)
 {
 	u16 base_0_15;
 	u16 selector;
-#ifdef CONFIG_64_bit
+#if CONFIG_bits >= 64
 	Bits ist:2;
 	Bits reserved:6;
 #else
@@ -46,7 +46,7 @@ typedef struct ATTR(packed)
 #endif
 	u8 type;
 	u16 base_16_31;
-#ifdef CONFIG_64_bit
+#if CONFIG_bits >= 64
 	u32 base_32_63;
 	u32 reserved2;
 #endif
@@ -59,6 +59,7 @@ typedef struct ATTR(packed)
 	IdtDesc* base;
 } IdtRegister;
 
+// Install the Interrupt Descriptor Table.
 void idt_init();
 
 // Sets the gate for one entry in the IDT.

@@ -25,7 +25,7 @@ void idt_set(u8 idx, void* handler, u8 type_attr)
 	target->selector = GDT_OFFSET(GDT_KERNEL_CODE);
 	target->type = type_attr;
 	target->reserved = 0;
-#ifdef CONFIG_64_bit
+#if CONFIG_bits >= 64
 	target->base_32_63 = (ptr >> 32) & 0xFFFFFFFF;
 	target->reserved2 = 0;
 #endif
@@ -128,16 +128,16 @@ void idt_init()
 				 : "p"(sc_syscall_handler), "i"((offsetof(Gdt, kernel_code)) | (offsetof(Gdt, user_code) << 16))
 				 : "rax", "rcx", "rdx");
 
-	arch_write8(PIC1_COMMAND_PORT, 0x11);
-	arch_write8(PIC2_COMMAND_PORT, 0x11);
-	arch_write8(PIC1_DATA_PORT, 0x20);
-	arch_write8(PIC2_DATA_PORT, 0x28);
-	arch_write8(PIC1_DATA_PORT, 0x0);
-	arch_write8(PIC2_DATA_PORT, 0x0);
-	arch_write8(PIC1_DATA_PORT, 0x1);
-	arch_write8(PIC1_DATA_PORT, 0x1);
-	arch_write8(PIC1_DATA_PORT, 0xFF);
-	arch_write8(PIC1_DATA_PORT, 0xFF);
+	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);
+	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);
+	arch_x86_write8(PIC1_DATA_PORT, 0x20);
+	arch_x86_write8(PIC2_DATA_PORT, 0x28);
+	arch_x86_write8(PIC1_DATA_PORT, 0x0);
+	arch_x86_write8(PIC2_DATA_PORT, 0x0);
+	arch_x86_write8(PIC1_DATA_PORT, 0x1);
+	arch_x86_write8(PIC1_DATA_PORT, 0x1);
+	arch_x86_write8(PIC1_DATA_PORT, 0xFF);
+	arch_x86_write8(PIC1_DATA_PORT, 0xFF);
 
 	idt_reload();
 	asm_interrupt_enable();

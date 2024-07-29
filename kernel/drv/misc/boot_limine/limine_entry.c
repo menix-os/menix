@@ -131,7 +131,7 @@ void kernel_boot()
 			files[i].address = res->modules[i]->address;
 			files[i].size = res->modules[i]->size;
 			files[i].path = res->modules[i]->path;
-			boot_log("    Address: 0x%p, Size:0x%p Path: \"%s\"\n", files[i].address, files[i].size, files[i].path);
+			boot_log("    Address: 0x%p, Size: 0x%p Path: \"%s\"\n", files[i].address, files[i].size, files[i].path);
 		}
 		info.file_num = res->module_count;
 		info.files = files;
@@ -154,8 +154,8 @@ void kernel_boot()
 		buffer.blue_shift = buf->blue_mask_shift;
 		buffer.blue_size = buf->blue_mask_size;
 
-		boot_log("    Address = 0x%p Width = %upx Height = %upx Pitch = %u\n", buffer.base, (u32)buffer.width,
-				 (u32)buffer.height, (u32)buffer.pitch);
+		boot_log("    Address = 0x%p Resolution = %ux%ux%u\n", buffer.base, (u32)buffer.width, (u32)buffer.height,
+				 (u32)buffer.bpp);
 
 		info.fb_num = 1;
 		info.fb = &buffer;
@@ -165,6 +165,5 @@ void kernel_boot()
 	boot_log("Handing control to main function\n");
 	kernel_main(&info);
 	boot_log("Got control back from main function\n");
-	while (1)
-		;
+	arch_stop(&info);
 }

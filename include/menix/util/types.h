@@ -20,20 +20,30 @@ typedef unsigned short u16;
 typedef signed int i32;
 // Unsigned 32-bit integer.
 typedef unsigned int u32;
-#ifdef CONFIG_64_bit
+#if CONFIG_bits == 64
 // Signed 64-bit integer.
 typedef signed long long i64;
 // Unsigned 64-bit integer.
 typedef unsigned long long u64;
+#elif CONFIG_bits == 128
+// Signed 128-bit integer.
+typedef __int128 i128;
+// Unsigned 128-bit integer.
+typedef unsigned __int128 u128;
 #endif
 
 // usize
-#ifdef CONFIG_64_bit
-typedef u64 usize;
-typedef i64 isize;
-#else
+#if CONFIG_bits == 32
 typedef u32 usize;
 typedef i32 isize;
+#elif CONFIG_bits == 64
+typedef u64 usize;
+typedef i64 isize;
+#elif CONFIG_bits == 128
+typedef u128 usize;
+typedef i128 isize;
+#else
+#error "Invalid word size!"
 #endif
 
 // Use the processor word size so we can squeeze as many bits as possible into one variable.

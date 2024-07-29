@@ -9,8 +9,6 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-#include "menix/thread/elf.h"
-
 void kmesg(const char* fmt, ...)
 {
 	// TODO: Determine output stream through command line options.
@@ -23,6 +21,11 @@ void kmesg(const char* fmt, ...)
 void ktrace()
 {
 #ifdef CONFIG_ktrace
+#ifdef CONFIG_ktrace_registers
+	kmesg("Registers:\n");
+	arch_dump_registers();
+#endif
+
 	const usize size = 32;
 	StackFrame* fp;
 
@@ -83,7 +86,7 @@ void ktrace()
 		}
 
 		if (symbol_name != NULL)
-			kmesg("    [%u] 0x%p [%s+0x%x]\n", i, fp->return_addr, symbol_name, offset);
+			kmesg("    [%u] 0x%p <%s+0x%x>\n", i, fp->return_addr, symbol_name, offset);
 		else
 		{
 			kmesg("    [%u] 0x%p\n", i, fp->return_addr);

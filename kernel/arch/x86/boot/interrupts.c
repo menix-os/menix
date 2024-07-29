@@ -81,7 +81,7 @@ void error_handler_with_code(u32 fault, u32 code)
 	}
 }
 
-void syscall_handler(SavedRegisters* regs)
+void syscall_handler(SyscallArgs* regs)
 {
 	// RAX contains the syscall number.
 	// Check if number is inside bounds.

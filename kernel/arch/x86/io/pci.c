@@ -78,8 +78,8 @@ u16 pci_read16(u8 bus, u8 slot, u8 func, u8 offset)
 	address |= offset & 0xfc;
 
 	// Write out the address
-	arch_write32(0xcf8, address);
-	return (arch_read32(0xcfc) >> ((offset & 2) * 8)) & 0xffff;
+	arch_x86_write32(0xcf8, address);
+	return (arch_x86_read32(0xcfc) >> ((offset & 2) * 8)) & 0xffff;
 }
 
 #endif

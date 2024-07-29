@@ -19,4 +19,4 @@
 
 void serial_initialize(void);
 void serial_putchar(char c);
-void serial_write(const char* data, usize size);
+void serial_write(const u8* data, usize size);

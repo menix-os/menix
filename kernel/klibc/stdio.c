@@ -19,7 +19,7 @@ static bool print(const char* data, usize length)
 i32 putchar(i32 ic)
 {
 	char c = (char)ic;
-	serial_write(&c, sizeof(c));
+	serial_putchar(c);
 	return ic;
 }
 

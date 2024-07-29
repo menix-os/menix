@@ -83,5 +83,5 @@ typedef struct ATTR(packed)
 	Gdt* base;	  // Start of the GDT.
 } GdtRegister;
 
-// Fills the GDT with predefined values.
+// Install the Global Descriptor Table.
 void gdt_init();
