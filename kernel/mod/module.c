@@ -27,7 +27,7 @@ void module_init()
 		module_log("Loading \"%s\"\n", modules[i].name);
 		const i32 ret = modules[i].init();
 		if (ret != 0)
-			module_err("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
+			module_log("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
 	}
 }
 

@@ -2,5 +2,6 @@
 
 include(${MENIX_UTIL_PATH})
 add_library(menix_sys
+	syscall_table.c
 	do_shutdown.c
 )

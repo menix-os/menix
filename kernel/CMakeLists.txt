@@ -2,8 +2,6 @@
 
 add_executable(menix
 	main.c
-	module.c
-	syscall_table.c
 )
 
 # Global include directories.
@@ -21,17 +19,19 @@ set_target_properties(menix
 # Main subsystems.
 add_subdirectory(arch/${MENIX_ARCH_DIR})
 add_subdirectory(klibc)
-add_subdirectory(drv)
+add_subdirectory(boot)
 add_subdirectory(fs)
+add_subdirectory(misc)
+add_subdirectory(mod)
 add_subdirectory(sys)
-add_subdirectory(util)
 add_subdirectory(video)
 target_link_libraries(menix PUBLIC
 	menix_arch_${MENIX_ARCH_DIR}
 	menix_klibc
-	menix_drv
+	menix_boot
 	menix_fs
+	menix_misc
+	menix_mod
 	menix_sys
-	menix_util
 	menix_video
 )

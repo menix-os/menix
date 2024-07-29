@@ -22,6 +22,7 @@ void pci_init()
 						dev.device_id, pci_get_class_name(&dev));
 		}
 	}
+	ktrace();
 }
 
 void pci_fini()

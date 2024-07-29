@@ -20,20 +20,19 @@ void kmesg(const char* fmt, ...)
 
 void ktrace()
 {
-#ifdef CONFIG_ktrace
-#ifdef CONFIG_ktrace_registers
-	kmesg("Registers:\n");
-	arch_dump_registers();
-#endif
-
-	const usize size = 32;
-	StackFrame* fp;
-
 #ifndef asm_get_frame_pointer
 #error "Need asm_get_frame_pointer to do ktrace!"
 #else
+	StackFrame* fp;
 	asm_get_frame_pointer(fp);
 #endif
+
+#ifdef CONFIG_ktrace
+#ifdef CONFIG_ktrace_registers
+	// Write out registers.
+	kmesg("Registers:\n");
+	arch_dump_registers();
+#endif	  // CONFIG_ktrace_registers
 
 	// Parse kernel ELF.
 	Elf_Hdr* kernel = self_get_kernel();
@@ -66,8 +65,9 @@ void ktrace()
 	Elf_Sym* symbols = data + symtab->sh_offset;
 	const usize symbol_count = symtab->sh_size / symtab->sh_entsize;
 
+	// Print stack trace.
 	kmesg("Stack trace:\n");
-	for (usize i = 0; i < size && fp != NULL; fp = fp->prev, i++)
+	for (usize i = 0; i < CONFIG_ktrace_max && fp != NULL; fp = fp->prev, i++)
 	{
 		const char* symbol_name = NULL;
 		usize offset = 0;
@@ -85,12 +85,14 @@ void ktrace()
 			}
 		}
 
+		// If we have found the corresponding symbol, print its name + offset.
 		if (symbol_name != NULL)
 			kmesg("    [%u] 0x%p <%s+0x%x>\n", i, fp->return_addr, symbol_name, offset);
-		else
+		// If the address is not NULL, but we don't have any matching symbol, just print the address.
+		else if (fp->return_addr)
 		{
 			kmesg("    [%u] 0x%p\n", i, fp->return_addr);
 		}
 	}
-#endif
+#endif	  // CONFIG_ktrace
 }

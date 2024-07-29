@@ -1,16 +1,20 @@
 /* Linker script for x86 builds */
 
-. = 0xffffffff80000000 + SIZEOF_HEADERS;
 
 INCLUDE common.ld
 
 SECTIONS
 {
+	. = 0xffffffff80000000 + SIZEOF_HEADERS;
 	__ld_kernel_start = .;
+
+	.boot ALIGN(4K):
+	{
+		INCLUDE boot.ld
+	} :text
 
 	.text ALIGN(4K):
 	{
-		INCLUDE boot.ld
 		*(.init)
 		*(.text)
 		*(.text.*)

@@ -3,12 +3,17 @@
 A minimal and expandable Unix-like operating system.
 
 This is a hobby project to learn OS development.
-The kernel itself uses a microkernel architecture and is designed to be highly parallelizable.
-
-
-> The project is currently in a pre-alpha stage of development and neither stable nor ready to use.
+The kernel itself uses a hybrid microkernel architecture.
+It handles:
+- Booting
+- Interprocess Communication
+- Scheduling
+- Virtual File System
+- Virtual Memory
 
 ## Building from source
+> **Note:** The project is currently in a pre-alpha stage of development and neither stable nor ready to use.
+
 See [Building](doc/building.md)
 
 ## Contributing

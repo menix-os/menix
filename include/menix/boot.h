@@ -36,5 +36,6 @@ typedef struct
 #endif
 } BootInfo;
 
-// Main entry point. Kernel code execution starts here.
+// Gets called after platform initialization has finished.
+// This is the main kernel function.
 void kernel_main(BootInfo* const info);

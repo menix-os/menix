@@ -13,8 +13,9 @@
 	}
 #else
 #define kassert(expr, msg) \
-	if (false) \
+	if (!(expr)) \
 	{ \
+		kmesg("Assertion failed: " msg "\nExpression:\n\t" #expr "\n" __FILE__ ":" __PASTE_STR(__LINE__) "\n"); \
 	}
 #endif
 
@@ -28,4 +29,4 @@ typedef struct ATTR(packed) StackFrame
 void kmesg(const char* fmt, ...);
 
 // Print a stack trace to the kernel log.
-void ktrace();
+ATTR(always_inline) void ktrace();

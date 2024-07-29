@@ -12,6 +12,6 @@ add_architecture(x86
 	io/pci.c
 	io/io.c
 )
-add_option(page_size 0x1000)
-add_option(bits ${MENIX_BITS})
-require_option(efi)
+add_option(page_size STRING 0x1000)
+add_option(bits STRING ${MENIX_BITS})
+require_option(efi BOOL)
