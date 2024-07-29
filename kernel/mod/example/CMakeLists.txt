@@ -1,5 +1,5 @@
 # Simple example module
 
-add_module(example "marv7000" "Simple example module" MAIN ON
+add_module(example "marv7000" "Simple example module" MAIN OFF
 	main.c
 )

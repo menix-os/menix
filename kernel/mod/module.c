@@ -11,12 +11,6 @@ SECTION_DECLARE_SYMBOLS(mod)
 
 void module_init()
 {
-	// Initialize all subsystem managers.
-	module_log("Initializing subsystems...\n");
-#ifdef CONFIG_pci
-	pci_init();
-#endif
-
 	// Calculate the module count.
 	const usize module_count = SECTION_SIZE(mod) / sizeof(Module);
 	const Module* modules = (Module*)SECTION_START(mod);
@@ -43,9 +37,4 @@ void module_fini()
 		module_log("Unloading \"%s\"\n", modules[i].name);
 		modules[i].exit();
 	}
-
-	// Shutodwn all subsystem managers.
-#ifdef CONFIG_pci
-	pci_fini();
-#endif
 }

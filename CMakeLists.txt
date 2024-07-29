@@ -33,6 +33,7 @@ else()
 endif()
 
 # Set toolchain.
+include(${MENIX_CONFIG_SRC})
 include(${MENIX_SRC}/toolchain/kernel.cmake)
 include(${MENIX_SRC}/toolchain/arch/${MENIX_ARCH}.cmake)
 include(${MENIX_SRC}/toolchain/arch/defaults.cmake)
@@ -42,5 +43,4 @@ project(menix-kernel
 	LANGUAGES C ASM
 )
 
-include(${MENIX_CONFIG_SRC})
 add_subdirectory(kernel)

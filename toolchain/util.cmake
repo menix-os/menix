@@ -7,7 +7,7 @@ function(add_architecture name)
 
 	# Set linker script and common search paths.
 	set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ld -L ${MENIX_SRC} -L ${MENIX_SRC}/toolchain/linker" CACHE INTERNAL "")
-	require_option(arch_${name} BOOL)
+	require_option(arch_${name})
 endfunction(add_architecture)
 
 # Appends this directory to the Linker Script include search path.
@@ -69,11 +69,15 @@ function(build_module name)
 endfunction(build_module)
 
 # Write an option to the config header.
-function(define_option optname)
-	# Don't write disabled values.
-	if(NOT ${${optname}} STREQUAL OFF)
-		if(${${optname}} STREQUAL ON)
-			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${optname} 1\n")
+function(define_option optname type)
+	if(DEFINED ${optname})
+		# Don't write disabled booleans.
+		if(type STREQUAL BOOL)
+			if(${${optname}} STREQUAL ON)
+				file(APPEND ${MENIX_CONFIG} "#define CONFIG_${optname} 1\n")
+			endif()
+		elseif(type STREQUAL STRING)
+			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${optname} \"${${optname}}\"\n")
 		else()
 			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${optname} ${${optname}}\n")
 		endif()
@@ -82,33 +86,43 @@ endfunction(define_option)
 
 # Configuration function for adding options to a module.
 function(add_option optname type default)
+	if(type STREQUAL NUMBER)
+		set(new_type STRING)
+	else()
+		set(new_type ${type})
+	endif()
+
 	if(${MENIX_HAS_CONFIG} STREQUAL FALSE)
-		if(NOT DEFINED $CACHE{optname})
-			set(${optname} ${default} CACHE ${type} "")
+		if(NOT DEFINED ${optname})
+			set(${optname} ${default} CACHE ${new_type} "")
 			file(APPEND ${MENIX_CONFIG_SRC} "config_option(${optname} ${type} ${default})\n")
 		endif()
 	endif()
 
-	define_option(${optname})
+	define_option(${optname} ${type})
 endfunction(add_option)
 
 # Overwrite default values for including modules.
 # Values: ON, OFF, Literal
 function(config_option name type status)
+	if(type STREQUAL NUMBER)
+		set(type STRING)
+	endif()
+
 	# Set a global variable to be evaluated before any other.
 	set(${name} "${status}" CACHE ${type} "" FORCE)
 endfunction(config_option)
 
 # Automatically select a required option.
-function(require_option optname type)
+function(require_option optname)
 	# If it's explicitly turned off, we can't compile.
-	if(DEFINED CACHE{${optname}})
+	if(DEFINED ${optname})
 		if(NOT ${${optname}} STREQUAL ON)
-			message(FATAL_ERROR "\"${MENIX_CURRENT_MOD}\" requires \"${optname}\" to build, but this was explicitly turned off in the config!\n"
-				"You might want to rebuild the cache.")
+			message(FATAL_ERROR "[!] \"${MENIX_CURRENT_MOD}\" requires \"${optname}\" to build, but this was explicitly turned off in the config!\n"
+				"-> Either enable \"${optname}\", or disable \"${MENIX_CURRENT_MOD}\".\n")
 		endif()
 	else()
-		add_option(${optname} ${type} ON)
+		add_option(${optname} BOOL ON)
 	endif()
 endfunction(require_option)
 
@@ -123,7 +137,8 @@ function(conflicts_option optname)
 			if(DEFINED ${var})
 				# Check if option is enabled and not named the same as our current option.
 				if(NOT var STREQUAL MENIX_CURRENT_MOD AND ${${var}} STREQUAL ON AND ${${MENIX_CURRENT_MOD}} STREQUAL ON)
-					message(FATAL_ERROR "Module \"${MENIX_CURRENT_MOD}\" conflicts with \"${var}\", you can't have both enabled at once!")
+					message(FATAL_ERROR "[!] Module \"${MENIX_CURRENT_MOD}\" conflicts with \"${var}\", you can't have both enabled at once!\n"
+						"-> Either disable \"${MENIX_CURRENT_MOD}\" or \"${var}\".\n")
 				endif()
 			endif()
 		endif()

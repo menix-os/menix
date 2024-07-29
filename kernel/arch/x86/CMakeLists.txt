@@ -9,9 +9,7 @@ add_architecture(x86
 	boot/interrupts.c
 	boot/idt.c
 	io/serial.c
-	io/pci.c
 	io/io.c
 )
-add_option(page_size STRING 0x1000)
-add_option(bits STRING ${MENIX_BITS})
-require_option(efi BOOL)
+add_option(page_size NUMBER 0x1000)
+require_option(efi)
