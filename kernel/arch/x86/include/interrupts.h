@@ -7,5 +7,9 @@
 
 extern void int_error_handler(void);
 extern void int_error_handler_with_code(void);
-extern void int_syscall_handler(void);
-extern void sc_syscall_handler(void);
+
+// Assembly stub for syscall via interrupt.
+extern void int_syscall(void);
+
+// Assembly stub for syscall via SYSCALL/SYSRET.
+extern void sc_syscall(void);

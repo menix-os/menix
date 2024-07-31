@@ -3,26 +3,29 @@
 .section .text
 
 // Enter syscall via software interrupt 0x80.
-.global int_syscall_handler
+.global int_syscall
 .align 0x10
-int_syscall_handler:
+int_syscall:
 	sti
 	call do_syscall
 	cli
 	iretq
 
 // Enter syscall via syscall/sysret extension.
-.global sc_syscall_handler
+.global sc_syscall
 .align 0x10
-sc_syscall_handler:
-// TODO: Save RSP as it gets lost if we got here via syscall instruction!
+sc_syscall:
+	push %rcx
+	push %r11
 	call do_syscall
-	sysret
+	pop %r11
+	pop %rcx
+	sysretq
 
 // Pushes all relevant registers onto the stack, then passes a pointer as the first argument.
 .global do_syscall
-.extern syscall_handler
 .align 0x10
+.extern syscall_handler
 do_syscall:
 	push	%rax
 	push	%rbx
@@ -57,5 +60,5 @@ do_syscall:
 	pop		%rdx
 	pop		%rcx
 	pop		%rbx
-	pop		%rax
+	add		$8, %rsp /* Move the stack pointer up by 8 since we're not popping RAX back. */
 	ret

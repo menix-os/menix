@@ -27,7 +27,7 @@ void arch_stop(BootInfo* info)
 	asm volatile("hlt");
 }
 
-#define _GET_REGISTER(val, reg) asm volatile("mov %%" #reg ", %0" : "=m"(regs.reg))
+#define _GET_REGISTER(val, reg) asm volatile("mov %%" #reg ", %0" : "=m"(val.reg))
 
 void arch_dump_registers()
 {

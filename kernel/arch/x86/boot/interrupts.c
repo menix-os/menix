@@ -13,8 +13,8 @@ typedef struct
 
 static const ExceptionTable exception_names[] = {
 	[0x00] = {.stop = false, .name = "Division Error"},
-	[0x01] = {.stop = false, .name = "Non-maskable Interrupt"},
-	[0x02] = {.stop = false, .name = "Debug"},
+	[0x01] = {.stop = false, .name = "Debug"},
+	[0x02] = {.stop = false, .name = "Non-maskable Interrupt"},
 	[0x03] = {.stop = false, .name = "Breakpoint"},
 	[0x04] = {.stop = false, .name = "Overflow"},
 	[0x05] = {.stop = false, .name = "Bound Range Exceeded"},
@@ -26,7 +26,7 @@ static const ExceptionTable exception_names[] = {
 	[0x0B] = {.stop = false, .name = "Segment Not Present"},
 	[0x0C] = {.stop = false, .name = "Stack-Segment Fault"},
 	[0x0D] = {.stop = false, .name = "General protection Fault"},
-	[0x0E] = {.stop = false, .name = "Page Fault"},
+	[0x0E] = {.stop = true, .name = "Page Fault"},
 	[0x0F] = {.stop = true}, // Reserved
 	[0x10] = {.stop = false, .name = "x87 Floating-Point Exception"},
 	[0x11] = {.stop = false, .name = "Alignment Check"},
@@ -40,6 +40,14 @@ static const ExceptionTable exception_names[] = {
 	[0x1E] = {.stop = false, .name = "Security Exception"},
 	[0x1F] = {.stop = true}, // Reserved
 };
+
+void error_breakpoint_handler(u32 fault)
+{
+	asm volatile("cli");
+	asm volatile("hlt");
+	while (1)
+		;
+}
 
 void error_handler(u32 fault)
 {

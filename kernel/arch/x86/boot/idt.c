@@ -15,14 +15,12 @@ ATTR(aligned(0x10)) static IdtRegister idtr;
 
 void idt_set(u8 idx, void* handler, u8 type_attr)
 {
-	kassert(handler != NULL, "IDT Entry: Function pointer is null???\n");
-
 	IdtDesc* const target = idt_table + idx;
 	const usize ptr = (usize)handler;
 
 	target->base_0_15 = ptr & 0xFFFF;
 	target->base_16_31 = (ptr >> 16) & 0xFFFF;
-	target->selector = GDT_OFFSET(GDT_KERNEL_CODE);
+	target->selector = offsetof(Gdt, kernel_code);
 	target->type = type_attr;
 	target->reserved = 0;
 #if CONFIG_bits >= 64
@@ -41,7 +39,7 @@ void idt_reload()
 INT_HANDLER(0, error_handler);
 INT_HANDLER(1, error_handler);
 INT_HANDLER(2, error_handler);
-INT_HANDLER(3, error_handler);
+INT_HANDLER(3, error_breakpoint_handler);
 INT_HANDLER(4, error_handler);
 INT_HANDLER(5, error_handler);
 INT_HANDLER(6, error_handler);
@@ -76,57 +74,68 @@ void idt_init()
 	asm_interrupt_disable();
 
 	// Set exception vector (0x00 - 0x1F)
-	idt_set(0x00, int_error_handler_0, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x01, int_error_handler_1, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x02, int_error_handler_2, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x03, int_error_handler_3, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x04, int_error_handler_4, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x05, int_error_handler_5, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x06, int_error_handler_6, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x07, int_error_handler_7, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x08, int_error_handler_8, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x09, int_error_handler_9, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0A, int_error_handler_10, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0B, int_error_handler_11, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0C, int_error_handler_12, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0D, int_error_handler_13, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0E, int_error_handler_14, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0F, int_error_handler_15, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x10, int_error_handler_16, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x11, int_error_handler_17, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x12, int_error_handler_18, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x13, int_error_handler_19, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x14, int_error_handler_20, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x15, int_error_handler_21, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x16, int_error_handler_22, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x17, int_error_handler_23, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x18, int_error_handler_24, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x19, int_error_handler_25, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1A, int_error_handler_26, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1B, int_error_handler_27, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1C, int_error_handler_28, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1D, int_error_handler_29, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1E, int_error_handler_30, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1F, int_error_handler_31, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x00, int_0, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x01, int_1, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x02, int_2, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x03, int_3, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x04, int_4, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x05, int_5, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x06, int_6, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x07, int_7, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x08, int_8, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x09, int_9, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x0A, int_10, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x0B, int_11, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x0C, int_12, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x0D, int_13, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x0E, int_14, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x0F, int_15, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x10, int_16, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x11, int_17, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x12, int_18, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x13, int_19, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x14, int_20, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x15, int_21, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x16, int_22, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x17, int_23, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x18, int_24, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x19, int_25, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x1A, int_26, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x1B, int_27, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x1C, int_28, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x1D, int_29, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x1E, int_30, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x1F, int_31, IDT_TYPE(0, IDT_GATE_INT));
 
 	// Interrupt 0x80 is syscall (Only for legacy invocations using "int $0x80").
-	idt_set(0x80, int_syscall_handler, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x80, int_syscall, IDT_TYPE(0, IDT_GATE_INT));
 
 	// While we're at it, also enable syscall/sysret instructions.
-	// TODO: Actually set syscall entry point.
-	asm volatile("mov $0xc0000082, %%ecx\n"	   // Syscall entry RIP
-				 "wrmsr\n"					   //
-				 "mov $0xc0000080, %%ecx\n"	   // Get IA32_EFER
-				 "rdmsr\n"					   //
-				 "or $1, %%eax\n"			   // Enable IA32_EFER.SCE bit
-				 "wrmsr\n"					   //
-				 "mov $0xc0000081, %%ecx\n"	   // Set segment selectors
-				 "rdmsr\n"					   //
-				 "mov %1, %%edx\n"			   // Low 16 bits: Ring 0 CS, High: Ring 3 CS
-				 "wrmsr"					   //
-				 :
-				 : "p"(sc_syscall_handler), "i"((offsetof(Gdt, kernel_code)) | (offsetof(Gdt, user_code) << 16))
-				 : "rax", "rcx", "rdx");
+	asm volatile(
+		// Enable syscall extension (SCE)
+		"mov $0xC0000080, %%ecx\n"	  // Select IA32_EFER
+		"rdmsr\n"					  //
+		"or $1, %%eax\n"			  // Set IA32_EFER.SCE bit
+		"wrmsr\n"					  //
+
+		// Set STAR
+		"mov $0xC0000081, %%ecx\n"	  // Select STAR
+		"mov %0, %%edx\n"			  // Bits 32-47 are kernel segment base, Bits 48-63 are user segment base
+		"mov $0, %%eax\n"			  // EIP is unused
+		"wrmsr\n"					  //
+
+		// Set syscall entry point
+		"mov $0xC0000082, %%ecx\n"	  // Select LSTAR
+		"mov %1, %%eax\n"			  // Write low 32 bits to EAX
+		"mov %2, %%edx\n"			  // Write high 32 bits to EDX
+		"wrmsr\n"					  //
+
+		// TODO: We should probably do something with SFMASK...
+		:
+		: "i"((offsetof(Gdt, kernel_code)) | (offsetof(Gdt, user_code) << 16)),	   // %0
+		  "p"((u32)((u64)sc_syscall & 0xFFFFFFFF)),								   // %1
+		  "p"((u32)((u64)sc_syscall >> 32))										   // %2
+		: "eax", "ecx", "edx");													   // We modified these registers.
 
 	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);
 	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);

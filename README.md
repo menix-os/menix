@@ -8,7 +8,6 @@ It handles:
 - Booting
 - Interprocess Communication
 - Scheduling
-- Virtual File System
 - Virtual Memory
 
 ## Building from source

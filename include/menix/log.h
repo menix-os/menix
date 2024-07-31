@@ -29,4 +29,4 @@ typedef struct ATTR(packed) StackFrame
 void kmesg(const char* fmt, ...);
 
 // Print a stack trace to the kernel log.
-ATTR(always_inline) void ktrace();
+void ktrace();

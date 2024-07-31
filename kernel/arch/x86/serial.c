@@ -35,7 +35,7 @@ void serial_putchar(char c)
 		;
 	switch (c)
 	{
-		case '\0': break;
+		case '\0': break;	 // Don't transmit null terminators.
 		default: arch_x86_write8(COM1_BASE + DATA_REG, c); break;
 	}
 }

@@ -20,7 +20,8 @@ typedef struct ATTR(packed)
 	u64 ist7;
 	u32 reserved3;
 	u32 reserved4;
-	u32 iopb;
+	u16 reserved5;
+	u16 iopb;
 } TaskStateSegment;
 
 // Initializes the TSS.

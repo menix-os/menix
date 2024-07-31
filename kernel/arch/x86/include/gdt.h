@@ -4,16 +4,6 @@
 
 #include <menix/common.h>
 
-// Indices of the GDT segments
-#define GDT_KERNEL_CODE 1
-#define GDT_KERNEL_DATA 2
-#define GDT_USER_CODE	3
-#define GDT_USER_DATA	4
-#define GDT_TSS			5
-
-// Gets the offset in bytes relative to the GDTR.
-#define GDT_OFFSET(entry) (entry * sizeof(GdtDesc))
-
 #define GDTA_PRESENT	   (1 << 7)
 #define GDTA_PRIV_LVL(lvl) ((lvl & 3) << 5)
 #define GDTA_SEGMENT	   (1 << 4)
@@ -66,14 +56,17 @@ typedef struct ATTR(packed)
 	Bits reserved;	   // Reserved
 } GdtLongDesc;
 
+// These entries are ordered exactly like this because the SYSRET instruction
+// expects it.
 typedef struct ATTR(packed)
 {
-	GdtDesc null;
-	GdtDesc kernel_code;
-	GdtDesc kernel_data;
-	GdtDesc user_code;
-	GdtDesc user_data;
-	GdtLongDesc tss;
+	GdtDesc null;			// Unused
+	GdtDesc kernel_code;	// Kernel CS
+	GdtDesc kernel_data;	// Kernel DS
+	GdtDesc user_code;		// 32-bit compatibility mode user CS
+	GdtDesc user_data;		// User DS
+	GdtDesc user_code64;	// 64-bit user CS
+	GdtLongDesc tss;		// Task state segment
 } Gdt;
 
 // GDT register

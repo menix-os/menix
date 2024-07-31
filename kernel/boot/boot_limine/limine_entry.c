@@ -131,7 +131,7 @@ void kernel_boot()
 			files[i].address = res->modules[i]->address;
 			files[i].size = res->modules[i]->size;
 			files[i].path = res->modules[i]->path;
-			boot_log("    Address: 0x%p, Size: 0x%p Path: \"%s\"\n", files[i].address, files[i].size, files[i].path);
+			boot_log("    Address = 0x%p, Size = 0x%p Path = \"%s\"\n", files[i].address, files[i].size, files[i].path);
 		}
 		info.file_num = res->module_count;
 		info.files = files;

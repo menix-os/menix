@@ -16,8 +16,6 @@ if(NOT DEFINED MENIX_ARCH)
 	set(MENIX_ARCH "x86")
 endif()
 
-set(CMAKE_C_STANDARD 23)
-
 # Common build system functionality.
 set(MENIX_UTIL_PATH ${MENIX_SRC}/toolchain/util.cmake)
 include(${MENIX_UTIL_PATH})
@@ -32,13 +30,10 @@ else()
 	set(MENIX_HAS_CONFIG TRUE)
 endif()
 
-# Set toolchain.
-include(${MENIX_CONFIG_SRC})
-include(${MENIX_SRC}/toolchain/kernel.cmake)
-include(${MENIX_SRC}/toolchain/arch/${MENIX_ARCH}.cmake)
-include(${MENIX_SRC}/toolchain/arch/defaults.cmake)
+set(CMAKE_C_STANDARD 23)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-project(menix-kernel
+project(menix
 	VERSION ${MENIX_VERSION}
 	LANGUAGES C ASM
 )

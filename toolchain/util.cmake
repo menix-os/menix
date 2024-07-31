@@ -3,6 +3,7 @@
 # Setup a new CPU architecture.
 # * name		Name of the architecture (and current subdir)
 function(add_architecture name)
+	set(MENIX_CURRENT_MOD arch_${name} CACHE INTERNAL "")
 	add_library(menix_arch_${name} STATIC ${ARGN})
 
 	# Set linker script and common search paths.
@@ -22,6 +23,8 @@ endfunction(add_linker_dir)
 # * license		License of the module (e.g. "MIT") or "MAIN", if the project's main license.
 # * default		Default configuration value (ON/OFF)
 function(add_module name author desc license default)
+	set(MENIX_CURRENT_MOD ${name} CACHE INTERNAL "")
+
 	# Generate a config entry if there is none already. If there is, include its values.
 	add_option(${MENIX_CURRENT_MOD} BOOL ${default})
 
@@ -61,13 +64,6 @@ function(add_module name author desc license default)
 	endif()
 endfunction(add_module)
 
-# Configuration function for including a module in the build process.
-function(build_module name)
-	set(MENIX_CURRENT_MOD ${name} CACHE INTERNAL "")
-
-	add_subdirectory(${name})
-endfunction(build_module)
-
 # Write an option to the config header.
 function(define_option optname type)
 	if(DEFINED ${optname})
@@ -81,6 +77,8 @@ function(define_option optname type)
 		else()
 			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${optname} ${${optname}}\n")
 		endif()
+
+		message(STATUS ${optname})
 	endif()
 endfunction(define_option)
 
@@ -118,12 +116,17 @@ function(require_option optname)
 	# If it's explicitly turned off, we can't compile.
 	if(DEFINED ${optname})
 		if(NOT ${${optname}} STREQUAL ON)
-			message(FATAL_ERROR "[!] \"${MENIX_CURRENT_MOD}\" requires \"${optname}\" to build, but this was explicitly turned off in the config!\n"
-				"-> Either enable \"${optname}\", or disable \"${MENIX_CURRENT_MOD}\".\n")
+			if(${optname} STREQUAL ${MENIX_CURRENT_MOD})
+				message(FATAL_ERROR "[!] \"${MENIX_CURRENT_MOD}\" cannot be disabled!\n"
+					"-> Enable \"${MENIX_CURRENT_MOD}\"\n")
+			else()
+				message(FATAL_ERROR "[!] \"${MENIX_CURRENT_MOD}\" requires \"${optname}\" to build, but this was explicitly turned off in the config!\n"
+					"-> Either enable \"${optname}\", or disable \"${MENIX_CURRENT_MOD}\".\n")
+			endif()
 		endif()
-	else()
-		add_option(${optname} BOOL ON)
 	endif()
+
+	add_option(${optname} BOOL ON)
 endfunction(require_option)
 
 # This module can not be enabled while another option is active.

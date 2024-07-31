@@ -17,4 +17,4 @@ void arch_init(BootInfo* info);
 void arch_stop(BootInfo* info);
 
 // Writes all registers to the current output stream.
-ATTR(always_inline) void arch_dump_registers();
+void arch_dump_registers();
