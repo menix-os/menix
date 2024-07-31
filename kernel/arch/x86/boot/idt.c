@@ -3,6 +3,7 @@
 #include <menix/log.h>
 #include <menix/memory/io.h>
 
+#include <bits/arch.h>
 #include <bits/asm.h>
 #include <gdt.h>
 #include <idt.h>
@@ -111,31 +112,14 @@ void idt_init()
 	idt_set(0x80, int_syscall, IDT_TYPE(0, IDT_GATE_INT));
 
 	// While we're at it, also enable syscall/sysret instructions.
-	asm volatile(
-		// Enable syscall extension (SCE)
-		"mov $0xC0000080, %%ecx\n"	  // Select IA32_EFER
-		"rdmsr\n"					  //
-		"or $1, %%eax\n"			  // Set IA32_EFER.SCE bit
-		"wrmsr\n"					  //
-
-		// Set STAR
-		"mov $0xC0000081, %%ecx\n"	  // Select STAR
-		"mov %0, %%edx\n"			  // Bits 32-47 are kernel segment base, Bits 48-63 are user segment base
-		"mov $0, %%eax\n"			  // EIP is unused
-		"wrmsr\n"					  //
-
-		// Set syscall entry point
-		"mov $0xC0000082, %%ecx\n"	  // Select LSTAR
-		"mov %1, %%eax\n"			  // Write low 32 bits to EAX
-		"mov %2, %%edx\n"			  // Write high 32 bits to EDX
-		"wrmsr\n"					  //
-
-		// TODO: We should probably do something with SFMASK...
-		:
-		: "i"((offsetof(Gdt, kernel_code)) | (offsetof(Gdt, user_code) << 16)),	   // %0
-		  "p"((u32)((u64)sc_syscall & 0xFFFFFFFF)),								   // %1
-		  "p"((u32)((u64)sc_syscall >> 32))										   // %2
-		: "eax", "ecx", "edx");													   // We modified these registers.
+	// Enable syscall extension (EFER.SCE).
+	asm_wrmsr(MSR_EFER, asm_rdmsr(MSR_EFER) | 1);
+	// Bits 32-47 are kernel segment base, Bits 48-63 are user segment base. Lower 32 bits (EIP) are unused.
+	asm_wrmsr(MSR_STAR, (offsetof(Gdt, kernel_code)) | (offsetof(Gdt, user_code) << 16) << 32);
+	// Set syscall entry point.
+	asm_wrmsr(MSR_LSTAR, (u64)sc_syscall);
+	// Set the flag mask to everything except the second bit (always has to be enabled).
+	asm_wrmsr(MSR_SFMASK, (u64) ~((u32)2));
 
 	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);
 	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);

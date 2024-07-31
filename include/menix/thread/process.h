@@ -1,4 +1,4 @@
-// Process and thread management
+// Process management.
 
 #pragma once
 
@@ -13,7 +13,7 @@ typedef struct
 
 typedef struct
 {
-	Process* process;	 // The underlying process
+	Process* process;	 // The underlying process.
 } Thread;
 
 // Creates a new process of an executable pointed to by `path`.

@@ -3,8 +3,28 @@
 #pragma once
 
 #include <menix/common.h>
+#include <menix/thread/process.h>
 
-typedef struct
+#if CONFIG_page_size < 4096
+#error "Page size must be at least 4KiB!"
+#endif
+
+#define MSR_EFER   0xC0000080
+#define MSR_STAR   0xC0000081
+#define MSR_LSTAR  0xC0000082
+#define MSR_CSTAR  0xC0000083
+#define MSR_SFMASK 0xC0000084
+
+struct ArchCpu
+{
+	u64 id;				 // Unique index of this CPU.
+	Thread* thread;		 // Current thread running on this CPU.
+	u64 kernel_stack;	 // RSP for the kernel.
+	u64 user_stack;		 // RSP for the user space.
+};
+
+// All code-visible CPU registers.
+struct ArchRegisters
 {
 	u64 r15;
 	u64 r14;
@@ -29,4 +49,11 @@ typedef struct
 	u64 rflags;
 	u64 rsp;
 	u64 ss;
-} CpuRegisters;
+};
+
+#define arch_current_cpu() \
+	({ \
+		u64 id; \
+		asm volatile("mov %%gs:0, %0" : "=r"(id) : : "memory"); \
+		&cpus[id]; \
+	})

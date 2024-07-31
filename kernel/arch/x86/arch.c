@@ -2,6 +2,7 @@
 
 #include <menix/arch.h>
 #include <menix/log.h>
+#include <menix/memory/vm.h>
 #include <menix/serial.h>
 
 #include <gdt.h>
@@ -18,7 +19,7 @@ void arch_early_init()
 
 void arch_init(BootInfo* info)
 {
-	// TODO: Initialize SMP
+	vm_init(&info->memory_map);
 }
 
 void arch_stop(BootInfo* info)

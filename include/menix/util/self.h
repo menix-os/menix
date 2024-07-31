@@ -6,16 +6,24 @@
 #include <menix/thread/elf.h>
 #include <menix/util/types.h>
 
-extern volatile const u8 __ld_kernel_start;
-extern volatile const u8 __ld_kernel_end;
+extern const u8 __ld_kernel_start[];
+extern const u8 __ld_kernel_end[];
 
 #define SECTION_DECLARE_SYMBOLS(section) \
-	extern volatile const u8 __ld_sect_##section##_start; \
-	extern volatile const u8 __ld_sect_##section##_end;
+	extern const u8 __ld_sect_##section##_start[]; \
+	extern const u8 __ld_sect_##section##_end[];
 
-#define SECTION_START(section) (&__ld_sect_##section##_start)
-#define SECTION_END(section)   (&__ld_sect_##section##_end)
+#define SECTION_START(section) (__ld_sect_##section##_start)
+#define SECTION_END(section)   (__ld_sect_##section##_end)
 #define SECTION_SIZE(section)  (SECTION_END(section) - SECTION_START(section))
+
+#define SEGMENT_DECLARE_SYMBOLS(segment) \
+	extern const u8 __ld_seg_##segment##_start[]; \
+	extern const u8 __ld_seg_##segment##_end[];
+
+#define SEGMENT_START(segment) (__ld_seg_##segment##_start)
+#define SEGMENT_END(segment)   (__ld_seg_##segment##_end)
+#define SEGMENT_SIZE(segment)  (SECTION_END(segment) - SECTION_START(segment))
 
 // Sets the current kernel context to the given address.
 void self_set_kernel(Elf_Hdr* addr);

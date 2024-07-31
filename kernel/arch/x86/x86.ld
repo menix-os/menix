@@ -8,6 +8,7 @@ SECTIONS
 	. = 0xffffffff80000000 + SIZEOF_HEADERS;
 	__ld_kernel_start = .;
 
+	__ld_seg_text_start = .;
 	.boot ALIGN(4K):
 	{
 		INCLUDE boot.ld
@@ -20,13 +21,17 @@ SECTIONS
 		*(.text.*)
 		*(.fini)
 	} :text
+	__ld_seg_text_end = .;
 
+	__ld_seg_rodata_start = .;
 	.rodata ALIGN(4K):
 	{
 		*(.rodata)
 		*(.rodata.*)
 	} :rodata
+	__ld_seg_rodata_end = .;
 
+	__ld_seg_data_start = .;
 	.mod ALIGN(4K):
 	{
 		__ld_sect_mod_start = .;
@@ -46,6 +51,7 @@ SECTIONS
 		*(.bss.*)
 		*(COMMON)
 	}
+	__ld_seg_data_end = .;
 
 	__ld_kernel_end = .;
 

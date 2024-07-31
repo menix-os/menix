@@ -30,8 +30,8 @@ LIMINE_REQUEST struct limine_module_request module_request = {
 	.revision = 0,
 };
 
-#ifdef CONFIG_efi
-LIMINE_REQUEST struct limine_efi_system_table_request efi_st_request = {
+#ifdef CONFIG_acpi
+LIMINE_REQUEST struct limine_rsdp_request rsdp_request = {
 	.id = LIMINE_EFI_SYSTEM_TABLE_REQUEST,
 	.revision = 0,
 };
@@ -65,12 +65,11 @@ void kernel_boot()
 		boot_log("Boot timestamp: %u\n", (u32)time_request.response->boot_time);
 	}
 
-#ifdef CONFIG_efi
-	kassert(efi_st_request.response->address, "Unable to get EFI System Table!\n") else
+#ifdef CONFIG_acpi
+	kassert(rsdp_request.response->address, "Unable to get ACPI RSDP Table!\n") else
 	{
-		info.efi_st = efi_st_request.response->address;
-		boot_log("[EFI] System Table at 0x%p\n", info.efi_st);
-		boot_log("[EFI] Number of table entries: %u\n", info.efi_st->NumberOfTableEntries);
+		info.acpi_rsdp = rsdp_request.response->address;
+		boot_log("ACPI System Table at 0x%p\n", info.acpi_rsdp);
 	}
 #endif
 
@@ -88,25 +87,13 @@ void kernel_boot()
 			map[i].address = res->entries[i]->base;
 			map[i].length = res->entries[i]->length;
 
-			const char* typ = "Unknown";
 			switch (res->entries[i]->type)
 			{
-				case LIMINE_MEMMAP_USABLE:
-					map[i].usage = PhysMemoryUsage_Free;
-					typ = "Free";
-					break;
-				case LIMINE_MEMMAP_RESERVED:
-					map[i].usage = PhysMemoryUsage_Reserved;
-					typ = "Reserved";
-					break;
-				case LIMINE_MEMMAP_FRAMEBUFFER:
-					map[i].usage = PhysMemoryUsage_Reserved;
-					typ = "Framebuffer";
-					break;
+				case LIMINE_MEMMAP_USABLE: map[i].usage = PhysMemoryUsage_Free; break;
+				case LIMINE_MEMMAP_RESERVED: map[i].usage = PhysMemoryUsage_Reserved; break;
+				case LIMINE_MEMMAP_FRAMEBUFFER: map[i].usage = PhysMemoryUsage_Reserved; break;
 				default: map[i].usage = PhysMemoryUsage_Unknown; break;
 			}
-
-			boot_log("    Address = 0x%p Length = 0x%p Type = %s\n", map[i].address, map[i].length, typ);
 		}
 	}
 
@@ -131,7 +118,8 @@ void kernel_boot()
 			files[i].address = res->modules[i]->address;
 			files[i].size = res->modules[i]->size;
 			files[i].path = res->modules[i]->path;
-			boot_log("    Address = 0x%p, Size = 0x%p Path = \"%s\"\n", files[i].address, files[i].size, files[i].path);
+			boot_log("    Address = 0x%p, Size = 0x%p, Path = \"%s\"\n", files[i].address, files[i].size,
+					 files[i].path);
 		}
 		info.file_num = res->module_count;
 		info.files = files;
@@ -154,7 +142,7 @@ void kernel_boot()
 		buffer.blue_shift = buf->blue_mask_shift;
 		buffer.blue_size = buf->blue_mask_size;
 
-		boot_log("    Address = 0x%p Resolution = %ux%ux%u\n", buffer.base, (u32)buffer.width, (u32)buffer.height,
+		boot_log("    Address = 0x%p, Resolution = %ux%ux%u\n", buffer.base, (u32)buffer.width, (u32)buffer.height,
 				 (u32)buffer.bpp);
 
 		info.fb_num = 1;

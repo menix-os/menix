@@ -15,11 +15,13 @@ int_syscall:
 .global sc_syscall
 .align 0x10
 sc_syscall:
+	sti
 	push %rcx
 	push %r11
 	call do_syscall
 	pop %r11
 	pop %rcx
+	cli
 	sysretq
 
 // Pushes all relevant registers onto the stack, then passes a pointer as the first argument.

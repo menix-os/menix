@@ -1,27 +1,20 @@
 // Virtual memory management
 
 #pragma once
+
 #include <menix/common.h>
+#include <menix/memory/pm.h>
 
-typedef enum : usize
-{
-	PhysMemoryUsage_Free,		 // Free and usable memory.
-	PhysMemoryUsage_Reserved,	 // Reserved memory.
-	PhysMemoryUsage_Unknown,	 // Unknown memory region.
-} PhysMemoryUsage;
+// Initializes the virtual memory mapping with a bootloader-provided physical memory map.
+void vm_init(PhysMemoryMap* mem_map);
 
-// Describes a single block of physical memory.
-typedef struct
-{
-	usize address;			  // Start address of the memory region.
-	usize length;			  // Length of the memory region in bytes.
-	PhysMemoryUsage usage;	  // How this memory region is used.
-} PhysMemory;
+// Translates a virtual address to a physical address.
+// Returns 0 if not mapped.
+PhysAddr vm_virt_to_phys(void* address);
 
-// Contains information about available physical memory.
-// The boot function is responsible for providing this information before passing control to the kernel.
-typedef struct
-{
-	usize num_blocks;	   // Amount of memory blocks.
-	PhysMemory* blocks;	   // Array of `num_blocks` size.
-} PhysMemoryMap;
+// Maps a virtual address to physical memory.
+void vm_map_page(PhysAddr phys_addr, void* virt_addr);
+
+// Unmaps a virtual address.
+// Does nothing if the address isn't mapped.
+void vm_unmap_page(void* virt_addr);

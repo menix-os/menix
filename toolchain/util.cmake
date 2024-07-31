@@ -77,8 +77,6 @@ function(define_option optname type)
 		else()
 			file(APPEND ${MENIX_CONFIG} "#define CONFIG_${optname} ${${optname}}\n")
 		endif()
-
-		message(STATUS ${optname})
 	endif()
 endfunction(define_option)
 
@@ -90,25 +88,28 @@ function(add_option optname type default)
 		set(new_type ${type})
 	endif()
 
-	if(${MENIX_HAS_CONFIG} STREQUAL FALSE)
-		if(NOT DEFINED ${optname})
-			set(${optname} ${default} CACHE ${new_type} "")
+	if(NOT DEFINED ${optname})
+		set(${optname} ${default} CACHE ${new_type} "")
+		define_option(${optname} ${type})
+
+		if(${MENIX_HAS_CONFIG} STREQUAL FALSE)
 			file(APPEND ${MENIX_CONFIG_SRC} "config_option(${optname} ${type} ${default})\n")
 		endif()
 	endif()
-
-	define_option(${optname} ${type})
 endfunction(add_option)
 
 # Overwrite default values for including modules.
 # Values: ON, OFF, Literal
 function(config_option name type status)
 	if(type STREQUAL NUMBER)
-		set(type STRING)
+		set(new_type STRING)
+	else()
+		set(new_type ${type})
 	endif()
 
 	# Set a global variable to be evaluated before any other.
-	set(${name} "${status}" CACHE ${type} "" FORCE)
+	set(${name} "${status}" CACHE ${new_type} "" FORCE)
+	define_option(${name} ${type})
 endfunction(config_option)
 
 # Automatically select a required option.

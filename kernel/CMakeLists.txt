@@ -28,17 +28,19 @@ include_directories(${MENIX_SRC}/kernel/arch/${MENIX_ARCH}/include/)
 add_subdirectory(arch/${MENIX_ARCH_DIR})
 add_subdirectory(boot)
 add_subdirectory(klibc)
-add_subdirectory(misc)
 add_subdirectory(mod)
 add_subdirectory(sys)
+add_subdirectory(thread)
+add_subdirectory(util)
 add_subdirectory(video)
 
 target_link_libraries(menix PUBLIC
 	menix_arch_${MENIX_ARCH_DIR}
 	menix_boot
 	menix_klibc
-	menix_misc
 	menix_mod
 	menix_sys
+	menix_thread
+	menix_util
 	menix_video
 )

@@ -9,7 +9,11 @@ add_architecture(x86
 	boot/idt.c
 	arch.c
 	serial.c
+	vm.c
 )
 
 add_option(page_size NUMBER 0x1000)
+add_option(smp BOOL ON)
+
 require_option(efi)
+require_option(acpi)

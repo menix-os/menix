@@ -1,6 +1,6 @@
 # Miscellaneous kernel utilities
 
-add_library(menix_misc STATIC
+add_library(menix_util STATIC
 	self.c
 	cmd.c
 )

@@ -1,0 +1,21 @@
+// Spinlock
+
+#include <menix/common.h>
+
+typedef struct
+{
+	void* owner;	// The most recent owner.
+	usize cpu;		// The CPU ID connected to the owner.
+	bool locked;	// Whether it's locked or not.
+} SpinLock;
+
+// Attempt to acquire the lock.
+// Returns true if successful.
+bool spin_lock(SpinLock* lock);
+
+// Attempt to acquire the lock.
+// If unsuccessful, attempts again.
+void spin_lock_loop(SpinLock* lock);
+
+// Frees the lock if it was previously locked.
+void spin_unlock(SpinLock* lock);

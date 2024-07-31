@@ -7,13 +7,7 @@
 #include <menix/memory/vm.h>
 #include <menix/video/fb.h>
 
-#ifdef CONFIG_efi
-#include <efi.h>
-#include <efiapi.h>
-#endif
-
 #define boot_log(fmt, ...) kmesg("[Boot] " fmt, ##__VA_ARGS__)
-#define boot_err(fmt, ...) kmesg("[Boot] " fmt, ##__VA_ARGS__)
 
 typedef struct
 {
@@ -31,8 +25,8 @@ typedef struct
 	PhysMemoryMap memory_map;	 // Physical memory mapping
 	usize file_num;				 // Amount of files loaded
 	File* files;				 // Available files
-#ifdef CONFIG_efi
-	EFI_SYSTEM_TABLE* efi_st;	 // EFI system table.
+#ifdef CONFIG_acpi
+	void* acpi_rsdp;	// ACPI RSDP table.
 #endif
 } BootInfo;
 

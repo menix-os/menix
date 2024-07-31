@@ -1,7 +1,6 @@
 // Module and sub-system initialization.
 
 #include <menix/common.h>
-#include <menix/drv/pci.h>
 #include <menix/log.h>
 #include <menix/module.h>
 #include <menix/util/self.h>
