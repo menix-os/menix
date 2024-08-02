@@ -58,3 +58,12 @@ void arch_dump_registers()
 	kmesg("r8:  0x%p r9:  0x%p r10: 0x%p r11: 0x%p\n", regs.r8, regs.r9, regs.r10, regs.r11);
 	kmesg("r12: 0x%p r13: 0x%p r14: 0x%p r15: 0x%p\n", regs.r12, regs.r13, regs.r14, regs.r15);
 }
+
+Cpu cpus[CONFIG_max_cpus];
+
+Cpu* arch_current_cpu()
+{
+	u64 id;
+	asm volatile("mov %%gs:0, %0" : "=r"(id) : : "memory");
+	return &cpus[id];
+}

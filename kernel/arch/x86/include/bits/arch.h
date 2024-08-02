@@ -50,10 +50,3 @@ struct ArchRegisters
 	u64 rsp;
 	u64 ss;
 };
-
-#define arch_current_cpu() \
-	({ \
-		u64 id; \
-		asm volatile("mov %%gs:0, %0" : "=r"(id) : : "memory"); \
-		&cpus[id]; \
-	})

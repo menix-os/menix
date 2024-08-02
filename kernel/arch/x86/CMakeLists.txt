@@ -14,6 +14,7 @@ add_architecture(x86
 
 add_option(page_size NUMBER 0x1000)
 add_option(smp BOOL ON)
+add_option(max_cpus NUMBER 128)
 
 require_option(efi)
 require_option(acpi)
