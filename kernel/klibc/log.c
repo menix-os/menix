@@ -20,19 +20,18 @@ void kmesg(const char* fmt, ...)
 
 void ktrace()
 {
+#ifdef CONFIG_ktrace
 #ifndef asm_get_frame_pointer
 #error "Need asm_get_frame_pointer to do ktrace!"
 #else
 	StackFrame* fp;
 	asm_get_frame_pointer(fp);
 #endif
-
-#ifdef CONFIG_ktrace
 #ifdef CONFIG_ktrace_registers
 	// Write out registers.
 	kmesg("Registers:\n");
 	arch_dump_registers();
-#endif	  // CONFIG_ktrace_registers
+#endif
 
 	// Parse kernel ELF.
 	Elf_Hdr* kernel = self_get_kernel();
@@ -94,5 +93,12 @@ void ktrace()
 			kmesg("    [%u] 0x%p\n", i, fp->return_addr);
 		}
 	}
-#endif	  // CONFIG_ktrace
+#endif
+}
+
+ATTR(noreturn) void kabort()
+{
+	arch_stop(NULL);
+	while (1)
+		;
 }

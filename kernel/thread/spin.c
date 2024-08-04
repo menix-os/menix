@@ -5,7 +5,7 @@
 
 static void* last_addr = NULL;
 
-bool spin_lock(SpinLock* lock)
+bool spin_acquire(SpinLock* lock)
 {
 	if (!lock)
 		return false;
@@ -19,7 +19,7 @@ bool spin_lock(SpinLock* lock)
 	return result;
 }
 
-void spin_lock_loop(SpinLock* lock)
+void spin_acquire_force(SpinLock* lock)
 {
 	if (!lock)
 		return;
@@ -29,7 +29,7 @@ void spin_lock_loop(SpinLock* lock)
 	// Keep trying to lock.
 	while (1)
 	{
-		if (spin_lock(lock))
+		if (spin_acquire(lock))
 			break;
 		asm_pause();
 	}

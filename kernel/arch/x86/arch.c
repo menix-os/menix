@@ -19,7 +19,6 @@ void arch_early_init()
 
 void arch_init(BootInfo* info)
 {
-	vm_init(&info->memory_map);
 }
 
 void arch_stop(BootInfo* info)

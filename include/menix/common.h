@@ -6,7 +6,7 @@
 #include <menix/util/types.h>
 
 // Attributes/Decorators
-#define ATTR(x) __attribute__((x))
+#define ATTR(...) __attribute__((__VA_ARGS__))
 
 // Macro pasting glue
 #define __PASTE2(x)		x
@@ -19,5 +19,11 @@
 // Gets the amount of elements in a compile time array.
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
-// Alias for inline assembly
+// Alias for inline assembly.
 #define asm __asm__
+
+// Align an integer, rounding down.
+#define ALIGN_DOWN(value, align) ((value) & ~((typeof(value))((align) - 1)))
+
+// Align an integer, rounding up.
+#define ALIGN_UP(value, align) (ALIGN_DOWN(value, align) + align)

@@ -4,20 +4,14 @@
 
 #include <menix/common.h>
 
-#ifndef NDEBUG
+// Expression must be true, or else execution will stop.
 #define kassert(expr, msg) \
 	if (!(expr)) \
 	{ \
 		kmesg("Assertion failed: " msg "\nExpression:\n\t" #expr "\n" __FILE__ ":" __PASTE_STR(__LINE__) "\n"); \
 		ktrace(); \
+		kabort(); \
 	}
-#else
-#define kassert(expr, msg) \
-	if (!(expr)) \
-	{ \
-		kmesg("Assertion failed: " msg "\nExpression:\n\t" #expr "\n" __FILE__ ":" __PASTE_STR(__LINE__) "\n"); \
-	}
-#endif
 
 typedef struct ATTR(packed) StackFrame
 {
@@ -30,3 +24,6 @@ void kmesg(const char* fmt, ...);
 
 // Print a stack trace to the kernel log.
 void ktrace();
+
+// Abort kernel execution.
+ATTR(noreturn) void kabort();

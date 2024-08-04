@@ -6,7 +6,8 @@
 #include <menix/memory/pm.h>
 
 // Initializes the virtual memory mapping with a bootloader-provided physical memory map.
-void vm_init(PhysMemoryMap* mem_map);
+// `phys_base` must be a virtual address memory mapped to 0x0.
+void vm_init(void* phys_base, PhysMemory* mem_map, usize num_entries);
 
 // Translates a virtual address to a physical address.
 // Returns 0 if not mapped.
