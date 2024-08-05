@@ -10,6 +10,7 @@ add_architecture(x86
 	arch.c
 	serial.c
 	vm.c
+	pm.c
 )
 
 add_option(page_size NUMBER 0x1000)

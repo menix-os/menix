@@ -9,6 +9,9 @@
 extern const u8 __ld_kernel_start[];
 extern const u8 __ld_kernel_end[];
 
+#define KERNEL_START (__ld_kernel_start)
+#define KERENL_END	 (__ld_kernel_end)
+
 #define SECTION_DECLARE_SYMBOLS(section) \
 	extern const u8 __ld_sect_##section##_start[]; \
 	extern const u8 __ld_sect_##section##_end[];

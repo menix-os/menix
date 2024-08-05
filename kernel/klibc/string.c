@@ -43,7 +43,7 @@ void* memmove(void* dstptr, const void* srcptr, usize size)
 	return dstptr;
 }
 
-void* memset(void* bufptr, int value, usize size)
+void* memset(void* bufptr, u8 value, usize size)
 {
 	u8* buf = (u8*)bufptr;
 	for (usize i = 0; i < size; i++)

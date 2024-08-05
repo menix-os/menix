@@ -65,8 +65,8 @@ void kernel_boot()
 			switch (res->entries[i]->type)
 			{
 				// Note: We treat Kernel maps like free memory as we do our own mapping.
-				case LIMINE_MEMMAP_KERNEL_AND_MODULES:
 				case LIMINE_MEMMAP_USABLE: map[i].usage = PhysMemoryUsage_Free; break;
+				case LIMINE_MEMMAP_KERNEL_AND_MODULES: map[i].usage = PhysMemoryUsage_Kernel; break;
 				case LIMINE_MEMMAP_RESERVED:
 				case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
 				case LIMINE_MEMMAP_ACPI_NVS: map[i].usage = PhysMemoryUsage_Reserved; break;
@@ -88,9 +88,16 @@ void kernel_boot()
 		{
 			boot_log("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 		}
+		kassert(kernel_address_request.response, "Unable to get kernel address info!\n") else
+		{
+			struct limine_kernel_address_response* const res = kernel_address_request.response;
+			boot_log("Kernel loaded at: 0x%p (0x%p)\n", res->virtual_base, res->physical_base);
+		}
 
 		// Initialize virtual memory using the memory map we got.
-		vm_init((void*)hhdm_request.response->offset, map, res->entry_count);
+		pm_init((void*)hhdm_request.response->offset, map, res->entry_count);
+		vm_init((void*)hhdm_request.response->offset, (PhysAddr)kernel_address_request.response->physical_base, map,
+				res->entry_count);
 	}
 
 	kassert(boot_time_request.response, "Unable to get boot timestamp!\n") else
@@ -124,12 +131,6 @@ void kernel_boot()
 		boot_log("Command line: \"%s\"\n", res->kernel_file->cmdline);
 
 		info.cmd = res->kernel_file->cmdline;
-	}
-
-	kassert(kernel_address_request.response, "Unable to get kernel address info!\n") else
-	{
-		struct limine_kernel_address_response* const res = kernel_address_request.response;
-		boot_log("Kernel loaded at: 0x%p (0x%p)\n", res->virtual_base, res->physical_base);
 	}
 
 	kassert(module_request.response, "Unable to get modules!\n") else

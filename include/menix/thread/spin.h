@@ -1,5 +1,7 @@
 // Spinlock
 
+#pragma once
+
 #include <menix/common.h>
 
 typedef struct
@@ -18,4 +20,4 @@ bool spin_acquire(SpinLock* lock);
 void spin_acquire_force(SpinLock* lock);
 
 // Frees the lock if it was previously locked.
-void spin_unlock(SpinLock* lock);
+void spin_free(SpinLock* lock);

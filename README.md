@@ -2,17 +2,20 @@
 
 A minimal and expandable Unix-like operating system.
 
+> [!Note]
+> The project is currently in a pre-alpha stage of development and neither stable nor ready to use.
+
 This is a hobby project to learn OS development.
 The kernel itself uses a hybrid microkernel architecture.
-It handles:
+
+The kernel handles:
 - Booting
 - Interprocess Communication
 - Scheduling
 - Virtual Memory
+- Virtual File System
 
 ## Building from source
-> **Note:** The project is currently in a pre-alpha stage of development and neither stable nor ready to use.
-
 See [Building](doc/building.md)
 
 ## Contributing
