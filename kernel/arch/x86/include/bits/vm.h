@@ -12,12 +12,20 @@ typedef struct
 	SpinLock lock;
 } PageMap;
 
+typedef enum
+{
+	PageSize_4KiB,
+	PageSize_2MiB,
+} PageSize;
+
+void vm_set_page_map(PageMap* map);
+
 // Translates a virtual address to a physical address.
 // Returns 0 if not mapped.
 PhysAddr vm_arch_virt_to_phys(void* address);
 
 // Maps a virtual address to physical memory. Returns true if successful.
-bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags);
+bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags, PageSize size);
 
 // Redefines an existing mapping. Returns true if successful.
 bool vm_arch_remap_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags);
@@ -25,3 +33,6 @@ bool vm_arch_remap_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, 
 // Unmaps a virtual address.
 // Does nothing if the address isn't mapped.
 void vm_arch_unmap_page(PageMap* page_map, void* virt_addr);
+
+// Page fault interrupt handler. Set by vm_init().
+void vm_page_fault_handler(u32 fault, u32 code);

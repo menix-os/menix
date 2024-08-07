@@ -4,12 +4,14 @@
 
 #include <menix/common.h>
 
-#define asm_gdt_set(table)		 asm volatile("lgdt %0" ::"m"(table))
-#define asm_interrupt_disable()	 asm volatile("cli")
-#define asm_interrupt_enable()	 asm volatile("sti")
-#define asm_get_frame_pointer(x) asm volatile("mov %%rbp, %0" : "=m"(x))
-#define asm_pause()				 asm volatile("pause")
-#define asm_nop()				 asm volatile("nop")
+#define asm_set_register(value, reg)  asm volatile("mov %0, %%" #reg ::"r"(value) : "memory")
+#define asm_get_register(result, reg) asm volatile("mov %%" #reg ", %0" : "=r"(result)::"memory")
+#define asm_gdt_set(table)			  asm volatile("lgdt %0" ::"m"(table))
+#define asm_interrupt_disable()		  asm volatile("cli")
+#define asm_interrupt_enable()		  asm volatile("sti")
+#define asm_get_frame_pointer(x)	  asm volatile("mov %%rbp, %0" : "=m"(x))
+#define asm_pause()					  asm volatile("pause")
+#define asm_nop()					  asm volatile("nop")
 
 // Flushes all segment registers and reloads them.
 #define asm_flush_segment_regs(code_seg, data_seg) \

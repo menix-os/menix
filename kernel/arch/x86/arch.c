@@ -27,30 +27,25 @@ void arch_stop(BootInfo* info)
 	asm volatile("hlt");
 }
 
-#define _GET_REGISTER(val, reg) asm volatile("mov %%" #reg ", %0" : "=m"(val.reg))
-
 void arch_dump_registers()
 {
 	CpuRegisters regs;
-	_GET_REGISTER(regs, rax);
-	_GET_REGISTER(regs, rbx);
-	_GET_REGISTER(regs, rcx);
-	_GET_REGISTER(regs, rdx);
-
-	_GET_REGISTER(regs, rsi);
-	_GET_REGISTER(regs, rdi);
-	_GET_REGISTER(regs, rbp);
-	_GET_REGISTER(regs, rsp);
-
-	_GET_REGISTER(regs, r8);
-	_GET_REGISTER(regs, r9);
-	_GET_REGISTER(regs, r10);
-	_GET_REGISTER(regs, r11);
-
-	_GET_REGISTER(regs, r12);
-	_GET_REGISTER(regs, r13);
-	_GET_REGISTER(regs, r14);
-	_GET_REGISTER(regs, r15);
+	asm_get_register(regs.rax, rax);
+	asm_get_register(regs.rbx, rbx);
+	asm_get_register(regs.rcx, rcx);
+	asm_get_register(regs.rdx, rdx);
+	asm_get_register(regs.rsi, rsi);
+	asm_get_register(regs.rdi, rdi);
+	asm_get_register(regs.rbp, rbp);
+	asm_get_register(regs.rsp, rsp);
+	asm_get_register(regs.r8, r8);
+	asm_get_register(regs.r9, r9);
+	asm_get_register(regs.r10, r10);
+	asm_get_register(regs.r11, r11);
+	asm_get_register(regs.r12, r12);
+	asm_get_register(regs.r13, r13);
+	asm_get_register(regs.r14, r14);
+	asm_get_register(regs.r15, r15);
 
 	kmesg("rax: 0x%p rbx: 0x%p rcx: 0x%p rdx: 0x%p\n", regs.rax, regs.rbx, regs.rcx, regs.rdx);
 	kmesg("rsi: 0x%p rdi: 0x%p rbp: 0x%p rsp: 0x%p\n", regs.rsi, regs.rdi, regs.rbp, regs.rsp);

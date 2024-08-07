@@ -5,8 +5,8 @@
 #include <menix/common.h>
 #include <menix/thread/process.h>
 
-#if CONFIG_page_size < 4096
-#error "Page size must be at least 4KiB!"
+#if CONFIG_page_size != 4096
+#error "Page size must be exactly 4KiB!"
 #endif
 
 #define MSR_EFER   0xC0000080

@@ -4,6 +4,7 @@
 
 #include <menix/config.h>
 #include <menix/util/types.h>
+#include <menix/util/units.h>
 
 // Attributes/Decorators
 #define ATTR(...) __attribute__((__VA_ARGS__))

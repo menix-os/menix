@@ -51,7 +51,7 @@ INT_HANDLER_WITH_CODE(10, error_handler_with_code);
 INT_HANDLER_WITH_CODE(11, error_handler_with_code);
 INT_HANDLER_WITH_CODE(12, error_handler_with_code);
 INT_HANDLER_WITH_CODE(13, error_handler_with_code);
-INT_HANDLER_WITH_CODE(14, error_handler_with_code);
+INT_HANDLER_WITH_CODE(14, vm_page_fault_handler);
 INT_HANDLER(15, error_handler);
 INT_HANDLER(16, error_handler);
 INT_HANDLER_WITH_CODE(17, error_handler_with_code);

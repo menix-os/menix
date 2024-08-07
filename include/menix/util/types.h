@@ -48,3 +48,6 @@ typedef i128 isize;
 
 // Use the processor word size so we can squeeze as many bits as possible into one variable.
 typedef usize Bits;
+
+// Represents a physical address.
+typedef usize PhysAddr;

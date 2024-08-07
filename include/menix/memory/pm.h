@@ -4,9 +4,6 @@
 
 #include <menix/common.h>
 
-// Represents a physical address.
-typedef usize PhysAddr;
-
 typedef enum : u8
 {
 	PhysMemoryUsage_Free,		   // Free and usable memory.
@@ -24,6 +21,10 @@ typedef struct
 	PhysMemoryUsage usage;	  // How this memory region is used.
 } PhysMemory;
 
+// Initialize the physical memory manager.
 void pm_init(void* phys_base, PhysMemory* mem_map, usize num_entries);
+
+// Update the base address that maps directly to lower memory.
+void pm_update_phys_base(void* phys_base);
 
 #include <bits/pm.h>
