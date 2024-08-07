@@ -90,7 +90,7 @@ void ktrace()
 		// If the address is not NULL, but we don't have any matching symbol, just print the address.
 		else if (fp->return_addr)
 		{
-			kmesg("    [%u] 0x%p\n", i, fp->return_addr);
+			kmesg("    [%u] 0x%p < ??? >\n", i, fp->return_addr);
 		}
 	}
 #endif

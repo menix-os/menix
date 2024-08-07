@@ -73,6 +73,9 @@ void pm_init(void* phys_base, PhysMemory* mem_map, usize num_entries)
 			num_free_pages++;
 		}
 	}
+
+	kmesg("Initialized physical memory management\n    Free memory = %u MiB\n",
+		  (num_free_pages * CONFIG_page_size) / MiB);
 }
 
 void pm_update_phys_base(void* phys_base)

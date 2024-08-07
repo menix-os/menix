@@ -18,7 +18,8 @@ typedef enum
 	PageSize_2MiB,
 } PageSize;
 
-void vm_set_page_map(PageMap* map);
+// Updates the active page map.
+void vm_arch_set_page_map(PageMap* map);
 
 // Translates a virtual address to a physical address.
 // Returns 0 if not mapped.
