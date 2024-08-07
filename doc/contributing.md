@@ -22,7 +22,7 @@ main license.
 <!-- REUSE-IgnoreStart -->
   **Example:**
   ```c
-  // Example Code
+  // Implementation for a cool feature
   // SPDX-License-Identifier: BSD-3-Clause
   ```
 <!-- REUSE-IgnoreEnd -->
@@ -32,11 +32,21 @@ The following section explains how code is expected to be formatted in order
 to make it easier to read for other people. Use the `.clang-format` file in the
 project root to check if your code complies with these guidelines.
 
-- Tabs have a width of 4 characters.
 - Always use tabs for indentation.
+  > **Rationale:** Different people prefer different indentations. Having an
+  > adjustable indentation fixes this.
+- Tabs have a width of 4 characters.
 - All code should be less than 120 characters in width.
+  > **Note:** Long paragraphs of doc strings should be around 80 characters
+  > in width to make it easier to read.
 - All code should end on an empty newline.
+- Scope braces `{ }` begin and end on a new line.
+  > **Rationale:** When scanning the screen vertically with your eyes,
+  > it's much faster to see where scope braces open and close.
 - Write comments and messages in present tense and easy to understand English.
+- Don't just document what your code does, explain why it has to exist.
+  > **Rationale:** This helps avoid useless code and helps less experienced
+  > programmers learn directly from the code.
 - Split your code into paragraphs where it makes sense and comment what
   each one does.
 - Always use single line (aka C++ style) comments.
@@ -45,11 +55,11 @@ project root to check if your code complies with these guidelines.
   then relative headers.
 - **DO NOT** include out of tree headers like `#include "../../random.h"`,
   always use `#include <path/to/random.h>` instead.
-- Scope braces `{ }` begin and end on a new line.
 - For primitives, always use standard types like `i32` and `u8`
   over built-in types like `int` or `unsigned char` (exception here is `char`).
-- Avoid `i64` and `u64`, as they're not available on all platforms.
-  Consider using `isize` and `usize` instead.
+- Avoid `i64`, `u64`, `i128` and `u128`, as they might not be available on all platforms.
+  > **Note:** Consider using `isize` and `usize` instead.
+- Avoid floating-point types.
 - Function declarations are always in one line.
 - Structs and unions are to be declared via `typedef`. They should be anonymous.
 - Multi-line `typedef`s have the alias name and closing brace on the same line.

@@ -30,6 +30,9 @@ void* kalloc(usize bytes)
 
 void* kaalloc(usize bytes, usize alignment)
 {
+	if (alignment == 0)
+		return NULL;
+
 	void* mem = allocate_inner(bytes, alignment, AllocFlags_None);
 	return mem;
 }
@@ -38,4 +41,12 @@ void* kzalloc(usize bytes)
 {
 	void* mem = allocate_inner(bytes, 1, AllocFlags_IgnoreAlignment | AllocFlags_SetZero);
 	return mem;
+}
+
+void kfree(void** memory)
+{
+	// TODO: Free the region.
+
+	// Invalidate the pointer itself.
+	*memory = NULL;
 }

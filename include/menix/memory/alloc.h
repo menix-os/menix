@@ -10,7 +10,7 @@
 void* kalloc(usize bytes);
 
 // Returns a memory region with at least `bytes` bytes of uninitialized memory, aligned to `alignment`.
-// `alignment` may not exceed `bytes`.
+// `alignment` may not be 0.
 void* kaalloc(usize bytes, usize alignment);
 
 // Returns a memory region with at least `bytes` bytes of zero-initialized memory.
