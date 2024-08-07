@@ -19,6 +19,7 @@ add_executable(menix
 )
 
 set_target_properties(menix PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/")
+set(CMAKE_LINKER_TYPE Mold)
 
 # Global include directories.
 include_directories(${MENIX_SRC}/include/)

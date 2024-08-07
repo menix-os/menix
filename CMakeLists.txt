@@ -1,12 +1,12 @@
 # Main configuration file
 
-cmake_minimum_required(VERSION 3.25)
+cmake_minimum_required(VERSION 3.29)
 
 # Project root path.
 set(MENIX_SRC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Project version.
-set(MENIX_VERSION 0.1.4)
+set(MENIX_VERSION 0.1.5)
 
 # Project license.
 set(MENIX_LICENSE "LGPL")

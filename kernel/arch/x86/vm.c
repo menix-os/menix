@@ -32,6 +32,8 @@ static void* phys_addr = NULL;	  // Memory mapped physical memory.
 
 void vm_init(void* phys_base, PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 {
+	// TODO: Finish kalloc, then set new memory map!
+
 	phys_addr = phys_base;
 	kassert(num_entries >= 1, "No memory map entries given!");
 
@@ -76,6 +78,7 @@ PhysAddr vm_arch_virt_to_phys(void* address)
 
 bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags)
 {
+	// TODO
 	spin_acquire_force(&page_map->lock);
 
 	const usize virt_val = (usize)virt_addr;
@@ -111,9 +114,10 @@ fail:
 	}
 
 	page_map_addr1[page_map_val1] = (((page_map_addr1[page_map_val1]) & ~((u64)CONFIG_page_size - 1))) | flags;
-
 	vm_flush_tlb(virt_addr);
+
 	spin_free(&page_map->lock);
+
 	return true;
 }
 
