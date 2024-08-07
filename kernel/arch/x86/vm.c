@@ -11,8 +11,6 @@
 #include <idt.h>
 #include <string.h>
 
-#include "menix/util/types.h"
-
 #define PAGE_PRESENT			 (1 << 0)
 #define PAGE_READ_WRITE			 (1 << 1)
 #define PAGE_USER_MODE			 (1 << 2)
@@ -159,6 +157,6 @@ void vm_page_fault_handler(u32 fault, u32 error)
 
 	// If the current protection level wasn't 3, in other words, the page fault was caused by the supervisor
 	// instead of the user, we messed up big time!
-	kassert(cs & 3, "Page fault caused while in supervisor mode!\n");
+	// kassert(cs & 3, "Page fault caused while in supervisor mode!\n");
 	// TODO Handle user page fault.
 }

@@ -12,13 +12,6 @@ typedef enum
 	AllocFlags_SetZero = 1 << 1,
 } AllocFlags;
 
-// Returns the next available physical memory page.
-static void* next_free_page()
-{
-	// TODO
-	return NULL;
-}
-
 // Main allocation function.
 // `bytes`: Minimum amount of bytes to allocate.
 // `alignment`: Preferred alignment. If alignment is to be ignored, pass IgnoreAlignment via flags.
