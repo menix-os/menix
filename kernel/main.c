@@ -7,22 +7,22 @@
 
 void kernel_main(BootInfo* info)
 {
-	// Say hello to the console.
-	kmesg("menix v" CONFIG_version " (" CONFIG_arch ")\n");
-
-	// TODO: Parse the command line.
-
 	// Check if we got a framebuffer to draw on.
-	kassert(info->fb_num >= 1, "No framebuffer available! Forcing console to serial output.\n") else
+	if (info->fb_num == 0)
+		kmesg("No framebuffer available! Forcing console to serial output.\n");
+	else
 	{
 		// Draw the menix logo.
 		// TODO: Get icon index from command line.
-		kassert(info->files[0].size == 64 * 64 * sizeof(u32), "Icon must be 64x64 pixels in BGRA32 format.") else
+		for (usize i = 0; i < info->fb_num; i++)
 		{
-			fb_draw_bitmap(&info->fb[0], info->files[0].address, (info->fb[0].width >> 1) - (64 >> 1),
-						   (info->fb[0].height >> 1) - (64 >> 1), 64, 64);
+			fb_draw_bitmap(&info->fb[i], info->files[i].address, (info->fb[i].width >> 1) - (64 >> 1),
+						   (info->fb[i].height >> 1) - (64 >> 1), 64, 64);
 		}
 	}
+
+	// Say hello to the console.
+	kmesg("menix v" CONFIG_version " (" CONFIG_arch ")\n");
 
 	// Initialize all modules.
 	module_init();

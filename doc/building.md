@@ -11,7 +11,6 @@ You need to install the following packages and make sure they're available in `$
 If building with EFI support:
 - `gnu-efi`
 
-
 ## Building steps
 Create a build directory and configure with CMake.
 
