@@ -3,19 +3,24 @@
 #include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
-#include <menix/serial.h>
+#include <menix/thread/spin.h>
 #include <menix/util/self.h>
 
 #include <stdarg.h>
 #include <stdio.h>
 
+static SpinLock lock = spin_new();
+
 void kmesg(const char* fmt, ...)
 {
-	// TODO: Determine output stream through command line options.
+	spin_acquire_force(&lock);
+
 	va_list args;
 	va_start(args, fmt);
 	vprintf(fmt, args);
 	va_end(args);
+
+	spin_free(&lock);
 }
 
 void ktrace()

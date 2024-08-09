@@ -3,6 +3,7 @@
 #include <menix/arch.h>
 #include <menix/boot.h>
 #include <menix/common.h>
+#include <menix/io/terminal.h>
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/pm.h>
@@ -39,19 +40,42 @@ LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);	   // Get device tree blob i
 void kernel_boot()
 {
 	arch_early_init();
-	boot_log("Initialized architecture\n");
-	boot_log("Booting using Limine protocol\n");
 
 	BootInfo info = {0};
+
+	// Get framebuffer.
+	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n");
+	kmesg("Got frame buffer:\n");
+	// TODO: Convert to kalloc'ed memory.
+	FrameBuffer buffers[framebuffer_request.response->framebuffer_count];
+	info.fb_num = framebuffer_request.response->framebuffer_count;
+	info.fb = buffers;
+	for (usize i = 0; i < info.fb_num; i++)
+	{
+		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
+		buffers[i].base = buf->address;
+		buffers[i].width = buf->width;
+		buffers[i].height = buf->height;
+		buffers[i].bpp = buf->bpp;
+		buffers[i].pitch = buf->pitch;
+		buffers[i].red_shift = buf->red_mask_shift;
+		buffers[i].red_size = buf->red_mask_size;
+		buffers[i].green_shift = buf->green_mask_shift;
+		buffers[i].green_size = buf->green_mask_size;
+		buffers[i].blue_shift = buf->blue_mask_shift;
+		buffers[i].blue_size = buf->blue_mask_size;
+	}
+	// Check if we got a framebuffer to draw on and initialize console if we do.
+	if (info.fb && info.fb_num > 0)
+		terminal_init(info.fb);
 
 	// Get the memory map.
 	kassert(memmap_request.response, "Unable to get memory map!\n");
 	struct limine_memmap_response* const res = memmap_request.response;
-	boot_log("Bootloader provided memory map at 0x%p\n", res);
-	boot_log("Free blocks:\n", res);
+	kmesg("Bootloader provided memory map at 0x%p\n", res);
 
 	PhysMemory map[res->entry_count];
-	info.pm_num = res->entry_count;
+	info.mm_num = res->entry_count;
 	info.memory_map = map;
 
 	for (usize i = 0; i < res->entry_count; i++)
@@ -71,54 +95,51 @@ void kernel_boot()
 			case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: map[i].usage = PhysMemoryUsage_Bootloader; break;
 			default: map[i].usage = PhysMemoryUsage_Unknown; break;
 		}
-
-		if (map[i].usage == PhysMemoryUsage_Free)
-			boot_log("    [%u] Address = 0x%p, Size = 0x%p\n", i, map[i].address, map[i].length);
 	}
 	// Make sure the first 4 GiB are identity mapped so we can write to "physical" memory.
 	kassert(hhdm_request.response, "Unable to get HHDM response!\n");
-	boot_log("HHDM offset: 0x%p\n", hhdm_request.response->offset);
+	kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 	kassert(kernel_address_request.response, "Unable to get kernel address info!\n")
-		boot_log("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
-				 kernel_address_request.response->physical_base);
+		kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
+			  kernel_address_request.response->physical_base);
 
 	// Initialize virtual memory using the memory map we got.
-	pm_init((void*)hhdm_request.response->offset, map, res->entry_count);
-	vm_init((void*)hhdm_request.response->offset, (PhysAddr)kernel_address_request.response->physical_base, map,
-			res->entry_count);
+	info.kernel_phys = (PhysAddr)kernel_address_request.response->physical_base;
+	info.kernel_virt = (void*)kernel_address_request.response->virtual_base;
+	info.phys_map = (void*)hhdm_request.response->offset;
 
 	// Get boot timestamp.
 	kassert(boot_time_request.response, "Unable to get boot timestamp!\n");
-	boot_log("Boot timestamp: %u\n", (u32)boot_time_request.response->boot_time);
+	kmesg("Boot timestamp: %u\n", (u32)boot_time_request.response->boot_time);
 
 #ifdef CONFIG_acpi
 	// Get ACPI RSDP table.
 	kassert(rsdp_request.response, "Unable to get ACPI RSDP table!\n");
-	boot_log("ACPI System Table at 0x%p\n", rsdp_request.response->address);
+	kmesg("ACPI System Table at 0x%p\n", rsdp_request.response->address);
 	info.acpi_rsdp = rsdp_request.response->address;
 #endif
 
 #ifdef CONFIG_open_firmware
 	kassert(dtb_request.response, "Unable to get device tree!\n");
-	boot_log("FDT blob at 0x%p\n", dtb_request.response->dtb_ptr);
+	kmesg("FDT blob at 0x%p\n", dtb_request.response->dtb_ptr);
 	info.fdt_blob = dtb_request.response->dtb_ptr;
 #endif
 
 	// Get kernel file.
 	kassert(kernel_file_request.response, "Unable to get kernel file info!\n");
 	struct limine_kernel_file_response* const kernel_res = kernel_file_request.response;
-	boot_log("Kernel file loaded at: 0x%p, Size = 0x%X\n", kernel_res->kernel_file->address,
-			 kernel_res->kernel_file->size);
+	kmesg("Kernel file loaded at: 0x%p, Size = 0x%X\n", kernel_res->kernel_file->address,
+		  kernel_res->kernel_file->size);
 
 	self_set_kernel(kernel_res->kernel_file->address);
 
 	// Get command line.
-	boot_log("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);
+	kmesg("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);
 	info.cmd = kernel_res->kernel_file->cmdline;
 
 	// Get modules.
 	kassert(module_request.response, "Unable to get modules!\n");
-	boot_log("Got files:\n");
+	kmesg("Got files:\n");
 	const struct limine_module_response* module_res = module_request.response;
 	// TODO: Convert to kalloc'ed memory.
 	BootFile files[module_res->module_count];
@@ -128,39 +149,12 @@ void kernel_boot()
 		files[i].address = module_res->modules[i]->address;
 		files[i].size = module_res->modules[i]->size;
 		files[i].path = module_res->modules[i]->path;
-		boot_log("    Address = 0x%p, Size = 0x%p, Path = \"%s\"\n", files[i].address, files[i].size, files[i].path);
+		kmesg("    Address = 0x%p, Size = 0x%p, Path = \"%s\"\n", files[i].address, files[i].size, files[i].path);
 	}
 	info.file_num = module_res->module_count;
 	info.files = files;
 
-	// Get framebuffer.
-	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n");
-	boot_log("Got frame buffer:\n");
-	// TODO: Convert to kalloc'ed memory.
-	FrameBuffer buffers[framebuffer_request.response->framebuffer_count];
-	info.fb_num = framebuffer_request.response->framebuffer_count;
-	info.fb = buffers;
-	for (usize i = 0; i < info.fb_num; i++)
-	{
-		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
-		buffers[i].base = buf->address;
-		buffers[i].width = buf->width;
-		buffers[i].height = buf->height;
-		buffers[i].bpp = buf->bpp;
-		buffers[i].pitch = buf->pitch;
-		buffers[i].red_shift = buf->red_mask_shift;
-		buffers[i].red_size = buf->red_mask_size;
-		buffers[i].green_shift = buf->green_mask_shift;
-		buffers[i].green_size = buf->green_mask_size;
-		buffers[i].blue_shift = buf->blue_mask_shift;
-		buffers[i].blue_size = buf->blue_mask_size;
-		boot_log("    [%i] Address = 0x%p, Resolution = %ux%ux%u\n", i, buffers[i].base, buffers[i].width,
-				 buffers[i].height, buffers[i].bpp);
-	}
-
 	arch_init(&info);
-	boot_log("Handing control to main function\n");
 	kernel_main(&info);
-	boot_log("Got control back from main function\n");
 	arch_stop(&info);
 }

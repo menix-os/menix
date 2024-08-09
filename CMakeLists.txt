@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.29)
 set(MENIX_SRC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Project version.
-set(MENIX_VERSION 0.1.6)
+set(MENIX_VERSION 0.1.7)
 
 # Project license.
 set(MENIX_LICENSE "LGPL")
@@ -32,6 +32,7 @@ endif()
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+set(CMAKE_SYSTEM_NAME Generic)
 
 project(menix
 	VERSION ${MENIX_VERSION}

@@ -4,12 +4,8 @@
 
 #include <menix/common.h>
 #include <menix/log.h>
-#include <menix/memory/vm.h>
+#include <menix/memory/pm.h>
 #include <menix/video/fb.h>
-
-#include "menix/memory/pm.h"
-
-#define boot_log(fmt, ...) kmesg("[Boot] " fmt, ##__VA_ARGS__)
 
 typedef struct
 {
@@ -21,13 +17,23 @@ typedef struct
 // Information provided to the kernel by the boot protocol.
 typedef struct
 {
-	const char* cmd;		   // Command line
-	usize fb_num;			   // Amount of frame buffers
-	FrameBuffer* fb;		   // Available frame buffer(s)
-	usize pm_num;			   // Amount of memory map entries
+	const char* cmd;	// Command line
+
+	usize fb_num;		// Amount of frame buffers
+	FrameBuffer* fb;	// Available frame buffer(s)
+
+// This is architecture dependent, but almost every architecture should have it.
+#if defined(CONFIG_arch_x86) || defined(CONFIG_arch_aarch64) || defined(CONFIG_arch_riscv64)
+	usize mm_num;			   // Amount of memory map entries
 	PhysMemory* memory_map;	   // Physical memory mapping
-	usize file_num;			   // Amount of files loaded
-	BootFile* files;		   // Available files
+	void* kernel_virt;		   // Virtual address of the kernel.
+	PhysAddr kernel_phys;	   // Physical address of the kernel.
+	void* phys_map;			   // Memory mapped lower memory address.
+#endif
+
+	usize file_num;		// Amount of files loaded
+	BootFile* files;	// Available files
+
 #ifdef CONFIG_acpi
 	void* acpi_rsdp;	// ACPI RSDP table.
 #endif

@@ -6,3 +6,8 @@ set(MENIX_BITS 64)
 set(MENIX_ARCH_DIR x86)
 
 include_directories(/usr/include/efi/)
+
+add_option(page_size NUMBER 0x1000)
+add_option(smp BOOL OFF)
+require_option(efi)
+require_option(acpi)

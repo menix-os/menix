@@ -1,7 +1,7 @@
 // x86 Serial interface
 
 #include <menix/common.h>
-#include <menix/serial.h>
+#include <menix/io/serial.h>
 
 #include <io.h>
 

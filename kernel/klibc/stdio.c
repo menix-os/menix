@@ -1,6 +1,6 @@
 // Kernel C library - "stdio.h" implementation
 
-#include <menix/serial.h>
+#include <menix/io/terminal.h>
 
 #include <stdarg.h>
 #include <stdio.h>
@@ -18,8 +18,7 @@ static bool print(const char* data, usize length)
 
 i32 putchar(i32 ic)
 {
-	char c = (char)ic;
-	serial_putchar(c);
+	terminal_putchar(ic);
 	return ic;
 }
 

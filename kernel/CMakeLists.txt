@@ -10,6 +10,7 @@ file(WRITE ${MENIX_MODULES} "#pragma once\n// This file is automatically generat
 
 # Set toolchain.
 include(${MENIX_SRC}/toolchain/compiler/${CMAKE_C_COMPILER_ID}.cmake)
+include(${MENIX_SRC}/toolchain/compiler/common.cmake)
 include(${MENIX_CONFIG_SRC})
 include(${MENIX_SRC}/toolchain/arch/${MENIX_ARCH}.cmake)
 include(${MENIX_SRC}/toolchain/arch/defaults.cmake)
@@ -28,6 +29,7 @@ include_directories(${MENIX_SRC}/kernel/arch/${MENIX_ARCH}/include/)
 
 add_subdirectory(arch/${MENIX_ARCH_DIR})
 add_subdirectory(boot)
+add_subdirectory(io)
 add_subdirectory(klibc)
 add_subdirectory(memory)
 add_subdirectory(mod)
@@ -39,6 +41,7 @@ add_subdirectory(video)
 target_link_libraries(menix PUBLIC
 	menix_arch_${MENIX_ARCH_DIR}
 	menix_boot
+	menix_io
 	menix_klibc
 	menix_memory
 	menix_mod
