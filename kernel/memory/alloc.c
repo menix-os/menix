@@ -8,13 +8,13 @@
 typedef enum
 {
 	AllocFlags_None = 0,
-	AllocFlags_IgnoreAlignment = 1 << 0,
+	AllocFlags_ForceAlignment = 1 << 0,
 	AllocFlags_SetZero = 1 << 1,
 } AllocFlags;
 
 // Main allocation function.
 // `bytes`: Minimum amount of bytes to allocate.
-// `alignment`: Preferred alignment. If alignment is to be ignored, pass IgnoreAlignment via flags.
+// `alignment`: Preferred alignment. If alignment is to be forced, pass ForceAlignment via flags.
 // `flags`: Modfiy allocation behavior.
 static void* allocate_inner(usize bytes, usize alignment, AllocFlags flags)
 {
@@ -24,7 +24,7 @@ static void* allocate_inner(usize bytes, usize alignment, AllocFlags flags)
 
 void* kalloc(usize bytes)
 {
-	void* mem = allocate_inner(bytes, 1, AllocFlags_IgnoreAlignment);
+	void* mem = allocate_inner(bytes, 1, AllocFlags_None);
 	return mem;
 }
 
@@ -33,13 +33,13 @@ void* kaalloc(usize bytes, usize alignment)
 	if (alignment == 0)
 		return NULL;
 
-	void* mem = allocate_inner(bytes, alignment, AllocFlags_None);
+	void* mem = allocate_inner(bytes, alignment, AllocFlags_ForceAlignment);
 	return mem;
 }
 
 void* kzalloc(usize bytes)
 {
-	void* mem = allocate_inner(bytes, 1, AllocFlags_IgnoreAlignment | AllocFlags_SetZero);
+	void* mem = allocate_inner(bytes, 1, AllocFlags_SetZero);
 	return mem;
 }
 
