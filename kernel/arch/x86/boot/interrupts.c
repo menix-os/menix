@@ -88,17 +88,3 @@ void error_handler_with_code(u32 fault, u32 code)
 			;
 	}
 }
-
-void syscall_handler(SyscallArgs* regs)
-{
-	// RAX contains the syscall number.
-	// Check if number is inside bounds.
-	if (regs->rax < syscall_table_size)
-	{
-		SyscallFn fn = syscall_table[regs->rax];
-		// Invoke the respective system call if it's set.
-		if (fn != NULL)
-			// Use the x86_64 SysV ABI here.
-			regs->rax = fn(regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
-	}
-}

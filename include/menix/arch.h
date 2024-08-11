@@ -16,6 +16,9 @@ void arch_early_init();
 // Initializes the rest of the platform after the boot routines have completed.
 void arch_init(BootInfo* info);
 
+// Safely powers off the machine.
+void arch_shutdown(BootInfo* info);
+
 // Halts all CPUs.
 void arch_stop(BootInfo* info);
 

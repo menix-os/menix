@@ -6,10 +6,9 @@ A minimal and expandable Unix-like operating system.
 > This is a hobby project to learn OS development.
 > The project is currently in a pre-alpha stage of development and neither stable nor ready to use.
 
-The kernel itself uses a hybrid microkernel architecture.
-
-It handles:
+menix uses a hybrid kernel design. It handles:
 - Booting
+- Hardware Abstraction
 - Interprocess Communication
 - Scheduling
 - Virtual Memory

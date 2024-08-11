@@ -29,38 +29,26 @@ sc_syscall:
 .align 0x10
 .extern syscall_handler
 do_syscall:
+	swapgs /* Change TLS to kernel mode. */
+
 	push	%rax
-	push	%rbx
-	push	%rcx
-	push	%rdx
-	push	%rbp
 	push	%rdi
 	push	%rsi
+	push	%rdx
+	push	%r10
 	push	%r8
 	push	%r9
-	push	%r10
-	push	%r11
-	push	%r12
-	push	%r13
-	push	%r14
-	push	%r15
 
 	mov		%rsp, %rdi
 	call	syscall_handler
 
-	pop		%r15
-	pop		%r14
-	pop		%r13
-	pop		%r12
-	pop		%r11
-	pop		%r10
 	pop		%r9
 	pop		%r8
+	pop		%r10
+	pop		%rdx
 	pop		%rsi
 	pop		%rdi
-	pop		%rbp
-	pop		%rdx
-	pop		%rcx
-	pop		%rbx
-	add		$8, %rsp /* Move the stack pointer up by 8 since we're not popping RAX back. */
+	pop		%rax
+
+	swapgs /* Restore TLS to user mode. */
 	ret

@@ -3,7 +3,6 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/thread/process.h>
 
 #if CONFIG_page_size != 4096
 #error "Page size must be exactly 4KiB!"
@@ -17,10 +16,10 @@
 
 struct ArchCpu
 {
-	u64 id;				 // Unique index of this CPU.
-	Thread* thread;		 // Current thread running on this CPU.
-	u64 kernel_stack;	 // RSP for the kernel.
-	u64 user_stack;		 // RSP for the user space.
+	u64 id;					  // Unique index of this CPU.
+	struct Thread* thread;	  // Current thread running on this CPU.
+	u64 kernel_stack;		  // RSP for the kernel.
+	u64 user_stack;			  // RSP for the user space.
 };
 
 // All code-visible CPU registers.

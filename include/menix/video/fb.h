@@ -1,26 +1,62 @@
-// Frame buffer information
+// Frame buffer management
 
 #pragma once
 
 #include <menix/common.h>
-#include <menix/memory/io.h>
+#include <menix/io/mmio.h>
+#include <menix/thread/spin.h>
 
-// Stores information about a frame buffer.
+// Fixed framebuffer information that cannot change after it has been initialized.
 typedef struct
 {
-	volatile void* base;	// Base address where the buffer starts.
-	usize width;			// Width of the frame in pixels.
-	usize height;			// Height of the frame in pixels.
-	usize bpp;				// Amount of bits per pixel.
-	usize pitch;			// Length of one row of pixels.
-	u8 red_size;
-	u8 red_shift;
-	u8 green_size;
-	u8 green_shift;
-	u8 blue_size;
-	u8 blue_shift;
-} FrameBuffer;
+	mmio8* mmio_base;	   // Start of memory mapped IO.
+	usize mmio_len;		   // Size of memory mapped IO.
+	PhysAddr phys_base;	   // Start of framebuffer memory.
+	usize phys_len;		   // Size of framebuffer memory.
+} FbInfoFixed;
 
-void fb_fill_pixels(FrameBuffer* fb, u8 r, u8 g, u8 b);
+// Framebuffer information that may change at will depending on the current mode.
+typedef struct
+{
+	usize width;	 // Width of the visible frame in pixels.
+	usize height;	 // Height of the visible frame in pixels.
+	u8 bpp;			 // Amount of bits per pixel.
+} FbInfoVar;
 
-void fb_draw_bitmap(FrameBuffer* fb, void* buf, usize xpos, usize ypos, usize width, usize height);
+// Callback functions for modifying a framebuffer.
+typedef struct FrameBuffer FrameBuffer;
+typedef struct
+{
+	usize x, y;				// Top left corner of the area to fill.
+	usize width, height;	// Width and height of the area to fill.
+	u32 color;				// Color to fill the area with.
+} FbFillOp;
+
+typedef struct
+{
+	// Opens
+	int (*open)(FrameBuffer* fb);
+	usize (*fill)(FrameBuffer* fb, FbFillOp* args);
+} FbFuncs;
+
+// Stores information about a frame buffer.
+struct FrameBuffer
+{
+	SpinLock lock;			// Access lock.
+	const FbFuncs funcs;	// Functions for modifying the framebuffer.
+	FbInfoFixed fixed;		// Fixed information.
+	FbInfoVar var;			// Variable information.
+};
+
+// Registers a framebuffer to be visible to the kernel.
+void fb_register(FrameBuffer* fb);
+
+// Unregisters a framebuffer.
+void fb_unregister(FrameBuffer* fb);
+
+// Unregisters all previous framebuffers. This is useful when e.g. a new video card
+// has been detected and needs to take control now.
+void fb_unregister_all();
+
+// Get the next available framebuffer.
+FrameBuffer* fb_get_next();

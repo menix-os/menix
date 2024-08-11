@@ -8,9 +8,6 @@
 
 #include <string.h>
 
-#include "generated/config.h"
-#include "menix/util/types.h"
-
 static SpinLock lock;
 static BitMap bit_map = NULL;		// This bitmap stores whether a page is in use or not.
 static void* phys_addr = NULL;		// Memory mapped lower 4GiB physical memory. This is only used to store the bitmap.

@@ -35,6 +35,12 @@ void arch_init(BootInfo* info)
 	}
 }
 
+void arch_shutdown(BootInfo* info)
+{
+	// TODO
+	arch_stop(info);
+}
+
 void arch_stop(BootInfo* info)
 {
 	asm_interrupt_disable();

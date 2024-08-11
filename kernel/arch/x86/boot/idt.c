@@ -1,7 +1,7 @@
 // Interrupt descriptor table setting
 
+#include <menix/io/mmio.h>
 #include <menix/log.h>
-#include <menix/memory/io.h>
 
 #include <bits/arch.h>
 #include <bits/asm.h>

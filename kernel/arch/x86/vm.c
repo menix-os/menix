@@ -54,7 +54,7 @@ void vm_init(void* phys_base, PhysAddr kernel_base, PhysMemory* mem_map, usize n
 
 	// Map a bit more so we can still access bootloaded files.
 	// TODO: Find out if there's a better way to handle this situation.
-	for (usize cur = 4UL * GiB; cur < 16UL * GiB; cur += 2UL * MiB)
+	for (usize cur = 4UL * GiB; cur < 64UL * GiB; cur += 2UL * MiB)
 		kassert(vm_arch_map_page(kernel_map, cur, phys_addr + cur, PAGE_PRESENT | PAGE_READ_WRITE, PageSize_2MiB),
 				"Unable to map lower memory!\n");
 
@@ -86,7 +86,7 @@ void vm_arch_set_page_map(PageMap* map)
 	asm_set_register(((usize)map->head - (usize)phys_addr), cr3);
 }
 
-PhysAddr vm_arch_virt_to_phys(void* address)
+PhysAddr vm_arch_virt_to_phys(PageMap* page_map, void* address)
 {
 	// TODO
 	return 0;

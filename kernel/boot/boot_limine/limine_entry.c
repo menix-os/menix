@@ -11,6 +11,7 @@
 #include <menix/util/self.h>
 
 #include "limine.h"
+#include "menix/video/fb.h"
 
 #define LIMINE_REQUEST(request, tag, rev) \
 	ATTR(used, section(".requests")) static volatile struct limine_##request request = { \
@@ -45,29 +46,19 @@ void kernel_boot()
 
 	// Get framebuffer.
 	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n");
-	kmesg("Got frame buffer:\n");
-	// TODO: Convert to kalloc'ed memory.
 	FrameBuffer buffers[framebuffer_request.response->framebuffer_count];
 	info.fb_num = framebuffer_request.response->framebuffer_count;
 	info.fb = buffers;
 	for (usize i = 0; i < info.fb_num; i++)
 	{
 		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
-		buffers[i].base = buf->address;
-		buffers[i].width = buf->width;
-		buffers[i].height = buf->height;
-		buffers[i].bpp = buf->bpp;
-		buffers[i].pitch = buf->pitch;
-		buffers[i].red_shift = buf->red_mask_shift;
-		buffers[i].red_size = buf->red_mask_size;
-		buffers[i].green_shift = buf->green_mask_shift;
-		buffers[i].green_size = buf->green_mask_size;
-		buffers[i].blue_shift = buf->blue_mask_shift;
-		buffers[i].blue_size = buf->blue_mask_size;
+		buffers[i].fixed.mmio_base = buf->address;
+		buffers[i].var.width = buf->width;
+		buffers[i].var.height = buf->height;
+		buffers[i].var.bpp = buf->bpp;
+
+		fb_register(&buffers[i]);
 	}
-	// Check if we got a framebuffer to draw on and initialize console if we do.
-	if (info.fb && info.fb_num > 0)
-		terminal_init(info.fb);
 
 	// Get the memory map.
 	kassert(memmap_request.response, "Unable to get memory map!\n");
@@ -88,10 +79,10 @@ void kernel_boot()
 			// Note: We treat Kernel maps like free memory as we do our own mapping.
 			case LIMINE_MEMMAP_USABLE: map[i].usage = PhysMemoryUsage_Free; break;
 			case LIMINE_MEMMAP_KERNEL_AND_MODULES: map[i].usage = PhysMemoryUsage_Kernel; break;
+			case LIMINE_MEMMAP_FRAMEBUFFER:
 			case LIMINE_MEMMAP_RESERVED:
 			case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
 			case LIMINE_MEMMAP_ACPI_NVS: map[i].usage = PhysMemoryUsage_Reserved; break;
-			case LIMINE_MEMMAP_FRAMEBUFFER:
 			case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: map[i].usage = PhysMemoryUsage_Bootloader; break;
 			default: map[i].usage = PhysMemoryUsage_Unknown; break;
 		}
@@ -99,9 +90,9 @@ void kernel_boot()
 	// Make sure the first 4 GiB are identity mapped so we can write to "physical" memory.
 	kassert(hhdm_request.response, "Unable to get HHDM response!\n");
 	kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
-	kassert(kernel_address_request.response, "Unable to get kernel address info!\n")
-		kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
-			  kernel_address_request.response->physical_base);
+	kassert(kernel_address_request.response, "Unable to get kernel address info!\n");
+	kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
+		  kernel_address_request.response->physical_base);
 
 	// Initialize virtual memory using the memory map we got.
 	info.kernel_phys = (PhysAddr)kernel_address_request.response->physical_base;
@@ -139,11 +130,9 @@ void kernel_boot()
 
 	// Get modules.
 	kassert(module_request.response, "Unable to get modules!\n");
-	kmesg("Got files:\n");
+	kmesg("Got modules:\n");
 	const struct limine_module_response* module_res = module_request.response;
-	// TODO: Convert to kalloc'ed memory.
-	BootFile files[module_res->module_count];
-
+	BootFile files[module_res->module_count];	 // TODO: Convert to kalloc'ed memory.
 	for (usize i = 0; i < module_res->module_count; i++)
 	{
 		files[i].address = module_res->modules[i]->address;
@@ -156,5 +145,4 @@ void kernel_boot()
 
 	arch_init(&info);
 	kernel_main(&info);
-	arch_stop(&info);
 }

@@ -6,7 +6,7 @@
 #include <menix/memory/pm.h>
 #include <menix/thread/spin.h>
 
-typedef struct
+typedef struct PageMap
 {
 	usize* head;
 	SpinLock lock;
@@ -23,7 +23,7 @@ void vm_arch_set_page_map(PageMap* map);
 
 // Translates a virtual address to a physical address.
 // Returns 0 if not mapped.
-PhysAddr vm_arch_virt_to_phys(void* address);
+PhysAddr vm_arch_virt_to_phys(PageMap* page_map, void* address);
 
 // Maps a virtual address to physical memory. Returns true if successful.
 bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags, PageSize size);

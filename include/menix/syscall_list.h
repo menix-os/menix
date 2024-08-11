@@ -3,9 +3,6 @@
 #include <menix/util/syscall_insert.h>
 
 SYSCALL(0, null)
-// SYSCALL(1, read)
-// SYSCALL(2, write)
-// SYSCALL(3, open)
-// SYSCALL(4, close)
+SYSCALL(1, mmap)
 
 #include <bits/syscall_list.h>

@@ -3,7 +3,6 @@
 #pragma once
 
 #include <menix/config.h>
-#include <menix/util/limits.h>
 
 #define NULL				   ((void*)0)
 #define offsetof(type, member) ((usize)(&((type*)0)->member))

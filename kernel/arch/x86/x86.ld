@@ -1,6 +1,5 @@
 /* Linker script for x86 builds */
 
-
 INCLUDE common.ld
 
 SECTIONS

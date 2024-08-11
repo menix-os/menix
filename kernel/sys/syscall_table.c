@@ -5,6 +5,8 @@
 #include <menix/log.h>
 #include <menix/syscall.h>
 
+#include <errno.h>
+
 // Include the syscalls once.
 #include <menix/syscall_list.h>
 
@@ -17,3 +19,16 @@ const SyscallFn syscall_table[] = {
 };
 
 const usize syscall_table_size = ARRAY_SIZE(syscall_table);
+
+void syscall_handler(SyscallArgs* regs)
+{
+	// First argument contains the syscall number.
+	// Check if number is inside bounds.
+	if (regs->num >= syscall_table_size)
+	{
+		regs->num = -ENOSYS;
+		return;
+	}
+	SyscallFn fn = syscall_table[regs->num];
+	regs->num = fn(regs->a0, regs->a1, regs->a2, regs->a3, regs->a4, regs->a5);
+}

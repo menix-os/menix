@@ -1,34 +1,61 @@
 // Frame buffer operations
 
+#include <menix/log.h>
+#include <menix/memory/alloc.h>
 #include <menix/video/fb.h>
 
-void fb_fill_pixels(FrameBuffer* fb, u8 r, u8 g, u8 b)
-{
-	const usize bytes_pp = fb->bpp / 8;
-	const u32 pixel = (r << fb->red_shift) | (g << fb->green_shift) | (b << fb->blue_shift);
+#define MAX_FB 16
 
-	for (usize x = 0; x < fb->width; x++)
+static FrameBuffer* buffers[MAX_FB] = {0};
+static usize num_buffers = 0;
+
+void fb_register(FrameBuffer* fb)
+{
+	if (num_buffers >= MAX_FB)
 	{
-		for (usize y = 0; y < fb->height; y++)
+		kmesg("Failed to register framebuffer 0x%p: Already have enough buffers.\n", fb);
+		return;
+	}
+
+	for (usize i = 0; i < MAX_FB; i++)
+	{
+		if (buffers[i] == NULL)
 		{
-			u32* const addr = (u32*)(fb->base + (y * fb->pitch) + (x * bytes_pp));
-			write32(addr, pixel);
+			buffers[i] = fb;
+			num_buffers += 1;
+			return;
 		}
 	}
 }
 
-void fb_draw_bitmap(FrameBuffer* fb, void* buf, usize xpos, usize ypos, usize width, usize height)
+void fb_unregister(FrameBuffer* fb)
 {
-	const usize bytes_pp = fb->bpp / 8;
-	const u32* pixels = buf;
-
-	for (usize x = 0; x < width; x++)
+	for (usize i = 0; i < MAX_FB; i++)
 	{
-		for (usize y = 0; y < height; y++)
+		if (buffers[i] == fb)
 		{
-			u32* const addr = (u32*)(fb->base + ((y + ypos) * fb->pitch) + ((x + xpos) * bytes_pp));
-			u32 pixel = pixels[((y * width) + x)];
-			write32(addr, pixel);
+			buffers[i] = NULL;
+			num_buffers -= 1;
+			return;
 		}
 	}
+	kmesg("Failed to unregister framebuffer 0x%p: Buffer wasn't previously registered.", fb);
+}
+
+void fb_unregister_all()
+{
+	for (usize i = 0; i < MAX_FB; i++)
+	{
+		buffers[i] = NULL;
+	}
+}
+
+FrameBuffer* fb_get_next()
+{
+	for (usize i = 0; i < MAX_FB; i++)
+	{
+		if (buffers[i])
+			return buffers[i];
+	}
+	return NULL;
 }
