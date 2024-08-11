@@ -2,8 +2,8 @@
 
 #include <menix/common.h>
 #include <menix/memory/alloc.h>
-
-#include <string.h>
+#include <menix/memory/pm.h>
+#include <menix/memory/vm.h>
 
 typedef enum
 {
@@ -45,8 +45,12 @@ void* kzalloc(usize bytes)
 
 void kfree(void** memory)
 {
+	if (memory == NULL)
+		return;
+	if (*memory == NULL)
+		return;
 	// TODO: Free the region.
 
-	// Invalidate the pointer itself.
+	// Invalidate the pointer itself to avoid dangling references.
 	*memory = NULL;
 }
