@@ -6,7 +6,7 @@
 
 typedef struct FileDescriptor
 {
-	usize refs_num;				  // Amount of references to this descriptor.
+	usize num_refs;				  // Amount of references to this descriptor.
 	usize offset;				  // Current offset into the file.
 	SpinLock lock;				  // Access lock.
 	struct Resource* resource;	  // Resource connected to this descriptor.

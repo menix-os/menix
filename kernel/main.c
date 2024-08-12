@@ -3,6 +3,7 @@
 #include <menix/arch.h>
 #include <menix/boot.h>
 #include <menix/common.h>
+#include <menix/fs/vfs.h>
 #include <menix/io/terminal.h>
 #include <menix/log.h>
 #include <menix/module.h>
@@ -16,7 +17,7 @@ void kernel_main(BootInfo* info)
 	kmesg("menix v" CONFIG_version " (" CONFIG_arch ")\n");
 
 	// Init virtual file system.
-	// vfs_init();
+	vfs_init();
 
 	// Initialize all modules.
 	module_init();

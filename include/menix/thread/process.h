@@ -11,6 +11,7 @@ typedef usize ProcessId;
 typedef usize ThreadId;
 typedef struct Process Process;
 
+// Active state of the thread.
 typedef enum
 {
 	ThreadState_Running,	 // Everything is OK.
@@ -19,14 +20,7 @@ typedef enum
 	ThreadState_Waiting,	 // Thread is waiting for something else.
 } ThreadState;
 
-typedef enum
-{
-	ProcessState_Running,	 // Everything is OK.
-	ProcessState_Ready,		 // Ready to run.
-	ProcessState_Waiting,	 // Process is waiting for another process to resume.
-	ProcessState_Blocked,	 // Process is blocked.
-} ProcessState;
-
+// Thread information.
 typedef struct Thread
 {
 	ThreadId id;			   // Thread ID.
@@ -35,13 +29,24 @@ typedef struct Thread
 	ThreadState state;		   // Current state of the thread.
 	CpuRegisters registers;	   // The register state at the time of context switch.
 	usize errno;			   // `errno` value.
+	struct Thread* next;
 
-#ifdef CONFIG_arch_x86
+	// Architecture dependent fields go here.
+#if defined CONFIG_arch_x86
 	u64 fs_base;	// FS register base address.
 	u64 gs_base;	// GS register base address, used for TLS.
+#elif defined CONFIG_arch_aarch64
+#elif defined CONFIG_arch_riscv64
 #endif
-	struct Thread* next;
 } Thread;
+
+typedef enum
+{
+	ProcessState_Running,	 // Everything is OK.
+	ProcessState_Ready,		 // Ready to run.
+	ProcessState_Waiting,	 // Process is waiting for another process to resume.
+	ProcessState_Blocked,	 // Process is blocked.
+} ProcessState;
 
 struct Process
 {

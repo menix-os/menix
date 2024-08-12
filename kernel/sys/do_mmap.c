@@ -1,6 +1,6 @@
 // Syscall "mmap"
 
-#include <menix/syscall.h>
+#include <menix/sys/syscall.h>
 
 // Maps a phyiscal address to a virtual one.
 SYSCALL_IMPL(mmap)

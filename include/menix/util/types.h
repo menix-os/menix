@@ -45,6 +45,8 @@ typedef i128 isize;
 #error "Invalid word size!"
 #endif
 
+static_assert(sizeof(usize) == sizeof(void*), "usize must be the same size as a pointer!");
+
 // Use the processor word size so we can squeeze as many bits as possible into one variable.
 typedef usize Bits;
 

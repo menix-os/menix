@@ -3,7 +3,6 @@
 #include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
-#include <menix/syscall.h>
 
 typedef struct
 {

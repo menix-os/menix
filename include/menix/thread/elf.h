@@ -1,14 +1,16 @@
-// Universal ELF spec implementation
+// Universal ELF32 and ELF64 definitions
 
 #pragma once
 
 #include <menix/common.h>
 
+#include <bits/elf.h>
+
 // ELF Header Identification
-#define EI_MAG0		  0		// File identification
-#define EI_MAG1		  1		//
-#define EI_MAG2		  2		//
-#define EI_MAG3		  3		//
+#define EI_MAG0		  0		// 0x7F
+#define EI_MAG1		  1		// 'E'
+#define EI_MAG2		  2		// 'L'
+#define EI_MAG3		  3		// 'F'
 #define EI_CLASS	  4		// File class
 #define EI_DATA		  5		// Data encoding
 #define EI_VERSION	  6		// File version
@@ -59,17 +61,18 @@
 #define ELF_ST_TYPE(i)	  ((i) & 0xf)
 #define ELF_ST_INFO(b, t) (((b) << 4) + ((t) & 0xf))
 
-#if CONFIG_bits >= 64
-#define ELF_R_SYM(i)	 ((i) >> 32)
-#define ELF_R_TYPE(i)	 ((i) & 0xffffffffL)
-#define ELF_R_INFO(s, t) (((s) << 32) + ((t) & 0xffffffffL))
-#else
-#define ELF_R_SYM(i)	 ((i) >> 8)
-#define ELF_R_TYPE(i)	 ((u8)(i))
-#define ELF_R_INFO(s, t) (((s) << 8) + (u8)(t))
+#if CONFIG_bits == 64
+#define ELF64_R_SYM(i)	   ((i) >> 32)
+#define ELF64_R_TYPE(i)	   ((i) & 0xffffffffL)
+#define ELF64_R_INFO(s, t) (((s) << 32) + ((t) & 0xffffffffL))
 #endif
+#define ELF32_R_SYM(i)	   ((i) >> 8)
+#define ELF32_R_TYPE(i)	   ((u8)(i))
+#define ELF32_R_INFO(s, t) (((s) << 8) + (u8)(t))
 
-#if CONFIG_bits >= 64
+// ELF types that are related to the build host.
+#if CONFIG_bits == 64
+#define Elf_Hdr	 Elf64_Hdr
 #define Elf_Phdr Elf64_Phdr
 #define Elf_Dyn	 Elf64_Dyn
 #define Elf_Ehdr Elf64_Ehdr
@@ -78,6 +81,7 @@
 #define Elf_Off	 Elf64_Off
 #define Elf_Sym	 Elf64_Sym
 #else
+#define Elf_Hdr	 Elf32_Hdr
 #define Elf_Phdr Elf32_Phdr
 #define Elf_Dyn	 Elf32_Dyn
 #define Elf_Ehdr Elf32_Ehdr
@@ -87,22 +91,24 @@
 #define Elf_Sym	 Elf32_Sym
 #endif
 
+#if CONFIG_bits == 64
 typedef u64 Elf64_Addr;
 typedef u64 Elf64_Off;
-
+#endif
 typedef u32 Elf32_Addr;
 typedef u32 Elf32_Off;
 
 // The file header is located at the beginning of the file, and is used to locate the other parts of the file.
+#if CONFIG_bits == 64
 typedef struct ATTR(packed)
 {
 	u8 e_ident[EI_NIDENT];	  // ELF identification
 	u16 e_type;				  // Object file type
 	u16 e_machine;			  // Machine type
 	u32 e_version;			  // Object file version
-	Elf_Addr e_entry;		  // Entry point address
-	Elf_Off e_phoff;		  // Program header offset
-	Elf_Off e_shoff;		  // Section header offset
+	Elf64_Addr e_entry;		  // Entry point address
+	Elf64_Off e_phoff;		  // Program header offset
+	Elf64_Off e_shoff;		  // Section header offset
 	u32 e_flags;			  // Processor-specific flags
 	u16 e_ehsize;			  // ELF header size
 	u16 e_phentsize;		  // Size of program header entry
@@ -110,9 +116,28 @@ typedef struct ATTR(packed)
 	u16 e_shentsize;		  // Size of section header entry
 	u16 e_shnum;			  // Number of section header entries
 	u16 e_shstrndx;			  // Section name string table index
-} Elf_Hdr;
+} Elf64_Hdr;
+#endif
+typedef struct ATTR(packed)
+{
+	u8 e_ident[EI_NIDENT];	  // ELF identification
+	u16 e_type;				  // Object file type
+	u16 e_machine;			  // Machine type
+	u32 e_version;			  // Object file version
+	Elf32_Addr e_entry;		  // Entry point address
+	Elf32_Off e_phoff;		  // Program header offset
+	Elf32_Off e_shoff;		  // Section header offset
+	u32 e_flags;			  // Processor-specific flags
+	u16 e_ehsize;			  // ELF header size
+	u16 e_phentsize;		  // Size of program header entry
+	u16 e_phnum;			  // Number of program header entries
+	u16 e_shentsize;		  // Size of section header entry
+	u16 e_shnum;			  // Number of section header entries
+	u16 e_shstrndx;			  // Section name string table index
+} Elf32_Hdr;
 
 // Program header. Field structure is different between bit sizes.
+#if CONFIG_bits == 64
 typedef struct ATTR(packed)
 {
 	u32 p_type;
@@ -124,6 +149,7 @@ typedef struct ATTR(packed)
 	u64 p_memsz;
 	u64 p_align;
 } Elf64_Phdr;
+#endif
 typedef struct ATTR(packed)
 {
 	u32 p_type;
@@ -137,6 +163,7 @@ typedef struct ATTR(packed)
 } Elf32_Phdr;
 
 // Section header
+#if CONFIG_bits == 64
 typedef struct ATTR(packed)
 {
 	u32 sh_name;			// Section name
@@ -150,6 +177,7 @@ typedef struct ATTR(packed)
 	u64 sh_addralign;		// Address alignment boundary
 	u64 sh_entsize;			// Size of entries, if section has table
 } Elf64_Shdr;
+#endif
 typedef struct ATTR(packed)
 {
 	u32 sh_name;			// Section name
@@ -165,6 +193,7 @@ typedef struct ATTR(packed)
 } Elf32_Shdr;
 
 // Symbol
+#if CONFIG_bits == 64
 typedef struct ATTR(packed)
 {
 	u32 st_name;
@@ -174,6 +203,7 @@ typedef struct ATTR(packed)
 	Elf64_Addr st_value;
 	u64 st_size;
 } Elf64_Sym;
+#endif
 typedef struct ATTR(packed)
 {
 	u32 st_name;
@@ -185,11 +215,13 @@ typedef struct ATTR(packed)
 } Elf32_Sym;
 
 // Relocation
+#if CONFIG_bits == 64
 typedef struct ATTR(packed)
 {
 	Elf64_Addr r_offset;
 	u64 r_info;
 } Elf64_Rel;
+#endif
 typedef struct ATTR(packed)
 {
 	Elf32_Addr r_offset;
@@ -197,15 +229,33 @@ typedef struct ATTR(packed)
 } Elf32_Rel;
 
 // Relocation + addend
+#if CONFIG_bits == 64
 typedef struct ATTR(packed)
 {
 	Elf64_Addr r_offset;
 	u64 r_info;
 	i64 r_addend;
 } Elf64_Rela;
+#endif
 typedef struct ATTR(packed)
 {
 	Elf32_Addr r_offset;
 	u32 r_info;
 	i32 r_addend;
 } Elf32_Rela;
+
+// Note
+#if CONFIG_bits == 64
+typedef struct
+{
+	u64 n_namesz;
+	u64 n_descsz;
+	u64 n_type;
+} Elf64_Nhdr;
+#endif
+typedef struct
+{
+	u32 n_namesz;
+	u32 n_descsz;
+	u32 n_type;
+} Elf32_Nhdr;

@@ -3,18 +3,18 @@
 #include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
-#include <menix/syscall.h>
+#include <menix/sys/syscall.h>
 
 #include <errno.h>
 
 // Include the syscalls once.
-#include <menix/syscall_list.h>
+#include <menix/sys/syscall_list.h>
 
 const SyscallFn syscall_table[] = {
 // Include them again, but now as table entry.
 #undef SYSCALL
 #define SYSCALL_TABLE_INSERT
-#include <menix/syscall_list.h>
+#include <menix/sys/syscall_list.h>
 #undef SYSCALL_TABLE_INSERT
 };
 

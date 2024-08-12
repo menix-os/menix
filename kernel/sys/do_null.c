@@ -1,11 +1,11 @@
 // Syscall "null"
-// Does nothing.
 
 #include <menix/arch.h>
-#include <menix/syscall.h>
+#include <menix/sys/syscall.h>
 
 #include <errno.h>
 
+// Does nothing.
 SYSCALL_IMPL(null)
 {
 #ifndef NDEBUG

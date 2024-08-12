@@ -15,12 +15,13 @@ void module_init()
 	const Module* modules = (Module*)SECTION_START(mod);
 
 	// Initialize all built-in modules.
+	kmesg("Loading %i built-in modules.\n", module_count);
 	for (usize i = 0; i < module_count; i++)
 	{
-		module_log("Loading \"%s\"\n", modules[i].name);
+		kmesg("Loading \"%s\"\n", modules[i].name);
 		const i32 ret = modules[i].init();
 		if (ret != 0)
-			module_log("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
+			kmesg("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
 	}
 }
 
@@ -33,7 +34,7 @@ void module_fini()
 	// Clean up all modules.
 	for (usize i = 0; i < module_count; i++)
 	{
-		module_log("Unloading \"%s\"\n", modules[i].name);
+		kmesg("Unloading \"%s\"\n", modules[i].name);
 		modules[i].exit();
 	}
 }

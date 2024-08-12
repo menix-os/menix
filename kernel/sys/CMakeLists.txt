@@ -5,4 +5,5 @@ add_library(menix_sys
 	syscall_table.c
 	do_null.c
 	do_mmap.c
+	do_exec.c
 )
