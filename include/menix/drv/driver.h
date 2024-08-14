@@ -21,10 +21,3 @@ typedef struct Driver
 	DriverFn prepare;		// Called when a device is about to be connected.
 	DriverFn cleanup;		// Called after a device has been disconnected.
 } Driver;
-
-// Driver instance.
-typedef struct Device
-{
-	const char* name;		 // The name of the device.
-	const Driver* driver;	 // The driver currently mapped to the device.
-} Device;

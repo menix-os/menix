@@ -1,0 +1,17 @@
+// ACPI functions
+
+#pragma once
+#include <menix/common.h>
+#include <menix/drv/acpi/types.h>
+#include <menix/memory/pm.h>
+
+// Converts an ACPI physical address to a virtual one.
+#define ACPI_ADDR(addr) ((PhysAddr)(addr) + pm_get_phys_base())
+
+// Initializes the ACPI subsystem with a pointer to the RSDP.
+void acpi_init(AcpiRsdp* rsdp);
+
+// Finds a table using its signature.
+// `signature`: A 4-character string with the table's signature.
+// `index`: The index if the same table exists more than once. Pass 0 otherwise.
+void* acpi_find_table(const char* signature, usize index);

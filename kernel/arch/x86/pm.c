@@ -84,6 +84,11 @@ void pm_update_phys_base(void* phys_base)
 	phys_addr = phys_base;
 }
 
+void* pm_get_phys_base()
+{
+	return phys_addr;
+}
+
 PhysAddr pm_arch_alloc(usize amount)
 {
 	spin_acquire_force(&lock);

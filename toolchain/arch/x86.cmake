@@ -9,5 +9,6 @@ include_directories(/usr/include/efi/)
 
 add_option(page_size NUMBER 0x1000)
 add_option(smp BOOL OFF)
+add_option(pci BOOL ON)
 require_option(efi)
 require_option(acpi)

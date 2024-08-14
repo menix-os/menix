@@ -21,10 +21,13 @@ typedef struct
 	PhysMemoryUsage usage;	  // How this memory region is used.
 } PhysMemory;
 
-// Initialize the physical memory manager.
+// Initializes the physical memory manager.
 void pm_init(void* phys_base, PhysMemory* mem_map, usize num_entries);
 
-// Update the base address that maps directly to lower memory.
+// Updates the base address that maps directly to lower memory.
 void pm_update_phys_base(void* phys_base);
+
+// Gets the base address that maps directly to lower memory.
+void* pm_get_phys_base();
 
 #include <bits/pm.h>

@@ -3,23 +3,29 @@
 #include <menix/log.h>
 #include <menix/module.h>
 
-static PciDeviceVariant test_variants[] = {
+// Driver structure.
+typedef struct
+{
+} VirtIoGpuDevice;
+
+static PciDevice id_table[] = {
 	{PCI_DEVICE(0x1234, 0x1111), .variant_idx = 0},
 };
 
-static PciDriver test_driver = {
-	.name = "QEMU VGA Controller",
-	.variants = test_variants,
-	.num_variants = ARRAY_SIZE(test_variants),
+static PciDriver virtio_gpu = {
+	.name = MODULE_NAME,
+	.variants = id_table,
+	.num_variants = ARRAY_SIZE(id_table),
 };
 
 MODULE_FN i32 init_fn()
 {
-	return pci_register_driver(&test_driver);
+	return pci_register_driver(&virtio_gpu);
 }
 
 MODULE_FN void exit_fn()
 {
+	pci_unregister_driver(&virtio_gpu);
 }
 
 MODULE = {

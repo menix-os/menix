@@ -8,6 +8,10 @@
 #include <menix/log.h>
 #include <menix/module.h>
 
+#ifdef CONFIG_acpi
+#include <menix/drv/acpi/acpi.h>
+#endif
+
 void kernel_main(BootInfo* info)
 {
 	// Initialize console.
@@ -15,6 +19,10 @@ void kernel_main(BootInfo* info)
 
 	// Say hello to the console.
 	kmesg("menix v" CONFIG_version " (" CONFIG_arch ")\n");
+
+#ifdef CONFIG_acpi
+	acpi_init(info->acpi_rsdp);
+#endif
 
 	// Init virtual file system.
 	vfs_init();
