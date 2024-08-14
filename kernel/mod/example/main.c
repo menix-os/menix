@@ -17,5 +17,5 @@ MODULE = {
 	.name = MODULE_NAME,
 	.init = init_fn,
 	.exit = exit_fn,
-	.meta = MOULE_META_COMMON,
+	MOULE_META_COMMON,
 };

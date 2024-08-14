@@ -3,6 +3,9 @@
 #pragma once
 #include <menix/common.h>
 
+#define PCI_ANY_ID			 (~0)
+#define PCI_DEVICE(ven, dev) .vendor = (ven), .device = (dev), .sub_vendor = PCI_ANY_ID, .sub_device = PCI_ANY_ID
+
 // Describes a variant of a PCI(e) device.
 typedef struct
 {
@@ -43,8 +46,9 @@ void pci_init();
 // Shuts the PCI subsystem down. This also unregisters all devices!
 void pci_fini();
 
-// Read 16 bits from a PCI device.
-u16 pci_read16(u8 bus, u8 slot, u8 func, u8 offset);
+// TODO: Move this to dynamically allocated memory!
+extern PciDriver* pci_drivers[256];
+extern usize pci_num_drivers;
 
-// Get the info of a connected device and writes it to `dest`.
-void pci_get_info(PciDevice* dest, u8 bus, u8 slot);
+// Registers a driver.
+i32 pci_register_driver(PciDriver* driver);

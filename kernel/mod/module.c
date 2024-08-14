@@ -18,7 +18,8 @@ void module_init()
 	kmesg("Loading %i built-in modules.\n", module_count);
 	for (usize i = 0; i < module_count; i++)
 	{
-		kmesg("Loading \"%s\"\n", modules[i].name);
+		kmesg("Loading \"%s\": %s (Author: %s, License: %s)\n", modules[i].name, modules[i].description,
+			  modules[i].author, modules[i].license);
 		const i32 ret = modules[i].init();
 		if (ret != 0)
 			kmesg("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
