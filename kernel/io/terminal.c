@@ -17,8 +17,11 @@ static usize ch_ypos;
 void terminal_init()
 {
 	internal_fb = fb_get_next();
-	ch_width = internal_fb->var.width / FONT_WIDTH;
-	ch_height = internal_fb->var.height / FONT_HEIGHT;
+	if (!internal_fb)
+		return;
+
+	ch_width = internal_fb->mode.width / FONT_WIDTH;
+	ch_height = internal_fb->mode.height / FONT_HEIGHT;
 	ch_xpos = 0;
 	ch_ypos = 0;
 }
@@ -26,9 +29,9 @@ void terminal_init()
 // Moves all lines up by one line.
 static void terminal_scroll()
 {
-	volatile void* const buf = internal_fb->fixed.mmio_base;
+	volatile void* const buf = internal_fb->info.mmio_base;
 	const usize offset =
-		(FONT_HEIGHT * internal_fb->var.width * (internal_fb->var.bpp / 8));	// Offset for 1 line of characters.
+		(FONT_HEIGHT * internal_fb->mode.width * (internal_fb->mode.bpp / 8));	  // Offset for 1 line of characters.
 	for (usize y = 1; y < ch_height; y++)
 	{
 		memcpy((void*)buf + (offset * (y - 1)), (void*)buf + (offset * y), offset);
@@ -71,7 +74,7 @@ void terminal_putchar(u32 ch)
 		ch_ypos = ch_height - 1;
 	}
 
-	u32* buf = (u32*)(internal_fb->fixed.mmio_base);
+	u32* buf = (u32*)(internal_fb->info.mmio_base);
 	const u8 c = (u8)ch;
 
 	// Plot the character.
@@ -81,7 +84,7 @@ void terminal_putchar(u32 ch)
 	{
 		for (usize x = 0; x < FONT_WIDTH; x++)
 		{
-			u32* const pixel = buf + (((pix_ypos + y) * internal_fb->var.width) + (pix_xpos + x));
+			u32* const pixel = buf + (((pix_ypos + y) * internal_fb->mode.width) + (pix_xpos + x));
 			*pixel = builtin_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0xFF000000;
 		}
 	}

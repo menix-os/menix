@@ -4,12 +4,7 @@
 
 #include <menix/common.h>
 
-// Driver instance.
-typedef struct Device
-{
-	const char* name;				// The name of the device.
-	const struct Driver* driver;	// The driver currently mapped to the device.
-} Device;
+typedef struct Device Device;
 
 // Callback for driver functions. The device argument is never NULL.
 typedef i32 (*DriverFn)(Device* d);
@@ -18,7 +13,7 @@ typedef i32 (*DriverFn)(Device* d);
 typedef struct Driver
 {
 	char* name;				// Name of the device.
-	void* data;				// Generic driver data.
+	void* data;				// Custom driver structure.
 	DriverFn bind;			// Called when a device is bound to the driver.
 	DriverFn unbind;		// Called when a device is unbound from the driver.
 	DriverFn connect;		// Called to connect a device.
@@ -26,3 +21,10 @@ typedef struct Driver
 	DriverFn prepare;		// Called when a device is about to be connected.
 	DriverFn cleanup;		// Called after a device has been disconnected.
 } Driver;
+
+// Driver instance.
+typedef struct Device
+{
+	const char* name;		 // The name of the device.
+	const Driver* driver;	 // The driver currently mapped to the device.
+} Device;

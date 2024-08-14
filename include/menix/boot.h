@@ -7,6 +7,10 @@
 #include <menix/memory/pm.h>
 #include <menix/video/fb.h>
 
+#ifdef CONFIG_acpi
+#include <menix/drv/acpi/types.h>
+#endif
+
 typedef struct
 {
 	void* address;	  // Start of the file
@@ -35,7 +39,7 @@ typedef struct
 	BootFile* files;	// Available files
 
 #ifdef CONFIG_acpi
-	void* acpi_rsdp;	// ACPI RSDP table.
+	AcpiRsdp* acpi_rsdp;	// ACPI RSDP table.
 #endif
 #ifdef CONFIG_open_firmware
 	void* fdt_blob;	   // Device tree blob.

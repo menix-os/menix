@@ -3,7 +3,7 @@
 #pragma once
 #include <menix/common.h>
 
-typedef i32 FsMode;
+typedef i32 FsMode;	   // Describes a UNIX-file permission mode, e.g. 0777.
 typedef struct VfsNode VfsNode;
 typedef struct FileSystem FileSystem;
 

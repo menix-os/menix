@@ -10,8 +10,9 @@
 #include <menix/memory/vm.h>
 #include <menix/util/self.h>
 
+#include <string.h>
+
 #include "limine.h"
-#include "menix/video/fb.h"
 
 #define LIMINE_REQUEST(request, tag, rev) \
 	ATTR(used, section(".requests")) static volatile struct limine_##request request = { \
@@ -28,7 +29,6 @@ LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST, 0);					 // Get memory map
 LIMINE_REQUEST(hhdm_request, LIMINE_HHDM_REQUEST, 0);						 // Directly map 32-bit physical space.
 LIMINE_REQUEST(kernel_address_request, LIMINE_KERNEL_ADDRESS_REQUEST, 0);	 // Get the physical kernel address.
 LIMINE_REQUEST(kernel_file_request, LIMINE_KERNEL_FILE_REQUEST, 0);			 // For debug symbols.
-LIMINE_REQUEST(boot_time_request, LIMINE_BOOT_TIME_REQUEST, 0);				 // Get boot time stamp.
 LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 0);			 // Initial console frame buffer.
 LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);					 // Get all other modules, logo.
 #ifdef CONFIG_acpi
@@ -43,22 +43,6 @@ void kernel_boot()
 	arch_early_init();
 
 	BootInfo info = {0};
-
-	// Get framebuffer.
-	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n");
-	FrameBuffer buffers[framebuffer_request.response->framebuffer_count];
-	info.fb_num = framebuffer_request.response->framebuffer_count;
-	info.fb = buffers;
-	for (usize i = 0; i < info.fb_num; i++)
-	{
-		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
-		buffers[i].fixed.mmio_base = buf->address;
-		buffers[i].var.width = buf->width;
-		buffers[i].var.height = buf->height;
-		buffers[i].var.bpp = buf->bpp;
-
-		fb_register(&buffers[i]);
-	}
 
 	// Get the memory map.
 	kassert(memmap_request.response, "Unable to get memory map!\n");
@@ -76,13 +60,12 @@ void kernel_boot()
 
 		switch (res->entries[i]->type)
 		{
-			// Note: We treat Kernel maps like free memory as we do our own mapping.
 			case LIMINE_MEMMAP_USABLE: map[i].usage = PhysMemoryUsage_Free; break;
 			case LIMINE_MEMMAP_KERNEL_AND_MODULES: map[i].usage = PhysMemoryUsage_Kernel; break;
-			case LIMINE_MEMMAP_FRAMEBUFFER:
 			case LIMINE_MEMMAP_RESERVED:
-			case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
 			case LIMINE_MEMMAP_ACPI_NVS: map[i].usage = PhysMemoryUsage_Reserved; break;
+			case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
+			case LIMINE_MEMMAP_FRAMEBUFFER:
 			case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: map[i].usage = PhysMemoryUsage_Bootloader; break;
 			default: map[i].usage = PhysMemoryUsage_Unknown; break;
 		}
@@ -99,15 +82,12 @@ void kernel_boot()
 	info.kernel_virt = (void*)kernel_address_request.response->virtual_base;
 	info.phys_map = (void*)hhdm_request.response->offset;
 
-	// Get boot timestamp.
-	kassert(boot_time_request.response, "Unable to get boot timestamp!\n");
-	kmesg("Boot timestamp: %u\n", (u32)boot_time_request.response->boot_time);
-
 #ifdef CONFIG_acpi
-	// Get ACPI RSDP table.
-	kassert(rsdp_request.response, "Unable to get ACPI RSDP table!\n");
-	kmesg("ACPI System Table at 0x%p\n", rsdp_request.response->address);
+	// Get ACPI RSDP.
+	kassert(rsdp_request.response, "Unable to get ACPI RSDP!\n");
+	kmesg("ACPI RSDP at 0x%p\n", rsdp_request.response->address);
 	info.acpi_rsdp = rsdp_request.response->address;
+	kassert(memcmp(info.acpi_rsdp->signature, "RSD PTR", 7) == 0, "Invalid signature, expected \"RSD PTR\"!");
 #endif
 
 #ifdef CONFIG_open_firmware
@@ -142,6 +122,23 @@ void kernel_boot()
 	}
 	info.file_num = module_res->module_count;
 	info.files = files;
+
+	// Get framebuffer.
+	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n");
+	FrameBuffer buffers[framebuffer_request.response->framebuffer_count];
+	info.fb_num = framebuffer_request.response->framebuffer_count;
+	info.fb = buffers;
+	for (usize i = 0; i < info.fb_num; i++)
+	{
+		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
+		// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
+		buffers[i].info.mmio_base = buf->address;
+		buffers[i].mode.width = buf->width;
+		buffers[i].mode.height = buf->height;
+		buffers[i].mode.bpp = buf->bpp;
+
+		fb_register(&buffers[i]);
+	}
 
 	arch_init(&info);
 	kernel_main(&info);

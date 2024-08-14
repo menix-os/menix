@@ -45,16 +45,10 @@ void vm_init(void* phys_base, PhysAddr kernel_base, PhysMemory* mem_map, usize n
 	kernel_map->head = phys_addr + pm_arch_alloc(1);
 	memset(kernel_map->head, 0x00, CONFIG_page_size);
 
-	//? We could probably pre-allocate the upper half of pages, i.e. index 256..511
+	// TODO: We could probably pre-allocate the upper half of pages, i.e. index 256..511
 
-	// Restore the HHDM mapping.
-	for (usize cur = 0; cur < 4UL * GiB; cur += 2UL * MiB)
-		kassert(vm_arch_map_page(kernel_map, cur, phys_addr + cur, PAGE_PRESENT | PAGE_READ_WRITE, PageSize_2MiB),
-				"Unable to map lower memory!\n");
-
-	// Map a bit more so we can still access bootloaded files.
-	// TODO: Find out if there's a better way to handle this situation.
-	for (usize cur = 4UL * GiB; cur < 64UL * GiB; cur += 2UL * MiB)
+	// Map the lower 256 GiB of physical space.
+	for (usize cur = 0; cur < 256UL * GiB; cur += 2UL * MiB)
 		kassert(vm_arch_map_page(kernel_map, cur, phys_addr + cur, PAGE_PRESENT | PAGE_READ_WRITE, PageSize_2MiB),
 				"Unable to map lower memory!\n");
 
@@ -152,13 +146,14 @@ bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, us
 
 void vm_arch_unmap_page(PageMap* page_map, void* virt_addr)
 {
+	// TODO
 	vm_flush_tlb(virt_addr);
 }
 
 void vm_page_fault_handler(u32 fault, u32 error)
 {
-	usize addr;
-	asm_get_register(addr, cr2);
+	usize cr2;
+	asm_get_register(cr2, cr2);
 
 	u16 cs;
 	asm_get_register(cs, cs);
@@ -172,9 +167,7 @@ void vm_page_fault_handler(u32 fault, u32 error)
 	else
 	{
 		kmesg("Page fault in supervisor mode!\n");
-		kmesg("Attempted to access: 0x%p\n", addr);
-
-		ktrace();
+		kmesg("cs: 0x%p\ncr2: 0x%p\n", cs, cr2);
 		kabort();
 	}
 }
