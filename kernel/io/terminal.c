@@ -16,7 +16,15 @@ static usize ch_ypos;
 
 void terminal_init()
 {
-	internal_fb = fb_get_next();
+	// If an early framebuffer is available, use that.
+	// If not, try to get a regular framebuffer.
+	// If that fails as well, don't write to a framebuffer.
+	FrameBuffer* early_fb = fb_get_early();
+	if (early_fb != NULL)
+		internal_fb = early_fb;
+	else
+		internal_fb = fb_get_next();
+
 	if (!internal_fb)
 		return;
 
@@ -24,6 +32,12 @@ void terminal_init()
 	ch_height = internal_fb->mode.height / FONT_HEIGHT;
 	ch_xpos = 0;
 	ch_ypos = 0;
+
+	// Clear the screen.
+	for (usize x = 0; x < internal_fb->mode.width * (internal_fb->mode.bpp / 8) * internal_fb->mode.height; x++)
+	{
+		write8(internal_fb->info.mmio_base + x, 0x00);
+	}
 }
 
 // Moves all lines up by one line.

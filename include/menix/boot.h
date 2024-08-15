@@ -23,9 +23,6 @@ typedef struct
 {
 	const char* cmd;	// Command line
 
-	usize fb_num;		// Amount of frame buffers
-	FrameBuffer* fb;	// Available frame buffer(s)
-
 // This is architecture dependent, but almost every architecture should have it.
 #if defined(CONFIG_arch_x86) || defined(CONFIG_arch_aarch64) || defined(CONFIG_arch_riscv64)
 	usize mm_num;			   // Amount of memory map entries

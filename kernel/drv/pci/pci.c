@@ -6,26 +6,11 @@
 
 #include <errno.h>
 
-static u32 (*pci_internal_read)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u8 access_size);
-static void (*pci_internal_write)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u8 access_size, u32 value);
-
 #ifdef CONFIG_acpi
-#include <menix/drv/acpi/acpi.h>
-#include <menix/drv/acpi/types.h>
 #include <menix/drv/pci/pci_acpi.h>
-
-AcpiMcfg* acpi_mcfg;
-// Do PCI configuration using ACPI "MCFG". This is the preferred way.
-static void pci_init_acpi()
-{
-	acpi_mcfg = acpi_find_table("MCFG", 0);
-	pci_internal_read = pci_read_acpi;
-	pci_internal_write = pci_write_acpi;
-	const usize num_entries = (acpi_mcfg->header.length - sizeof(AcpiMcfg)) / sizeof(AcpiMcfgEntry);
-	// TODO: Read PCI buses.
-}
 #endif
 
+PciPlatform pci_platform = {0};
 PciDriver* pci_drivers[256];
 usize pci_num_drivers = 0;
 

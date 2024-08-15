@@ -13,6 +13,7 @@
 #include <string.h>
 
 #include "limine.h"
+#include "menix/video/fb.h"
 
 #define LIMINE_REQUEST(request, tag, rev) \
 	ATTR(used, section(".requests")) static volatile struct limine_##request request = { \
@@ -43,6 +44,26 @@ void kernel_boot()
 	arch_early_init();
 
 	BootInfo info = {0};
+
+	// Get early framebuffer.
+	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n");
+	FrameBuffer buffer = {0};
+	const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[0];
+	// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
+	buffer.info.mmio_base = buf->address;
+	buffer.mode.width = buf->width;
+	buffer.mode.height = buf->height;
+	buffer.mode.bpp = buf->bpp;
+
+	// If no early framebuffer has been set previously, do it now.
+	if (fb_get_early() == NULL)
+	{
+		fb_set_early(&buffer);
+		terminal_init();
+	}
+
+	kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%u\n", buffer.info.mmio_base, buffer.mode.width,
+		  buffer.mode.height, buffer.mode.bpp);
 
 	// Get the memory map.
 	kassert(memmap_request.response, "Unable to get memory map!\n");
@@ -123,26 +144,6 @@ void kernel_boot()
 	}
 	info.file_num = module_res->module_count;
 	info.files = files;
-
-	// Get framebuffer.
-	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n");
-	FrameBuffer buffers[framebuffer_request.response->framebuffer_count];
-	info.fb_num = framebuffer_request.response->framebuffer_count;
-	info.fb = buffers;
-	kmesg("Got framebuffers:\n");
-	for (usize i = 0; i < info.fb_num; i++)
-	{
-		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
-		// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
-		buffers[i].info.mmio_base = buf->address;
-		buffers[i].mode.width = buf->width;
-		buffers[i].mode.height = buf->height;
-		buffers[i].mode.bpp = buf->bpp;
-
-		kmesg("    [%i] Address = 0x%p, Resolution = %ux%ux%u\n", i, buffers[i].info.mmio_base, buffers[i].mode.width,
-			  buffers[i].mode.height, buffers[i].mode.bpp);
-		fb_register(&buffers[i]);
-	}
 
 	arch_init(&info);
 	kernel_main(&info);

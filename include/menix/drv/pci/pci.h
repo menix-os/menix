@@ -7,6 +7,14 @@
 #define PCI_ANY_ID			 (~0)
 #define PCI_DEVICE(ven, dev) .vendor = (ven), .device = (dev), .sub_vendor = PCI_ANY_ID, .sub_device = PCI_ANY_ID
 
+typedef struct
+{
+	u32 (*internal_read)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u8 access_size);
+	void (*internal_write)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u8 access_size, u32 value);
+} PciPlatform;
+
+extern PciPlatform pci_platform;
+
 // Describes a PCI(e) device.
 typedef struct
 {

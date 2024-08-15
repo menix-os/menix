@@ -3,6 +3,9 @@
 #pragma once
 #include <menix/common.h>
 
+// Do PCI configuration using ACPI "MCFG". This is the preferred way.
+void pci_init_acpi();
+
 // Reads from a PCI device using the ACPI MCFG table info.
 u32 pci_read_acpi(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u8 access_size);
 

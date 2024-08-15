@@ -10,7 +10,6 @@
 	{ \
 		kmesg("Assertion failed: " msg "\nExpression:\n\t" #expr "\n" __FILE__ ":" __PASTE_STR(__LINE__) "\n"); \
 		ktrace(); \
-		kabort(); \
 	}
 
 typedef struct ATTR(packed) StackFrame

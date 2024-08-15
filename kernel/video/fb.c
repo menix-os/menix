@@ -6,8 +6,19 @@
 
 #define MAX_FB 16
 
+static FrameBuffer* early_buffer = NULL;
 static FrameBuffer* buffers[MAX_FB] = {0};
 static usize num_buffers = 0;
+
+void fb_set_early(FrameBuffer* fb)
+{
+	early_buffer = fb;
+}
+
+FrameBuffer* fb_get_early()
+{
+	return early_buffer;
+}
 
 void fb_register(FrameBuffer* fb)
 {

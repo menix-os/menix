@@ -76,6 +76,12 @@ struct FrameBuffer
 	FbModeInfo mode;	  // Information about the current video mode.
 };
 
+// Sets a single framebuffer for early output. Only one can be active at one time.
+void fb_set_early(FrameBuffer* fb);
+
+// Gets the early framebuffer if one has been provided. Otherwise returns NULL.
+FrameBuffer* fb_get_early();
+
 // Registers a framebuffer to be visible to the kernel.
 void fb_register(FrameBuffer* fb);
 
