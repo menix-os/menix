@@ -30,7 +30,7 @@ typedef struct
 	u32 width, height;						// Resolution of the visible frame in pixels.
 	u32 v_width, v_height;					// Resolution of the virtual frame in pixels.
 	u32 v_off_x, v_off_y;					// Offset from virtual to visible resolution.
-	u8 bpp;									// Amount of bits per pixel.
+	u8 cpp;									// Amount of bytes per pixel.
 	FbColorBits red, green, blue, alpha;	// Bitfields for each part of a pixel.
 } FbModeInfo;
 
@@ -50,6 +50,14 @@ typedef struct
 	u32 width, height;	  // Width and height of the area to copy.
 } FbCopyRegion;
 
+// Arguments passed to `FbFuncs.draw_region`.
+typedef struct
+{
+	u32 x_src, y_src;	  // Top left corner of the framebuffer to draw to.
+	u32 width, height;	  // Width and height of the image to draw.
+	const u8* data;		  // Pointer to the image data.
+} FbDrawRegion;
+
 typedef struct FrameBuffer FrameBuffer;
 // Callback functions for modifying a framebuffer.
 typedef struct
@@ -64,6 +72,8 @@ typedef struct
 	void (*fill_region)(FrameBuffer* fb, FbFillRegion* args);
 	// Copies a rectangular region from one location to another.
 	void (*copy_region)(FrameBuffer* fb, FbCopyRegion* args);
+	// Draws an image to a location.
+	void (*draw_region)(FrameBuffer* fb, FbDrawRegion* args);
 } FbFuncs;
 
 // Stores information about a framebuffer.

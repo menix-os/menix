@@ -21,18 +21,6 @@ void arch_early_init()
 
 void arch_init(BootInfo* info)
 {
-	// Initialize physical and virtual memory managers.
-	pm_init(info->phys_map, info->memory_map, info->mm_num);
-	vm_init(info->phys_map, info->kernel_phys, info->memory_map, info->mm_num);
-
-	// Print memory map.
-	kmesg("Physical memory map:\n");
-	for (usize i = 0; i < info->mm_num; i++)
-	{
-		kmesg("    [%u] 0x%p - 0x%p [%s]\n", i, info->memory_map[i].address,
-			  info->memory_map[i].address + info->memory_map[i].length,
-			  (info->memory_map[i].usage == PhysMemoryUsage_Free) ? "Usable" : "Reserved");
-	}
 }
 
 void arch_shutdown(BootInfo* info)

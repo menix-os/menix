@@ -17,6 +17,9 @@
 
 #define TRANSMIT_FREE (arch_x86_read8(COM1_BASE + LINE_STATUS_REG) & 0x20)
 
+// If the COM port works or not.
+static bool can_use_serial = false;
+
 void serial_initialize()
 {
 	arch_x86_write8(COM1_BASE + INT_ENABLE_REG, 0x00);			// Disable interrupts
@@ -26,13 +29,25 @@ void serial_initialize()
 	arch_x86_write8(COM1_BASE + LINE_CTRL_REG, 0x03);			// 8 bits, no parity, one stop bit
 	arch_x86_write8(COM1_BASE + INT_ID_FIFO_CTRL_REG, 0xC7);	// Enable FIFO, clear them, with 14-byte threshold
 	arch_x86_write8(COM1_BASE + MODEM_CTRL_REG, 0x0B);			// IRQs enabled, RTS/DSR set
+	arch_x86_write8(COM1_BASE + MODEM_CTRL_REG, 0x1E);			// Set to loopback mode for testing.
+
+	arch_x86_write8(COM1_BASE + DATA_REG, 0xAE);		 // Send a test byte.
+	if (arch_x86_read8(COM1_BASE + DATA_REG) == 0xAE)	 // If we get the same back, we're ready.
+	{
+		can_use_serial = true;
+		arch_x86_write8(COM1_BASE + MODEM_CTRL_REG, 0x0F);	  // Set back to normal operation mode.
+	}
 }
 
 void serial_putchar(char c)
 {
-	// Wait for transmit to be empty.
+	if (!can_use_serial)
+		return;
+
+	// Wait until we can send things.
 	while (TRANSMIT_FREE == false)
 		;
+
 	switch (c)
 	{
 		case '\0': break;	 // Don't transmit null terminators.

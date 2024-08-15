@@ -13,7 +13,7 @@
 #include <string.h>
 
 #include "limine.h"
-#include "menix/video/fb.h"
+#include "menix/video/fb_default.h"
 
 #define LIMINE_REQUEST(request, tag, rev) \
 	ATTR(used, section(".requests")) static volatile struct limine_##request request = { \
@@ -30,7 +30,7 @@ LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST, 0);					 // Get memory map
 LIMINE_REQUEST(hhdm_request, LIMINE_HHDM_REQUEST, 0);						 // Directly map 32-bit physical space.
 LIMINE_REQUEST(kernel_address_request, LIMINE_KERNEL_ADDRESS_REQUEST, 0);	 // Get the physical kernel address.
 LIMINE_REQUEST(kernel_file_request, LIMINE_KERNEL_FILE_REQUEST, 0);			 // For debug symbols.
-LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 0);			 // Initial console frame buffer.
+LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 1);			 // Initial console frame buffer.
 LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);					 // Get all other modules, logo.
 #ifdef CONFIG_acpi
 LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);	 // Get ACPI RSDP table if enabled.
@@ -44,26 +44,6 @@ void kernel_boot()
 	arch_early_init();
 
 	BootInfo info = {0};
-
-	// Get early framebuffer.
-	kassert(framebuffer_request.response, "Unable to get a framebuffer!\n");
-	FrameBuffer buffer = {0};
-	const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[0];
-	// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
-	buffer.info.mmio_base = buf->address;
-	buffer.mode.width = buf->width;
-	buffer.mode.height = buf->height;
-	buffer.mode.bpp = buf->bpp;
-
-	// If no early framebuffer has been set previously, do it now.
-	if (fb_get_early() == NULL)
-	{
-		fb_set_early(&buffer);
-		terminal_init();
-	}
-
-	kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%u\n", buffer.info.mmio_base, buffer.mode.width,
-		  buffer.mode.height, buffer.mode.bpp);
 
 	// Get the memory map.
 	kassert(memmap_request.response, "Unable to get memory map!\n");
@@ -91,17 +71,67 @@ void kernel_boot()
 			default: map[i].usage = PhysMemoryUsage_Unknown; break;
 		}
 	}
+
 	// Make sure the first 4 GiB are identity mapped so we can write to "physical" memory.
 	kassert(hhdm_request.response, "Unable to get HHDM response!\n");
-	kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 	kassert(kernel_address_request.response, "Unable to get kernel address info!\n");
-	kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
-		  kernel_address_request.response->physical_base);
 
 	// Initialize virtual memory using the memory map we got.
 	info.kernel_phys = (PhysAddr)kernel_address_request.response->physical_base;
 	info.kernel_virt = (void*)kernel_address_request.response->virtual_base;
 	info.phys_map = (void*)hhdm_request.response->offset;
+
+	// Initialize physical and virtual memory managers.
+	pm_init(info.phys_map, info.memory_map, info.mm_num);
+	vm_init(info.phys_map, info.kernel_phys, info.memory_map, info.mm_num);
+
+	// Get early framebuffer.
+	FrameBuffer buffer = {0};
+
+	if (framebuffer_request.response == NULL)
+		kmesg("Unable to get a framebuffer!\n");
+	else if (framebuffer_request.response->framebuffer_count > 0)
+	{
+		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[0];
+		// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
+		buffer.info.mmio_base = buf->address;
+		buffer.mode.width = buf->width;
+		buffer.mode.height = buf->height;
+		buffer.mode.cpp = buf->bpp / 8;
+
+		buffer.funcs.copy_region = fb_default_copy_region;
+		buffer.funcs.fill_region = fb_default_fill_region;
+		buffer.funcs.draw_region = fb_default_draw_region;
+
+		// If no early framebuffer has been set previously, do it now.
+		if (fb_get_early() == NULL)
+		{
+			fb_set_early(&buffer);
+			terminal_init();
+		}
+
+		kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%u\n", buffer.info.mmio_base, buffer.mode.width,
+			  buffer.mode.height, buffer.mode.cpp * 8);
+
+		// Print available video modes.
+		for (usize i = 0; i < buf->mode_count; i++)
+		{
+			const struct limine_video_mode* mode = buf->modes[i];
+			kmesg("    [%i] %ux%ux%u\n", i, mode->width, mode->height, mode->bpp);
+		}
+	}
+
+	// Print memory map.
+	kmesg("Physical memory map:\n");
+	for (usize i = 0; i < info.mm_num; i++)
+	{
+		kmesg("    [%u] 0x%p - 0x%p [%s]\n", i, info.memory_map[i].address,
+			  info.memory_map[i].address + info.memory_map[i].length,
+			  (info.memory_map[i].usage == PhysMemoryUsage_Free) ? "Usable" : "");
+	}
+	kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
+	kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
+		  kernel_address_request.response->physical_base);
 
 #ifdef CONFIG_acpi
 	// Get ACPI RSDP.
@@ -130,20 +160,24 @@ void kernel_boot()
 	info.cmd = kernel_res->kernel_file->cmdline;
 
 	// Get modules.
-	kassert(module_request.response, "Unable to get modules!\n");
-	kmesg("Got modules:\n");
-	const struct limine_module_response* module_res = module_request.response;
-	BootFile files[module_res->module_count];	 // TODO: Convert to kalloc'ed memory.
-	for (usize i = 0; i < module_res->module_count; i++)
+	if (module_request.response == NULL)
+		kmesg("Unable to get modules, or none were provided!\n");
+	else
 	{
-		files[i].address = module_res->modules[i]->address;
-		files[i].size = module_res->modules[i]->size;
-		files[i].path = module_res->modules[i]->path;
-		kmesg("    [%i] Address = 0x%p, Size = 0x%p, Path = \"%s\"\n", i, files[i].address, files[i].size,
-			  files[i].path);
+		kmesg("Got modules:\n");
+		const struct limine_module_response* module_res = module_request.response;
+		BootFile files[module_res->module_count];
+		for (usize i = 0; i < module_res->module_count; i++)
+		{
+			files[i].address = module_res->modules[i]->address;
+			files[i].size = module_res->modules[i]->size;
+			files[i].path = module_res->modules[i]->path;
+			kmesg("    [%i] Address = 0x%p, Size = 0x%p, Path = \"%s\"\n", i, files[i].address, files[i].size,
+				  files[i].path);
+		}
+		info.file_num = module_res->module_count;
+		info.files = files;
 	}
-	info.file_num = module_res->module_count;
-	info.files = files;
 
 	arch_init(&info);
 	kernel_main(&info);

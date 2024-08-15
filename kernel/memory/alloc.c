@@ -5,6 +5,8 @@
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
 
+#include <string.h>
+
 typedef enum
 {
 	AllocFlags_None = 0,
@@ -18,8 +20,14 @@ typedef enum
 // `flags`: Modfiy allocation behavior.
 static void* allocate_inner(usize bytes, usize alignment, AllocFlags flags)
 {
-	// TODO
-	return NULL;
+	// TODO: Right now we just give x amount of pages that meet the requirement.
+	const usize pages = (bytes / CONFIG_page_size) + 1;
+	void* result = pm_arch_alloc(pages) + pm_get_phys_base();
+
+	if (flags & AllocFlags_SetZero)
+		memset(result, 0, pages * CONFIG_page_size);
+
+	return result;
 }
 
 void* kalloc(usize bytes)

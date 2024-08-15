@@ -2,31 +2,40 @@
 
 #include <menix/io/serial.h>
 #include <menix/io/terminal.h>
+#include <menix/memory/alloc.h>
 #include <menix/util/builtin_font.h>
 #include <menix/video/fb.h>
 
 #include <string.h>
 
+// Internal render target.
 static FrameBuffer* internal_fb;
+// Back buffer.
+void* internal_buffer;
 
-static usize ch_width;
-static usize ch_height;
-static usize ch_xpos;
-static usize ch_ypos;
+static usize ch_width;			  // Screen width in characters
+static usize ch_height;			  // Screen height in characters
+static usize ch_xpos, ch_ypos;	  // Current cursor position in characters
 
 void terminal_init()
 {
-	// If an early framebuffer is available, use that.
-	// If not, try to get a regular framebuffer.
-	// If that fails as well, don't write to a framebuffer.
 	FrameBuffer* early_fb = fb_get_early();
-	if (early_fb != NULL)
-		internal_fb = early_fb;
-	else
-		internal_fb = fb_get_next();
+	FrameBuffer* regular_fb = fb_get_next();
 
+	// If a regular framebuffer is available, use that.
+	if (regular_fb != NULL)
+		internal_fb = regular_fb;
+	// If not, try to get an early framebuffer.
+	else
+		internal_fb = early_fb;
+
+	// If that fails as well, don't write to a framebuffer.
 	if (!internal_fb)
 		return;
+
+	// Allocate a back buffer.
+	const FbModeInfo* mode = &internal_fb->mode;
+	internal_buffer = kzalloc(mode->width * mode->height * mode->cpp);
 
 	ch_width = internal_fb->mode.width / FONT_WIDTH;
 	ch_height = internal_fb->mode.height / FONT_HEIGHT;
@@ -34,30 +43,47 @@ void terminal_init()
 	ch_ypos = 0;
 
 	// Clear the screen.
-	for (usize x = 0; x < internal_fb->mode.width * (internal_fb->mode.bpp / 8) * internal_fb->mode.height; x++)
-	{
-		write8(internal_fb->info.mmio_base + x, 0x00);
-	}
+	memset((void*)internal_fb->info.mmio_base, 0, mode->width * mode->height * mode->cpp);
+}
+
+// Flip the back buffer to the screen.
+static void copy_to_screen()
+{
+	// FbDrawRegion img = {
+	//	.x_src = 0,
+	//	.y_src = 0,
+	//	.width = internal_fb->mode.width,
+	//	.height = internal_fb->mode.height,
+	//	.data = internal_buffer,
+	// };
+	// internal_fb->funcs.draw_region(internal_fb, &img);
+	FbModeInfo* mode = &internal_fb->mode;
+	memcpy((void*)internal_fb->info.mmio_base, internal_buffer, mode->width * mode->height * mode->cpp);
 }
 
 // Moves all lines up by one line.
 static void terminal_scroll()
 {
-	volatile void* const buf = internal_fb->info.mmio_base;
-	const usize offset =
-		(FONT_HEIGHT * internal_fb->mode.width * (internal_fb->mode.bpp / 8));	  // Offset for 1 line of characters.
+	void* const buf = internal_buffer;
+	// Offset for 1 line of characters.
+	const usize offset = (FONT_HEIGHT * internal_fb->mode.width * internal_fb->mode.cpp);
+
+	// Move each line up by one.
 	for (usize y = 1; y < ch_height; y++)
 	{
 		memcpy((void*)buf + (offset * (y - 1)), (void*)buf + (offset * y), offset);
 	}
+
+	// Blank the new line.
+	memset((void*)buf + (offset * (ch_height - 1)), 0x00, offset);
+
+	copy_to_screen();
 }
 
 void terminal_putchar(u32 ch)
 {
-	// Output to serial first.
 	serial_putchar(ch);
 
-	// Then update the framebuffer console if there is one.
 	if (!internal_fb)
 		return;
 
@@ -88,8 +114,9 @@ void terminal_putchar(u32 ch)
 		ch_ypos = ch_height - 1;
 	}
 
-	u32* buf = (u32*)(internal_fb->info.mmio_base);
+	u32* buf = (u32*)(internal_buffer);
 	const u8 c = (u8)ch;
+	FbModeInfo* mode = &internal_fb->mode;
 
 	// Plot the character.
 	const usize pix_xpos = ch_xpos * FONT_WIDTH;
@@ -98,9 +125,16 @@ void terminal_putchar(u32 ch)
 	{
 		for (usize x = 0; x < FONT_WIDTH; x++)
 		{
-			u32* const pixel = buf + (((pix_ypos + y) * internal_fb->mode.width) + (pix_xpos + x));
-			*pixel = builtin_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0xFF000000;
+			const usize offset = (((pix_ypos + y) * mode->width) + (pix_xpos + x));
+			const u32 pixel =
+				builtin_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0xFF000000;
+			// Write to back buffer.
+			write32(buf + offset, pixel);
+			// And to the frame buffer.
+			write32((u32*)internal_fb->info.mmio_base + offset, pixel);
 		}
 	}
+
+	// Increment cursor.
 	ch_xpos++;
 }

@@ -47,8 +47,17 @@ void vm_init(void* phys_base, PhysAddr kernel_base, PhysMemory* mem_map, usize n
 
 	// TODO: We could probably pre-allocate the upper half of pages, i.e. index 256..511
 
-	// Map the lower 256 GiB of physical space.
-	for (usize cur = 0; cur < 256UL * GiB; cur += 2UL * MiB)
+	// Map all physical space.
+	// Check for the highest usable physical memory address, so we know how much memory to map.
+	usize highest = 0;
+	for (usize i = 0; i < num_entries; i++)
+	{
+		const usize region_end = mem_map[i].address + mem_map[i].length;
+		if (region_end > highest)
+			highest = region_end;
+	}
+
+	for (usize cur = 0; cur < highest; cur += 2UL * MiB)
 		kassert(vm_arch_map_page(kernel_map, cur, phys_addr + cur, PAGE_PRESENT | PAGE_READ_WRITE, PageSize_2MiB),
 				"Unable to map lower memory!\n");
 
