@@ -22,7 +22,7 @@ static u8 acpi_checksum(void* ptr, usize size)
 
 void acpi_init(AcpiRsdp* rsdp)
 {
-	kassert(rsdp != NULL, "Failed to set RSDP, none given!\n");
+	kassert(rsdp != NULL, "Failed to set RSDP: None given!\n");
 	rsdt = ACPI_ADDR(rsdp->xsdt_address);
 
 	kmesg("Initialized ACPI (Rev. %u)\n", rsdp->revision);

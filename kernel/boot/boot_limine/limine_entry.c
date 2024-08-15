@@ -118,7 +118,8 @@ void kernel_boot()
 		files[i].address = module_res->modules[i]->address;
 		files[i].size = module_res->modules[i]->size;
 		files[i].path = module_res->modules[i]->path;
-		kmesg("    Address = 0x%p, Size = 0x%p, Path = \"%s\"\n", files[i].address, files[i].size, files[i].path);
+		kmesg("    [%i] Address = 0x%p, Size = 0x%p, Path = \"%s\"\n", i, files[i].address, files[i].size,
+			  files[i].path);
 	}
 	info.file_num = module_res->module_count;
 	info.files = files;
@@ -128,6 +129,7 @@ void kernel_boot()
 	FrameBuffer buffers[framebuffer_request.response->framebuffer_count];
 	info.fb_num = framebuffer_request.response->framebuffer_count;
 	info.fb = buffers;
+	kmesg("Got framebuffers:\n");
 	for (usize i = 0; i < info.fb_num; i++)
 	{
 		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[i];
@@ -137,6 +139,8 @@ void kernel_boot()
 		buffers[i].mode.height = buf->height;
 		buffers[i].mode.bpp = buf->bpp;
 
+		kmesg("    [%i] Address = 0x%p, Resolution = %ux%ux%u\n", i, buffers[i].info.mmio_base, buffers[i].mode.width,
+			  buffers[i].mode.height, buffers[i].mode.bpp);
 		fb_register(&buffers[i]);
 	}
 

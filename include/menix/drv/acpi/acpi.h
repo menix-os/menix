@@ -13,5 +13,5 @@ void acpi_init(AcpiRsdp* rsdp);
 
 // Finds a table using its signature.
 // `signature`: A 4-character string with the table's signature.
-// `index`: The index if the same table exists more than once. Pass 0 otherwise.
+// `index`: The nth instance of a table with the given signature.
 void* acpi_find_table(const char* signature, usize index);
