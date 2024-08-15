@@ -98,6 +98,7 @@ void kernel_boot()
 		buffer.mode.width = buf->width;
 		buffer.mode.height = buf->height;
 		buffer.mode.cpp = buf->bpp / 8;
+		buffer.mode.pitch = buf->pitch;
 
 		buffer.funcs.copy_region = fb_default_copy_region;
 		buffer.funcs.fill_region = fb_default_fill_region;

@@ -12,7 +12,7 @@ void fb_default_fill_region(FrameBuffer* fb, FbFillRegion* args)
 	for (usize y = 0; y < args->height; y++)
 	{
 		// Calculate the address to copy to.
-		void* addr_dst = (void*)fb->info.mmio_base + mode->cpp * (mode->width * (args->y_src + y) + args->x_src);
+		void* addr_dst = (void*)fb->info.mmio_base + (mode->pitch * (args->y_src + y) + (mode->cpp * args->x_src));
 
 		// Fill the color.
 		for (usize x = 0; x < args->width; x++)
@@ -41,8 +41,6 @@ void fb_default_copy_region(FrameBuffer* fb, FbCopyRegion* args)
 void fb_default_draw_region(FrameBuffer* fb, FbDrawRegion* args)
 {
 	const FbModeInfo* mode = &fb->mode;
-	// Calculate the length of one line of pixels.
-	const usize dst_width = mode->width * mode->cpp;
 
 	// For each line.
 	for (usize y = 0; y < args->height; y++)
@@ -50,7 +48,7 @@ void fb_default_draw_region(FrameBuffer* fb, FbDrawRegion* args)
 		// Calculate the address to copy from (No x needed since each line starts on 0).
 		void* addr_src = (void*)args->data + (args->width * y);
 		// Calculate the address to copy to.
-		void* addr_dst = (void*)fb->info.mmio_base + (dst_width * (args->y_src + y)) + args->x_src;
+		void* addr_dst = (void*)fb->info.mmio_base + (mode->pitch * (args->y_src + y)) + args->x_src;
 
 		// Copy a single line.
 		memcpy(addr_dst, addr_src, args->width);

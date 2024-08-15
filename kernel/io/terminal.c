@@ -43,7 +43,7 @@ void terminal_init()
 	ch_ypos = 0;
 
 	// Clear the screen.
-	memset((void*)internal_fb->info.mmio_base, 0, mode->width * mode->height * mode->cpp);
+	memset((void*)internal_fb->info.mmio_base, 0, mode->pitch * mode->height);
 }
 
 // Flip the back buffer to the screen.
@@ -58,7 +58,7 @@ static void copy_to_screen()
 	// };
 	// internal_fb->funcs.draw_region(internal_fb, &img);
 	FbModeInfo* mode = &internal_fb->mode;
-	memcpy((void*)internal_fb->info.mmio_base, internal_buffer, mode->width * mode->height * mode->cpp);
+	memcpy((void*)internal_fb->info.mmio_base, internal_buffer, mode->pitch * mode->height);
 }
 
 // Moves all lines up by one line.
@@ -66,7 +66,7 @@ static void terminal_scroll()
 {
 	void* const buf = internal_buffer;
 	// Offset for 1 line of characters.
-	const usize offset = (FONT_HEIGHT * internal_fb->mode.width * internal_fb->mode.cpp);
+	const usize offset = (FONT_HEIGHT * internal_fb->mode.pitch);
 
 	// Move each line up by one.
 	for (usize y = 1; y < ch_height; y++)
@@ -114,7 +114,6 @@ void terminal_putchar(u32 ch)
 		ch_ypos = ch_height - 1;
 	}
 
-	u32* buf = (u32*)(internal_buffer);
 	const u8 c = (u8)ch;
 	FbModeInfo* mode = &internal_fb->mode;
 
@@ -125,13 +124,13 @@ void terminal_putchar(u32 ch)
 	{
 		for (usize x = 0; x < FONT_WIDTH; x++)
 		{
-			const usize offset = (((pix_ypos + y) * mode->width) + (pix_xpos + x));
+			const usize offset = ((mode->pitch * (pix_ypos + y)) + (mode->cpp * (pix_xpos + x)));
 			const u32 pixel =
 				builtin_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0xFF000000;
 			// Write to back buffer.
-			write32(buf + offset, pixel);
+			write32(internal_buffer + offset, pixel);
 			// And to the frame buffer.
-			write32((u32*)internal_fb->info.mmio_base + offset, pixel);
+			write32((void*)internal_fb->info.mmio_base + offset, pixel);
 		}
 	}
 

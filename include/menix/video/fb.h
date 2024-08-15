@@ -31,6 +31,7 @@ typedef struct
 	u32 v_width, v_height;					// Resolution of the virtual frame in pixels.
 	u32 v_off_x, v_off_y;					// Offset from virtual to visible resolution.
 	u8 cpp;									// Amount of bytes per pixel.
+	u32 pitch;								// Length of a line in bytes.
 	FbColorBits red, green, blue, alpha;	// Bitfields for each part of a pixel.
 } FbModeInfo;
 
