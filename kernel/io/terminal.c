@@ -57,7 +57,7 @@ static void copy_to_screen()
 	//	.data = internal_buffer,
 	// };
 	// internal_fb->funcs.draw_region(internal_fb, &img);
-	FbModeInfo* mode = &internal_fb->mode;
+	const FbModeInfo* mode = &internal_fb->mode;
 	memcpy((void*)internal_fb->info.mmio_base, internal_buffer, mode->pitch * mode->height);
 }
 
@@ -68,11 +68,8 @@ static void terminal_scroll()
 	// Offset for 1 line of characters.
 	const usize offset = (FONT_HEIGHT * internal_fb->mode.pitch);
 
-	// Move each line up by one.
-	for (usize y = 1; y < ch_height; y++)
-	{
-		memcpy((void*)buf + (offset * (y - 1)), (void*)buf + (offset * y), offset);
-	}
+	// Move all lines up by one.
+	memmove(buf, buf + offset, offset * (ch_height - 1));
 
 	// Blank the new line.
 	memset((void*)buf + (offset * (ch_height - 1)), 0x00, offset);
