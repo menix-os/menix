@@ -10,16 +10,15 @@
 
 static bool print(const char* data, usize length)
 {
-	const u8* bytes = (const u8*)data;
-	for (usize i = 0; i < length; i++)
-		if (putchar(bytes[i]) == EOF)
-			return false;
+	const char* bytes = (char*)data;
+	terminal_puts(bytes, length);
 	return true;
 }
 
 i32 putchar(i32 ic)
 {
-	terminal_putchar(ic);
+	const char c = ic;
+	terminal_puts(&c, 1);
 	return ic;
 }
 

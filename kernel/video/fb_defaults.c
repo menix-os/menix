@@ -54,3 +54,17 @@ void fb_default_draw_region(FrameBuffer* fb, FbDrawRegion* args)
 		memcpy(addr_dst, addr_src, args->width);
 	}
 }
+
+void fb_default_update_region(FrameBuffer* fb, FbUpdateRegion* args)
+{
+	const FbModeInfo* mode = &fb->mode;
+
+	// For each line.
+	for (usize y = 0; y < args->height; y++)
+	{
+		// Calculate the offset where to copy from.
+		const usize offset = ((mode->pitch * (args->y_src + y)) + (mode->cpp * (args->x_src)));
+		// Copy a single line.
+		memcpy((void*)fb->info.mmio_base + offset, (void*)args->back_buffer + offset, args->width * mode->cpp);
+	}
+}

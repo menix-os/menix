@@ -10,8 +10,14 @@
 
 // Internal render target.
 static FrameBuffer* internal_fb;
+
 // Back buffer.
-void* internal_buffer;
+static void* internal_buffer;
+
+// After more than UPDATE_QUEUE_MAX changes, we force an update of the entire screen.
+#define UPDATE_QUEUE_MAX 64
+static FbUpdateRegion update_queue[UPDATE_QUEUE_MAX];	 // Queued changes to the frame buffer.
+static usize update_count = 0;							 // Amount of queued changes.
 
 static usize ch_width;			  // Screen width in characters
 static usize ch_height;			  // Screen height in characters
@@ -35,7 +41,7 @@ void terminal_init()
 
 	// Allocate a back buffer.
 	const FbModeInfo* mode = &internal_fb->mode;
-	internal_buffer = kzalloc(mode->width * mode->height * mode->cpp);
+	internal_buffer = kzalloc(mode->pitch * mode->height);
 
 	ch_width = internal_fb->mode.width / FONT_WIDTH;
 	ch_height = internal_fb->mode.height / FONT_HEIGHT;
@@ -46,19 +52,12 @@ void terminal_init()
 	memset((void*)internal_fb->info.mmio_base, 0, mode->pitch * mode->height);
 }
 
-// Flip the back buffer to the screen.
+// Copies the back buffer to the screen.
 static void copy_to_screen()
 {
-	// FbDrawRegion img = {
-	//	.x_src = 0,
-	//	.y_src = 0,
-	//	.width = internal_fb->mode.width,
-	//	.height = internal_fb->mode.height,
-	//	.data = internal_buffer,
-	// };
-	// internal_fb->funcs.draw_region(internal_fb, &img);
 	const FbModeInfo* mode = &internal_fb->mode;
 	memcpy((void*)internal_fb->info.mmio_base, internal_buffer, mode->pitch * mode->height);
+	update_count = 0;
 }
 
 // Moves all lines up by one line.
@@ -77,7 +76,7 @@ static void terminal_scroll()
 	copy_to_screen();
 }
 
-void terminal_putchar(u32 ch)
+static void terminal_putchar(u32 ch)
 {
 	serial_putchar(ch);
 
@@ -126,11 +125,37 @@ void terminal_putchar(u32 ch)
 				builtin_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0xFF000000;
 			// Write to back buffer.
 			write32(internal_buffer + offset, pixel);
-			// And to the frame buffer.
-			write32((void*)internal_fb->info.mmio_base + offset, pixel);
 		}
 	}
-
 	// Increment cursor.
 	ch_xpos++;
+
+	// Mark this region as modified. If we've exceeded the limit, force a redraw.
+	if (update_count >= UPDATE_QUEUE_MAX)
+
+		copy_to_screen();
+	else
+	{
+		update_queue[update_count++] = (FbUpdateRegion) {
+			.back_buffer = internal_buffer,
+			.x_src = pix_xpos,
+			.y_src = pix_ypos,
+			.width = FONT_WIDTH,
+			.height = FONT_HEIGHT,
+		};
+	}
+}
+
+void terminal_puts(const char* buf, u32 len)
+{
+	// Write each character to the buffer.
+	for (usize i = 0; i < len; i++)
+		terminal_putchar(buf[i]);
+
+	// After we're done drawing, copy the modified pixels from the backbuffer.
+	for (usize i = 0; i < update_count; i++)
+	{
+		internal_fb->funcs.update_region(internal_fb, &update_queue[i]);
+	}
+	update_count = 0;
 }

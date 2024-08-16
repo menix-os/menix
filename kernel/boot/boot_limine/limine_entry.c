@@ -9,11 +9,12 @@
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
 #include <menix/util/self.h>
+#include <menix/video/fb.h>
+#include <menix/video/fb_default.h>
 
 #include <string.h>
 
 #include "limine.h"
-#include "menix/video/fb_default.h"
 
 #define LIMINE_REQUEST(request, tag, rev) \
 	ATTR(used, section(".requests")) static volatile struct limine_##request request = { \
@@ -95,14 +96,14 @@ void kernel_boot()
 		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[0];
 		// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
 		buffer.info.mmio_base = buf->address;
-		buffer.mode.width = buf->width;
-		buffer.mode.height = buf->height;
 		buffer.mode.cpp = buf->bpp / 8;
+		buffer.mode.width = buf->width;
+		buffer.mode.v_width = buf->pitch / buffer.mode.cpp;
+		buffer.mode.height = buf->height;
+		buffer.mode.v_height = buf->height;
 		buffer.mode.pitch = buf->pitch;
 
-		buffer.funcs.copy_region = fb_default_copy_region;
-		buffer.funcs.fill_region = fb_default_fill_region;
-		buffer.funcs.draw_region = fb_default_draw_region;
+		buffer.funcs = FB_DEFAULT_FUNCS;
 
 		// If no early framebuffer has been set previously, do it now.
 		if (fb_get_early() == NULL)
@@ -113,22 +114,15 @@ void kernel_boot()
 
 		kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%u\n", buffer.info.mmio_base, buffer.mode.width,
 			  buffer.mode.height, buffer.mode.cpp * 8);
-
-		// Print available video modes.
-		for (usize i = 0; i < buf->mode_count; i++)
-		{
-			const struct limine_video_mode* mode = buf->modes[i];
-			kmesg("    [%i] %ux%ux%u\n", i, mode->width, mode->height, mode->bpp);
-		}
 	}
 
 	// Print memory map.
-	kmesg("Physical memory map:\n");
+	kmesg("Free physical memory:\n");
 	for (usize i = 0; i < info.mm_num; i++)
 	{
-		kmesg("    [%u] 0x%p - 0x%p [%s]\n", i, info.memory_map[i].address,
-			  info.memory_map[i].address + info.memory_map[i].length,
-			  (info.memory_map[i].usage == PhysMemoryUsage_Free) ? "Usable" : "");
+		// if (info.memory_map[i].usage == PhysMemoryUsage_Free)
+		kmesg("    [%u] 0x%p - 0x%p\n", i, info.memory_map[i].address,
+			  info.memory_map[i].address + info.memory_map[i].length);
 	}
 	kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 	kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,

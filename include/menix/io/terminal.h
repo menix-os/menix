@@ -7,4 +7,4 @@
 // Initializes the console with a framebuffer.
 void terminal_init();
 
-void terminal_putchar(u32 ch);
+void terminal_puts(const char* buf, u32 len);

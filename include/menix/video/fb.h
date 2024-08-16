@@ -59,6 +59,14 @@ typedef struct
 	const u8* data;		  // Pointer to the image data.
 } FbDrawRegion;
 
+// Arguments passed to `FbFuncs.update_region`.
+typedef struct
+{
+	u32 x_src, y_src;		  // Top left corner of the region to update.
+	u32 width, height;		  // Width and height of the region to update.
+	const u8* back_buffer;	  // Start address of the back buffer.
+} FbUpdateRegion;
+
 typedef struct FrameBuffer FrameBuffer;
 // Callback functions for modifying a framebuffer.
 typedef struct
@@ -75,6 +83,8 @@ typedef struct
 	void (*copy_region)(FrameBuffer* fb, FbCopyRegion* args);
 	// Draws an image to a location.
 	void (*draw_region)(FrameBuffer* fb, FbDrawRegion* args);
+	// Updates modified regions from a back buffer of the same layout and size.
+	void (*update_region)(FrameBuffer* fb, FbUpdateRegion* args);
 } FbFuncs;
 
 // Stores information about a framebuffer.
