@@ -120,9 +120,9 @@ void kernel_boot()
 	kmesg("Free physical memory:\n");
 	for (usize i = 0; i < info.mm_num; i++)
 	{
-		// if (info.memory_map[i].usage == PhysMemoryUsage_Free)
-		kmesg("    [%u] 0x%p - 0x%p\n", i, info.memory_map[i].address,
-			  info.memory_map[i].address + info.memory_map[i].length);
+		if (info.memory_map[i].usage == PhysMemoryUsage_Free)
+			kmesg("    [%u] 0x%p - 0x%p\n", i, info.memory_map[i].address,
+				  info.memory_map[i].address + info.memory_map[i].length);
 	}
 	kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 	kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
