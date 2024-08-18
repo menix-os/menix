@@ -7,7 +7,10 @@
 #include <bits/arch.h>
 #include <bits/asm.h>
 
+// Thread-local storage information.
 typedef struct ArchCpu Cpu;
+
+// Code-visible CPU registers.
 typedef struct ArchRegisters CpuRegisters;
 
 // Initializes the platform for use by the kernel and boot routines.

@@ -22,7 +22,6 @@ struct ArchCpu
 	u64 user_stack;			  // RSP for the user space.
 };
 
-// All code-visible CPU registers.
 struct ArchRegisters
 {
 	u64 r15;

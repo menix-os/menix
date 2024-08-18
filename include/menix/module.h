@@ -40,5 +40,11 @@ typedef struct ATTR(packed) ATTR(aligned(0x10))
 // Initialize all modules and their subsystems.
 void module_init();
 
+// Loads a relocatable module.
+void module_load(const char* path);
+
+// Unloads a relocatable module.
+void module_unload(const char* path);
+
 // Clean up all modules, disconnect and disable them all.
 void module_fini();

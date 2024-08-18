@@ -52,3 +52,5 @@ typedef usize Bits;
 
 // Represents a physical address.
 typedef usize PhysAddr;
+
+typedef u32 UserId;

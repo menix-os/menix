@@ -10,5 +10,5 @@ add_architecture(x86
 	io/serial.c
 	vm.c
 	pm.c
-	syscall_handler.s
+	syscall.s
 )

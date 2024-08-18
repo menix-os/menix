@@ -1,7 +1,7 @@
 # Modules
 
-set(MENIX_PARENT_CAT menix_modules)
-add_library(menix_modules INTERFACE)
+set(MENIX_PARENT_CAT menix_mod)
+add_library(menix_mod INTERFACE)
 include(${MENIX_UTIL_PATH})
 
 # Include all subdirectories with CMakeLists.
@@ -12,6 +12,3 @@ foreach(item ${subdir_list})
 		add_subdirectory(${item})
 	endif()
 endforeach()
-
-add_library(menix_mod module.c)
-target_link_libraries(menix_mod menix_modules)

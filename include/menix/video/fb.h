@@ -6,7 +6,6 @@
 #include <menix/drv/driver.h>
 #include <menix/io/mmio.h>
 #include <menix/thread/spin.h>
-#include <menix/thread/user.h>
 
 // Fixed framebuffer information that cannot change after it has been initialized.
 typedef struct

@@ -24,6 +24,7 @@ void pci_init_acpi()
 		kmesg("Unable to configure PCI system using ACPI: The MCFG table was not present. ");
 #ifdef CONFIG_arch_x86
 		kmesg("Falling back to x86 mode.\n");
+		// TODO: Set function callbacks to x86.
 #else
 		kmesg("Disable the PCI subsystem with `pci=0;` to continue.\n");
 		kabort();
@@ -32,7 +33,10 @@ void pci_init_acpi()
 	}
 
 	const usize num_entries = (acpi_mcfg->header.length - sizeof(AcpiMcfg)) / sizeof(AcpiMcfgEntry);
+
 	// TODO: Read PCI buses.
+
+	kmesg("Successfully onfigured PCI using ACPI.\n");
 }
 
 // Reads from a PCI device using the ACPI MCFG table info.

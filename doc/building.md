@@ -6,7 +6,6 @@ You need to install the following packages and make sure they're available in `$
 
 - `cmake`
 - Either `clang` or `gcc`
-- `mold`
 
 ## Building steps
 Create a build directory and configure with CMake.

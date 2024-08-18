@@ -5,11 +5,11 @@
 #include <menix/memory/vm.h>
 #include <menix/thread/process.h>
 
-Process* process_create(const char* path)
+bool process_execute(const char* path, char** argv, char** envp)
 {
-	Process* proc = kalloc(sizeof(Process));
+	Process* proc = kzalloc(sizeof(Process));
 
 	// TODO
 
-	return proc;
+	return true;
 }

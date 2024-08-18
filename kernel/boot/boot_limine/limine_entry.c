@@ -93,8 +93,8 @@ void kernel_boot()
 		kmesg("Unable to get a framebuffer!\n");
 	else if (framebuffer_request.response->framebuffer_count > 0)
 	{
-		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[0];
 		// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
+		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[0];
 		buffer.info.mmio_base = buf->address;
 		buffer.mode.cpp = buf->bpp / 8;
 		buffer.mode.width = buf->width;
@@ -112,8 +112,8 @@ void kernel_boot()
 			terminal_init();
 		}
 
-		kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%u\n", buffer.info.mmio_base, buffer.mode.width,
-			  buffer.mode.height, buffer.mode.cpp * 8);
+		kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%u (Virtual = %ux%u)\n", buffer.info.mmio_base,
+			  buffer.mode.width, buffer.mode.height, buffer.mode.cpp * 8, buffer.mode.v_width, buffer.mode.v_height);
 	}
 
 	// Print memory map.

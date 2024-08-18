@@ -3,7 +3,7 @@
 #pragma once
 #include <menix/common.h>
 #include <menix/fs/fs.h>
-#include <menix/resource.h>
+#include <menix/fs/resource.h>
 
 // A single node in the VFS.
 typedef struct VfsNode

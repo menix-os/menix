@@ -6,7 +6,8 @@ add_compile_options(
 	-fPIC
 	-nostartfiles
 	-fno-omit-frame-pointer
-	-fno-builtin)
+	-fno-builtin
+)
 
 add_link_options(
 	-ffreestanding

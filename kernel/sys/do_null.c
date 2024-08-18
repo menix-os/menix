@@ -8,9 +8,5 @@
 // Does nothing.
 SYSCALL_IMPL(null)
 {
-#ifndef NDEBUG
-	kmesg("Hello!\n");
-#endif
-
 	return -ENOSYS;
 }

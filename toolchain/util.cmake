@@ -7,13 +7,15 @@ function(add_architecture name)
 	add_library(menix_arch_${name} STATIC ${ARGN})
 
 	# Set linker script and common search paths.
-	set(CMAKE_EXE_LINKER_FLAGS "-T ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ld -L ${MENIX_SRC} -L ${MENIX_SRC}/toolchain/linker" CACHE INTERNAL "")
+	target_link_options(menix PUBLIC -T ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ld)
+	target_link_options(menix PUBLIC "SHELL:-L ${MENIX_SRC}" "SHELL:-L ${MENIX_SRC}/toolchain/linker")
+
 	require_option(arch_${name})
 endfunction(add_architecture)
 
 # Appends this directory to the Linker Script include search path.
 function(add_linker_dir)
-	set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -L ${CMAKE_CURRENT_SOURCE_DIR}" CACHE INTERNAL "")
+	target_link_options(menix PUBLIC "SHELL:-L ${CMAKE_CURRENT_SOURCE_DIR}")
 endfunction(add_linker_dir)
 
 # Setup a new module for the build process.
@@ -38,12 +40,23 @@ function(add_module name author desc license default)
 		# it's technically not referenced anywhere. The linker will discard
 		# them otherwise.
 		add_library(${MENIX_CURRENT_MOD} OBJECT ${ARGN})
-
 		target_link_libraries(${MENIX_PARENT_CAT} INTERFACE $<TARGET_OBJECTS:${MENIX_CURRENT_MOD}>)
 
 		# If built-in, define MODULE_TYPE to let the module know.
 		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_TYPE='B')
+	elseif(${${MENIX_CURRENT_MOD}} STREQUAL MOD)
+		# Build as a relocatable executable.
+		add_executable(${MENIX_CURRENT_MOD} ${ARGN})
+		target_link_options(${MENIX_CURRENT_MOD} PUBLIC -r)
+		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/mod/")
+		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_NAME "${MENIX_CURRENT_MOD}.ko")
 
+		# If modular, define MODULE_TYPE to let the module know.
+		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_TYPE='M')
+	endif()
+
+	# Shared flags
+	if(${${MENIX_CURRENT_MOD}} STREQUAL ON OR ${${MENIX_CURRENT_MOD}} STREQUAL MOD)
 		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE
 			MODULE_NAME="${name}"
 			MODULE_AUTHOR="${author}"

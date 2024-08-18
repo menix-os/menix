@@ -56,5 +56,11 @@ struct Process
 	ProcessState state;	   // Current state of the process.
 };
 
-// Creates a new process of an executable pointed to by `path`.
-Process* process_create(const char* path);
+// Creates a new process.
+void process_create(char* name, ProcessState state);
+
+// Starts a new process from an ELF executable. Returns true if successful.
+// `path`: File path pointing to the executable to run.
+// `argv`: A NULL-terminated list of program arguments to be passed to the new process.
+// `envp`: A NULL-terminated list of environment variables to be passed to the new process.
+bool process_execute(const char* path, char** argv, char** envp);
