@@ -13,3 +13,6 @@ add_option(license_BSD3 BOOL ON)
 add_option(ktrace BOOL ON)
 add_option(ktrace_registers BOOL ON)
 add_option(ktrace_max NUMBER 32)
+
+# ACPI
+add_option(acpi BOOL ON)

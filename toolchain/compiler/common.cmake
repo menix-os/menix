@@ -5,7 +5,6 @@ add_compile_options(
 	-nostdlib
 	-fPIC
 	-nostartfiles
-	-mgeneral-regs-only
 	-fno-omit-frame-pointer
 	-fno-builtin)
 

@@ -8,15 +8,13 @@ You need to install the following packages and make sure they're available in `$
 - Either `clang` or `gcc`
 - `mold`
 
-If building with EFI support:
-- `gnu-efi`
-
 ## Building steps
 Create a build directory and configure with CMake.
 
 ```sh
 cmake -D CMAKE_BUILD_TYPE=Release -B build -G "Ninja"
-# To cross-compile with clang, add: -D MENIX_ARCH="<arch>"
+# To cross-compile with clang:
+cmake -D CMAKE_BUILD_TYPE=Release -B build -G "Ninja" -D MENIX_ARCH="<arch>" -D CMAKE_C_COMPILER="clang"
 ```
 
 This will generate `config.cmake` for you with default values. That file is

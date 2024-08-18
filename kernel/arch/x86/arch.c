@@ -3,7 +3,6 @@
 #include <menix/arch.h>
 #include <menix/io/serial.h>
 #include <menix/log.h>
-#include <menix/memory/vm.h>
 
 #include <gdt.h>
 #include <idt.h>
