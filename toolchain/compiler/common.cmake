@@ -3,10 +3,10 @@
 add_compile_options(
 	-ffreestanding
 	-nostdlib
-	-fPIC
 	-nostartfiles
 	-fno-omit-frame-pointer
 	-fno-builtin
+	-mcmodel=large
 )
 
 add_link_options(
