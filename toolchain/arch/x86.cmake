@@ -7,9 +7,6 @@ set(MENIX_ARCH_DIR x86)
 
 add_compile_options(
 	-mgeneral-regs-only
-	-mcmodel=large
 )
 
 add_option(page_size NUMBER 0x1000)
-add_option(smp BOOL OFF)
-add_option(pci BOOL ON)

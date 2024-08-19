@@ -6,6 +6,7 @@ add_compile_options(
 	-nostartfiles
 	-fno-omit-frame-pointer
 	-fno-builtin
+	-fPIC
 )
 
 add_link_options(

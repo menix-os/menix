@@ -16,3 +16,9 @@ add_option(ktrace_max NUMBER 32)
 
 # ACPI
 add_option(acpi BOOL ON)
+
+# Symmetric Multi-processing
+add_option(smp BOOL OFF)
+
+# PCI(e)
+add_option(pci BOOL ON)
