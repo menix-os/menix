@@ -1,5 +1,3 @@
-ENTRY(kernel_boot);
-
 PHDRS
 {
 	headers	PT_LOAD		FILEHDR PHDRS;

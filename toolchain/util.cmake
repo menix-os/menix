@@ -47,7 +47,8 @@ function(add_module name author desc license default)
 	elseif(${${MENIX_CURRENT_MOD}} STREQUAL MOD)
 		# Build as a relocatable executable.
 		add_executable(${MENIX_CURRENT_MOD} ${ARGN})
-		target_link_options(${MENIX_CURRENT_MOD} PUBLIC -r)
+		target_link_options(${MENIX_CURRENT_MOD} PUBLIC -r "SHELL:-L ${MENIX_SRC}/toolchain/linker")
+		target_link_options(${MENIX_CURRENT_MOD} PUBLIC -T module.ld)
 		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/mod/")
 		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_NAME "${MENIX_CURRENT_MOD}.ko")
 

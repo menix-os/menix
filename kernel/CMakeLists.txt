@@ -6,6 +6,9 @@ add_executable(menix
 
 set_target_properties(menix PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/")
 
+# Mark entry point.
+target_link_options(menix PUBLIC -e kernel_boot)
+
 add_subdirectory(arch/${MENIX_ARCH_DIR})
 add_subdirectory(boot)
 add_subdirectory(drv)

@@ -31,9 +31,6 @@ typedef struct ATTR(packed) ATTR(aligned(0x10))
 // Defines a new module function.
 #define MODULE_FN ATTR(used) static
 
-// Add optional module information.
-#define MODULE_META(name, value) __PASTE(name) "=" __PASTE(value) "\x1E"
-
 // Add all module information that is provided by the build system.
 #define MOULE_META_COMMON .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION, .license = MODULE_LICENSE
 
