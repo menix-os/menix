@@ -6,7 +6,6 @@ add_compile_options(
 	-nostartfiles
 	-fno-omit-frame-pointer
 	-fno-builtin
-	-mcmodel=large
 )
 
 add_link_options(
