@@ -1,6 +1,6 @@
 # Main configuration file
 
-cmake_minimum_required(VERSION 3.29)
+cmake_minimum_required(VERSION 3.25)
 
 # Project root path.
 set(MENIX_SRC ${CMAKE_CURRENT_SOURCE_DIR})
