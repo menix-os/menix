@@ -5,6 +5,7 @@ This document explains how to build `menix` on your machine from source code.
 You need to install the following packages and make sure they're available in `$PATH`.
 
 - `cmake`
+- `ninja`
 - Either `clang` or `gcc`
 
 ## Building steps
@@ -29,4 +30,4 @@ Then, to build:
 cmake --build build
 ```
 
-The final executable is stored in `build/bin/`.
+The final executable and dynamic modules are stored in `build/bin/`.
