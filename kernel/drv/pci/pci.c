@@ -24,9 +24,9 @@ static usize cap_devices = 512;
 void pci_init()
 {
 	// Allocate memory for drivers.
-	pci_drivers = kzalloc(sizeof(PciDriver*) * cap_drivers);
+	pci_drivers = kcalloc(sizeof(PciDriver*) * cap_drivers);
 	// Allocate memory for devices.
-	pci_devices = kzalloc(sizeof(PciDevice*) * cap_devices);
+	pci_devices = kcalloc(sizeof(PciDevice*) * cap_devices);
 }
 
 void pci_fini()
@@ -60,7 +60,7 @@ PciDevice* pci_scan_device(u8 bus, u8 slot)
 		return NULL;
 
 	// Otherwise allocate memory.
-	PciDevice* device = kalloc(sizeof(PciDevice));
+	PciDevice* device = kmalloc(sizeof(PciDevice));
 
 	device->vendor = vendor_id;
 	device->device = pci_platform.internal_read(0, bus, slot, 0, 0x2, sizeof(u16));

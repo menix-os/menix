@@ -23,8 +23,9 @@ endfunction(add_linker_dir)
 # * author		Author of the module (e.g. "John Smith")
 # * desc		Short description of the module
 # * license		License of the module (e.g. "MIT") or "MAIN", if the project's main license.
-# * default		Default configuration value (ON/OFF)
-function(add_module name author desc license default)
+# * modular		If the module supports dynamic loading (ON/OFF)
+# * default		Default configuration value (ON/MOD/OFF)
+function(add_module name author desc license modular default)
 	set(MENIX_CURRENT_MOD ${name} CACHE INTERNAL "")
 
 	# Generate a config entry if there is none already. If there is, include its values.
@@ -33,6 +34,11 @@ function(add_module name author desc license default)
 	# If the option is not in cache yet, use the default value.
 	if(NOT DEFINED CACHE{${MENIX_CURRENT_MOD}})
 		set(${MENIX_CURRENT_MOD} ${default} CACHE INTERNAL "")
+	endif()
+
+	# Check if this module is modular and if not, if we're trying to build it as such.
+	if(modular STREQUAL OFF AND ${MENIX_CURRENT_MOD} STREQUAL MOD)
+		message(FATAL_ERROR "[!] Module \"${MENIX_CURRENT_MOD}\" can't be built as modular!\n")
 	endif()
 
 	if(${${MENIX_CURRENT_MOD}} STREQUAL ON)

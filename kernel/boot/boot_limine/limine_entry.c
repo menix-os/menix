@@ -85,13 +85,15 @@ void kernel_boot()
 	// Initialize physical and virtual memory managers.
 	pm_init(info.phys_map, info.memory_map, info.mm_num);
 	vm_init(info.phys_map, info.kernel_phys, info.memory_map, info.mm_num);
+	// Initialize memory manager.
+	alloc_init();
 
 	// Get early framebuffer.
 	FrameBuffer buffer = {0};
 
-	if (framebuffer_request.response == NULL)
+	if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count == 0)
 		kmesg("Unable to get a framebuffer!\n");
-	else if (framebuffer_request.response->framebuffer_count > 0)
+	else
 	{
 		// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
 		const struct limine_framebuffer* buf = framebuffer_request.response->framebuffers[0];
@@ -161,7 +163,7 @@ void kernel_boot()
 	{
 		kmesg("Got modules:\n");
 		const struct limine_module_response* module_res = module_request.response;
-		BootFile files[module_res->module_count];
+		BootFile* files = kmalloc(sizeof(BootFile) * module_res->module_count);
 		for (usize i = 0; i < module_res->module_count; i++)
 		{
 			files[i].address = module_res->modules[i]->address;

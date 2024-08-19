@@ -7,7 +7,7 @@
 
 bool process_execute(const char* path, char** argv, char** envp)
 {
-	Process* proc = kzalloc(sizeof(Process));
+	Process* proc = kcalloc(sizeof(Process));
 
 	// TODO
 

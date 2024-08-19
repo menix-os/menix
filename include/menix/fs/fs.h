@@ -7,12 +7,10 @@ typedef i32 FsMode;	   // Describes a UNIX-file permission mode, e.g. 0777.
 typedef struct VfsNode VfsNode;
 typedef struct FileSystem FileSystem;
 
-typedef VfsNode* (*VfsMountFn)(VfsNode*);
-
 // Describes a file system.
 typedef struct FileSystem
 {
-	char name[32];	  // Name of the file system.
+	char name[64];	  // Name of the file system.
 
 	// Called to populate the children of node `parent`.
 	void (*populate)(FileSystem* this, VfsNode* parent);

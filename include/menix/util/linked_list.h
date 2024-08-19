@@ -3,8 +3,10 @@
 #pragma once
 #include <menix/common.h>
 
-typedef struct LinkedList
+typedef struct LinkedList LinkedList;
+
+struct LinkedList
 {
-	struct LinkedList* next;
-	struct LinkedList* prev;
-} LinkedList;
+	LinkedList* next;
+	LinkedList* prev;
+};

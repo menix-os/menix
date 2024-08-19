@@ -4,18 +4,21 @@
 #include <menix/common.h>
 #include <menix/fs/fs.h>
 #include <menix/fs/resource.h>
+#include <menix/util/hash_map.h>
+
+// Callback used to mount a file system onto the VFS.
+typedef VfsNode* (*VfsMountFn)(VfsNode*);
 
 // A single node in the VFS.
 typedef struct VfsNode
 {
-	Resource* resource;	   // Resource associated with this node.
-	FileSystem* fs;		   // The filesystem controlling this node.
-	VfsNode* parent;	   // Parent node.
-	VfsNode* mount;		   // Location where this node is mounted to.
-	VfsNode* children;	   // Children of this node. TODO: Use a hashmap to speed accesses.
-	usize num_children;	   // Amount of children in this node.
-	char* sym_link;		   // If not null: The location where this node points to as a symbolic link.
-	char* name;			   // The name of the node.
+	Resource* resource;			   // Resource associated with this node.
+	FileSystem* fs;				   // The filesystem controlling this node.
+	VfsNode* parent;			   // Parent node.
+	VfsNode* mount;				   // Location where this node is mounted to.
+	HashMap(VfsNode*) children;	   // Children of this node.
+	char* sym_link;				   // If not null: The location where this node points to as a symbolic link.
+	char* name;					   // The name of the node.
 	bool populated;
 } VfsNode;
 
@@ -23,7 +26,7 @@ typedef struct VfsNode
 void vfs_init();
 
 // Registers a filesystem to the VFS. Returns true if successful.
-bool vfs_register_fs();
+bool vfs_fs_register(VfsMountFn mount, const char* id);
 
 // Gets the root VFS node ("/").
 VfsNode* vfs_get_root();
@@ -52,3 +55,8 @@ VfsNode* vfs_get_node(VfsNode* parent, const char* path, bool follow_links);
 // `buffer`: Where to write the buffer to.
 // `length`: The size of the buffer in bytes.
 usize vfs_get_path(VfsNode* parent, char* buffer, usize length);
+
+// Create the `.` and `..` entries at `node`.
+// `node`: The directory to add the entries to.
+// `parent`: The parent directory (which `..` will point to).
+void vfs_create_dots(VfsNode* node, VfsNode* parent);
