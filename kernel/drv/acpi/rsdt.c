@@ -3,6 +3,7 @@
 #include <menix/drv/acpi/acpi.h>
 #include <menix/drv/acpi/types.h>
 #include <menix/drv/pci/pci.h>
+#include <menix/drv/pci/pci_acpi.h>
 #include <menix/log.h>
 
 #include <string.h>
@@ -29,6 +30,7 @@ void acpi_init(AcpiRsdp* rsdp)
 
 	// The PCI subsystem depends on ACPI. Now we can enable it.
 	pci_init();
+	pci_init_acpi();
 }
 
 void* acpi_find_table(const char* signature, usize index)

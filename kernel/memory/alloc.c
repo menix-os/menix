@@ -51,14 +51,12 @@ void* kzalloc(usize bytes)
 	return mem;
 }
 
-void kfree(void** memory)
+void kfree(void* memory)
 {
 	if (memory == NULL)
 		return;
-	if (*memory == NULL)
-		return;
-	// TODO: Free the region.
 
-	// Invalidate the pointer itself to avoid dangling references.
-	*memory = NULL;
+	// TODO: Free the region.
+	PhysAddr base = memory - pm_get_phys_base();
+	pm_arch_free(base);
 }

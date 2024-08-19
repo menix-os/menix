@@ -15,19 +15,23 @@ typedef struct
 
 extern PciPlatform pci_platform;
 
+typedef struct PciDriver PciDriver;
+
 // Describes a PCI(e) device.
 typedef struct
 {
-	Device dev;
 	u16 vendor, device;			   // Vendor and device ID.
 	u16 sub_vendor, sub_device;	   // Subsystem IDs.
 	u8 class, sub_class;		   // PCI class.
-	usize variant_idx;			   // Index into a driver-defined structure array.
 	bool is_pcie;				   // True if the device supports PCIe.
+	u8 bus, slot;				   // The bus and slot this device lives on.
+
+	PciDriver* driver;	  // The driver managing this device.
+	usize variant_idx;	  // Index into a driver-defined structure array.
 } PciDevice;
 
 // A PCI(e) driver with callbacks.
-typedef struct
+typedef struct PciDriver
 {
 	const char* name;			  // Name of the device.
 	const PciDevice* variants;	  // Array of device variants that the driver can match.
@@ -51,12 +55,17 @@ void pci_init();
 // Shuts the PCI subsystem down. This also unregisters all devices!
 void pci_fini();
 
-// TODO: Move this to dynamically allocated memory!
-extern PciDriver* pci_drivers[256];
-extern usize pci_num_drivers;
+// Gets the PCI device information in a `slot` on a `bus`. Returns NULL if no device is connected.
+PciDevice* pci_scan_device(u8 bus, u8 slot);
 
 // Registers a driver. Returns 0 on success.
 i32 pci_register_driver(PciDriver* driver);
 
-// Unregisters a driver. Calls the `remove` callback if set.
+// Unregisters a driver. Also unregisters all connected devices.
 void pci_unregister_driver(PciDriver* driver);
+
+// Registers a devie. Returns 0 on success.
+i32 pci_register_device(PciDevice* device);
+
+// Unregisters a device. Calls the `remove` callback if set.
+void pci_unregister_device(PciDevice* device);

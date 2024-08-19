@@ -17,6 +17,6 @@ void* kaalloc(usize bytes, usize alignment);
 void* kzalloc(usize bytes);
 
 // Frees a block of memory allocated by one of the `k*alloc` functions.
-// `memory` is a reference to the address.
+// `memory`: the address to free.
 // Any reference to the memory region is invalid after calling this.
-void kfree(void** memory);
+void kfree(void* memory);
