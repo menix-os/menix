@@ -106,11 +106,27 @@ i32 pci_register_driver(PciDriver* driver)
 		// Match all variants to the current device in the list.
 		for (usize variant = 0; variant <= driver->num_variants; variant++)
 		{
-			if (dev->device == driver->variants[variant].device && dev->vendor == driver->variants[variant].vendor)
+			// If the IDs don't match, skip this.
+			if (dev->device != driver->variants[variant].device || dev->vendor != driver->variants[variant].vendor)
+				continue;
+
+			// Connect the driver to the device.
+			dev->driver = driver;
+			// Copy over the variant index so the driver knows which device was matched.
+			dev->variant_idx = driver->variants[variant].variant_idx;
+
+			kmesg("Matched driver \"%s\" to live device %x:%x on %u:%u\n", driver->name, dev->vendor, dev->device,
+				  dev->bus, dev->slot);
+
+			// Now, probe the device using the registered driver.
+			kassert(dev->driver->probe != NULL, "Driver has no probe set!\n");
+			i32 ret = dev->driver->probe(dev);
+			// Probing failed, the driver is probably faulty so disable it.
+			if (ret != 0)
 			{
-				dev->driver = driver;
-				kmesg("Matched driver \"%s\" to live device %x:%x on %u:%u\n", driver->name, dev->vendor, dev->device,
-					  dev->bus, dev->slot);
+				kmesg("Probing device %x:%x on %u:%u has failed with error code %i!\n", dev->vendor, dev->device,
+					  dev->bus, dev->slot, ret);
+				dev->driver = NULL;
 			}
 		}
 	}
