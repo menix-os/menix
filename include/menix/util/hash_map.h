@@ -49,14 +49,17 @@ static inline u32 hash(const void* data, usize length)
 #define hashmap_insert(map, key, key_length, value) \
 	do \
 	{ \
+		/* Copy macro values over. */ \
 		auto __key = key; \
 		auto __key_len = key_length; \
 		auto __map = map; \
+		/* Allocate buckets */ \
 		if (__map->buckets == NULL) \
 			__map->buckets = kmalloc(__map->capacity * sizeof(*__map->buckets)); \
 		usize __hash = hash(__key, __key_len); \
 		usize __index = __hash % __map->capacity; \
 		auto __bucket = &__map->buckets[__index]; \
+		/* Allocate items for current bucket. */ \
 		if (__bucket->capacity == 0) \
 		{ \
 			__bucket->capacity = 16; \

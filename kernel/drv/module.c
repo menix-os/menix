@@ -10,6 +10,9 @@ SECTION_DECLARE_SYMBOLS(mod)
 
 void module_init()
 {
+	// Check if the .mod section size is sane.
+	kassert(SECTION_SIZE(mod) % alignof(Module) == 0, ".mod section has a bogus size! This might be a linker issue.\n");
+
 	// Calculate the module count.
 	const usize module_count = SECTION_SIZE(mod) / sizeof(Module);
 	const Module* modules = (Module*)SECTION_START(mod);
@@ -35,7 +38,10 @@ void module_fini()
 	// Clean up all modules.
 	for (usize i = 0; i < module_count; i++)
 	{
-		kmesg("Unloading \"%s\"\n", modules[i].name);
-		modules[i].exit();
+		if (modules[i].exit)
+		{
+			kmesg("Unloading \"%s\"\n", modules[i].name);
+			modules[i].exit();
+		}
 	}
 }

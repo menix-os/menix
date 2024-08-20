@@ -12,6 +12,8 @@
 #include <menix/drv/acpi/acpi.h>
 #endif
 
+#include <menix/util/list.h>
+
 void kernel_main(BootInfo* info)
 {
 	// TODO: Accept a cmdline option to keep the early terminal instead of reloading it.

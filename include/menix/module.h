@@ -15,14 +15,14 @@ typedef i32 (*ModuleInitFn)(void);
 typedef void (*ModuleExitFn)(void);
 
 // Module metadata and init/exit hooks for loading modules.
-typedef struct ATTR(packed) ATTR(aligned(0x10))
+typedef struct ATTR(packed) ATTR(aligned(32))
 {
-	ModuleInitFn init;				// Called to initialize the module. Should return 0 upon success.
-	ModuleExitFn exit;				// Called to unload the module.
 	const char name[64];			// Name of the module.
-	const char author[64];			// Author of this module.
+	const char author[64];			// Author(s) of this module.
 	const char description[128];	// Information about this module.
-	const char license[64];			// License information.
+	const char license[48];			// License information.
+	ModuleInitFn init;				// Called to initialize the module. Should return 0 upon success.
+	ModuleExitFn exit;				// Called to unload the module (Optional, as not every module can be unloaded).
 } Module;
 
 // Defines a new module. Modules should use this at the end of their source to export the entry.
@@ -32,7 +32,7 @@ typedef struct ATTR(packed) ATTR(aligned(0x10))
 #define MODULE_FN ATTR(used) static
 
 // Add all module information that is provided by the build system.
-#define MOULE_META_COMMON .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION, .license = MODULE_LICENSE
+#define MODULE_META .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION, .license = MODULE_LICENSE
 
 // Initialize all modules and their subsystems.
 void module_init();

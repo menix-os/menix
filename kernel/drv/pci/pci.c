@@ -4,6 +4,7 @@
 #include <menix/drv/pci/pci.h>
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
+#include <menix/util/list.h>
 
 #include <errno.h>
 
@@ -13,42 +14,35 @@
 
 PciPlatform pci_platform = {0};
 
-static PciDriver** pci_drivers;
-static usize num_drivers = 0;
-static usize cap_drivers = 512;
-
-static PciDevice** pci_devices;
-static usize num_devices = 0;
-static usize cap_devices = 512;
+static List(PciDriver*) pci_drivers;
+static List(PciDevice*) pci_devices;
 
 void pci_init()
 {
-	// Allocate memory for drivers.
-	pci_drivers = kcalloc(sizeof(PciDriver*) * cap_drivers);
-	// Allocate memory for devices.
-	pci_devices = kcalloc(sizeof(PciDevice*) * cap_devices);
+	list_new(pci_drivers, 64);
+	list_new(pci_devices, 64);
 }
 
 void pci_fini()
 {
 	// Remove all PCI devices.
-	for (usize i = 0; i < num_devices; i++)
+	list_iter(&pci_devices, dev_iter)
 	{
-		if (!pci_devices[i])
+		PciDevice* const dev = *dev_iter;
+
+		if (!dev->driver)
 			continue;
-		if (!pci_devices[i]->driver)
-			continue;
-		if (!pci_devices[i]->driver->remove)
+		if (!dev->driver->remove)
 			continue;
 
-		pci_devices[i]->driver->remove(pci_devices[i]);
+		dev->driver->remove(dev);
 	}
 
 	// Release the device list.
-	kfree(pci_devices);
+	list_free(&pci_drivers);
 
 	// Release the driver list.
-	kfree(pci_drivers);
+	list_free(&pci_drivers);
 }
 
 PciDevice* pci_scan_device(u8 bus, u8 slot)
@@ -79,29 +73,13 @@ i32 pci_register_driver(PciDriver* driver)
 	if (!driver->variants || driver->num_variants == 0)
 		return -ENOENT;
 
-	// TODO: Handle extending cap_drivers.
-
-	// Find a free slot in the drivers list.
-	usize free_slot = 0;
-	for (usize i = 0; i < cap_drivers; i++)
-	{
-		if (!pci_drivers[i])
-		{
-			free_slot = i;
-			break;
-		}
-	}
-	pci_drivers[free_slot] = driver;
-	num_drivers++;
+	// Push the new driver to the list of known drivers.
+	list_push(&pci_drivers, driver);
 
 	// Now match all devices to this driver.
-	for (usize i = 0; i < cap_devices; i++)
+	list_iter(&pci_devices, dev_iter)
 	{
-		// Skip unset entries.
-		if (!pci_devices[i])
-			continue;
-
-		PciDevice* dev = pci_devices[i];
+		PciDevice* const dev = *dev_iter;
 
 		// Match all variants to the current device in the list.
 		for (usize variant = 0; variant <= driver->num_variants; variant++)
@@ -139,43 +117,37 @@ void pci_unregister_driver(PciDriver* driver)
 {
 	kassert(driver != NULL, "Can't unregister PCI driver: None given!\n");
 
-	PciDriver* match = NULL;
-
 	// Check if the driver was registered.
-	for (usize i = 0; i < cap_drivers; i++)
-	{
-		if (pci_drivers[i] == driver)
-		{
-			match = driver;
-			break;
-		}
-	}
+	isize idx;
+	list_find(&pci_drivers, idx, driver);
 
 	// If we couldn't find the driver.
-	if (match == NULL)
+	if (idx == -1)
 	{
 		kmesg("Can't unregister PCI driver \"%s\": Driver was not previously registered!\n", driver->name);
 		return;
 	}
 
 	// Find all devices matched to this driver.
-	for (usize i = 0; i < cap_devices; i++)
+	list_iter(&pci_devices, dev_iter)
 	{
+		PciDevice* const dev = *dev_iter;
+
 		// Keep looking if there is no device present.
-		if (pci_devices[i] == NULL)
+		if (dev == NULL)
 			continue;
 
 		// Keep looking if the device has a different driver (or none) matched to it.
-		if (pci_devices[i]->driver != driver)
+		if (dev->driver != driver)
 			continue;
 
 		// Here we can be certain that this device is matched by our driver.
 		// Clean up if we're able to.
 		if (driver->remove)
-			driver->remove(pci_devices[i]);
+			driver->remove(dev);
 	}
 
-	num_drivers--;
+	list_pop(&pci_drivers, idx);
 
 	kmesg("Unregistered PCI driver \"%s\"\n", driver->name);
 }
@@ -185,19 +157,7 @@ i32 pci_register_device(PciDevice* device)
 	if (device == NULL)
 		return -ENOENT;
 
-	// TODO: Handle extending cap_devices.
-
-	// Find a free slot in the drivers list.
-	usize free_slot = 0;
-	for (usize i = 0; i < cap_devices; i++)
-	{
-		if (!pci_devices[i])
-		{
-			free_slot = i;
-			break;
-		}
-	}
-	pci_devices[free_slot] = device;
+	list_push(&pci_devices, device);
 
 	kmesg("New PCI device %x:%x on %u:%u\n", device->vendor, device->device, device->bus, device->slot);
 

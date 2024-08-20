@@ -48,7 +48,7 @@ void pci_init_acpi()
 		}
 	}
 
-	kmesg("Successfully onfigured PCI using ACPI.\n");
+	kmesg("Configured PCI using ACPI.\n");
 }
 
 // Reads from a PCI device using the ACPI MCFG table info.

@@ -1,6 +1,7 @@
 // Integer limits
 
 #pragma once
+#include <menix/config.h>
 
 #define INT8_MIN  (-(1U << (8 - 1)))
 #define INT16_MIN (-(1U << (16 - 1)))
