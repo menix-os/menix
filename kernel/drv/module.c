@@ -11,7 +11,11 @@ SECTION_DECLARE_SYMBOLS(mod)
 void module_init()
 {
 	// Check if the .mod section size is sane.
-	kassert(SECTION_SIZE(mod) % alignof(Module) == 0, ".mod section has a bogus size! This might be a linker issue.\n");
+	if (SECTION_SIZE(mod) % sizeof(Module) != 0)
+	{
+		kmesg("Ignoring built-in modules: The .mod section has a bogus size of 0x%x!\n", SECTION_SIZE(mod));
+		return;
+	}
 
 	// Calculate the module count.
 	const usize module_count = SECTION_SIZE(mod) / sizeof(Module);
@@ -31,6 +35,12 @@ void module_init()
 
 void module_fini()
 {
+	// Check if the .mod section size is sane.
+	if (SECTION_SIZE(mod) % sizeof(Module) != 0)
+	{
+		return;
+	}
+
 	// Calculate the module count.
 	const usize module_count = SECTION_SIZE(mod) / sizeof(Module);
 	const Module* modules = (Module*)SECTION_START(mod);
