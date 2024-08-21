@@ -9,7 +9,7 @@
 
 static SpinLock vfs_lock = spin_new();
 static VfsNode* vfs_root;
-static HashMap(VfsMountFn) fs_map;
+static HashMap(FileSystem*) fs_map;
 
 void vfs_init()
 {
@@ -17,18 +17,19 @@ void vfs_init()
 	vfs_node_new(NULL, NULL, "", false);
 
 	// Allocate a hashmap for file systems.
-	hashmap_init(fs_map, 64);
+	hashmap_init(fs_map, 128);
 
 	kmesg("Initialized virtual file system.\n");
 }
 
-bool vfs_fs_register(VfsMountFn mount, const char* id)
+i32 vfs_fs_register(FileSystem* fs)
 {
 	spin_acquire_force(&vfs_lock);
-	hashmap_insert(&fs_map, id, strlen(id), mount);
+	hashmap_insert(&fs_map, fs->name, strlen(fs->name), fs);
 	spin_free(&vfs_lock);
 
-	return true;
+	kmesg("Registered new file system \"%s\"!\n", fs->name);
+	return 0;
 }
 
 VfsNode* vfs_get_root()

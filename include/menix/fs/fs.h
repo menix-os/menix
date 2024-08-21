@@ -2,22 +2,25 @@
 
 #pragma once
 #include <menix/common.h>
+#include <menix/fs/stat.h>
 
-typedef i32 FsMode;	   // Describes a UNIX-file permission mode, e.g. 0777.
+// Describes a UNIX-file permission mode.
 typedef struct VfsNode VfsNode;
-typedef struct FileSystem FileSystem;
 
 // Describes a file system.
+typedef struct FileSystem FileSystem;
 typedef struct FileSystem
 {
-	char name[64];	  // Name of the file system.
+	const char name[64];	// Name of the file system.
 
+	// Called to mount a file system onto the VFS.
+	VfsNode* (*mount)(VfsNode* mount_point, const char* name, VfsNode* source);
 	// Called to populate the children of node `parent`.
-	void (*populate)(FileSystem* this, VfsNode* parent);
-	// Called to create a new node at `parent`.
-	VfsNode* (*create)(FileSystem* this, VfsNode* parent, const char* name, FsMode mode);
+	void (*populate)(FileSystem* self, VfsNode* parent);
+	// Called to create a new node as a child of `parent`.
+	VfsNode* (*create)(FileSystem* self, VfsNode* parent, const char* name, ModeId mode);
 	// Called to create a new hard link at `parent`, pointing to `target`.
-	VfsNode* (*link)(FileSystem* this, VfsNode* parent, const char* name, VfsNode* target);
+	VfsNode* (*hard_link)(FileSystem* self, VfsNode* parent, const char* name, VfsNode* target);
 	// Called to create a new symbolic link at `parent`, pointing to `target`.
-	VfsNode* (*sym_link)(FileSystem* this, VfsNode* parent, const char* name, const char* target);
+	VfsNode* (*sym_link)(FileSystem* self, VfsNode* parent, const char* name, const char* target);
 } FileSystem;

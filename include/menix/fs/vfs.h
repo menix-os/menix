@@ -6,9 +6,6 @@
 #include <menix/fs/resource.h>
 #include <menix/util/hash_map.h>
 
-// Callback used to mount a file system onto the VFS.
-typedef VfsNode* (*VfsMountFn)(VfsNode*);
-
 // A single node in the VFS.
 typedef struct VfsNode
 {
@@ -25,8 +22,8 @@ typedef struct VfsNode
 // Initializes the virtual file system.
 void vfs_init();
 
-// Registers a filesystem to the VFS. Returns true if successful.
-bool vfs_fs_register(VfsMountFn mount, const char* id);
+// Registers a filesystem to the VFS. Returns 0 if successful.
+i32 vfs_fs_register(FileSystem* fs);
 
 // Gets the root VFS node ("/").
 VfsNode* vfs_get_root();

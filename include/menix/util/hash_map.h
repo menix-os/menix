@@ -55,7 +55,9 @@ static inline u32 hash(const void* data, usize length)
 		auto __map = map; \
 		/* Allocate buckets */ \
 		if (__map->buckets == NULL) \
-			__map->buckets = kmalloc(__map->capacity * sizeof(*__map->buckets)); \
+		{ \
+			__map->buckets = kcalloc(__map->capacity * sizeof(*(__map->buckets))); \
+		} \
 		usize __hash = hash(__key, __key_len); \
 		usize __index = __hash % __map->capacity; \
 		auto __bucket = &__map->buckets[__index]; \
@@ -71,8 +73,8 @@ static inline u32 hash(const void* data, usize length)
 			__bucket->items = krealloc(__bucket->items, __bucket->capacity * sizeof(*__bucket->items)); \
 		} \
 		auto __item = &__bucket->items[__bucket->count]; \
-		memcpy(__item->key_data, __key, __key_len); \
+		memcpy(&__item->key_data[0], __key, __key_len); \
 		__item->key_len = __key_len; \
-		__item->item = value; \
+		__item->item = (value); \
 		__bucket->count++; \
 	} while (0)

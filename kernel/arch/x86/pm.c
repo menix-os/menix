@@ -129,9 +129,11 @@ PhysAddr pm_arch_alloc(usize amount)
 	return mem;
 }
 
-void pm_arch_free(PhysAddr addr)
+void pm_arch_free(PhysAddr addr, usize amount)
 {
-	// Mark the page as free.
-	bitmap_clear(bit_map, addr / CONFIG_page_size);
+	// Mark the page(s) as free.
+	const usize page_idx = addr / CONFIG_page_size;
+	for (usize i = page_idx; i < page_idx + amount; i++)
+		bitmap_clear(bit_map, i);
 	num_free_pages += 1;
 }

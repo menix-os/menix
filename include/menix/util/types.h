@@ -53,4 +53,23 @@ typedef usize Bits;
 // Represents a physical address.
 typedef usize PhysAddr;
 
-typedef u32 UserId;
+typedef usize DeviceId;
+typedef usize INodeId;
+
+typedef u32 ModeId;
+typedef u32 NLinkId;
+
+typedef i32 ProcessId;
+typedef usize ThreadId;
+typedef i32 UserId;
+typedef i32 GroupId;
+
+typedef isize Time;
+typedef isize ClockId;
+
+// Represents a moment in time.
+typedef struct
+{
+	Time seconds;
+	usize nano_seconds;
+} Timestamp;

@@ -60,6 +60,7 @@ project root to check if your code complies with these guidelines.
 - Avoid `i64`, `u64`, `i128` and `u128`, as they might not be available on all platforms.
   > **Note:** Consider using `isize` and `usize` instead.
 - Avoid floating-point types.
+- Avoid using `this` as variable or identifier names, use `self` instead.
 - Function declarations are always in one line.
 - Structs and unions are to be declared via `typedef`. They should be anonymous.
 - Multi-line `typedef`s have the alias name and closing brace on the same line.

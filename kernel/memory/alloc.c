@@ -70,5 +70,5 @@ void kfree(void* memory)
 
 	// TODO: Free the region.
 	PhysAddr base = memory - pm_get_phys_base();
-	pm_arch_free(base);
+	pm_arch_free(base, 1);
 }

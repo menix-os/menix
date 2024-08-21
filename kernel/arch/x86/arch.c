@@ -3,6 +3,7 @@
 #include <menix/arch.h>
 #include <menix/io/serial.h>
 #include <menix/log.h>
+#include <menix/memory/alloc.h>
 
 #include <gdt.h>
 #include <idt.h>
@@ -20,6 +21,12 @@ void arch_early_init()
 
 void arch_init(BootInfo* info)
 {
+	// Initialize all other processors.
+#ifdef CONFIG_smp
+	// TODO: Find out processor count.
+#else
+	cpus = kcalloc(sizeof(Cpu));
+#endif
 }
 
 void arch_shutdown(BootInfo* info)
@@ -36,10 +43,14 @@ void arch_stop(BootInfo* info)
 
 Cpu* arch_current_cpu()
 {
+#ifdef CONFIG_smp
 	u64 id;
 	// The CPU ID is stored in GS (thread local memory).
 	asm volatile("mov %%gs:0, %0" : "=r"(id) : : "memory");
 	return &cpus[id];
+#else
+	return &cpus[0];
+#endif
 }
 
 void arch_dump_registers()

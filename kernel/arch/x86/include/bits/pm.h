@@ -8,4 +8,4 @@
 PhysAddr pm_arch_alloc(usize amount);
 
 // Frees pages pointed to by `pm_arch_alloc`.
-void pm_arch_free(PhysAddr addr);
+void pm_arch_free(PhysAddr addr, usize amount);

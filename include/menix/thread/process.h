@@ -7,8 +7,6 @@
 #include <menix/memory/vm.h>
 #include <menix/thread/spin.h>
 
-typedef usize ProcessId;
-typedef usize ThreadId;
 typedef struct Process Process;
 
 // Active state of the thread.

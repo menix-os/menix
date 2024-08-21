@@ -28,5 +28,5 @@ void arch_stop(BootInfo* info);
 // Writes all registers to the current output stream.
 void arch_dump_registers();
 
-// Gets the current CPU.
+// Gets processor metadata.
 Cpu* arch_current_cpu();

@@ -18,10 +18,10 @@ typedef struct Resource
 {
 	SpinLock lock;	  // Access lock.
 
-	// Read `amount` bytes of `this` resource from `offset` into `output_buffer`.
-	usize (*read)(Resource* this, FileDescriptor* fd, void* output_buffer, usize amount, usize offset);
-	// Write `amount` bytes of `input_buffer` into `this` resource from `offset`.
-	usize (*write)(Resource* this, FileDescriptor* fd, const void* input_buffer, usize amount, usize offset);
+	// Read `amount` bytes of `self` from `offset` into `output_buffer`.
+	usize (*read)(Resource* self, FileDescriptor* fd, void* output_buffer, usize amount, usize offset);
+	// Write `amount` bytes of `input_buffer` into `self` from `offset`.
+	usize (*write)(Resource* self, FileDescriptor* fd, const void* input_buffer, usize amount, usize offset);
 	// Map `this` into virtual memory.
-	void* (*mmap)(Resource* this, usize fd_page, usize flags);
+	void* (*mmap)(Resource* self, usize fd_page, usize flags);
 } Resource;
