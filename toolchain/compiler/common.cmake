@@ -5,7 +5,6 @@ add_compile_options(
 	-nostdlib
 	-fno-omit-frame-pointer
 	-fno-builtin
-	-fPIC
 )
 
 add_link_options(
