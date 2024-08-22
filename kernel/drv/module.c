@@ -9,6 +9,7 @@
 #include <menix/util/self.h>
 
 #include <errno.h>
+#include <string.h>
 
 #ifdef CONFIG_acpi
 #include <menix/drv/acpi/acpi.h>
@@ -44,7 +45,7 @@ void module_init(BootInfo* info)
 	kmesg("Loading %i built-in modules.\n", module_count);
 	for (usize i = 0; i < module_count; i++)
 	{
-		kmesg("Loading \"%s\": %s (Author: %s, License: %s)\n", modules[i].name, modules[i].description,
+		kmesg("Loading built-in module \"%s\": %s (Author: %s, License: %s)\n", modules[i].name, modules[i].description,
 			  modules[i].author, modules[i].license);
 
 		// If there's no init function, ignore the module. All modules should have one.
@@ -114,7 +115,25 @@ i32 module_load(const char* path, usize len)
 		// TODO
 	}
 
-	return 0;
+	// Finally, get the module metadata and call init.
+	Module* mod = module_data + ((Elf_Shdr*)elf_get_section(module, ".mod"))->sh_offset;
+
+	kmesg("Loading dynamic module \"%s\": %s (Author: %s, License: %s)\n", mod->name, mod->description, mod->author,
+		  mod->license);
+
+	// If there's no init function, ignore the module. All modules should have one.
+	if (mod->init == NULL)
+	{
+		kmesg("\"%s\" failed to initialize: No init function present, skipping!\n", mod->name);
+		return -ENOENT;
+	}
+
+	// Call the init function. If it succeeded, register it.
+	i32 const ret = mod->init();
+	if (ret == 0)
+		hashmap_insert(&dynamic_modules, mod->name, strlen(mod->name), mod);
+
+	return ret;
 }
 
 void module_unload(const char* name)

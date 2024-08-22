@@ -2,6 +2,7 @@
 
 #pragma once
 #include <menix/common.h>
+#include <menix/memory/alloc.h>
 
 // Maximum length of key data.
 #define HASHMAP_KEY_LEN 256

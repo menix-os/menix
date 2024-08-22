@@ -3,7 +3,6 @@
 add_compile_options(
 	-ffreestanding
 	-nostdlib
-	-nostartfiles
 	-fno-omit-frame-pointer
 	-fno-builtin
 	-fPIC
@@ -12,6 +11,7 @@ add_compile_options(
 add_link_options(
 	-ffreestanding
 	-nostdlib
+	-nostartfiles
 	-z noexecstack
 	-Wl,--build-id=none
 )
