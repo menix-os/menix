@@ -51,53 +51,129 @@ i32 vprintf(const char* restrict fmt, va_list args)
 		}
 
 		const char* format_begun_at = fmt++;
+		bool left_justify = false;
+		bool preceed_sign = false;
+		bool blank_sign = false;
 		bool write_prefix = false;
+		bool has_width = false;
+		usize width = 0;
+		bool has_precision = false;
+		usize precision = 0;
 
 check_fmt:
 		switch (*fmt)
 		{
-			// Format prefixes.
-			case '#':
+			// Flags
+			case '-':
 			{
+				left_justify = true;
 				fmt++;
-				write_prefix = true;
 				goto check_fmt;
 			}
+			case '+':
+			{
+				preceed_sign = true;
+				fmt++;
+				goto check_fmt;
+			}
+			case ' ':
+			{
+				blank_sign = true;
+				fmt++;
+				goto check_fmt;
+			}
+			case '#':
+			{
+				write_prefix = true;
+				fmt++;
+				goto check_fmt;
+			}
+			case '0':
+			{
+				write_prefix = true;
+				fmt++;
+				goto check_fmt;
+			}
+			// Width
+			case '1':
+			case '2':
+			case '3':
+			case '4':
+			case '5':
+			case '6':
+			case '7':
+			case '8':
+			case '9':
+			{
+				has_width = true;
+				char number[10 + 1] = {0};
+				usize idx = 0;
+				while (*fmt >= '0' && *fmt <= '9')
+				{
+					number[idx++] = *fmt;
+					fmt++;
+				}
+				width = atou(number, 10);
+
+				goto check_fmt;
+			}
+			// Precision
 			case '.':
 			{
+				has_precision = true;
 				fmt++;
+				if (*fmt == '*')
+				{
+					precision = (char)va_arg(args, i32);
+				}
+				else
+				{
+					char number[10 + 1] = {0};
+					usize idx = 0;
+					while (*fmt >= '0' && *fmt <= '9')
+					{
+						number[idx++] = *fmt;
+						fmt++;
+					}
+					precision = atou(number, 10);
+				}
 				goto check_fmt;
 			}
 			// Character
 			case 'c':
 			{
-				fmt++;
 				char c = (char)va_arg(args, i32);
 
 				if (!print(&c, sizeof(c)))
 					return -1;
 
 				written++;
+				fmt++;
 				break;
 			}
 			// String of characters
 			case 's':
 			{
-				fmt++;
 				const char* str = va_arg(args, const char*);
 				if (!str)
 					str = "(null)";
-				usize len = strlen(str);
+				usize len = 0;
+				if (has_width)
+					len = width;
+				else
+					len = strlen(str);
+
 				if (!print(str, len))
 					return -1;
 
 				written += len;
+				fmt++;
 				break;
 			}
+			// Signed decimal integer
 			case 'i':
 			case 'd':
 			{
-				fmt++;
 				const i32 num = va_arg(args, i32);
 
 				// The largest signed integer is 2^32, which uses
@@ -109,11 +185,12 @@ check_fmt:
 					return -1;
 
 				written += len;
+				fmt++;
 				break;
 			}
+			// Unsigned decimal integer
 			case 'u':
 			{
-				fmt++;
 				const u32 num = va_arg(args, u32);
 
 				// The largest signed integer is 2^32, which uses
@@ -125,11 +202,12 @@ check_fmt:
 					return -1;
 
 				written += len;
+				fmt++;
 				break;
 			}
+			// Unsigned hexadecimal integer
 			case 'x':
 			{
-				fmt++;
 				const u32 num = va_arg(args, u32);
 
 				char str[sizeof(u32) * 2 + 1];
@@ -151,12 +229,13 @@ check_fmt:
 				if (!print(str, len))
 					return -1;
 
+				fmt++;
 				written += len;
 				break;
 			}
+			// Unsigned hexadecimal integer (uppercase)
 			case 'X':
 			{
-				fmt++;
 				const u32 num = va_arg(args, u32);
 
 				char str[sizeof(u32) * 2 + 1];
@@ -171,12 +250,13 @@ check_fmt:
 				if (!print(str, len))
 					return -1;
 
+				fmt++;
 				written += len;
 				break;
 			}
+			// Pointer address
 			case 'p':
 			{
-				fmt++;
 				const usize num = va_arg(args, usize);
 				const usize buf_size = sizeof(usize) * 2 + 1;
 				char str[buf_size];
@@ -190,16 +270,19 @@ check_fmt:
 				if (!print(str, buf_size))
 					return -1;
 
+				fmt++;
 				written += len;
 				break;
 			}
+			// The number of characters written so far is stored in the pointed location.
 			case 'n':
 			{
-				fmt++;
 				i32* const ptr = va_arg(args, i32*);
 				*ptr = written;
+				fmt++;
 				break;
 			}
+			// No format, just normal text.
 			default:
 			{
 				fmt = format_begun_at;

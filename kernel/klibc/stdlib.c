@@ -18,6 +18,47 @@ static void reverse(char* s)
 	}
 }
 
+static int pow(int x, unsigned int y)
+{
+	if (y == 0)
+		return 1;
+	else if ((y % 2) == 0)
+		return pow(x, y / 2) * pow(x, y / 2);
+	else
+		return x * pow(x, y / 2) * pow(x, y / 2);
+}
+
+i32 atoi(char* str, u32 base)
+{
+	usize len = strlen(str);
+	i32 result = 0;
+	usize i = 0;
+	// Sign.
+	if (str[0] == '-')
+		i++;
+	for (; i < len; i++)
+	{
+		result += (str[i] - '0') * pow(base, len - i - 1);
+	}
+	if (str[0] == '-')
+		result *= -1;
+
+	return result;
+}
+
+u32 atou(char* str, u32 base)
+{
+	usize len = strlen(str);
+	u32 result = 0;
+	usize i = 0;
+	for (; i < len; i++)
+	{
+		result += (str[i] - '0') * pow(base, len - i - 1);
+	}
+
+	return result;
+}
+
 char* itoa(i32 value, char* str, u32 base)
 {
 	i32 i, sign;
