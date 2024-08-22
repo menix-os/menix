@@ -1,6 +1,6 @@
 # Miscellaneous kernel utilities
 
-add_library(menix_util STATIC
+target_sources(menix PUBLIC
 	self.c
 	cmd.c
 	builtin_font.c

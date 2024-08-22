@@ -28,3 +28,5 @@
 
 // Align an integer, rounding up.
 #define ALIGN_UP(value, align) (ALIGN_DOWN(value, align) + align)
+
+#define MIN(a, b) ((a) < (b) ? (a) : (b))

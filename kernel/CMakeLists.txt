@@ -21,16 +21,5 @@ add_subdirectory(thread)
 add_subdirectory(util)
 add_subdirectory(video)
 
-target_link_libraries(menix PUBLIC
-	menix_arch_${MENIX_ARCH_DIR}
-	menix_boot
-	menix_drv
-	menix_io
-	menix_fs
-	menix_klibc
-	menix_memory
-	menix_sys
-	menix_thread
-	menix_util
-	menix_video
-)
+# Boot protocols are defined as a module.
+target_link_libraries(menix PUBLIC menix_boot)

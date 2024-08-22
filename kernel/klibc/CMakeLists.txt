@@ -2,7 +2,7 @@
 # ! Note that while this library exposes many standard C functions, their
 # ! implementation is not guaranteed to be the same as the user-space libc.
 
-add_library(menix_klibc STATIC
+target_sources(menix PUBLIC
 	string.c
 	stdlib.c
 	stdio.c

@@ -29,7 +29,6 @@ void acpi_init(AcpiRsdp* rsdp)
 	kmesg("Initialized ACPI (Rev. %u)\n", rsdp->revision);
 
 	// The PCI subsystem depends on ACPI. Now we can enable it.
-	pci_init();
 	pci_init_acpi();
 }
 

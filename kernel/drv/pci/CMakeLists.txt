@@ -1,5 +1,5 @@
 # PCI(e) driver subsystem
 
-add_library(menix_drv_pci
+target_sources(menix PUBLIC
 	pci.c
 )

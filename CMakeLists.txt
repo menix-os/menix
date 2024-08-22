@@ -63,4 +63,4 @@ add_subdirectory(kernel)
 add_subdirectory(modules)
 
 # Link built-in modules
-target_link_libraries(menix PUBLIC menix_mod)
+target_link_libraries(menix PUBLIC menix_builtin)

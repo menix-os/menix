@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <menix/boot.h>
 #include <menix/common.h>
 #include <menix/log.h>
 
@@ -35,13 +36,15 @@ typedef struct ATTR(packed) ATTR(aligned(0x20))
 #define MODULE_META .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION, .license = MODULE_LICENSE
 
 // Initialize all modules and their subsystems.
-void module_init();
+void module_init(BootInfo* info);
 
-// Loads a relocatable module.
-void module_load(const char* path);
+// Loads a relocatable module. Returns 0 upon success.
+// `path`: The file path to this module.
+i32 module_load(const char* path, usize len);
 
 // Unloads a relocatable module.
-void module_unload(const char* path);
+// `name`: The name of the module.
+void module_unload(const char* name);
 
 // Clean up all modules, disconnect and disable them all.
 void module_fini();

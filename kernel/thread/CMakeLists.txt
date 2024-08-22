@@ -1,7 +1,7 @@
 # (Multi-)Threading and processes
 
-include(${MENIX_UTIL_PATH})
-add_library(menix_thread
+target_sources(menix PUBLIC
+	elf.c
 	spin.c
 	process.c
 )

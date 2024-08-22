@@ -1,7 +1,6 @@
 # System call implementations
 
-include(${MENIX_UTIL_PATH})
-add_library(menix_sys
+target_sources(menix PUBLIC
 	syscall_table.c
 	syscall_handler.c
 	do_null.c

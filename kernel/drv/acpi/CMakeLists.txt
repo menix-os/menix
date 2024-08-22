@@ -1,6 +1,6 @@
 # ACPI driver subsystem
 
-add_library(menix_drv_acpi
+target_sources(menix PUBLIC
 	rsdt.c
 	mcfg.c
 )

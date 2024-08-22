@@ -19,8 +19,8 @@ static List(PciDevice*) pci_devices;
 
 void pci_init()
 {
-	list_new(pci_drivers, 64);
-	list_new(pci_devices, 64);
+	list_new(pci_drivers, 128);
+	list_new(pci_devices, 128);
 }
 
 void pci_fini()

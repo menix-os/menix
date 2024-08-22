@@ -1,5 +1,5 @@
 # Kernel structure memory management.
 
-add_library(menix_memory STATIC
+target_sources(menix PUBLIC
 	alloc.c
 )

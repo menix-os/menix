@@ -7,11 +7,6 @@
 #include <menix/io/terminal.h>
 #include <menix/log.h>
 #include <menix/module.h>
-
-#ifdef CONFIG_acpi
-#include <menix/drv/acpi/acpi.h>
-#endif
-
 #include <menix/util/list.h>
 
 void kernel_main(BootInfo* info)
@@ -26,12 +21,8 @@ void kernel_main(BootInfo* info)
 	// Init virtual file system.
 	vfs_init();
 
-#ifdef CONFIG_acpi
-	acpi_init(info->acpi_rsdp);
-#endif
-
 	// Initialize all modules.
-	module_init();
+	module_init(info);
 
 	// TODO: Call init program.
 	// exec("/usr/init");

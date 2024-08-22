@@ -18,6 +18,16 @@
 #define EI_ABIVERSION 8		// ABI version
 #define EI_PAD		  9		// Start of padding bytes
 #define EI_NIDENT	  16	// Size of e_ident[]
+// ELF Identification Type
+#define ELFCLASS32	  1
+#define ELFCLASS64	  2
+#define ELFCLASSNUM	  3
+#define ELFDATA2LSB	  1
+#define ELFDATA2MSB	  2
+#define ELFDATANUM	  3
+#define E_NONE		  0
+#define E_CURRENT	  1
+#define E_NUM		  2
 // ELF Header Type
 #define ET_NONE		  0
 #define ET_REL		  1
@@ -259,3 +269,6 @@ typedef struct
 	u32 n_descsz;
 	u32 n_type;
 } Elf32_Nhdr;
+
+// Gets a section from an ELF by name.
+void* elf_get_section(void* elf, const char* name);

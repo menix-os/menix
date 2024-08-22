@@ -4,7 +4,7 @@
 # * name		Name of the architecture (and current subdir)
 function(add_architecture name)
 	set(MENIX_CURRENT_MOD arch_${name} CACHE INTERNAL "")
-	add_library(menix_arch_${name} STATIC ${ARGN})
+	target_sources(menix PUBLIC ${ARGN})
 
 	# Set linker script and common search paths.
 	target_link_options(menix PUBLIC -T ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ld)

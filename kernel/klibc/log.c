@@ -9,6 +9,8 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+#include "menix/thread/elf.h"
+
 static SpinLock lock = spin_new();
 
 void kmesg(const char* fmt, ...)
@@ -41,30 +43,12 @@ void ktrace()
 	// Parse kernel ELF.
 	Elf_Hdr* kernel = self_get_kernel();
 	void* data = kernel;
-	Elf_Shdr* sections = data + kernel->e_shoff;
-
 	// Find symbol and string table.
-	Elf_Shdr* strtab = NULL;
-	Elf_Shdr* symtab = NULL;
-	for (usize i = 0; i < kernel->e_shnum; i++)
-	{
-		if ((sections + i)->sh_type == SHT_SYMTAB)
-		{
-			symtab = sections + i;
-			break;
-		}
-	}
-	for (usize i = 0; i < kernel->e_shnum; i++)
-	{
-		// Get the strtab section, but not shstrtab.
-		if ((sections + i)->sh_type == SHT_STRTAB && i != kernel->e_shstrndx)
-		{
-			strtab = sections + i;
-			break;
-		}
-	}
+	Elf_Shdr* strtab = elf_get_section(kernel, ".strtab");
+	Elf_Shdr* symtab = elf_get_section(kernel, ".symtab");
 	if (symtab == NULL || strtab == NULL)
 		return;
+
 	const char* strtab_data = data + strtab->sh_offset;
 	Elf_Sym* symbols = data + symtab->sh_offset;
 	const usize symbol_count = symtab->sh_size / symtab->sh_entsize;

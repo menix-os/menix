@@ -1,7 +1,6 @@
 # Graphics Drivers
 
-include(${MENIX_UTIL_PATH})
-add_library(menix_video STATIC
+target_sources(menix PUBLIC
 	fb.c
 	fb_defaults.c
 )
