@@ -3,6 +3,7 @@
 #include <menix/arch.h>
 #include <menix/drv/acpi/acpi.h>
 #include <menix/drv/pci/pci.h>
+#include <menix/drv/pci/pci_acpi.h>
 #include <menix/fs/vfs.h>
 #include <menix/io/serial.h>
 #include <menix/log.h>
@@ -35,12 +36,14 @@ void arch_init(BootInfo* info)
 	pci_init();
 #ifdef CONFIG_acpi
 	acpi_init(info->acpi_rsdp);
+	// The PCI subsystem depends on ACPI. Now we can enable it.
+	pci_init_acpi();
 #endif
 }
 
 void arch_shutdown(BootInfo* info)
 {
-	// TODO
+	// TODO: stop all cores
 	arch_stop(info);
 }
 

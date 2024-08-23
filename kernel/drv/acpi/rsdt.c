@@ -2,12 +2,8 @@
 
 #include <menix/drv/acpi/acpi.h>
 #include <menix/drv/acpi/types.h>
-#include <menix/drv/pci/pci.h>
-#include <menix/drv/pci/pci_acpi.h>
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
-#include <menix/video/bmp.h>
-#include <menix/video/fb.h>
 
 #include <string.h>
 
@@ -30,42 +26,6 @@ void acpi_init(AcpiRsdp* rsdp)
 	rsdt = ACPI_ADDR(rsdp->xsdt_address);
 
 	kmesg("Initialized ACPI (Rev. %u)\n", rsdp->revision);
-
-#ifdef CONFIG_boot_logo
-	// Draw Boot logo.
-	AcpiBgrt* bgrt = acpi_find_table("BGRT", 0);
-	if (bgrt != NULL)
-	{
-		FrameBuffer* fb = fb_get_early();
-		BmpHeader* bmp = ACPI_ADDR(bgrt->image_addr);
-		u8* data = ((u8*)bmp) + bmp->offset;
-		if (bmp->dib.bpp / 8 != fb->mode.cpp)
-		{
-			// Convert image to ARGB.
-			data = kmalloc(bmp->dib.width * bmp->dib.height * fb->mode.cpp);
-			bmp_unpack24_to_32(data, bmp);
-		}
-
-		FbDrawRegion region = {
-			.x_src = bgrt->image_xoff,
-			.y_src = bgrt->image_yoff,
-			.data = data,
-			.width = bmp->dib.width,
-			.height = bmp->dib.height,
-		};
-
-		fb->funcs.draw_region(fb, &region);
-
-		// Free the buffer.
-		if (bmp->dib.bpp / 8 != fb->mode.cpp)
-		{
-			kfree(data);
-		}
-	}
-#endif
-
-	// The PCI subsystem depends on ACPI. Now we can enable it.
-	pci_init_acpi();
 }
 
 void* acpi_find_table(const char* signature, usize index)
