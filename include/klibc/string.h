@@ -4,8 +4,9 @@
 
 #include <menix/common.h>
 
-i32 memcmp(const void*, const void*, usize);
-void* memcpy(void* restrict, const void* restrict, usize);
-void* memmove(void*, const void*, usize);
-void* memset(void*, u8, usize);
-usize strlen(const char*);
+i32 memcmp(const void* s1, const void* s2, usize len);
+void* memcpy(void* restrict dst, const void* restrict src, usize len);
+void* memmove(void* dst, const void* src, usize len);
+void* memset(void* dst, u8 val, usize len);
+usize strlen(const char* src);
+usize strnlen(const char* src, usize len);

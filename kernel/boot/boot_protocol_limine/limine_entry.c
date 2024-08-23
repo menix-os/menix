@@ -114,7 +114,7 @@ void kernel_boot()
 			terminal_init();
 		}
 
-		kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%u (Virtual = %ux%u)\n", buffer.info.mmio_base,
+		kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n", buffer.info.mmio_base,
 			  buffer.mode.width, buffer.mode.height, buffer.mode.cpp * 8, buffer.mode.v_width, buffer.mode.v_height);
 	}
 
@@ -123,7 +123,7 @@ void kernel_boot()
 	for (usize i = 0; i < info.mm_num; i++)
 	{
 		if (info.memory_map[i].usage == PhysMemoryUsage_Free)
-			kmesg("    [%u] 0x%p - 0x%p\n", i, info.memory_map[i].address,
+			kmesg("    [%.2u] 0x%p - 0x%p\n", i, info.memory_map[i].address,
 				  info.memory_map[i].address + info.memory_map[i].length);
 	}
 	kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
@@ -147,7 +147,7 @@ void kernel_boot()
 	// Get kernel file.
 	kassert(kernel_file_request.response, "Unable to get kernel file info!\n");
 	struct limine_kernel_file_response* const kernel_res = kernel_file_request.response;
-	kmesg("Kernel file loaded at: 0x%p, Size = 0x%X\n", kernel_res->kernel_file->address,
+	kmesg("Kernel file loaded at: 0x%p, Size = 0x%lx\n", kernel_res->kernel_file->address,
 		  kernel_res->kernel_file->size);
 
 	self_set_kernel(kernel_res->kernel_file->address);
@@ -169,7 +169,7 @@ void kernel_boot()
 			files[i].address = module_res->modules[i]->address;
 			files[i].size = module_res->modules[i]->size;
 			files[i].path = module_res->modules[i]->path;
-			kmesg("    [%i] Address = 0x%p, Size = 0x%p, Path = \"%s\"\n", i, files[i].address, files[i].size,
+			kmesg("    [%i] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
 				  files[i].path);
 		}
 		info.file_num = module_res->module_count;

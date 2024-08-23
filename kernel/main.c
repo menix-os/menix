@@ -18,9 +18,6 @@ void kernel_main(BootInfo* info)
 	// Say hello to the console.
 	kmesg("menix v" CONFIG_version " (" CONFIG_arch ")\n");
 
-	// Init virtual file system.
-	vfs_init();
-
 	// Initialize all modules.
 	module_init(info);
 

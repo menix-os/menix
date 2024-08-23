@@ -46,12 +46,12 @@ void fb_default_draw_region(FrameBuffer* fb, FbDrawRegion* args)
 	for (usize y = 0; y < args->height; y++)
 	{
 		// Calculate the address to copy from (No x needed since each line starts on 0).
-		void* addr_src = (void*)args->data + (args->width * y);
+		void* addr_src = (void*)args->data + (args->width * y * mode->cpp);
 		// Calculate the address to copy to.
-		void* addr_dst = (void*)fb->info.mmio_base + (mode->pitch * (args->y_src + y)) + args->x_src;
+		void* addr_dst = (void*)fb->info.mmio_base + (mode->pitch * (args->y_src + y)) + (args->x_src * mode->cpp);
 
 		// Copy a single line.
-		memcpy(addr_dst, addr_src, args->width);
+		memcpy(addr_dst, addr_src, args->width * mode->cpp);
 	}
 }
 

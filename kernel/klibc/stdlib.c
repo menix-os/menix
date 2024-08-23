@@ -28,85 +28,87 @@ static int pow(int x, unsigned int y)
 		return x * pow(x, y / 2) * pow(x, y / 2);
 }
 
-i32 atoi(char* str, u32 base)
-{
-	usize len = strlen(str);
-	i32 result = 0;
-	usize i = 0;
-	// Sign.
-	if (str[0] == '-')
-		i++;
-	for (; i < len; i++)
-	{
-		result += (str[i] - '0') * pow(base, len - i - 1);
-	}
-	if (str[0] == '-')
-		result *= -1;
-
-	return result;
-}
-
-u32 atou(char* str, u32 base)
-{
-	usize len = strlen(str);
-	u32 result = 0;
-	usize i = 0;
-	for (; i < len; i++)
-	{
-		result += (str[i] - '0') * pow(base, len - i - 1);
+#define implement_itoa(name, type) \
+	char* name(type value, char* str, u32 base) \
+	{ \
+		usize i; \
+		type sign; \
+		sign = value; \
+		if (base == 10 && sign < 0) \
+			value = -value; \
+		i = 0; \
+		do \
+		{ \
+			char c = value % base; \
+			if (c > 9) \
+				c += 7; \
+			str[i++] = c + '0'; \
+		} while ((value /= base) > 0); \
+		if (base == 10 && sign < 0) \
+			str[i++] = '-'; \
+		str[i] = '\0'; \
+		reverse(str); \
+		return str; \
 	}
 
-	return result;
-}
+#define implement_utoa(name, type) \
+	char* name(type value, char* str, u32 base) \
+	{ \
+		usize i = 0; \
+		do \
+		{ \
+			char c = value % base; \
+			if (c > 9) \
+				c += 7; \
+			str[i++] = c + '0'; \
+		} while ((value /= base) > 0); \
+		str[i] = '\0'; \
+		reverse(str); \
+		return str; \
+	}
 
-char* itoa(i32 value, char* str, u32 base)
-{
-	i32 i, sign;
-	sign = value;
+#define implement_atoi(name, type) \
+	type name(char* str, u32 base) \
+	{ \
+		usize len = strlen(str); \
+		type result = 0; \
+		usize i = 0; \
+		if (str[0] == '-') \
+			i++; \
+		for (; i < len; i++) \
+			result += (str[i] - '0') * pow(base, len - i - 1); \
+		if (str[0] == '-') \
+			result *= -1; \
+		return result; \
+	}
 
-	if (base == 10 && sign < 0)
-		value = -value;
-	i = 0;
-	do
-	{
-		char c = value % base;
-		if (c > 9)
-			c += 7;	   // Skip to the letters for hex. ('9' + 7 = 'A')
-		str[i++] = c + '0';
-	} while ((value /= base) > 0);
-	if (base == 10 && sign < 0)
-		str[i++] = '-';
-	str[i] = '\0';
-	reverse(str);
-	return str;
-}
+#define implement_atou(name, type) \
+	type name(char* str, u32 base) \
+	{ \
+		usize len = strlen(str); \
+		type result = 0; \
+		usize i = 0; \
+		for (; i < len; i++) \
+			result += (str[i] - '0') * pow(base, len - i - 1); \
+		return result; \
+	}
 
-char* utoa(u32 value, char* str, u32 base)
-{
-	i32 i = 0;
-	do
-	{
-		char c = value % base;
-		if (c > 9)
-			c += 7;	   // Skip to the letters for hex. ('9' + 7 = 'A')
-		str[i++] = c + '0';
-	} while ((value /= base) > 0);
-	str[i] = '\0';
-	reverse(str);
-	return str;
-}
+implement_atoi(atoi8, i8);
+implement_atoi(atoi16, i16);
+implement_atoi(atoi32, i32);
+implement_atoi(atoi64, i64);
 
-char* lutoa(u64 value, char* str, u32 base)
-{
-	i32 i = 0;
-	do
-	{
-		char c = value % base;
-		if (c > 9)
-			c += 7;	   // Skip to the letters for hex. ('9' + 7 = 'A')
-		str[i++] = c + '0';
-	} while ((value /= base) > 0);
-	str[i] = '\0';
-	reverse(str);
-	return str;
-}
+implement_atou(atou8, u8);
+implement_atou(atou16, u16);
+implement_atou(atou32, u32);
+implement_atou(atou64, u64);
+
+implement_itoa(i8toa, i8);
+implement_itoa(i16toa, i16);
+implement_itoa(i32toa, i32);
+implement_itoa(i64toa, i64);
+
+implement_utoa(u8toa, u8);
+implement_utoa(u16toa, u16);
+implement_utoa(u32toa, u32);
+implement_utoa(u64toa, u64);

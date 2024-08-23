@@ -93,7 +93,7 @@ i32 pci_register_driver(PciDriver* driver)
 			// Copy over the variant index so the driver knows which device was matched.
 			dev->variant_idx = driver->variants[variant].variant_idx;
 
-			kmesg("Matched driver \"%s\" to live device %x:%x on %u:%u\n", driver->name, dev->vendor, dev->device,
+			kmesg("Matched driver \"%s\" to live device %hx:%hx on %hhu:%hhu\n", driver->name, dev->vendor, dev->device,
 				  dev->bus, dev->slot);
 
 			// Now, probe the device using the registered driver.
@@ -109,7 +109,7 @@ i32 pci_register_driver(PciDriver* driver)
 		}
 	}
 
-	kmesg("Registered PCI driver \"%s\" with %u variant(s).\n", driver->name, driver->num_variants);
+	kmesg("Registered PCI driver \"%s\" with %zu variant(s).\n", driver->name, driver->num_variants);
 	return 0;
 }
 
@@ -159,7 +159,7 @@ i32 pci_register_device(PciDevice* device)
 
 	list_push(&pci_devices, device);
 
-	kmesg("New PCI device %x:%x on %u:%u\n", device->vendor, device->device, device->bus, device->slot);
+	kmesg("New PCI device %hx:%hx on %hhu:%hhu\n", device->vendor, device->device, device->bus, device->slot);
 
 	return 0;
 }

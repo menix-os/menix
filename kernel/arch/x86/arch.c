@@ -1,6 +1,9 @@
 // x86 platform initialization
 
 #include <menix/arch.h>
+#include <menix/drv/acpi/acpi.h>
+#include <menix/drv/pci/pci.h>
+#include <menix/fs/vfs.h>
 #include <menix/io/serial.h>
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
@@ -26,6 +29,12 @@ void arch_init(BootInfo* info)
 	// TODO: Find out processor count.
 #else
 	cpus = kcalloc(sizeof(Cpu));
+#endif
+
+	vfs_init();
+	pci_init();
+#ifdef CONFIG_acpi
+	acpi_init(info->acpi_rsdp);
 #endif
 }
 

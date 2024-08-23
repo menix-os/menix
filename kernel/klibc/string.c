@@ -12,6 +12,16 @@ usize strlen(const char* str)
 	return result;
 }
 
+usize strnlen(const char* str, usize len)
+{
+	usize result = 0;
+	while (result < len && *str++)
+	{
+		result++;
+	}
+	return result;
+}
+
 int memcmp(const void* s1, const void* s2, usize size)
 {
 	int diff = 0;

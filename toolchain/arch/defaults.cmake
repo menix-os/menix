@@ -22,3 +22,6 @@ add_option(smp BOOL OFF)
 
 # PCI(e)
 add_option(pci BOOL ON)
+
+# Boot options
+add_option(boot_logo BOOL OFF)

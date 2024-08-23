@@ -36,7 +36,7 @@ typedef struct
 typedef struct
 {
 	AcpiDescHeader header;
-	void* entries[];
+	PhysAddr entries[];
 } ATTR(packed) AcpiRsdt;
 
 // Multiple APIC Table
@@ -64,3 +64,15 @@ typedef struct
 	char reserved[8];
 	AcpiMcfgEntry entries[];
 } ATTR(packed) AcpiMcfg;
+
+// Boot Graphics Record Table
+typedef struct
+{
+	AcpiDescHeader header;
+	u16 version_id;
+	u8 status;
+	u8 image_type;
+	PhysAddr image_addr;
+	u32 image_xoff;
+	u32 image_yoff;
+} ATTR(packed) AcpiBgrt;

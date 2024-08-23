@@ -22,18 +22,12 @@ static HashMap(Module*) dynamic_modules;
 
 void module_init(BootInfo* info)
 {
-	// Initialize subsystems.
-	pci_init();
-#ifdef CONFIG_acpi
-	acpi_init(info->acpi_rsdp);
-#endif
-
 	hashmap_init(dynamic_modules, 128);
 
 	// Check if the .mod section size is sane.
 	if (SECTION_SIZE(mod) % sizeof(Module) != 0)
 	{
-		kmesg("Ignoring built-in modules: The .mod section has a bogus size of 0x%x!\n", SECTION_SIZE(mod));
+		kmesg("Ignoring built-in modules: The .mod section has a bogus size of 0x%zx!\n", SECTION_SIZE(mod));
 		return;
 	}
 
@@ -42,7 +36,7 @@ void module_init(BootInfo* info)
 	const Module* modules = (Module*)SECTION_START(mod);
 
 	// Initialize all built-in modules.
-	kmesg("Loading %i built-in modules.\n", module_count);
+	kmesg("Loading %zu built-in modules.\n", module_count);
 	for (usize i = 0; i < module_count; i++)
 	{
 		kmesg("Loading built-in module \"%s\": %s (Author: %s, License: %s)\n", modules[i].name, modules[i].description,

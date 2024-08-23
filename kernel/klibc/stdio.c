@@ -22,7 +22,6 @@ i32 putchar(i32 ic)
 	return ic;
 }
 
-// TODO: The *printf family needs a proper rewrite that is more accurate.
 i32 vprintf(const char* restrict fmt, va_list args)
 {
 	// Amount of bytes written.
@@ -51,28 +50,25 @@ i32 vprintf(const char* restrict fmt, va_list args)
 		}
 
 		const char* format_begun_at = fmt++;
-		bool left_justify = false;
-		bool preceed_sign = false;
+		bool force_sign = false;
 		bool blank_sign = false;
 		bool write_prefix = false;
+		bool pad_zero = false;
 		bool has_width = false;
 		usize width = 0;
 		bool has_precision = false;
 		usize precision = 0;
-
+		usize size = sizeof(u32);
+		char number[64];
 check_fmt:
+		memset(number, 0, sizeof(number));
+
 		switch (*fmt)
 		{
 			// Flags
-			case '-':
-			{
-				left_justify = true;
-				fmt++;
-				goto check_fmt;
-			}
 			case '+':
 			{
-				preceed_sign = true;
+				force_sign = true;
 				fmt++;
 				goto check_fmt;
 			}
@@ -90,7 +86,7 @@ check_fmt:
 			}
 			case '0':
 			{
-				write_prefix = true;
+				pad_zero = true;
 				fmt++;
 				goto check_fmt;
 			}
@@ -113,7 +109,7 @@ check_fmt:
 					number[idx++] = *fmt;
 					fmt++;
 				}
-				width = atou(number, 10);
+				width = atou32(number, 10);
 
 				goto check_fmt;
 			}
@@ -135,8 +131,37 @@ check_fmt:
 						number[idx++] = *fmt;
 						fmt++;
 					}
-					precision = atou(number, 10);
+					precision = atou32(number, 10);
 				}
+				goto check_fmt;
+			}
+			// Length
+			case 'h':
+			{
+				if (fmt[1] == 'h')
+				{
+					size = sizeof(u8);
+					fmt++;
+				}
+				else
+					size = sizeof(u16);
+				fmt++;
+				goto check_fmt;
+			}
+			case 'l':
+			{
+				// There is no difference between `long int` and `long long int`.
+				if (fmt[1] == 'l')
+					fmt++;
+				fmt++;
+				size = sizeof(u64);
+
+				goto check_fmt;
+			}
+			case 'z':
+			{
+				size = sizeof(usize);
+				fmt++;
 				goto check_fmt;
 			}
 			// Character
@@ -174,84 +199,76 @@ check_fmt:
 			case 'i':
 			case 'd':
 			{
-				const i32 num = va_arg(args, i32);
-
-				// The largest signed integer is 2^32, which uses
-				// 10 digits + NUL.
-				char str[10 + 1];
-				itoa(num, str, 10);
-				const usize len = strlen(str);
-				if (!print(str, len))
-					return -1;
-
-				written += len;
-				fmt++;
-				break;
+				switch (size)
+				{
+					case sizeof(i8): i8toa((i8)va_arg(args, i32), number, 10); break;
+					case sizeof(i16): i16toa((i16)va_arg(args, i32), number, 10); break;
+					case sizeof(i32): i32toa(va_arg(args, i32), number, 10); break;
+					case sizeof(i64): i64toa(va_arg(args, i64), number, 10); break;
+				}
+				goto print_num;
 			}
 			// Unsigned decimal integer
 			case 'u':
 			{
-				const u32 num = va_arg(args, u32);
-
-				// The largest signed integer is 2^32, which uses
-				// 10 digits + NUL.
-				char str[10 + 1];
-				utoa(num, str, 10);
-				const usize len = strlen(str);
-				if (!print(str, len))
-					return -1;
-
-				written += len;
-				fmt++;
-				break;
+				switch (size)
+				{
+					case sizeof(u8): u8toa((u8)va_arg(args, u32), number, 10); break;
+					case sizeof(u16): u16toa((u16)va_arg(args, u32), number, 10); break;
+					case sizeof(u32): u32toa(va_arg(args, u32), number, 10); break;
+					case sizeof(u64): u64toa(va_arg(args, u64), number, 10); break;
+				}
+				goto print_num;
 			}
 			// Unsigned hexadecimal integer
+			case 'X':
 			case 'x':
 			{
-				const u32 num = va_arg(args, u32);
-
-				char str[sizeof(u32) * 2 + 1];
-				utoa(num, str, 16);
-
-				// Make letters lowercase.
-				for (u32 i = 0; i < sizeof(str); i++)
+				switch (size)
 				{
-					if (str[i] >= 'A' && str[i] <= 'F')
-						str[i] ^= 0x20;
+					case sizeof(u8): u8toa((u8)va_arg(args, u32), number, 16); break;
+					case sizeof(u16): u16toa((u16)va_arg(args, u32), number, 16); break;
+					case sizeof(u32): u32toa(va_arg(args, u32), number, 16); break;
+					case sizeof(u64): u64toa(va_arg(args, u64), number, 16); break;
 				}
-
-				const usize len = strlen(str);
-
-				// Print prefix if '#' was previous format.
+print_num:
+				usize len = strlen(number);
+				if (has_precision)
+				{
+					for (usize i = 0; i < precision - len; i++)
+						if (!print(" ", 1))
+							return -1;
+				}
+				if (has_width)
+				{
+					char c = pad_zero ? '0' : ' ';
+					for (usize i = 0; i < width - len; i++)
+						if (!print(&c, 1))
+							return -1;
+				}
 				if (write_prefix)
-					if (!print("0x", 2))
-						return -1;
-				if (!print(str, len))
+				{
+					print("0x", 2);
+				}
+				if (force_sign)
+				{
+					char c = '+';
+					if (number[0] != '-')
+						if (!print(&c, 1))
+							return -1;
+				}
+				if (blank_sign)
+				{
+					char c = ' ';
+					if (number[0] != '-')
+						if (!print(&c, 1))
+							return -1;
+				}
+				if (!print(number, len))
 					return -1;
 
-				fmt++;
 				written += len;
-				break;
-			}
-			// Unsigned hexadecimal integer (uppercase)
-			case 'X':
-			{
-				const u32 num = va_arg(args, u32);
-
-				char str[sizeof(u32) * 2 + 1];
-				utoa(num, str, 16);
-
-				const usize len = strlen(str);
-
-				// Print prefix if '#' was previous format.
-				if (write_prefix)
-					if (!print("0x", 2))
-						return -1;
-				if (!print(str, len))
-					return -1;
-
 				fmt++;
-				written += len;
 				break;
 			}
 			// Pointer address
@@ -260,14 +277,19 @@ check_fmt:
 				const usize num = va_arg(args, usize);
 				const usize buf_size = sizeof(usize) * 2 + 1;
 				char str[buf_size];
-				lutoa(num, str, 0x10);
-				const usize len = strlen(str);		  // Get the length of the final number.
+#if CONFIG_bits == 64
+				u64toa(num, number, 0x10);
+#else
+				u32toa(num, number, 0x10);
+#endif
+				const usize len = strlen(number);	  // Get the length of the final number.
 				for (int i = 0; i < buf_size; i++)	  // Fill with zeroes.
 					str[i] = '0';
-				char* offset = str + (sizeof(str) - len - 1);
-				lutoa(num, offset, 0x10);	 // Write the number again, but now at an offset.
+				usize offset = sizeof(str) - len - 1;
 
-				if (!print(str, buf_size))
+				if (!print(str, offset))
+					return -1;
+				if (!print(number, len))
 					return -1;
 
 				fmt++;

@@ -4,5 +4,4 @@ set(MENIX_PARENT_CAT menix_boot)
 add_library(${MENIX_PARENT_CAT} INTERFACE)
 include(${MENIX_UTIL_PATH})
 
-add_subdirectory(boot_limine)
-add_subdirectory(boot_mb2)
+add_subdirectory(boot_protocol_limine)
