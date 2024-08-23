@@ -31,14 +31,6 @@ void arch_init(BootInfo* info)
 #else
 	cpus = kcalloc(sizeof(Cpu));
 #endif
-
-	vfs_init();
-	pci_init();
-#ifdef CONFIG_acpi
-	acpi_init(info->acpi_rsdp);
-	// The PCI subsystem depends on ACPI. Now we can enable it.
-	pci_init_acpi();
-#endif
 }
 
 void arch_shutdown(BootInfo* info)

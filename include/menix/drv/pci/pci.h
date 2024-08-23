@@ -49,7 +49,7 @@ typedef struct PciDriver
 	void (*shutdown)(PciDevice* dev);
 } PciDriver;
 
-// Initializes the PCI subsystem and calls .probe on all registered and matching drivers.
+// Initializes the PCI subsystem.
 void pci_init();
 
 // Shuts the PCI subsystem down. This also unregisters all devices!

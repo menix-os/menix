@@ -1,5 +1,6 @@
 // Virtual File System
 
+#include <menix/fs/tmpfs.h>
 #include <menix/fs/vfs.h>
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
@@ -20,6 +21,7 @@ void vfs_init()
 	hashmap_init(fs_map, 128);
 
 	kmesg("Initialized virtual file system.\n");
+	tmpfs_init();
 }
 
 i32 vfs_fs_register(FileSystem* fs)

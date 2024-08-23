@@ -39,13 +39,7 @@ static FileSystem tmpfs = {
 	.sym_link = tmpfs_sym_link,
 };
 
-MODULE_FN i32 tmpfs_init()
+i32 tmpfs_init()
 {
 	return vfs_fs_register(&tmpfs);
 }
-
-MODULE = {
-	.name = MODULE_NAME,
-	.init = tmpfs_init,
-	MODULE_META,
-};

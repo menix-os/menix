@@ -2,4 +2,5 @@
 
 target_sources(menix PUBLIC
 	vfs.c
+	tmpfs.c
 )
