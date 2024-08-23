@@ -11,6 +11,8 @@ static List(FrameBuffer*) buffers = {0};
 void fb_set_early(FrameBuffer* fb)
 {
 	early_buffer = fb;
+	// Also register as a regular framebuffer.
+	list_push(&buffers, fb);
 }
 
 FrameBuffer* fb_get_early()
