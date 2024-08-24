@@ -151,7 +151,6 @@ void kernel_boot()
 		else
 			limine_init_cpu(smp_cpu);
 	}
-	// TODO: Broken if built in Release mode with clang?
 	while (info.cpu_active != info.cpu_num)
 	{
 		asm_pause();

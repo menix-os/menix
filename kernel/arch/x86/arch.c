@@ -110,7 +110,6 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 		// TODO: Init local APIC.
 		kmesg("Core %zu is active!\n", arch_current_cpu()->id);
 		boot_info->cpu_active += 1;
-		kmesg("Active cores: %zu\n", boot_info->cpu_active);
 		spin_free(&cpu_lock);
 		asm_interrupt_disable();
 		while (1)
@@ -119,7 +118,6 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 
 	kmesg("Core %zu (starter) is active!\n", arch_current_cpu()->id);
 	boot_info->cpu_active += 1;
-	kmesg("Active cores: %zu\n", boot_info->cpu_active);
 	spin_free(&cpu_lock);
 }
 
