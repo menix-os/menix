@@ -29,4 +29,7 @@
 // Align an integer, rounding up.
 #define ALIGN_UP(value, align) (ALIGN_DOWN(value, align) + align)
 
+#define ROUND_UP(value, to) (((value) + ((to) - 1)) / (to))
+
+// Uses the smaller of the two value.
 #define MIN(a, b) ((a) < (b) ? (a) : (b))

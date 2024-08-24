@@ -17,6 +17,9 @@ typedef struct
 		0 \
 	}
 
+// Toggles if spinlocks do anything or not. Used for single processor machines/during setup.
+void spin_use(bool on);
+
 // Attempt to acquire the lock.
 // Returns true if successful.
 bool spin_acquire(SpinLock* lock);

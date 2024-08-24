@@ -111,16 +111,6 @@ void idt_init()
 	// Interrupt 0x80 is syscall (Only for legacy invocations using "int $0x80").
 	idt_set(0x80, int_syscall, IDT_TYPE(0, IDT_GATE_INT));
 
-	// While we're at it, also enable syscall/sysret instructions.
-	// Enable syscall extension (EFER.SCE).
-	asm_wrmsr(MSR_EFER, asm_rdmsr(MSR_EFER) | 1);
-	// Bits 32-47 are kernel segment base, Bits 48-63 are user segment base. Lower 32 bits (EIP) are unused.
-	asm_wrmsr(MSR_STAR, (offsetof(Gdt, kernel_code)) | (offsetof(Gdt, user_code) << 16) << 32);
-	// Set syscall entry point.
-	asm_wrmsr(MSR_LSTAR, (u64)sc_syscall);
-	// Set the flag mask to everything except the second bit (always has to be enabled).
-	asm_wrmsr(MSR_SFMASK, (u64) ~((u32)2));
-
 	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);
 	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);
 	arch_x86_write8(PIC1_DATA_PORT, 0x20);

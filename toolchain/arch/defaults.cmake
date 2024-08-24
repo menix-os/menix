@@ -18,10 +18,14 @@ add_option(ktrace_max NUMBER 32)
 add_option(acpi BOOL ON)
 
 # Symmetric Multi-processing
-add_option(smp BOOL OFF)
+add_option(smp BOOL ON)
 
 # PCI(e)
 add_option(pci BOOL ON)
 
 # Boot options
 add_option(boot_logo BOOL OFF)
+
+# Memory allocation
+add_option(allocator_slab BOOL ON)
+add_option(stack_size NUMBER 0x2000000)

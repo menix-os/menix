@@ -4,6 +4,12 @@
 #include <menix/thread/spin.h>
 
 static void* last_addr = NULL;
+static bool use_spin = false;
+
+void spin_use(bool on)
+{
+	use_spin = on;
+}
 
 bool spin_acquire(SpinLock* lock)
 {
@@ -37,7 +43,8 @@ void spin_acquire_force(SpinLock* lock)
 	lock->owner = __builtin_return_address(0);
 
 #ifdef CONFIG_smp
-	lock->cpu = arch_current_cpu()->id;
+	if (use_spin)
+		lock->cpu = arch_current_cpu()->id;
 #endif
 }
 

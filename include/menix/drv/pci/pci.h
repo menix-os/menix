@@ -9,8 +9,12 @@
 
 typedef struct
 {
-	u32 (*internal_read)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u8 access_size);
-	void (*internal_write)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u8 access_size, u32 value);
+	u8 (*read8)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset);
+	u16 (*read16)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset);
+	u32 (*read32)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset);
+	void (*write8)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u8 value);
+	void (*write16)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u16 value);
+	void (*write32)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u32 value);
 } PciPlatform;
 
 extern PciPlatform pci_platform;

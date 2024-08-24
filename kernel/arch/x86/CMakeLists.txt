@@ -11,4 +11,5 @@ add_architecture(x86
 	vm.c
 	pm.c
 	syscall.s
+	memory/slab.c
 )

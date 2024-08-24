@@ -3,13 +3,12 @@
 #include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
+#include <menix/thread/elf.h>
 #include <menix/thread/spin.h>
 #include <menix/util/self.h>
 
 #include <stdarg.h>
 #include <stdio.h>
-
-#include "menix/thread/elf.h"
 
 static SpinLock lock = spin_new();
 
@@ -75,11 +74,11 @@ void ktrace()
 
 		// If we have found the corresponding symbol, print its name + offset.
 		if (symbol_name != NULL)
-			kmesg("    [%u] 0x%p <%s+0x%x>\n", i, fp->return_addr, symbol_name, offset);
+			kmesg("    [%zu] 0x%p <%s+0x%x>\n", i, fp->return_addr, symbol_name, offset);
 		// If the address is not NULL, but we don't have any matching symbol, just print the address.
 		else if (fp->return_addr)
 		{
-			kmesg("    [%u] 0x%p < ??? >\n", i, fp->return_addr);
+			kmesg("    [%zu] 0x%p < ??? >\n", i, fp->return_addr);
 		}
 	}
 #endif

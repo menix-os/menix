@@ -4,6 +4,8 @@
 
 #include <menix/common.h>
 
+#include <bits/asm.h>
+
 #define GDTA_PRESENT	   (1 << 7)
 #define GDTA_PRIV_LVL(lvl) ((lvl & 3) << 5)
 #define GDTA_SEGMENT	   (1 << 4)
@@ -78,3 +80,9 @@ typedef struct ATTR(packed)
 
 // Install the Global Descriptor Table.
 void gdt_init();
+
+// Reload the Global Descriptor Table and flush segment registers.
+void gdt_reload();
+
+// Loads a new TSS into the GDT.
+void gdt_load_tss(usize addr);

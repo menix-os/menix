@@ -1,7 +1,8 @@
 // Task State Segment
-//! menix uses software multitasking, the TSS is only really used as a placeholder.
 
 #include <menix/common.h>
+
+#include <gdt.h>
 
 typedef struct ATTR(packed)
 {
@@ -27,5 +28,9 @@ typedef struct ATTR(packed)
 // Initializes the TSS.
 void tss_init(TaskStateSegment* tss);
 
-// Sets the RSP fields in the TSS to the given stack pointer.
-void tss_set_stack(TaskStateSegment* tss, void* rsp);
+// Reloads the current TSS.
+static inline void tss_reload()
+{
+	asm volatile("movw %0, %%ax\n"
+				 "ltr %%ax\n" ::"r"((u16)offsetof(Gdt, tss)));
+}

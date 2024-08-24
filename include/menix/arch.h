@@ -7,17 +7,37 @@
 #include <bits/arch.h>
 #include <bits/asm.h>
 
-// Thread-local storage information.
-typedef struct ArchCpu Cpu;
+// CPU-local information.
+typedef struct Cpu
+{
+	usize id;				  // Unique ID of this CPU.
+	struct Thread* thread;	  // Current thread running on this CPU.
+	usize kernel_stack;		  // RSP for the kernel.
+	usize user_stack;		  // RSP for the user space.
+
+	// Architecture dependent information.
+#ifdef CONFIG_arch_x86
+	TaskStateSegment tss;
+	u32 lapic_id;
+	usize fpu_size;
+	void (*fpu_save)(void* dst);
+	void (*fpu_restore)(void* dst);
+#endif
+} Cpu;
 
 // Code-visible CPU registers.
-typedef struct ArchRegisters CpuRegisters;
+typedef struct CpuRegisters CpuRegisters;
 
 // Initializes the platform for use by the kernel and boot routines.
-void arch_early_init();
+void arch_early_init(BootInfo* info);
 
 // Initializes the rest of the platform after the boot routines have completed.
 void arch_init(BootInfo* info);
+
+// Initializes a single processor.
+// `info`: Information about the CPU that has to be enabled.
+// `boot`: Information about the boot CPU.
+void arch_init_cpu(Cpu* info, Cpu* boot);
 
 // Safely powers off the machine.
 void arch_shutdown(BootInfo* info);

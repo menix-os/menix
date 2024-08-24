@@ -1,8 +1,8 @@
 // Global Descriptor table
 
 #include <menix/common.h>
+#include <menix/thread/spin.h>
 
-#include <bits/asm.h>
 #include <gdt.h>
 #include <tss.h>
 
@@ -57,7 +57,24 @@ void gdt_init()
 
 	// clang-format on
 
+	gdt_reload();
+	tss_reload();
+	asm_interrupt_enable();
+}
+
+void gdt_reload()
+{
 	asm_gdt_set(gdtr);
 	asm_flush_segment_regs(offsetof(Gdt, kernel_code), offsetof(Gdt, kernel_data));
-	asm_interrupt_enable();
+}
+
+static SpinLock gdt_lock = spin_new();
+
+void gdt_load_tss(usize addr)
+{
+	spin_acquire_force(&gdt_lock);
+	GDT_ENCODE_LONG(gdt_table.tss, addr, sizeof(TaskStateSegment),
+					GDTA_PRESENT | GDTA_PRIV_LVL(0) | GDTA_EXECUTABLE | GDTA_ACCESSED, 0);
+	tss_reload();
+	spin_free(&gdt_lock);
 }

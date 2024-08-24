@@ -30,12 +30,10 @@ void pci_fini()
 	{
 		PciDevice* const dev = *dev_iter;
 
-		if (!dev->driver)
-			continue;
-		if (!dev->driver->remove)
-			continue;
+		if (dev->driver && dev->driver->remove)
+			dev->driver->remove(dev);
 
-		dev->driver->remove(dev);
+		kfree(dev);
 	}
 
 	// Release the device list.
@@ -47,7 +45,7 @@ void pci_fini()
 
 PciDevice* pci_scan_device(u8 bus, u8 slot)
 {
-	u16 vendor_id = pci_platform.internal_read(0, bus, slot, 0, 0x0, sizeof(u16));
+	u16 vendor_id = pci_platform.read16(0, bus, slot, 0, 0x0);
 
 	// If no device is present, return null.
 	if (vendor_id == 0xFFFF)
@@ -57,9 +55,9 @@ PciDevice* pci_scan_device(u8 bus, u8 slot)
 	PciDevice* device = kmalloc(sizeof(PciDevice));
 
 	device->vendor = vendor_id;
-	device->device = pci_platform.internal_read(0, bus, slot, 0, 0x2, sizeof(u16));
-	device->sub_class = pci_platform.internal_read(0, bus, slot, 0, 0x10, sizeof(u8));
-	device->class = pci_platform.internal_read(0, bus, slot, 0, 0x11, sizeof(u8));
+	device->device = pci_platform.read16(0, bus, slot, 0, 0x2);
+	device->sub_class = pci_platform.read8(0, bus, slot, 0, 0x10);
+	device->class = pci_platform.read8(0, bus, slot, 0, 0x11);
 	device->bus = bus;
 	device->slot = slot;
 

@@ -41,7 +41,7 @@
 		/* If no container was allocated, do it now.*/ \
 		if (__list->items == NULL) \
 		{ \
-			__list->items = kcalloc(sizeof(typeof(*(__list->items))) * __list->capacity); \
+			__list->items = kzalloc(sizeof(typeof(*(__list->items))) * __list->capacity); \
 			__list->length = 0; \
 		} \
 		/* If the new entry would overflow the buffer, double the capacity. */ \

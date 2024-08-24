@@ -41,7 +41,7 @@ void terminal_init()
 
 	// Allocate a back buffer.
 	const FbModeInfo* mode = &internal_fb->mode;
-	internal_buffer = kcalloc(mode->pitch * mode->height);
+	internal_buffer = kzalloc(mode->pitch * mode->height);
 
 	ch_width = internal_fb->mode.width / FONT_WIDTH;
 	ch_height = internal_fb->mode.height / FONT_HEIGHT;

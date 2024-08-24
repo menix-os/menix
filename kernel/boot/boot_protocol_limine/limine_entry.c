@@ -14,6 +14,7 @@
 
 #include <string.h>
 
+#include "bits/asm.h"
 #include "limine.h"
 
 #define LIMINE_REQUEST(request, tag, rev) \
@@ -33,6 +34,9 @@ LIMINE_REQUEST(kernel_address_request, LIMINE_KERNEL_ADDRESS_REQUEST, 0);	 // Ge
 LIMINE_REQUEST(kernel_file_request, LIMINE_KERNEL_FILE_REQUEST, 0);			 // For debug symbols.
 LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 1);			 // Initial console frame buffer.
 LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);					 // Get all other modules, logo.
+#ifdef CONFIG_smp
+LIMINE_REQUEST(smp_request, LIMINE_SMP_REQUEST, 0);	   // Get SMP information.
+#endif
 #ifdef CONFIG_acpi
 LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);	 // Get ACPI RSDP table if enabled.
 #endif
@@ -40,27 +44,32 @@ LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);	 // Get ACPI RSDP table if
 LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);	   // Get device tree blob if enabled.
 #endif
 
+static BootInfo info = {0};
+
+static void limine_init_cpu(struct limine_smp_info* smp_info)
+{
+	arch_init_cpu((Cpu*)smp_info->extra_argument, &info.cpus[info.boot_cpu]);
+}
+
 void kernel_boot()
 {
-	arch_early_init();
-
-	BootInfo info = {0};
+	arch_early_init(&info);
 
 	// Get the memory map.
 	kassert(memmap_request.response, "Unable to get memory map!\n");
-	struct limine_memmap_response* const res = memmap_request.response;
-	kmesg("Bootloader provided memory map at 0x%p\n", res);
+	struct limine_memmap_response* const mm_res = memmap_request.response;
+	kmesg("Bootloader provided memory map at 0x%p\n", mm_res);
 
-	PhysMemory map[res->entry_count];
-	info.mm_num = res->entry_count;
+	PhysMemory map[mm_res->entry_count];
+	info.mm_num = mm_res->entry_count;
 	info.memory_map = map;
 
-	for (usize i = 0; i < res->entry_count; i++)
+	for (usize i = 0; i < mm_res->entry_count; i++)
 	{
-		map[i].address = res->entries[i]->base;
-		map[i].length = res->entries[i]->length;
+		map[i].address = mm_res->entries[i]->base;
+		map[i].length = mm_res->entries[i]->length;
 
-		switch (res->entries[i]->type)
+		switch (mm_res->entries[i]->type)
 		{
 			case LIMINE_MEMMAP_USABLE: map[i].usage = PhysMemoryUsage_Free; break;
 			case LIMINE_MEMMAP_KERNEL_AND_MODULES: map[i].usage = PhysMemoryUsage_Kernel; break;
@@ -85,9 +94,8 @@ void kernel_boot()
 	// Initialize physical and virtual memory managers.
 	pm_init(info.phys_map, info.memory_map, info.mm_num);
 	vm_init(info.phys_map, info.kernel_phys, info.memory_map, info.mm_num);
-	// Initialize memory manager.
+	// Initialize memory allocator.
 	alloc_init();
-
 	// Get early framebuffer.
 	FrameBuffer buffer = {0};
 
@@ -113,22 +121,49 @@ void kernel_boot()
 			fb_set_early(&buffer);
 			terminal_init();
 		}
-
 		kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n", buffer.info.mmio_base,
 			  buffer.mode.width, buffer.mode.height, buffer.mode.cpp * 8, buffer.mode.v_width, buffer.mode.v_height);
 	}
 
-	// Print memory map.
-	kmesg("Free physical memory:\n");
-	for (usize i = 0; i < info.mm_num; i++)
+#ifdef CONFIG_smp
+	// Get SMP info
+	kassert(smp_request.response, "Unable to get kernel SMP info!\n");
+	const struct limine_smp_response* smp_res = smp_request.response;
+	info.cpu_num = smp_res->cpu_count;
+	info.cpu_active = 0;
+	info.boot_cpu = smp_res->bsp_lapic_id;	  // Mark the boot CPU.
+	info.cpus = kzalloc(sizeof(Cpu) * info.cpu_num);
+	for (usize i = 0; i < info.cpu_num; i++)
 	{
-		if (info.memory_map[i].usage == PhysMemoryUsage_Free)
-			kmesg("    [%.2u] 0x%p - 0x%p\n", i, info.memory_map[i].address,
-				  info.memory_map[i].address + info.memory_map[i].length);
+		struct limine_smp_info* smp_cpu = smp_res->cpus[i];
+		smp_cpu->extra_argument = (u64)&info.cpus[i];
+		Cpu* cpu = &info.cpus[i];
+		cpu->id = i;
+#ifdef CONFIG_arch_x86
+		cpu->lapic_id = smp_cpu->lapic_id;
+		// Allocate stack.
+		cpu->tss.rsp0 = pm_arch_alloc(CONFIG_stack_size / CONFIG_page_size) + (u64)pm_get_phys_base();
+		cpu->tss.ist1 = pm_arch_alloc(CONFIG_stack_size / CONFIG_page_size) + (u64)pm_get_phys_base();
+		cpu->tss.ist2 = cpu->tss.ist1;
+#endif
+		if (cpu->lapic_id != info.boot_cpu)
+			smp_cpu->goto_address = limine_init_cpu;
+		else
+			limine_init_cpu(smp_cpu);
 	}
+	// TODO: Broken if built in Release mode with clang?
+	while (info.cpu_active != info.cpu_num)
+	{
+		asm_pause();
+	}
+	// From now on we have to use the spin lock mechanism to keep track of the current CPU.
+	spin_use(true);
+#endif
+
 	kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 	kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
 		  kernel_address_request.response->physical_base);
+	kmesg("Total processors active: %zu\n", info.cpu_active);
 
 #ifdef CONFIG_acpi
 	// Get ACPI RSDP.
@@ -177,5 +212,6 @@ void kernel_boot()
 	}
 
 	arch_init(&info);
+	// TODO: Swap out for call to scheduler.
 	kernel_main(&info);
 }

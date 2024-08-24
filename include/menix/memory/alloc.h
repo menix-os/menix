@@ -10,12 +10,8 @@ void alloc_init();
 // Returns a memory region with at least `bytes` bytes of uninitialized memory.
 void* kmalloc(usize bytes);
 
-// Returns a memory region with at least `bytes` bytes of uninitialized memory, aligned to `alignment`.
-// `alignment` may not be 0.
-void* kaalloc(usize bytes, usize alignment);
-
 // Returns a memory region with at least `bytes` bytes of zero-initialized memory.
-void* kcalloc(usize bytes);
+void* kzalloc(usize bytes);
 
 // Reallocates a memory region with at least `new_bytes` bytes of uninitialized memory.
 // If a new memory region has to be allocated to fit the request, the old data is copied over.

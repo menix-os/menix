@@ -1,11 +1,13 @@
 // Default implementations for framebuffer functions that assume linear memory.
 
+#include <menix/thread/spin.h>
 #include <menix/video/fb.h>
 
 #include <string.h>
 
 void fb_default_fill_region(FrameBuffer* fb, FbFillRegion* args)
 {
+	spin_acquire_force(&fb->lock);
 	const FbModeInfo* mode = &fb->mode;
 
 	// For each line.
@@ -31,15 +33,19 @@ void fb_default_fill_region(FrameBuffer* fb, FbFillRegion* args)
 			}
 		}
 	}
+	spin_free(&fb->lock);
 }
 
 void fb_default_copy_region(FrameBuffer* fb, FbCopyRegion* args)
 {
+	spin_acquire_force(&fb->lock);
 	// TODO
+	spin_free(&fb->lock);
 }
 
 void fb_default_draw_region(FrameBuffer* fb, FbDrawRegion* args)
 {
+	spin_acquire_force(&fb->lock);
 	const FbModeInfo* mode = &fb->mode;
 
 	// For each line.
@@ -53,10 +59,12 @@ void fb_default_draw_region(FrameBuffer* fb, FbDrawRegion* args)
 		// Copy a single line.
 		memcpy(addr_dst, addr_src, args->width * mode->cpp);
 	}
+	spin_free(&fb->lock);
 }
 
 void fb_default_update_region(FrameBuffer* fb, FbUpdateRegion* args)
 {
+	spin_acquire_force(&fb->lock);
 	const FbModeInfo* mode = &fb->mode;
 
 	// For each line.
@@ -67,4 +75,5 @@ void fb_default_update_region(FrameBuffer* fb, FbUpdateRegion* args)
 		// Copy a single line.
 		memcpy((void*)fb->info.mmio_base + offset, (void*)args->back_buffer + offset, args->width * mode->cpp);
 	}
+	spin_free(&fb->lock);
 }
