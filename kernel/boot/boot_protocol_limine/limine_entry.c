@@ -14,7 +14,6 @@
 
 #include <string.h>
 
-#include "bits/asm.h"
 #include "limine.h"
 
 #define LIMINE_REQUEST(request, tag, rev) \
