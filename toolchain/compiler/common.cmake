@@ -5,13 +5,18 @@ add_compile_options(
 	-nostdlib
 	-fno-omit-frame-pointer
 	-fno-builtin
+	-fno-stack-protector
+	-fno-stack-check
+	-fno-lto
+	-fno-PIC
 )
 
 add_link_options(
-	-ffreestanding
+	-static
 	-nostdlib
 	-nostartfiles
-	-z noexecstack
+	"SHELL:-z max-page-size=${page_size}"
+	"SHELL:-z noexecstack"
 	-Wl,--build-id=none
 )
 

@@ -29,3 +29,4 @@ add_option(boot_logo BOOL OFF)
 # Memory allocation
 add_option(allocator_slab BOOL ON)
 add_option(stack_size NUMBER 0x2000000)
+add_option(page_size NUMBER 0x1000)

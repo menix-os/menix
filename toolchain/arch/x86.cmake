@@ -7,7 +7,6 @@ set(MENIX_ARCH_DIR x86)
 
 add_compile_options(
 	-mgeneral-regs-only
-	-mcmodel=large
+	-mcmodel=kernel
+	-mno-red-zone
 )
-
-add_option(page_size NUMBER 0x1000)
