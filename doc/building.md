@@ -1,6 +1,19 @@
 # Building
 This document explains how to build `menix` on your machine from source code.
 
+## Building using Docker
+```sh
+cd tools
+docker compose build
+docker compose up
+```
+### Cross-compilation with Docker
+```sh
+cd tools
+docker compose build
+docker compose run -e ARCH="<arch>" builder
+```
+
 ## Dependencies
 You need to install the following packages and make sure they're available in `$PATH`.
 

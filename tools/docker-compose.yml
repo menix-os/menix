@@ -1,0 +1,10 @@
+services:
+  builder:
+    build:
+      context: ..
+      dockerfile: tools/Dockerfile
+    volumes:
+      - ../build/bin:/app/build/bin
+    environment:
+      CC: "clang"
+      ARCH: "x86"
