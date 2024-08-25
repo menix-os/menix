@@ -39,7 +39,19 @@ void fb_default_fill_region(FrameBuffer* fb, FbFillRegion* args)
 void fb_default_copy_region(FrameBuffer* fb, FbCopyRegion* args)
 {
 	spin_acquire_force(&fb->lock);
-	// TODO
+	const FbModeInfo* mode = &fb->mode;
+
+	// For each line.
+	for (usize y = 0; y < args->height; y++)
+	{
+		// Calculate the offset where to copy from.
+		const usize src_offset = ((mode->pitch * (args->y_src + y)) + (mode->cpp * (args->x_src)));
+		const usize dst_offset = ((mode->pitch * (args->y_dst + y)) + (mode->cpp * (args->x_dst)));
+
+		// Copy a single line.
+		memmove((void*)fb->info.mmio_base + dst_offset, (void*)fb->info.mmio_base + src_offset,
+				args->width * mode->cpp);
+	}
 	spin_free(&fb->lock);
 }
 
@@ -57,7 +69,10 @@ void fb_default_draw_region(FrameBuffer* fb, FbDrawRegion* args)
 		void* addr_dst = (void*)fb->info.mmio_base + (mode->pitch * (args->y_src + y)) + (args->x_src * mode->cpp);
 
 		// Copy a single line.
-		memcpy(addr_dst, addr_src, args->width * mode->cpp);
+		if (mode->cpp == sizeof(u32))
+			memcpy32(addr_dst, addr_src, args->width);
+		else
+			memcpy(addr_dst, addr_src, args->width * mode->cpp);
 	}
 	spin_free(&fb->lock);
 }
@@ -72,8 +87,12 @@ void fb_default_update_region(FrameBuffer* fb, FbUpdateRegion* args)
 	{
 		// Calculate the offset where to copy from.
 		const usize offset = ((mode->pitch * (args->y_src + y)) + (mode->cpp * (args->x_src)));
+
 		// Copy a single line.
-		memcpy((void*)fb->info.mmio_base + offset, (void*)args->back_buffer + offset, args->width * mode->cpp);
+		if (mode->cpp == sizeof(u32))
+			memcpy32((void*)fb->info.mmio_base + offset, (void*)args->back_buffer + offset, args->width);
+		else
+			memcpy((void*)fb->info.mmio_base + offset, (void*)args->back_buffer + offset, args->width * mode->cpp);
 	}
 	spin_free(&fb->lock);
 }

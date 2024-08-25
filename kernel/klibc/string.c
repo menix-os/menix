@@ -45,6 +45,15 @@ void* memcpy(void* restrict dst_ptr, const void* restrict src_ptr, usize size)
 	return dst_ptr;
 }
 
+void* memcpy32(void* restrict dst_ptr, const void* restrict src_ptr, usize size)
+{
+	u32* dst = (u32*)dst_ptr;
+	const u32* src = (const u32*)src_ptr;
+	for (usize i = 0; i < size; i++)
+		dst[i] = src[i];
+	return dst_ptr;
+}
+
 void* memmove(void* dstptr, const void* srcptr, usize size)
 {
 	u8* dst = (u8*)dstptr;
@@ -67,5 +76,13 @@ void* memset(void* bufptr, u8 value, usize size)
 	u8* buf = (u8*)bufptr;
 	for (usize i = 0; i < size; i++)
 		buf[i] = (u8)value;
+	return bufptr;
+}
+
+void* memset32(void* bufptr, u32 value, usize size)
+{
+	u32* buf = (u32*)bufptr;
+	for (usize i = 0; i < size; i++)
+		buf[i] = value;
 	return bufptr;
 }

@@ -17,10 +17,6 @@
 
 void kernel_main(BootInfo* info)
 {
-	// TODO: Accept a cmdline option to keep the early terminal instead of reloading it.
-	// Initialize console.
-	// terminal_init();
-
 	// Say hello to the console.
 	kmesg("menix v" CONFIG_version " (" CONFIG_arch ")\n");
 
