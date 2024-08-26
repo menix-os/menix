@@ -45,7 +45,7 @@ void pci_fini()
 
 PciDevice* pci_scan_device(u8 bus, u8 slot)
 {
-	u16 vendor_id = pci_platform.read16(0, bus, slot, 0, 0x0);
+	u16 vendor_id = pci_platform.pci_read16(0, bus, slot, 0, 0x0);
 
 	// If no device is present, return null.
 	if (vendor_id == 0xFFFF)
@@ -55,9 +55,9 @@ PciDevice* pci_scan_device(u8 bus, u8 slot)
 	PciDevice* device = kmalloc(sizeof(PciDevice));
 
 	device->vendor = vendor_id;
-	device->device = pci_platform.read16(0, bus, slot, 0, 0x2);
-	device->sub_class = pci_platform.read8(0, bus, slot, 0, 0x10);
-	device->class = pci_platform.read8(0, bus, slot, 0, 0x11);
+	device->device = pci_platform.pci_read16(0, bus, slot, 0, 0x2);
+	device->sub_class = pci_platform.pci_read8(0, bus, slot, 0, 0x10);
+	device->class = pci_platform.pci_read8(0, bus, slot, 0, 0x11);
 	device->bus = bus;
 	device->slot = slot;
 

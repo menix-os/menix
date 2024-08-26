@@ -124,11 +124,24 @@ void kernel_boot()
 			  buffer.mode.width, buffer.mode.height, buffer.mode.cpp * 8, buffer.mode.v_width, buffer.mode.v_height);
 	}
 
+	// Get kernel file.
+	kassert(kernel_file_request.response, "Unable to get kernel file info!\n");
+	struct limine_kernel_file_response* const kernel_res = kernel_file_request.response;
+	kmesg("Kernel file loaded at: 0x%p, Size = 0x%lx\n", kernel_res->kernel_file->address,
+		  kernel_res->kernel_file->size);
+
+	self_set_kernel(kernel_res->kernel_file->address);
+
+	// Get command line.
+	kmesg("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);
+	info.cmd = kernel_res->kernel_file->cmdline;
+
 #ifdef CONFIG_smp
 	// Get SMP info
 	kassert(smp_request.response, "Unable to get kernel SMP info!\n");
 	const struct limine_smp_response* smp_res = smp_request.response;
 	info.cpu_num = smp_res->cpu_count;
+	kmesg("Initializing %zu cores.\n", info.cpu_num);
 	info.cpu_active = 0;
 	info.boot_cpu = smp_res->bsp_lapic_id;	  // Mark the boot CPU.
 	info.cpus = kzalloc(sizeof(Cpu) * info.cpu_num);
@@ -157,11 +170,11 @@ void kernel_boot()
 	// From now on we have to use the spin lock mechanism to keep track of the current CPU.
 	spin_use(true);
 #endif
+	kmesg("Total processors active: %zu\n", info.cpu_active);
 
 	kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 	kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
 		  kernel_address_request.response->physical_base);
-	kmesg("Total processors active: %zu\n", info.cpu_active);
 
 #ifdef CONFIG_acpi
 	// Get ACPI RSDP.
@@ -176,18 +189,6 @@ void kernel_boot()
 	kmesg("FDT blob at 0x%p\n", dtb_request.response->dtb_ptr);
 	info.fdt_blob = dtb_request.response->dtb_ptr;
 #endif
-
-	// Get kernel file.
-	kassert(kernel_file_request.response, "Unable to get kernel file info!\n");
-	struct limine_kernel_file_response* const kernel_res = kernel_file_request.response;
-	kmesg("Kernel file loaded at: 0x%p, Size = 0x%lx\n", kernel_res->kernel_file->address,
-		  kernel_res->kernel_file->size);
-
-	self_set_kernel(kernel_res->kernel_file->address);
-
-	// Get command line.
-	kmesg("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);
-	info.cmd = kernel_res->kernel_file->cmdline;
 
 	// Get modules.
 	if (module_request.response == NULL)

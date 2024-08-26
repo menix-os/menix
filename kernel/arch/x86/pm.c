@@ -95,30 +95,34 @@ PhysAddr pm_arch_alloc(usize amount)
 
 	kassert(num_free_pages != 0, "Out of physical memory!\n");
 
-	// Get a region of consecutive pages that fulfill the requested amount.
+	bool found = false;
 	PhysAddr mem = 0;
-	usize i;
-	for (i = 0; i + (amount - 1) < num_pages; i++)
+	usize i = 0;
+
+	// Get a region of consecutive pages that fulfill the requested amount.
+	for (; i + (amount - 1) < num_pages; i++)
 	{
 		// If this page is used, skip it.
-		if (bitmap_get(bit_map, i))
-			continue;
-		else
+		if (bitmap_get(bit_map, i) == true)
+			goto next_page;
+
+		// Otherwise, check if the next pages are free as well.
+		// Start with the page after `i`.
+		for (; i <= i + (amount - 1); i++)
 		{
-			// Otherwise, check if the next pages are free as well.
-			// Start with the page after `i`.
-			for (usize j = i + 1; j < amount; j++)
-			{
-				if (bitmap_get(bit_map, j))
-					continue;
-			}
-			// If we got here, that means we have found a region with `amount` consecutive pages.
-			mem = (PhysAddr)(i * CONFIG_page_size);
-			break;
+			if (bitmap_get(bit_map, i) == true)
+				goto next_page;
 		}
+
+		// If we got here, that means we have found a region with `amount` consecutive pages.
+		found = true;
+		mem = (PhysAddr)(i * CONFIG_page_size);
+		break;
+next_page:
+		continue;
 	}
 
-	kassert(mem != 0, "Unable to allocate sufficient pages!\n");
+	kassert(found == true, "Unable to allocate %zu pages!\n", amount);
 
 	// Lastly, mark the pages as used now.
 	for (usize x = i; x < i + amount; x++)
@@ -131,9 +135,13 @@ PhysAddr pm_arch_alloc(usize amount)
 
 void pm_arch_free(PhysAddr addr, usize amount)
 {
+	spin_acquire_force(&lock);
+
 	// Mark the page(s) as free.
 	const usize page_idx = addr / CONFIG_page_size;
 	for (usize i = page_idx; i < page_idx + amount; i++)
 		bitmap_clear(bit_map, i);
 	num_free_pages += 1;
+
+	spin_free(&lock);
 }

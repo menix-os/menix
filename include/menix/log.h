@@ -5,10 +5,11 @@
 #include <menix/common.h>
 
 // Expression must be true, or else execution will stop.
-#define kassert(expr, msg) \
+#define kassert(expr, msg, ...) \
 	if (!(expr)) \
 	{ \
-		kmesg("Assertion failed: " msg "\nExpression:\n    " #expr "\n" __FILE__ ":" __PASTE_STR(__LINE__) "\n"); \
+		kmesg("Assertion failed: " msg "\nExpression:\n    " #expr "\n" __FILE__ ":" __PASTE_STR(__LINE__) "\n", \
+			  ##__VA_ARGS__); \
 		ktrace(); \
 		kabort(); \
 	}

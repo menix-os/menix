@@ -13,12 +13,12 @@ AcpiMcfg* acpi_mcfg;
 void pci_init_acpi()
 {
 	acpi_mcfg = acpi_find_table("MCFG", 0);
-	pci_platform.read8 = mcfg_read8;
-	pci_platform.read16 = mcfg_read16;
-	pci_platform.read32 = mcfg_read32;
-	pci_platform.write8 = mcfg_write8;
-	pci_platform.write16 = mcfg_write16;
-	pci_platform.write32 = mcfg_write32;
+	pci_platform.pci_read8 = mcfg_read8;
+	pci_platform.pci_read16 = mcfg_read16;
+	pci_platform.pci_read32 = mcfg_read32;
+	pci_platform.pci_write8 = mcfg_write8;
+	pci_platform.pci_write16 = mcfg_write16;
+	pci_platform.pci_write32 = mcfg_write32;
 
 	// There are some x86 systems that don't have a MCFG table.
 	// In that case we can still use the port IO to configure the devices as a fallback.
