@@ -7,6 +7,5 @@ set(MENIX_ARCH_DIR x86)
 
 add_compile_options(
 	-mgeneral-regs-only
-	-mcmodel=kernel
 	-mno-red-zone
 )

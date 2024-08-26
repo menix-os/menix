@@ -18,7 +18,7 @@
 // Flushes all segment registers.
 #define asm_flush_segment_regs(code_seg, data_seg) \
 	asm volatile("push %0\n" \
-				 "movq $L_reload_regs%=, %%rax\n" \
+				 "leaq L_reload_regs%=(%%rip), %%rax\n" \
 				 "push %%rax\n" \
 				 "lretq\n" \
 				 "L_reload_regs%=:\n" \
