@@ -9,6 +9,7 @@ add_compile_options(
 	-fno-stack-check
 	-fno-lto
 	-fno-PIC
+	-fno-PIE
 )
 
 add_link_options(

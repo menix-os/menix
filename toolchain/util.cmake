@@ -46,7 +46,7 @@ function(add_module name author desc license modular default)
 		# it's technically not referenced anywhere. The linker will discard
 		# them otherwise.
 		add_library(${MENIX_CURRENT_MOD} OBJECT ${ARGN})
-		target_link_libraries(${MENIX_PARENT_CAT} INTERFACE $<TARGET_OBJECTS:${MENIX_CURRENT_MOD}>)
+		target_link_libraries(menix PUBLIC $<TARGET_OBJECTS:${MENIX_CURRENT_MOD}>)
 
 		# If built-in, define MODULE_TYPE to let the module know.
 		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_TYPE='B')

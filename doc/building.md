@@ -18,16 +18,15 @@ docker compose run -e ARCH="<arch>" builder
 You need to install the following packages and make sure they're available in `$PATH`.
 
 - `cmake`
-- `ninja`
 - Either `clang` or `gcc`
 
 ## Building steps
 Create a build directory and configure with CMake.
 
 ```sh
-cmake -D CMAKE_BUILD_TYPE=Release -B build -G "Ninja"
+cmake -D CMAKE_BUILD_TYPE=Release -B build
 # To cross-compile with clang:
-cmake -D CMAKE_BUILD_TYPE=Release -B build -G "Ninja" -D MENIX_ARCH="<arch>" -D CMAKE_C_COMPILER="clang"
+cmake -D CMAKE_BUILD_TYPE=Release -B build -D MENIX_ARCH="<arch>" -D CMAKE_C_COMPILER="clang"
 ```
 
 This will generate `config.cmake` for you with default values. That file is
