@@ -13,6 +13,7 @@ static BitMap bit_map = NULL;		// This bitmap stores whether a page is in use or
 static void* phys_addr = NULL;		// Memory mapped lower 4GiB physical memory. This is only used to store the bitmap.
 static usize num_pages = 0;			// Total amount of available pages.
 static usize num_free_pages = 0;	// Amount of unused pages.
+static usize last_page = 0;			// The last page marked as used.
 
 void pm_init(void* phys_base, PhysMemory* mem_map, usize num_entries)
 {
@@ -89,18 +90,12 @@ void* pm_get_phys_base()
 	return phys_addr;
 }
 
-PhysAddr pm_arch_alloc(usize amount)
+static PhysAddr get_free_pages(usize amount, usize start)
 {
-	spin_acquire_force(&lock);
-
-	kassert(num_free_pages != 0, "Out of physical memory!\n");
-
-	bool found = false;
-	PhysAddr mem = 0;
-	usize i = 0;
+	usize i = start;
 
 	// Get a region of consecutive pages that fulfill the requested amount.
-	for (; i + (amount - 1) < num_pages; i++)
+	while (i < num_pages)
 	{
 		// If this page is used, skip it.
 		if (bitmap_get(bit_map, i) == true)
@@ -108,25 +103,45 @@ PhysAddr pm_arch_alloc(usize amount)
 
 		// Otherwise, check if the next pages are free as well.
 		// Start with the page after `i`.
-		for (; i <= i + (amount - 1); i++)
+		for (usize j = i; j < i + amount; j++)
 		{
-			if (bitmap_get(bit_map, i) == true)
+			if (bitmap_get(bit_map, j) == true)
+			{
+				i = j;
 				goto next_page;
+			}
 		}
 
 		// If we got here, that means we have found a region with `amount` consecutive pages.
-		found = true;
-		mem = (PhysAddr)(i * CONFIG_page_size);
-		break;
+		for (usize x = i; x < i + amount; x++)
+			bitmap_set(bit_map, x);
+		return (PhysAddr)(i * CONFIG_page_size);
+
 next_page:
-		continue;
+		i++;
 	}
 
-	kassert(found == true, "Unable to allocate %zu pages!\n", amount);
+	return 0;
+}
+
+PhysAddr pm_arch_alloc(usize amount)
+{
+	spin_acquire_force(&lock);
+
+	kassert(num_free_pages != 0, "Out of physical memory!\n");
+
+	PhysAddr mem = get_free_pages(amount, last_page);
+	// If we couldn't find a free region starting at our last page offset, do another check, but from the beginning.
+	// This is a lot slower, but a last resort because the other option is to panic as we are out of physical memory.
+	if (mem == 0)
+	{
+		last_page = 0;
+		mem = get_free_pages(amount, 0);
+	}
+
+	kassert(mem != 0, "Unable to allocate %zu consecutive pages, total %zu available!\n", amount, num_free_pages);
 
 	// Lastly, mark the pages as used now.
-	for (usize x = i; x < i + amount; x++)
-		bitmap_set(bit_map, x);
 	num_free_pages -= amount;
 
 	spin_free(&lock);
