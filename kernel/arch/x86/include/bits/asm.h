@@ -10,10 +10,19 @@
 #define asm_interrupt_disable()		  asm volatile("cli")
 #define asm_interrupt_enable()		  asm volatile("sti")
 #define asm_get_frame_pointer(x)	  asm volatile("mov %%rbp, %0" : "=m"(x))
-#define asm_pause()					  asm volatile("pause");
+#define asm_pause()					  asm volatile("pause")
 #define asm_nop()					  asm volatile("nop")
+#define asm_swapgs()				  asm volatile("swapgs" ::: "memory")
+
+// A purposefully invalid instruction for debugging #UD faults. This should never be used in release builds
+#ifdef NDEBUG
+#define asm_ill() static_assert(false, "Remove this asm_ill()!")
+#else
+#define asm_ill() asm("mov %rax, %cr6")
+#endif
+
 #define asm_cpuid(leaf, subleaf, a, b, c, d) \
-	asm volatile("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "0"(leaf), "2"(subleaf));
+	asm volatile("cpuid" : "=a"(a), "=b"(b), "=c"(c), "=d"(d) : "0"(leaf), "2"(subleaf))
 
 // Flushes all segment registers.
 #define asm_flush_segment_regs(code_seg, data_seg) \

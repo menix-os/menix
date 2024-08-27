@@ -23,7 +23,7 @@ typedef struct Thread
 {
 	ThreadId id;			   // Thread ID.
 	SpinLock lock;			   // Access lock.
-	Process* process;		   // The underlying process.
+	Process* parent;		   // The parent process of this thread.
 	ThreadState state;		   // Current state of the thread.
 	CpuRegisters registers;	   // The register state at the time of context switch.
 	usize errno;			   // `errno` value.
@@ -46,13 +46,13 @@ typedef enum
 	ProcessState_Blocked,	 // Process is blocked.
 } ProcessState;
 
-struct Process
+typedef struct Process
 {
 	ProcessId id;		   // Process ID.
 	SpinLock lock;		   // Access lock.
 	PageMap* page_map;	   // Process page map.
 	ProcessState state;	   // Current state of the process.
-};
+} Process;
 
 // Creates a new process.
 void process_create(char* name, ProcessState state);

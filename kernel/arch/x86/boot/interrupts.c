@@ -3,94 +3,80 @@
 #include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
+#include <menix/thread/process.h>
 
-typedef struct
-{
-	bool stop;			 // Can we recover from the exception, or have to stop?
-	const char* name;	 // Name of the exception.
-} ExceptionTable;
+#include <idt.h>
+#include <interrupts.h>
 
-static const ExceptionTable exception_names[] = {
-	[0x00] = {.stop = false, .name = "Division Error"},
-	[0x01] = {.stop = false, .name = "Debug"},
-	[0x02] = {.stop = false, .name = "Non-maskable Interrupt"},
-	[0x03] = {.stop = false, .name = "Breakpoint"},
-	[0x04] = {.stop = false, .name = "Overflow"},
-	[0x05] = {.stop = false, .name = "Bound Range Exceeded"},
-	[0x06] = {.stop = true, .name = "Invalid Opcode"},
-	[0x07] = {.stop = false, .name = "Device Not Available"},
-	[0x08] = {.stop = true, .name = "Double Fault"},
-	[0x09] = {.stop = false, .name = "Coprocessor Segment Overrun"},
-	[0x0A] = {.stop = false, .name = "Invalid TSS"},
-	[0x0B] = {.stop = false, .name = "Segment Not Present"},
-	[0x0C] = {.stop = false, .name = "Stack-Segment Fault"},
-	[0x0D] = {.stop = false, .name = "General protection Fault"},
-	[0x0E] = {.stop = true, .name = "Page Fault"},
-	[0x0F] = {.stop = true}, // Reserved
-	[0x10] = {.stop = false, .name = "x87 Floating-Point Exception"},
-	[0x11] = {.stop = false, .name = "Alignment Check"},
-	[0x12] = {.stop = true, .name = "Machine Check"},
-	[0x13] = {.stop = false, .name = "SIMD Floating-Point Exception"},
-	[0x14] = {.stop = false, .name = "Virtualization Exception"},
-	[0x15] = {.stop = false, .name = "Control Protection Exception"},
-	[0x16 ... 0x1B] = {.stop = true}, // Reserved
-	[0x1C] = {.stop = false, .name = "Hypervisor Injection Exception"},
-	[0x1D] = {.stop = false, .name = "VMM Communication Exception"},
-	[0x1E] = {.stop = false, .name = "Security Exception"},
-	[0x1F] = {.stop = true}, // Reserved
+static const char* exception_names[] = {
+	[0x00] = "Division Error",
+	[0x01] = "Debug",
+	[0x02] = "Non-maskable Interrupt",
+	[0x03] = "Breakpoint",
+	[0x04] = "Overflow",
+	[0x05] = "Bound Range Exceeded",
+	[0x06] = "Invalid Opcode",
+	[0x07] = "Device Not Available",
+	[0x08] = "Double Fault",
+	[0x09] = "Coprocessor Segment Overrun",
+	[0x0A] = "Invalid TSS",
+	[0x0B] = "Segment Not Present",
+	[0x0C] = "Stack-Segment Fault",
+	[0x0D] = "General protection Fault",
+	[0x0E] = "Page Fault",
+	[0x0F] = NULL,	  // Reserved
+	[0x10] = "x87 Floating-Point Exception",
+	[0x11] = "Alignment Check",
+	[0x12] = "Machine Check",
+	[0x13] = "SIMD Floating-Point Exception",
+	[0x14] = "Virtualization Exception",
+	[0x15] = "Control Protection Exception",
+	[0x16 ... 0x1B] = NULL,	   // Reserved
+	[0x1C] = "Hypervisor Injection Exception",
+	[0x1D] = "VMM Communication Exception",
+	[0x1E] = "Security Exception",
+	[0x1F] = NULL,	  // Reserved
 };
 
-void error_breakpoint_handler(u32 fault)
+static void interrupt_breakpoint_handler(CpuRegisters* regs)
 {
 	asm volatile("cli");
-	asm volatile("hlt");
 	while (1)
-		;
-}
-
-void error_handler(u32 fault, usize* stack)
-{
-	bool should_stop = true;
-	if (fault >= ARRAY_SIZE(exception_names))
-		kmesg("Unknown error %u!\n", fault);
-	else
-	{
-		kmesg("%s!\n", exception_names[fault].name);
-		should_stop = exception_names[fault].stop;
-	}
-
-	if (should_stop)
-	{
-		// Stop the kernel.
-		asm volatile("cli");
 		asm volatile("hlt");
-		while (1)
-			;
-	}
+}
+static void interrupt_handler_invalid_opcode(CpuRegisters* regs)
+{
+	// Make sure we're in user mode.
+	kassert(regs->cs & CPL_USER, "Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
 }
 
-void error_handler_invalid_opcode(u32 fault, usize* stack)
-{
-	kmesg("Invalid opcode at 0x%zx on core %zu!\n", stack[0], arch_current_cpu()->id);
-	ktrace();
-	kabort();
-}
+typedef void (*InterruptFn)(CpuRegisters* regs);
+static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
+	[0x03] = interrupt_breakpoint_handler,
+	[0x06] = interrupt_handler_invalid_opcode,
+};
 
-void error_handler_with_code(u32 fault, u32 code, usize* stack)
+void interrupt_handler(CpuRegisters* regs)
 {
-	bool should_stop = true;
-	kassert(fault < ARRAY_SIZE(exception_names), "Unknown error!\n") else
+	// If caused by the user, terminate the process with SIGILL.
+	if (regs->cs & CPL_USER)
 	{
-		kmesg("%s! (Code: %u)\n", exception_names[fault].name, code);
-		should_stop = exception_names[fault].stop;
+		if (regs->isr < ARRAY_SIZE(exception_handlers) && exception_handlers[regs->isr])
+		{
+			exception_handlers[regs->isr](regs);
+			return;
+		}
+
+		// If we don't have a handler for this function, terminate the program immediately.
+		Process* proc = arch_current_cpu()->thread->parent;
+		kmesg("Unhandled exception %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
+		// TODO: Terminate program.
+		return;
 	}
 
-	if (should_stop)
-	{
-		// Stop the kernel.
-		asm volatile("cli");
-		asm volatile("hlt");
-		while (1)
-			;
-	}
+	kassert(regs->isr < ARRAY_SIZE(exception_handlers), "Unhandled exception %zu in kernel mode!\n", regs->isr);
+	kassert(exception_handlers[regs->isr] != NULL, "Unhandled exception \"%s\" (%zu) in kernel mode!\n",
+			exception_names[regs->isr], regs->isr);
+
+	exception_handlers[regs->isr](regs);
 }

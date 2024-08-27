@@ -37,79 +37,61 @@ void idt_reload()
 	asm volatile("lidt %0" ::"m"(idtr));
 }
 
-INT_HANDLER(0, error_handler);
-INT_HANDLER(1, error_handler);
-INT_HANDLER(2, error_handler);
-INT_HANDLER(3, error_breakpoint_handler);
-INT_HANDLER(4, error_handler);
-INT_HANDLER(5, error_handler);
-INT_HANDLER(6, error_handler_invalid_opcode);
-INT_HANDLER(7, error_handler);
-INT_HANDLER_WITH_CODE(8, error_handler_with_code);
-INT_HANDLER(9, error_handler);
-INT_HANDLER_WITH_CODE(10, error_handler_with_code);
-INT_HANDLER_WITH_CODE(11, error_handler_with_code);
-INT_HANDLER_WITH_CODE(12, error_handler_with_code);
-INT_HANDLER_WITH_CODE(13, error_handler_with_code);
-INT_HANDLER_WITH_CODE(14, vm_page_fault_handler);
-INT_HANDLER(15, error_handler);
-INT_HANDLER(16, error_handler);
-INT_HANDLER_WITH_CODE(17, error_handler_with_code);
-INT_HANDLER(18, error_handler);
-INT_HANDLER(19, error_handler);
-INT_HANDLER(20, error_handler);
-INT_HANDLER_WITH_CODE(21, error_handler_with_code);
-INT_HANDLER(22, error_handler);
-INT_HANDLER(23, error_handler);
-INT_HANDLER(24, error_handler);
-INT_HANDLER(25, error_handler);
-INT_HANDLER(26, error_handler);
-INT_HANDLER(27, error_handler);
-INT_HANDLER(28, error_handler);
-INT_HANDLER_WITH_CODE(29, error_handler_with_code);
-INT_HANDLER_WITH_CODE(30, error_handler_with_code);
-INT_HANDLER(31, error_handler);
+// Macro garbage to declare 256 functions.
+#define DUP2 \
+	INT_HANDLER_DECL(__COUNTER__); \
+	INT_HANDLER_DECL(__COUNTER__);
+#define DUP4   DUP2 DUP2
+#define DUP8   DUP4 DUP4
+#define DUP16  DUP8 DUP8
+#define DUP32  DUP16 DUP16
+#define DUP64  DUP32 DUP32
+#define DUP128 DUP64 DUP64
+#define DUP256 DUP128 DUP128
+
+DUP256;
+#define IDT_SET(num) idt_set(num, INT_HANDLER(num), IDT_TYPE(0, IDT_GATE_INT))
 
 void idt_init()
 {
 	asm_interrupt_disable();
 
-	// Set exception vector (0x00 - 0x1F)
-	idt_set(0x00, int_0, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x01, int_1, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x02, int_2, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x03, int_3, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x04, int_4, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x05, int_5, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x06, int_6, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x07, int_7, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x08, int_8, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x09, int_9, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0A, int_10, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0B, int_11, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0C, int_12, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0D, int_13, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0E, int_14, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x0F, int_15, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x10, int_16, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x11, int_17, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x12, int_18, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x13, int_19, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x14, int_20, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x15, int_21, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x16, int_22, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x17, int_23, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x18, int_24, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x19, int_25, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1A, int_26, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1B, int_27, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1C, int_28, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1D, int_29, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1E, int_30, IDT_TYPE(0, IDT_GATE_INT));
-	idt_set(0x1F, int_31, IDT_TYPE(0, IDT_GATE_INT));
+	// Set all gates.
+	// TODO: Consider using a better method than this.
+
+	// clang-format off
+
+	IDT_SET(0); IDT_SET(1); IDT_SET(2); IDT_SET(3); IDT_SET(4); IDT_SET(5); IDT_SET(6); IDT_SET(7); IDT_SET(8); IDT_SET(9);
+	IDT_SET(10); IDT_SET(11); IDT_SET(12); IDT_SET(13); IDT_SET(14); IDT_SET(15); IDT_SET(16); IDT_SET(17); IDT_SET(18); IDT_SET(19);
+	IDT_SET(20); IDT_SET(21); IDT_SET(22); IDT_SET(23); IDT_SET(24); IDT_SET(25); IDT_SET(26); IDT_SET(27); IDT_SET(28); IDT_SET(29);
+	IDT_SET(30); IDT_SET(31); IDT_SET(32); IDT_SET(33); IDT_SET(34); IDT_SET(35); IDT_SET(36); IDT_SET(37); IDT_SET(38); IDT_SET(39);
+	IDT_SET(40); IDT_SET(41); IDT_SET(42); IDT_SET(43); IDT_SET(44); IDT_SET(45); IDT_SET(46); IDT_SET(47); IDT_SET(48); IDT_SET(49);
+	IDT_SET(50); IDT_SET(51); IDT_SET(52); IDT_SET(53); IDT_SET(54); IDT_SET(55); IDT_SET(56); IDT_SET(57); IDT_SET(58); IDT_SET(59);
+	IDT_SET(60); IDT_SET(61); IDT_SET(62); IDT_SET(63); IDT_SET(64); IDT_SET(65); IDT_SET(66); IDT_SET(67); IDT_SET(68); IDT_SET(69);
+	IDT_SET(70); IDT_SET(71); IDT_SET(72); IDT_SET(73); IDT_SET(74); IDT_SET(75); IDT_SET(76); IDT_SET(77); IDT_SET(78); IDT_SET(79);
+	IDT_SET(80); IDT_SET(81); IDT_SET(82); IDT_SET(83); IDT_SET(84); IDT_SET(85); IDT_SET(86); IDT_SET(87); IDT_SET(88); IDT_SET(89);
+	IDT_SET(90); IDT_SET(91); IDT_SET(92); IDT_SET(93); IDT_SET(94); IDT_SET(95); IDT_SET(96); IDT_SET(97); IDT_SET(98); IDT_SET(99);
+	IDT_SET(100); IDT_SET(101); IDT_SET(102); IDT_SET(103); IDT_SET(104); IDT_SET(105); IDT_SET(106); IDT_SET(107); IDT_SET(108); IDT_SET(109);
+	IDT_SET(110); IDT_SET(111); IDT_SET(112); IDT_SET(113); IDT_SET(114); IDT_SET(115); IDT_SET(116); IDT_SET(117); IDT_SET(118); IDT_SET(119);
+	IDT_SET(120); IDT_SET(121); IDT_SET(122); IDT_SET(123); IDT_SET(124); IDT_SET(125); IDT_SET(126); IDT_SET(127); IDT_SET(128); IDT_SET(129);
+	IDT_SET(130); IDT_SET(131); IDT_SET(132); IDT_SET(133); IDT_SET(134); IDT_SET(135); IDT_SET(136); IDT_SET(137); IDT_SET(138); IDT_SET(139);
+	IDT_SET(140); IDT_SET(141); IDT_SET(142); IDT_SET(143); IDT_SET(144); IDT_SET(145); IDT_SET(146); IDT_SET(147); IDT_SET(148); IDT_SET(149);
+	IDT_SET(150); IDT_SET(151); IDT_SET(152); IDT_SET(153); IDT_SET(154); IDT_SET(155); IDT_SET(156); IDT_SET(157); IDT_SET(158); IDT_SET(159);
+	IDT_SET(160); IDT_SET(161); IDT_SET(162); IDT_SET(163); IDT_SET(164); IDT_SET(165); IDT_SET(166); IDT_SET(167); IDT_SET(168); IDT_SET(169);
+	IDT_SET(170); IDT_SET(171); IDT_SET(172); IDT_SET(173); IDT_SET(174); IDT_SET(175); IDT_SET(176); IDT_SET(177); IDT_SET(178); IDT_SET(179);
+	IDT_SET(180); IDT_SET(181); IDT_SET(182); IDT_SET(183); IDT_SET(184); IDT_SET(185); IDT_SET(186); IDT_SET(187); IDT_SET(188); IDT_SET(189);
+	IDT_SET(190); IDT_SET(191); IDT_SET(192); IDT_SET(193); IDT_SET(194); IDT_SET(195); IDT_SET(196); IDT_SET(197); IDT_SET(198); IDT_SET(199);
+	IDT_SET(200); IDT_SET(201); IDT_SET(202); IDT_SET(203); IDT_SET(204); IDT_SET(205); IDT_SET(206); IDT_SET(207); IDT_SET(208); IDT_SET(209);
+	IDT_SET(210); IDT_SET(211); IDT_SET(212); IDT_SET(213); IDT_SET(214); IDT_SET(215); IDT_SET(216); IDT_SET(217); IDT_SET(218); IDT_SET(219);
+	IDT_SET(220); IDT_SET(221); IDT_SET(222); IDT_SET(223); IDT_SET(224); IDT_SET(225); IDT_SET(226); IDT_SET(227); IDT_SET(228); IDT_SET(229);
+	IDT_SET(230); IDT_SET(231); IDT_SET(232); IDT_SET(233); IDT_SET(234); IDT_SET(235); IDT_SET(236); IDT_SET(237); IDT_SET(238); IDT_SET(239);
+	IDT_SET(240); IDT_SET(241); IDT_SET(242); IDT_SET(243); IDT_SET(244); IDT_SET(245); IDT_SET(246); IDT_SET(247); IDT_SET(248); IDT_SET(249);
+	IDT_SET(250); IDT_SET(251); IDT_SET(252); IDT_SET(253); IDT_SET(254); IDT_SET(255);
+
+	// clang-format on
 
 	// Interrupt 0x80 is syscall (Only for legacy invocations using "int $0x80").
-	idt_set(0x80, int_syscall, IDT_TYPE(0, IDT_GATE_INT));
+	idt_set(0x80, interrupt_syscall, IDT_TYPE(0, IDT_GATE_INT));
 
 	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);
 	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);

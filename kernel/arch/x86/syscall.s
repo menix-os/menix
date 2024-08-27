@@ -2,15 +2,6 @@
 
 .section .text
 
-// Enter syscall via software interrupt 0x80.
-.global int_syscall
-.align 0x10
-int_syscall:
-	sti
-	call do_syscall
-	cli
-	iretq
-
 // Enter syscall via syscall/sysret extension.
 .global sc_syscall
 .align 0x10

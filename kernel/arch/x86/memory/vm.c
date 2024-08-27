@@ -1,5 +1,7 @@
 // Virtual memory management for x86.
 
+#include "bits/vm.h"
+
 #include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
@@ -9,21 +11,6 @@
 #include <menix/util/self.h>
 
 #include <string.h>
-
-#define PAGE_PRESENT			 (1 << 0)
-#define PAGE_READ_WRITE			 (1 << 1)
-#define PAGE_USER_MODE			 (1 << 2)
-#define PAGE_WRITE_THROUGH		 (1 << 3)
-#define PAGE_CACHE_DISABLE		 (1 << 4)
-#define PAGE_ACCESSED			 (1 << 5)
-#define PAGE_DIRTY				 (1 << 6)
-#define PAGE_SIZE				 (1 << 7)
-#define PAGE_GLOBAL				 (1 << 8)
-#define PAGE_AVAILABLE			 (1 << 9)
-#define PAGE_ATTRIBUTE_TABLE	 (1 << 10)
-#define PAGE_PROTECTION_KEY(key) ((key & 0xFUL) << 59)
-#define PAGE_EXECUTE_DISABLE	 (1ULL << 63)
-#define PAGE_ADDR				 (0x0000FFFFFFFFF000UL)
 
 #define vm_flush_tlb(addr) asm volatile("invlpg (%0)" ::"r"(addr) : "memory")
 
@@ -37,15 +24,13 @@ static void* phys_addr = NULL;	  // Memory mapped lower physical memory.
 void vm_init(void* phys_base, PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 {
 	phys_addr = phys_base;
-	kassert(num_entries >= 1, "No memory map entries given!");
+	kassert(num_entries > 0, "No memory map entries given!");
 
 	// Get a pointer to the first free physical memory page. Here we'll allocate our page directory structure.
 	kernel_map = phys_addr + pm_arch_alloc(1);
 	kernel_map->lock = spin_new();
 	kernel_map->head = phys_addr + pm_arch_alloc(1);
 	memset(kernel_map->head, 0x00, CONFIG_page_size);
-
-	// TODO: We could probably pre-allocate the upper half of pages, i.e. index 256..511
 
 	// Map all physical space.
 	// Check for the highest usable physical memory address, so we know how much memory to map.
@@ -58,23 +43,22 @@ void vm_init(void* phys_base, PhysAddr kernel_base, PhysMemory* mem_map, usize n
 	}
 
 	for (usize cur = 0; cur < highest; cur += 2UL * MiB)
-		kassert(vm_arch_map_page(kernel_map, cur, phys_addr + cur, PAGE_PRESENT | PAGE_READ_WRITE, PageSize_2MiB),
+		kassert(vm_arch_map_page(kernel_map, cur, phys_addr + cur, PAGE_PRESENT | PAGE_READ_WRITE | PAGE_SIZE),
 				"Unable to map lower memory!\n");
 
 	// Map the kernel segments to the current physical address again.
 	for (usize cur = (usize)SEGMENT_START(text); cur < (usize)SEGMENT_END(text); cur += CONFIG_page_size)
-		kassert(vm_arch_map_page(kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, (void*)cur, PAGE_PRESENT,
-								 PageSize_4KiB),
+		kassert(vm_arch_map_page(kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, (void*)cur, PAGE_PRESENT),
 				"Unable to map text segment!\n");
 
 	for (usize cur = (usize)SEGMENT_START(rodata); cur < (usize)SEGMENT_END(rodata); cur += CONFIG_page_size)
 		kassert(vm_arch_map_page(kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, (void*)cur,
-								 PAGE_PRESENT | PAGE_EXECUTE_DISABLE, PageSize_4KiB),
+								 PAGE_PRESENT | PAGE_EXECUTE_DISABLE),
 				"Unable to map rodata segment!\n");
 
 	for (usize cur = (usize)SEGMENT_START(data); cur < (usize)SEGMENT_END(data); cur += CONFIG_page_size)
 		kassert(vm_arch_map_page(kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, (void*)cur,
-								 PAGE_PRESENT | PAGE_READ_WRITE | PAGE_EXECUTE_DISABLE, PageSize_4KiB),
+								 PAGE_PRESENT | PAGE_READ_WRITE | PAGE_EXECUTE_DISABLE),
 				"Unable to map data segment!\n");
 
 	// If the physical base ever changes, update it in the physical memory manager as well.
@@ -116,7 +100,7 @@ static u64* vm_arch_traverse(u64* top, usize idx, bool allocate)
 	return (u64*)(phys_addr + next_level);
 }
 
-bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags, PageSize size)
+bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags)
 {
 	spin_acquire_force(&page_map->lock);
 
@@ -133,7 +117,7 @@ bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, us
 
 		// If we allocate a 2MiB page, there is one less level in that page map branch.
 		// In either case, don't traverse further after setting the index for writing.
-		if (lvl == (size == PageSize_2MiB ? 2 : 1))
+		if (lvl == (flags & PAGE_SIZE ? 2 : 1))
 			break;
 
 		// Update the head.
@@ -145,21 +129,51 @@ bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, us
 		}
 	}
 
-	if (size == PageSize_2MiB)
-		flags |= PAGE_SIZE;
-
 	cur_head[index] = (phys_addr & PAGE_ADDR) | (flags & ~(PAGE_ADDR));
 	spin_free(&page_map->lock);
 	return true;
 }
 
-void vm_arch_unmap_page(PageMap* page_map, void* virt_addr)
+void* vm_map(PageMap* page_map, void* hint, usize length, u32 flags)
+{
+	usize x86_flags = PAGE_EXECUTE_DISABLE;
+	// TODO: Convert flags to x86 page flags.
+	if (page_map != kernel_map)
+		x86_flags |= PAGE_USER_MODE;
+
+	void* addr = NULL;
+
+	// Check the hint and make changes if necessary.
+	if (hint != NULL && (usize)hint >= CONFIG_vm_mmap_min_addr)
+	{
+		// Make sure the page is boundary-aligned.
+		// Do this by first checking if there already is a mapping at the hinted address.
+		hint = (void*)ALIGN_DOWN((usize)hint, CONFIG_page_size);
+		// If there is not, we can respect the hint.
+	}
+	// Choose a free region of program memory if no hint was given.
+	else
+	{
+	}
+
+	const usize page_count = 1 + (length / CONFIG_page_size);
+	// Allocate individual pages.
+	for (usize i = 0; i < page_count; i++)
+	{
+		PhysAddr page = pm_arch_alloc(page_count);
+		vm_arch_map_page(page_map, page, addr + (i * CONFIG_page_size), x86_flags);
+	}
+
+	return addr;
+}
+
+void vm_unmap(PageMap* page_map, void* virt_addr)
 {
 	// TODO
 	vm_flush_tlb(virt_addr);
 }
 
-void vm_page_fault_handler(u32 fault, u32 error)
+void vm_page_fault_handler(CpuRegisters* regs)
 {
 	usize cr2;
 	asm_get_register(cr2, cr2);

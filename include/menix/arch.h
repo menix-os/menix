@@ -18,10 +18,10 @@ typedef struct Cpu
 	// Architecture dependent information.
 #ifdef CONFIG_arch_x86
 	TaskStateSegment tss;
-	u32 lapic_id;
-	usize fpu_size;
-	void (*fpu_save)(void* dst);
-	void (*fpu_restore)(void* dst);
+	u32 lapic_id;					   // Local APIC ID.
+	usize fpu_size;					   // Size of the FPU in bytes.
+	void (*fpu_save)(void* dst);	   // Function to call when saving the FPU state.
+	void (*fpu_restore)(void* dst);	   // Function to call when restoring the FPU state.
 #endif
 } Cpu;
 

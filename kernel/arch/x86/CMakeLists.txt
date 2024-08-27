@@ -5,11 +5,12 @@ add_architecture(x86
 	boot/gdt.c
 	boot/tss.c
 	boot/interrupts.c
+	interrupts.s
 	boot/idt.c
 	arch.c
 	io/serial.c
-	vm.c
-	pm.c
+	memory/vm.c
+	memory/pm.c
 	syscall.s
 	memory/slab.c
 )

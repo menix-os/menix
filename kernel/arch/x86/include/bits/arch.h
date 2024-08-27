@@ -201,6 +201,9 @@
 #define MSR_GS_BASE		   0xC0000101
 #define MSR_KERNEL_GS_BASE 0xC0000102
 
+#define CPL_USER   (0b11)
+#define CPL_KERNEL (0b00)
+
 struct CpuRegisters
 {
 	u64 r15;
@@ -218,8 +221,12 @@ struct CpuRegisters
 	u64 rcx;
 	u64 rbx;
 	u64 rax;
+
+	// Pushed onto the stack by the interrupt handler stub.
 	u64 core;
 	u64 isr;
+
+	// Pushed onto the stack by the CPU.
 	u64 error;
 	u64 rip;
 	u64 cs;
