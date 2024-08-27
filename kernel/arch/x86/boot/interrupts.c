@@ -17,7 +17,7 @@ static const ExceptionTable exception_names[] = {
 	[0x03] = {.stop = false, .name = "Breakpoint"},
 	[0x04] = {.stop = false, .name = "Overflow"},
 	[0x05] = {.stop = false, .name = "Bound Range Exceeded"},
-	[0x06] = {.stop = false, .name = "Invalid Opcode"},
+	[0x06] = {.stop = true, .name = "Invalid Opcode"},
 	[0x07] = {.stop = false, .name = "Device Not Available"},
 	[0x08] = {.stop = true, .name = "Double Fault"},
 	[0x09] = {.stop = false, .name = "Coprocessor Segment Overrun"},
@@ -48,7 +48,7 @@ void error_breakpoint_handler(u32 fault)
 		;
 }
 
-void error_handler(u32 fault)
+void error_handler(u32 fault, usize* stack)
 {
 	bool should_stop = true;
 	if (fault >= ARRAY_SIZE(exception_names))
@@ -69,7 +69,14 @@ void error_handler(u32 fault)
 	}
 }
 
-void error_handler_with_code(u32 fault, u32 code)
+void error_handler_invalid_opcode(u32 fault, usize* stack)
+{
+	kmesg("Invalid opcode at 0x%zx on core %zu!\n", stack[0], arch_current_cpu()->id);
+	ktrace();
+	kabort();
+}
+
+void error_handler_with_code(u32 fault, u32 code, usize* stack)
 {
 	bool should_stop = true;
 	kassert(fault < ARRAY_SIZE(exception_names), "Unknown error!\n") else

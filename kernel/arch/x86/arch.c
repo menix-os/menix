@@ -57,6 +57,8 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 	if (ecx & CPUID_1C_XSAVE)
 	{
 		cr4 |= CR4_OSXSAVE;
+		// To access XCR0, this bit needs to be written in advance.
+		asm_set_register(cr4, cr4);
 
 		u64 xcr0 = 0;
 		xcr0 |= (u64)1 << 0;

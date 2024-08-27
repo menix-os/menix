@@ -24,6 +24,7 @@
 #define INT_HANDLER(num, fn) \
 	INT_HANDLER_DECL(num) \
 	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %edi\n" \
+								"mov %rsp, %rsi\n" \
 								"call " #fn "\n" \
 								"iretq\n")
 
@@ -32,6 +33,7 @@
 	INT_HANDLER_DECL(num) \
 	asm(INT_HANDLER_COMMON(num) "mov $" #num ", %edi\n" \
 								"pop %rsi\n" \
+								"mov %rsp, %rdx\n" \
 								"call " #fn "\n" \
 								"iretq\n")
 

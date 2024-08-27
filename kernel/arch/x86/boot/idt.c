@@ -43,7 +43,7 @@ INT_HANDLER(2, error_handler);
 INT_HANDLER(3, error_breakpoint_handler);
 INT_HANDLER(4, error_handler);
 INT_HANDLER(5, error_handler);
-INT_HANDLER(6, error_handler);
+INT_HANDLER(6, error_handler_invalid_opcode);
 INT_HANDLER(7, error_handler);
 INT_HANDLER_WITH_CODE(8, error_handler_with_code);
 INT_HANDLER(9, error_handler);
