@@ -1,9 +1,9 @@
 # System call implementations
 
 target_sources(menix PUBLIC
+	syscall.c
 	syscall_table.c
-	syscall_handler.c
-	do_null.c
-	do_mmap.c
-	do_exec.c
+
+	do_proc.c
+	do_vm.c
 )

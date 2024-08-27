@@ -5,21 +5,12 @@
 
 #include <bits/syscall.h>
 
-typedef struct
-{
-	u64 num;	// The system call selector.
-	u64 a0;		// Argument 0.
-	u64 a1;		// Argument 1.
-	u64 a2;		// Argument 2.
-	u64 a3;		// Argument 3.
-	u64 a4;		// Argument 4.
-	u64 a5;		// Argument 5.
-} SyscallArgs;
-
 // This macro should be used when implementing a syscall, so that the naming scheme is centralized.
-#define SYSCALL_IMPL(name) usize syscall_##name(SyscallArgs* args)
+#define SYSCALL_IMPL(name, ...) usize syscall_##name(__VA_ARGS__)
 
-typedef usize (*SyscallFn)(SyscallArgs* args);
+typedef usize (*SyscallFn)(usize, usize, usize, usize, usize, usize);
+
+usize syscall_invoke(usize num, usize a0, usize a1, usize a2, usize a3, usize a4, usize a5);
 
 // Contains all system calls.
 extern const SyscallFn syscall_table[];

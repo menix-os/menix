@@ -134,7 +134,7 @@ bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, us
 	return true;
 }
 
-void* vm_map(PageMap* page_map, void* hint, usize length, u32 flags)
+void* vm_map(PageMap* page_map, void* hint, usize length, int prot, int flags)
 {
 	usize x86_flags = PAGE_EXECUTE_DISABLE;
 	// TODO: Convert flags to x86 page flags.
@@ -178,19 +178,17 @@ void vm_page_fault_handler(CpuRegisters* regs)
 	usize cr2;
 	asm_get_register(cr2, cr2);
 
-	u16 cs;
-	asm_get_register(cs, cs);
-
 	// If the current protection level wasn't 3, that means the page fault was
 	// caused by the supervisor! If this happens, we messed up big time!
-	if (cs & 3)
+	if (regs->cs & CPL_USER)
 	{
 		// TODO Handle user page fault.
 	}
 	else
 	{
 		kmesg("Page fault in supervisor mode!\n");
-		kmesg("cs: 0x%p\ncr2: 0x%p\n", cs, cr2);
+		kmesg("cs: 0x%hx cr2: 0x%p\n", regs->cs, cr2);
+		kmesg("Error: 0x%zu\n", regs->error);
 		kabort();
 	}
 }

@@ -58,7 +58,7 @@ VfsNode* vfs_node_new(FileSystem* fs, VfsNode* parent, const char* name, bool is
 	return node;
 }
 
-VfsNode* vfs_get_node(VfsNode* parent, const char* path, bool follow_links)
+VfsNode* vfs_get_node(VfsNode* relative_to, const char* path, bool follow_links)
 {
 	spin_acquire_force(&vfs_lock);
 

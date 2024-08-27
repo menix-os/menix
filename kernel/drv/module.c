@@ -53,14 +53,6 @@ void module_init(BootInfo* info)
 		if (ret != 0)
 			kmesg("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
 	}
-
-	// Initialize all dynamic modules.
-	for (usize i = 0; i < info->file_num; i++)
-	{
-		i32 code = module_load(info->files[i].address, info->files[i].size);
-		if (code != 0)
-			kmesg("Failed to load module \"%s\" with error code %i!\n", info->files[i].path, code);
-	}
 }
 
 void module_fini()

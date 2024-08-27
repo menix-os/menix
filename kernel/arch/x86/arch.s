@@ -40,6 +40,14 @@ popq %rbx
 popq %rax
 .endm
 
+// Swaps GSBASE if CPL == USER
+.macro swapgs_if_necessary
+	andb $0x03, 0x24(%rsp)
+	jz 1f
+	swapgs
+1:
+.endm
+
 // Internal function called by one of the stubs.
 interrupt_internal:
 	push_all_regs
@@ -47,6 +55,7 @@ interrupt_internal:
 	call interrupt_handler
 	pop_all_regs
 	add $24, %rsp
+	swapgs_if_necessary
 	iretq
 
 // Interrupt stub that pushes 0 as the error code.
@@ -54,6 +63,7 @@ interrupt_internal:
 .global interrupt_\num
 .align 0x10
 interrupt_\num:
+	swapgs_if_necessary
 	pushq $0
 	pushq $\num
 	pushq %fs
@@ -65,21 +75,38 @@ interrupt_\num:
 .global interrupt_\num
 .align 0x10
 interrupt_\num:
-	push_all_regs
+	swapgs_if_necessary
 	pushq $\num
 	pushq %fs
 	jmp interrupt_internal
 .endm
 
-// Enter syscall via software interrupt 0x80.
-.global interrupt_syscall
-.extern do_syscall
+// Enter syscall via AMD64 syscall/sysret instructions.
+.global sc_syscall
+.extern syscall_handler
 .align 0x10
-interrupt_syscall:
-	sti
-	call do_syscall
+sc_syscall:
+	swapgs						/* Change GS to kernel mode. */
+	sti							/* Disable interrupts */
+
+	movq %rsp, %gs:16			/* Save user stack to Cpu struct. */
+	movq %gs:8, %rsp			/* Restore kernel stack from Cpu struct */
+
+	cld							/* Clear direction bit from RFLAGS */
+	/* We're pretending to be an interrupt, so fill the bottom fields of CpuRegisters. */
+	push %rcx
+	push %r11
+
+	push_all_regs
+
+	mov		%rsp, %rdi			/* Put CpuRegisters* as first argument */
+	call	syscall_handler
+
+	pop %r11
+	pop %rcx
 	cli
-	iretq
+	swapgs						/* Change GS to user mode. */
+	sysretq
 
 // Define 256 interrupt stubs using the macros above.
 .extern interrupt_handler

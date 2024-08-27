@@ -90,9 +90,7 @@ void idt_init()
 
 	// clang-format on
 
-	// Interrupt 0x80 is syscall (Only for legacy invocations using "int $0x80").
-	idt_set(0x80, interrupt_syscall, IDT_TYPE(0, IDT_GATE_INT));
-
+	// Remap PIC and disable.
 	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);
 	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);
 	arch_x86_write8(PIC1_DATA_PORT, 0x20);

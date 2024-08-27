@@ -15,7 +15,7 @@ void vm_init(void* phys_base, PhysAddr kernel_base, PhysMemory* mem_map, usize n
 // Creates a new mapping for a region of memory.
 // `page_map`: The page map of the address space in which the mapping should be created.
 // `hint`: A hint as to where to place the address. This value can't be forcefully used, as for example if the
-void* vm_map(PageMap* page_map, void* hint, usize length, u32 flags);
+void* vm_map(PageMap* page_map, void* hint, usize length, int prot, int flags);
 
 // Unmaps a virtual address. Does nothing if the address isn't mapped.
 // `page_map`: The page map of the address space from which the mapping should be removed.

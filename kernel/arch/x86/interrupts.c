@@ -3,7 +3,8 @@
 #include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
-#include <menix/thread/process.h>
+#include <menix/sys/syscall.h>
+#include <menix/thread/proc.h>
 
 #include <idt.h>
 #include <interrupts.h>
@@ -38,22 +39,39 @@ static const char* exception_names[] = {
 	[0x1F] = NULL,	  // Reserved
 };
 
-static void interrupt_breakpoint_handler(CpuRegisters* regs)
+static void interrupt_handler_breakpoint(CpuRegisters* regs)
 {
 	asm volatile("cli");
 	while (1)
 		asm volatile("hlt");
 }
+
 static void interrupt_handler_invalid_opcode(CpuRegisters* regs)
 {
 	// Make sure we're in user mode.
 	kassert(regs->cs & CPL_USER, "Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
 }
 
+void syscall_handler(CpuRegisters* regs)
+{
+	// Save the registers.
+	Cpu* const core = arch_current_cpu();
+	Thread* const thread = core->thread;
+	thread->registers = *regs;
+	thread->stack = core->user_stack;
+
+	// Execute the system call. For x86, this uses the SysV ABI.
+	// The syscall selector also contains the return value.
+	regs->rax = syscall_invoke(regs->rax, regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
+}
+
 typedef void (*InterruptFn)(CpuRegisters* regs);
+
 static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
-	[0x03] = interrupt_breakpoint_handler,
+	[0x03] = interrupt_handler_breakpoint,
 	[0x06] = interrupt_handler_invalid_opcode,
+	[0x0E] = vm_page_fault_handler,
+	[0x80] = syscall_handler,
 };
 
 void interrupt_handler(CpuRegisters* regs)
@@ -61,13 +79,13 @@ void interrupt_handler(CpuRegisters* regs)
 	// If caused by the user, terminate the process with SIGILL.
 	if (regs->cs & CPL_USER)
 	{
+		// If we don't have a handler for this function, terminate the program immediately.
 		if (regs->isr < ARRAY_SIZE(exception_handlers) && exception_handlers[regs->isr])
 		{
 			exception_handlers[regs->isr](regs);
 			return;
 		}
 
-		// If we don't have a handler for this function, terminate the program immediately.
 		Process* proc = arch_current_cpu()->thread->parent;
 		kmesg("Unhandled exception %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
 		// TODO: Terminate program.

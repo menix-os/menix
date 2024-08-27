@@ -226,7 +226,7 @@ struct CpuRegisters
 	u64 core;
 	u64 isr;
 
-	// Pushed onto the stack by the CPU.
+	// Pushed onto the stack by the CPU during an interrupt.
 	u64 error;
 	u64 rip;
 	u64 cs;

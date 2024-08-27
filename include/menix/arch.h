@@ -11,9 +11,10 @@
 typedef struct Cpu
 {
 	usize id;				  // Unique ID of this CPU.
+	usize kernel_stack;		  // Stack pointer for the kernel.
+	usize user_stack;		  // Stack pointer for the user space.
 	struct Thread* thread;	  // Current thread running on this CPU.
-	usize kernel_stack;		  // RSP for the kernel.
-	usize user_stack;		  // RSP for the user space.
+	usize ticks_active;		  // The amount of ticks this thread has been active.
 
 	// Architecture dependent information.
 #ifdef CONFIG_arch_x86

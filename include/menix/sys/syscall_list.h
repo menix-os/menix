@@ -2,8 +2,7 @@
 
 #include <menix/sys/syscall_insert.h>
 
-SYSCALL(0, null)
-SYSCALL(1, mmap)
-SYSCALL(2, exec)
+SYSCALL(0, exit)
+SYSCALL(1, execve)
 
 #include <bits/syscall_list.h>
