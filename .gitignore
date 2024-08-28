@@ -24,3 +24,6 @@ _deps
 # Generated config headers
 include/generated/
 config.cmake
+
+# Download dir for tools
+deps/

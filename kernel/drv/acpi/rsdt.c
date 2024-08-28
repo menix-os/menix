@@ -2,6 +2,7 @@
 
 #include <menix/drv/acpi/acpi.h>
 #include <menix/drv/acpi/types.h>
+#include <menix/drv/pci/pci_acpi.h>
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
 
@@ -26,6 +27,11 @@ void acpi_init(AcpiRsdp* rsdp)
 	rsdt = ACPI_ADDR(rsdp->xsdt_address);
 
 	kmesg("Initialized ACPI (Rev. %u)\n", rsdp->revision);
+
+#ifdef CONFIG_pci
+	// The PCI subsystem depends on ACPI. Now we can enable it.
+	pci_init_acpi();
+#endif
 }
 
 void* acpi_find_table(const char* signature, usize index)

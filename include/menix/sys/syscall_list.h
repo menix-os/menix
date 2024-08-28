@@ -8,10 +8,12 @@
 #endif
 
 SYSCALL(0, exit)
-SYSCALL(1, write)
-SYSCALL(2, read)
-SYSCALL(3, ioctl)
-SYSCALL(4, execve)
+SYSCALL(1, read)
+SYSCALL(2, write)
+SYSCALL(3, open)
+SYSCALL(4, close)
+SYSCALL(5, ioctl)
+SYSCALL(6, execve)
 SYSCALL(32, uname)
 
 #include <bits/syscall_list.h>

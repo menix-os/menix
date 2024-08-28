@@ -21,9 +21,9 @@ typedef signed int i32;
 typedef unsigned int u32;
 #if CONFIG_bits == 64
 // Signed 64-bit integer.
-typedef signed long long i64;
+typedef signed long i64;
 // Unsigned 64-bit integer.
-typedef unsigned long long u64;
+typedef unsigned long u64;
 #elif CONFIG_bits == 128
 // Signed 128-bit integer.
 typedef __int128 i128;
@@ -52,24 +52,3 @@ typedef usize Bits;
 
 // Represents a physical address.
 typedef usize PhysAddr;
-
-typedef usize DeviceId;
-typedef usize INodeId;
-
-typedef u32 ModeId;
-typedef u32 NLinkId;
-
-typedef i32 ProcessId;
-typedef usize ThreadId;
-typedef i32 UserId;
-typedef i32 GroupId;
-
-typedef isize Time;
-typedef isize ClockId;
-
-// Represents a moment in time.
-typedef struct
-{
-	Time seconds;
-	usize nano_seconds;
-} Timestamp;

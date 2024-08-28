@@ -48,13 +48,12 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 // `follow_links`: Whether or not to follow symbolic links.
 VfsNode* vfs_get_node(VfsNode* relative_to, const char* path, bool follow_links);
 
-// Get the path to the current node. Returns the size of the path.
+// Get the path to the current node. Returns the size of the bytes written.
 // `target`: The node to get the path of.
 // `buffer`: Where to write the buffer to.
 // `length`: The size of the buffer in bytes.
 usize vfs_get_path(VfsNode* target, char* buffer, usize length);
 
-// Create the `.` and `..` entries at `node`.
+// Create the `.` and `..` entries at `node`. Returns true if successful.
 // `node`: The directory to add the entries to.
-// `parent`: The parent directory (which `..` will point to).
-void vfs_create_dots(VfsNode* node, VfsNode* parent);
+bool vfs_create_dots(VfsNode* node);

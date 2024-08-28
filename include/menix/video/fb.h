@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <menix/abi.h>
 #include <menix/common.h>
 #include <menix/drv/driver.h>
 #include <menix/io/mmio.h>
@@ -73,9 +74,9 @@ typedef struct
 	// Sets the video mode. Returns 0 on success.
 	i32 (*set_mode)(FrameBuffer* fb);
 	// Opens the framebuffer for writing for a user. Returns 0 on success.
-	i32 (*open)(FrameBuffer* fb, UserId user);
+	i32 (*open)(FrameBuffer* fb, uid_t user);
 	// Releases the framebuffer. Returns 0 on success.
-	i32 (*release)(FrameBuffer* fb, UserId user);
+	i32 (*release)(FrameBuffer* fb, uid_t user);
 	// Fills a rectangular region with a single color.
 	void (*fill_region)(FrameBuffer* fb, FbFillRegion* args);
 	// Copies a rectangular region from one location to another.

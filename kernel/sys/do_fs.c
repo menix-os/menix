@@ -1,5 +1,6 @@
 // File system syscalls
 
+#include <menix/abi.h>
 #include <menix/common.h>
 #include <menix/sys/syscall.h>
 
@@ -21,6 +22,34 @@ SYSCALL_IMPL(write, u32 fd, const void* buf, usize size)
 // `buf`: A buffer to write to.
 // `size`: The amount of data to read.
 SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
+{
+	// TODO
+	return 0;
+}
+
+// Opens a connection between a file and a file descriptor. Returns a file descriptor.
+// `fd`: The file descriptor root.
+// `path`: The path to the file to be opened, relative to fd.
+// `buf`: A buffer to write to.
+// `size`: The amount of data to read.
+SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
+{
+	// TODO
+	return 0;
+}
+
+// Opens a connection between a file and a file descriptor. Returns a file descriptor.
+// `path`: The path to the file to be opened.
+// `buf`: A buffer to write to.
+// `size`: The amount of data to read.
+SYSCALL_IMPL(open, const char* path, int oflag, mode_t mode)
+{
+	return syscall_openat(AT_FDCWD, path, oflag, mode);
+}
+
+// Closes a file descriptor.
+// `fd`: The file descriptor to close.
+SYSCALL_IMPL(close, int fd)
 {
 	// TODO
 	return 0;

@@ -1,10 +1,10 @@
 // uname syscall
 
+#include <menix/abi.h>
 #include <menix/common.h>
 #include <menix/sys/syscall.h>
 
 #include <string.h>
-#include <sys/utsname.h>
 
 SYSCALL_IMPL(uname, struct utsname* buffer)
 {

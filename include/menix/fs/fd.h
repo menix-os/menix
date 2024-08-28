@@ -11,3 +11,8 @@ typedef struct FileDescriptor
 	usize offset;			  // Current offset into the file.
 	SpinLock lock;			  // Access lock.
 } FileDescriptor;
+
+typedef struct Process Process;
+
+// Looks up a file descriptor number in a process and returns the corresponding data.
+FileDescriptor* fd_from_num(Process* proc, int fd);

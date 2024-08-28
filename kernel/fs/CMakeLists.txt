@@ -1,6 +1,7 @@
 # File systems and VFS
 
 target_sources(menix PUBLIC
-	vfs.c
+	fd.c
 	tmpfs.c
+	vfs.c
 )

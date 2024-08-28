@@ -1,7 +1,7 @@
 // Handle for managing input/output streams.
 
 #pragma once
-#include <menix/fs/descriptor.h>
+#include <menix/fs/fd.h>
 #include <menix/thread/spin.h>
 
 typedef struct Handle

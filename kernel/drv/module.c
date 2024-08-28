@@ -22,6 +22,13 @@ static HashMap(Module*) dynamic_modules;
 
 void module_init(BootInfo* info)
 {
+#ifdef CONFIG_pci
+	pci_init();
+#endif
+#ifdef CONFIG_acpi
+	acpi_init(info->acpi_rsdp);
+#endif
+
 	hashmap_init(dynamic_modules, 128);
 
 	// Check if the .mod section size is sane.
@@ -74,6 +81,10 @@ void module_fini()
 			modules[i].exit();
 		}
 	}
+
+#ifdef CONFIG_pci
+	pci_fini();
+#endif
 }
 
 // TODO: Use a path instead of buffer. Needs a FS.

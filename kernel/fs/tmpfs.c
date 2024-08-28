@@ -18,7 +18,7 @@ static VfsNode* tmpfs_sym_link(FileSystem* self, VfsNode* parent, const char* na
 	return NULL;
 }
 
-static VfsNode* tmpfs_create(FileSystem* self, VfsNode* parent, const char* name, ModeId mode)
+static VfsNode* tmpfs_create(FileSystem* self, VfsNode* parent, const char* name, mode_t mode)
 {
 	// TODO
 	return NULL;

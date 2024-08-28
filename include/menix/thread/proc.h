@@ -2,8 +2,11 @@
 
 #pragma once
 
+#include <menix/abi.h>
 #include <menix/arch.h>
 #include <menix/common.h>
+#include <menix/fs/fd.h>
+#include <menix/fs/vfs.h>
 #include <menix/memory/vm.h>
 #include <menix/thread/spin.h>
 #include <menix/util/list.h>
@@ -26,13 +29,13 @@ typedef enum
 	ProcessState_Ready,		 // Ready to run.
 	ProcessState_Waiting,	 // Process is waiting for another process to resume.
 	ProcessState_Blocked,	 // Process is blocked.
-	ProcessState_Dead,		 // Process was killed and is waiting for cleanup.
+	ProcessState_Dead,		 // Process is dead and is waiting for cleanup.
 } ProcessState;
 
 // Thread information.
 typedef struct Thread
 {
-	ThreadId id;			   // Thread ID.
+	usize id;				   // Thread ID.
 	SpinLock lock;			   // Access lock.
 	Process* parent;		   // The parent process of this thread.
 	ThreadState state;		   // Current state of the thread.
@@ -43,22 +46,31 @@ typedef struct Thread
 	// Architecture dependent fields go here.
 #if defined CONFIG_arch_x86
 	u64 fs_base;		// FS register base address.
-	u64 gs_base;		// GS register base address, used for TLS.
-	void* saved_fpu;	// FPU state.
+	u64 gs_base;		// GS register base address.
+	void* saved_fpu;	// Saved FPU state.
 #endif
 } Thread;
 
-//
+typedef List(Process*) ProcessList;
+typedef List(Thread*) ThreadList;
+
 typedef struct Process
 {
-	ProcessId id;			  // Process ID.
-	char name[256];			  // Name of the process.
-	SpinLock lock;			  // Access lock.
-	PageMap* page_map;		  // Process page map.
-	ProcessState state;		  // Current state of the process.
-	List(Thread*) threads;	  // Threads owned by the process.
-	Process* parent;		  // The owner of this process.
-	i32 return_code;		  // If the process is in a dead state, contains the code to return to the parent.
+	usize id;				 // Process ID.
+	char name[256];			 // Name of the process.
+	VfsNode* working_dir;	 // The current working directory.
+	SpinLock lock;			 // Access lock.
+	PageMap* page_map;		 // Process page map.
+
+	ThreadList threads;		 // Threads owned by the process.
+	ProcessState state;		 // Current state of the process.
+	Process* parent;		 // The owner of this process.
+	ProcessList children;	 // Processes owned by the process.
+
+	SpinLock fd_lock;						 // Access lock for file descriptors.
+	FileDescriptor* file_descs[OPEN_MAX];	 // File descriptors for this process.
+
+	i32 return_code;	// If the process is in a dead state, contains the code to return to the parent.
 } Process;
 
 // Creates a new process.
