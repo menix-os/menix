@@ -42,8 +42,8 @@ popq %rax
 
 // Swaps GSBASE if CPL == USER
 .macro swapgs_if_necessary
-	andb $0x03, 0x24(%rsp)
-	jz 1f
+	andb	$0x03,	0x24(%rsp)
+	jz		1f
 	swapgs
 1:
 .endm
@@ -51,10 +51,10 @@ popq %rax
 // Internal function called by one of the stubs.
 interrupt_internal:
 	push_all_regs
-	mov %rsp, %rdi
-	call interrupt_handler
+	mov		%rsp,	%rdi
+	call	interrupt_handler
 	pop_all_regs
-	add $24, %rsp
+	add		$24,	%rsp
 	swapgs_if_necessary
 	iretq
 
@@ -64,10 +64,10 @@ interrupt_internal:
 .align 0x10
 interrupt_\num:
 	swapgs_if_necessary
-	pushq $0
-	pushq $\num
-	pushq %fs
-	jmp interrupt_internal
+	pushq	$0
+	pushq	$\num
+	pushq	%fs
+	jmp		interrupt_internal
 .endm
 
 // Interrupt stub with an actual error code.
@@ -76,9 +76,9 @@ interrupt_\num:
 .align 0x10
 interrupt_\num:
 	swapgs_if_necessary
-	pushq $\num
-	pushq %fs
-	jmp interrupt_internal
+	pushq	$\num
+	pushq	%fs
+	jmp		interrupt_internal
 .endm
 
 // Enter syscall via AMD64 syscall/sysret instructions.
@@ -87,26 +87,26 @@ interrupt_\num:
 .align 0x10
 sc_syscall:
 	swapgs						/* Change GS to kernel mode. */
-	sti							/* Disable interrupts */
-
-	movq %rsp, %gs:16			/* Save user stack to Cpu struct. */
-	movq %gs:8, %rsp			/* Restore kernel stack from Cpu struct */
-
+	cli							/* Disable interrupts. */
+	movq	%rsp,	%gs:16		/* Save user stack to `Cpu.user_stack`. */
+	movq	%gs:8,	%rsp		/* Restore kernel stack from `Cpu.kernel_stack`. */
 	cld							/* Clear direction bit from RFLAGS */
 	/* We're pretending to be an interrupt, so fill the bottom fields of CpuRegisters. */
-	push %rcx
-	push %r11
+	/* For details see: https://www.felixcloutier.com/x86/syscall */
+	push	$0x23				/* SS and CS are not changed during SYSCALL. Use `gdt_table.user_data & CPL_USER`. */
+	push	%r11				/* RFLAGS is moved into r11 by the CPU. */
+	push	$0x2b				/* Same as SS. Use `gdt_table.user_code64 & CPL_USER` */
+	push	%rcx				/* RIP is moved into rcx by the CPU. */
+	sub		$0x24, %rsp			/* Skip .error, .isr and .core fields. */
 
-	push_all_regs
-
-	mov		%rsp, %rdi			/* Put CpuRegisters* as first argument */
+	push_all_regs				/* Push general purpose registers so they can be passed to the syscall */
+	mov		%rsp,	%rdi		/* Put CpuRegisters* as first argument */
 	call	syscall_handler
-
-	pop %r11
-	pop %rcx
-	cli
+	pop_all_regs				/* Pop stack values back to the general purpose registers. */
+	add		$24,	%rsp		/* We don't want to taint the popped registers, so skip the stuff pushed by SYSCALL. */
+	sti							/* Resume interrupts. */
 	swapgs						/* Change GS to user mode. */
-	sysretq
+	sysretq						/* Return back to (q == 64-bit!) user space. */
 
 // Define 256 interrupt stubs using the macros above.
 .extern interrupt_handler

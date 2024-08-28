@@ -4,6 +4,9 @@
 
 #include <menix/common.h>
 
+// Copies a string to a buffer. Both sizes must be known at compile time.
+#define fixed_strncpy(dst, src) memcpy(dst, src, MIN(sizeof(dst), sizeof(src)));
+
 i32 memcmp(const void* s1, const void* s2, usize len);
 
 // Copies `len` bytes from `src` to dst`.

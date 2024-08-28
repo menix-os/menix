@@ -173,7 +173,7 @@ void vm_unmap(PageMap* page_map, void* virt_addr)
 	vm_flush_tlb(virt_addr);
 }
 
-void vm_page_fault_handler(CpuRegisters* regs)
+void interrupt_pf_handler(CpuRegisters* regs)
 {
 	usize cr2;
 	asm_get_register(cr2, cr2);

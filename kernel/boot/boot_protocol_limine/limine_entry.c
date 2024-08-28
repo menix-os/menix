@@ -213,4 +213,6 @@ void kernel_boot()
 	arch_init(&info);
 	// TODO: Swap out for call to scheduler.
 	kernel_main(&info);
+	arch_shutdown(&info);	 // Shut the system down safely.
+	arch_stop(&info);		 // If we're still here, something went wrong. In that case, just try to stop.
 }

@@ -9,7 +9,7 @@
 #include <idt.h>
 #include <interrupts.h>
 
-static const char* exception_names[] = {
+static const char* exception_names[0x20] = {
 	[0x00] = "Division Error",
 	[0x01] = "Debug",
 	[0x02] = "Non-maskable Interrupt",
@@ -39,14 +39,7 @@ static const char* exception_names[] = {
 	[0x1F] = NULL,	  // Reserved
 };
 
-static void interrupt_handler_breakpoint(CpuRegisters* regs)
-{
-	asm volatile("cli");
-	while (1)
-		asm volatile("hlt");
-}
-
-static void interrupt_handler_invalid_opcode(CpuRegisters* regs)
+static void interrupt_ud_handler(CpuRegisters* regs)
 {
 	// Make sure we're in user mode.
 	kassert(regs->cs & CPL_USER, "Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
@@ -68,9 +61,8 @@ void syscall_handler(CpuRegisters* regs)
 typedef void (*InterruptFn)(CpuRegisters* regs);
 
 static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
-	[0x03] = interrupt_handler_breakpoint,
-	[0x06] = interrupt_handler_invalid_opcode,
-	[0x0E] = vm_page_fault_handler,
+	[0x06] = interrupt_ud_handler,
+	[0x0E] = interrupt_pf_handler,
 	[0x80] = syscall_handler,
 };
 

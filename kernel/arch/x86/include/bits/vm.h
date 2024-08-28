@@ -42,4 +42,4 @@ bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, us
 bool vm_arch_remap_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags);
 
 // Page fault interrupt handler. Set by vm_init().
-void vm_page_fault_handler(CpuRegisters* regs);
+void interrupt_pf_handler(CpuRegisters* regs);

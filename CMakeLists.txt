@@ -6,7 +6,8 @@ cmake_minimum_required(VERSION 3.25)
 set(MENIX_SRC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Project version.
-set(MENIX_VERSION 0.2.0)
+set(MENIX_RELEASE "0.0.1-dev")
+string(TIMESTAMP MENIX_VERSION "%Y-%m-%d %H:%M:%S" UTC)
 
 # Project license.
 set(MENIX_LICENSE "LGPL")
@@ -34,10 +35,7 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_SYSTEM_NAME Generic)
 
-project(menix
-	VERSION ${MENIX_VERSION}
-	LANGUAGES C ASM
-)
+project(menix LANGUAGES C ASM)
 
 # Generate a header file for the configuration.
 set(MENIX_CONFIG ${MENIX_SRC}/include/generated/config.h CACHE INTERNAL "")

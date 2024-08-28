@@ -10,7 +10,7 @@
 // A single node in the VFS.
 typedef struct VfsNode
 {
-	DataHandle* handle;			   // Handle associated with this node.
+	Handle* handle;				   // Handle associated with this node.
 	FileSystem* fs;				   // The filesystem controlling this node.
 	VfsNode* parent;			   // Parent node.
 	VfsNode* mount;				   // Location where this node is mounted to.

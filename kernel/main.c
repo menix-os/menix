@@ -8,18 +8,20 @@
 #include <menix/io/terminal.h>
 #include <menix/log.h>
 #include <menix/module.h>
+#include <menix/sys/syscall_list.h>
 #include <menix/util/list.h>
+
+#include <sys/utsname.h>
 
 #ifdef CONFIG_acpi
 #include <menix/drv/acpi/acpi.h>
+#ifdef CONFIG_pci
 #include <menix/drv/pci/pci_acpi.h>
+#endif
 #endif
 
 void kernel_main(BootInfo* info)
 {
-	// Say hello to the console.
-	kmesg("menix v" CONFIG_version " (" CONFIG_arch ")\n");
-
 	vfs_init();
 #ifdef CONFIG_pci
 	pci_init();
@@ -35,6 +37,11 @@ void kernel_main(BootInfo* info)
 	// Initialize all modules.
 	module_init(info);
 
+	// Say hello to the console.
+	struct utsname uname;
+	syscall_uname((usize)&uname, 0, 0, 0, 0, 0);
+	kmesg("%s %s %s (%s)\n", uname.sysname, uname.release, uname.version, uname.machine);
+
 	// TODO: Call init program.
 	// exec("/usr/init");
 
@@ -46,6 +53,4 @@ void kernel_main(BootInfo* info)
 #endif
 
 	kmesg("shutdown\n");	// Say goodbye.
-	arch_shutdown(info);	// Shut the system down safely.
-	arch_stop(info);		// If we're still here, something went wrong. In that case, just try to stop.
 }

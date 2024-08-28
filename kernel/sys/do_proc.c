@@ -19,10 +19,10 @@ SYSCALL_IMPL(execve, const char* path, char** argv, char** envp)
 
 // Terminates the current process.
 // `status`: The status code to return to the parent process.
-SYSCALL_IMPL(exit, u32 status)
+SYSCALL_IMPL(exit, u8 status)
 {
 	// TODO:
-	kmesg("Terminating with exit code %u...\n", status);
+	kmesg("Terminating with exit code %hhu...\n", status);
 	// proc_exit(arch_current_cpu()->thread->parent, status);
 	return 0;
 }

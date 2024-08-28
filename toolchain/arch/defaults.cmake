@@ -1,8 +1,9 @@
 # Common options that are selected independently from the architecture.
 
-add_option(arch STRING "${MENIX_ARCH}")
-add_option(version STRING "${MENIX_VERSION}")
-add_option(bits NUMBER ${MENIX_BITS})
+config_option(arch STRING "${MENIX_ARCH_NAME}")
+config_option(version STRING "${MENIX_VERSION}")
+config_option(release STRING "${MENIX_RELEASE}")
+config_option(bits NUMBER ${MENIX_BITS})
 
 # Licenses
 add_option(license_LGPL BOOL ON)

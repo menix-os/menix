@@ -56,20 +56,20 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 	// Enable XSAVE
 	if (ecx & CPUID_1C_XSAVE)
 	{
+		// To access XCR0, this bit needs to be set beforehand.
 		cr4 |= CR4_OSXSAVE;
-		// To access XCR0, this bit needs to be written in advance.
 		asm_set_register(cr4, cr4);
 
 		u64 xcr0 = 0;
 		xcr0 |= (u64)1 << 0;
 		xcr0 |= (u64)1 << 1;
 
+		// Enable AVX
 		if (ecx & CPUID_1C_AVX)
-		{
 			xcr0 |= (u64)1 << 2;
-		}
 
 		asm_cpuid(7, 0, eax, ebx, ecx, edx);
+		// Enable AVX-512
 		if (ebx & CPUID_7B_AVX512F)
 		{
 			xcr0 |= (u64)1 << 5;
@@ -148,9 +148,11 @@ void arch_stop(BootInfo* info)
 Cpu* arch_current_cpu()
 {
 #ifdef CONFIG_smp
+	// The Cpu struct starts at KERNEL_GSBASE:0
+	// Since we can't "directly" access the base address, just get the first field (Cpu.id)
+	// and use that to index into the CPU array.
 	u64 id;
-	// The CPU ID is stored in GS (thread local memory).
-	asm volatile("mov %%gs:(0), %0" : "=r"(id) : : "memory");
+	asm volatile("mov %%gs:(0), %0" : "=r"(id) : "i"(offsetof(Cpu, id)) : "memory");
 	return &boot_info->cpus[id];
 #else
 	return &boot_info->cpus[0];

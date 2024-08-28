@@ -26,6 +26,7 @@ typedef enum
 	ProcessState_Ready,		 // Ready to run.
 	ProcessState_Waiting,	 // Process is waiting for another process to resume.
 	ProcessState_Blocked,	 // Process is blocked.
+	ProcessState_Dead,		 // Process was killed and is waiting for cleanup.
 } ProcessState;
 
 // Thread information.
@@ -57,9 +58,12 @@ typedef struct Process
 	ProcessState state;		  // Current state of the process.
 	List(Thread*) threads;	  // Threads owned by the process.
 	Process* parent;		  // The owner of this process.
+	i32 return_code;		  // If the process is in a dead state, contains the code to return to the parent.
 } Process;
 
 // Creates a new process.
+// `name`: Name of the process.
+// `state`: Which state the process should be initialized with.
 void proc_create(char* name, ProcessState state);
 
 // Starts a new process from an ELF executable. Returns true if successful.
@@ -67,3 +71,7 @@ void proc_create(char* name, ProcessState state);
 // `argv`: A NULL-terminated list of program arguments to be passed to the new process.
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
 bool proc_exec(const char* path, char** argv, char** envp);
+
+// Terminates a process.
+// `proc`: The process to kill.
+void proc_kill(Process* proc);

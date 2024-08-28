@@ -9,6 +9,9 @@
 // Attributes/Decorators
 #define ATTR(...) __attribute__((__VA_ARGS__))
 
+// Build time
+#define BUILD_TIME __TIME__ " " __DATE__
+
 // Macro pasting glue
 #define __PASTE2(x)		x
 #define __PASTE2_STR(x) #x
