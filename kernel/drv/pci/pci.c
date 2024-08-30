@@ -91,29 +91,29 @@ i32 pci_register_driver(PciDriver* driver)
 			// Copy over the variant index so the driver knows which device was matched.
 			dev->variant_idx = driver->variants[variant].variant_idx;
 
-			kmesg("Matched driver \"%s\" to live device %hx:%hx on %hhu:%hhu\n", driver->name, dev->vendor, dev->device,
-				  dev->bus, dev->slot);
+			pci_log("Matched driver \"%s\" to live device %hx:%hx on %hhu:%hhu\n", driver->name, dev->vendor,
+					dev->device, dev->bus, dev->slot);
 
 			// Now, probe the device using the registered driver.
-			kassert(dev->driver->probe != NULL, "Driver has no probe set!\n");
+			kassert(dev->driver->probe != NULL, "Driver has no probe set!");
 			i32 ret = dev->driver->probe(dev);
 			// Probing failed, the driver is probably faulty so disable it.
 			if (ret != 0)
 			{
-				kmesg("Probing device %x:%x on %u:%u has failed with error code %i!\n", dev->vendor, dev->device,
-					  dev->bus, dev->slot, ret);
+				pci_log("Probing device %x:%x on %u:%u has failed with error code %i!\n", dev->vendor, dev->device,
+						dev->bus, dev->slot, ret);
 				dev->driver = NULL;
 			}
 		}
 	}
 
-	kmesg("Registered PCI driver \"%s\" with %zu variant(s).\n", driver->name, driver->num_variants);
+	pci_log("Registered PCI driver \"%s\" with %zu variant(s).\n", driver->name, driver->num_variants);
 	return 0;
 }
 
 void pci_unregister_driver(PciDriver* driver)
 {
-	kassert(driver != NULL, "Can't unregister PCI driver: None given!\n");
+	kassert(driver != NULL, "Can't unregister PCI driver: None given!");
 
 	// Check if the driver was registered.
 	isize idx;
@@ -122,7 +122,7 @@ void pci_unregister_driver(PciDriver* driver)
 	// If we couldn't find the driver.
 	if (idx == -1)
 	{
-		kmesg("Can't unregister PCI driver \"%s\": Driver was not previously registered!\n", driver->name);
+		pci_log("Can't unregister PCI driver \"%s\": Driver was not previously registered!\n", driver->name);
 		return;
 	}
 
@@ -147,7 +147,7 @@ void pci_unregister_driver(PciDriver* driver)
 
 	list_pop(&pci_drivers, idx);
 
-	kmesg("Unregistered PCI driver \"%s\"\n", driver->name);
+	pci_log("Unregistered PCI driver \"%s\"\n", driver->name);
 }
 
 i32 pci_register_device(PciDevice* device)
@@ -157,7 +157,7 @@ i32 pci_register_device(PciDevice* device)
 
 	list_push(&pci_devices, device);
 
-	kmesg("New PCI device %hx:%hx on %hhu:%hhu\n", device->vendor, device->device, device->bus, device->slot);
+	pci_log("New PCI device %hx:%hx on %hhu:%hhu\n", device->vendor, device->device, device->bus, device->slot);
 
 	return 0;
 }

@@ -34,7 +34,7 @@ void module_init(BootInfo* info)
 	// Check if the .mod section size is sane.
 	if (SECTION_SIZE(mod) % sizeof(Module) != 0)
 	{
-		kmesg("Ignoring built-in modules: The .mod section has a bogus size of 0x%zx!\n", SECTION_SIZE(mod));
+		module_log("Ignoring built-in modules: The .mod section has a bogus size of 0x%zx!\n", SECTION_SIZE(mod));
 		return;
 	}
 
@@ -43,23 +43,25 @@ void module_init(BootInfo* info)
 	const Module* modules = (Module*)SECTION_START(mod);
 
 	// Initialize all built-in modules.
-	kmesg("Loading %zu built-in modules.\n", module_count);
+	module_log("Loading %zu built-in modules.\n", module_count);
 	for (usize i = 0; i < module_count; i++)
 	{
-		kmesg("Loading built-in module \"%s\": %s (Author: %s, License: %s)\n", modules[i].name, modules[i].description,
-			  modules[i].author, modules[i].license);
+		module_log("Loading built-in module \"%s\": %s (Author: %s, License: %s)\n", modules[i].name,
+				   modules[i].description, modules[i].author, modules[i].license);
 
 		// If there's no init function, ignore the module. All modules should have one.
 		if (modules[i].init == NULL)
 		{
-			kmesg("\"%s\" failed to initialize: No init function present, skipping!\n", modules[i].name);
+			module_log("\"%s\" failed to initialize: No init function present, skipping!\n", modules[i].name);
 			continue;
 		}
 
 		const i32 ret = modules[i].init();
 		if (ret != 0)
-			kmesg("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
+			module_log("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
 	}
+
+	// TODO: Load all dynamic modules.
 }
 
 void module_fini()
@@ -77,7 +79,7 @@ void module_fini()
 	{
 		if (modules[i].exit != NULL)
 		{
-			kmesg("Unloading \"%s\"\n", modules[i].name);
+			module_log("Unloading \"%s\"\n", modules[i].name);
 			modules[i].exit();
 		}
 	}
@@ -115,13 +117,13 @@ i32 module_load(const char* path, usize len)
 	// Finally, get the module metadata and call init.
 	Module* mod = module_data + ((Elf_Shdr*)elf_get_section(module, ".mod"))->sh_offset;
 
-	kmesg("Loading dynamic module \"%s\": %s (Author: %s, License: %s)\n", mod->name, mod->description, mod->author,
-		  mod->license);
+	module_log("Loading dynamic module \"%s\": %s (Author: %s, License: %s)\n", mod->name, mod->description,
+			   mod->author, mod->license);
 
 	// If there's no init function, ignore the module. All modules should have one.
 	if (mod->init == NULL)
 	{
-		kmesg("\"%s\" failed to initialize: No init function present, skipping!\n", mod->name);
+		module_log("\"%s\" failed to initialize: No init function present, skipping!\n", mod->name);
 		return -ENOENT;
 	}
 

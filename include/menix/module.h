@@ -7,9 +7,9 @@
 #include <menix/log.h>
 
 #if defined(MODULE_TYPE) && defined(MODULE_NAME)
-#define module_log(fmt, ...) kmesg(MODULE_NAME ": " fmt, ##__VA_ARGS__)
+#define module_log(fmt, ...) kmesg("[" MODULE_NAME "]\t" fmt, ##__VA_ARGS__)
 #else
-#define module_log(fmt, ...) kmesg(fmt, ##__VA_ARGS__)
+#define module_log(fmt, ...) kmesg("[Module]\t" fmt, ##__VA_ARGS__)
 #endif
 
 typedef i32 (*ModuleInitFn)(void);

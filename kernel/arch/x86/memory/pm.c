@@ -1,5 +1,6 @@
 // x86 physical memory allocator.
 
+#include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
 #include <menix/memory/pm.h>
@@ -72,7 +73,8 @@ void pm_init(void* phys_base, PhysMemory* mem_map, usize num_entries)
 		}
 	}
 
-	kmesg("Initialized physical memory management, free memory = %u MiB\n", (num_free_pages * CONFIG_page_size) / MiB);
+	arch_log("Initialized physical memory management, free memory = %u MiB\n",
+			 (num_free_pages * CONFIG_page_size) / MiB);
 }
 
 void pm_update_phys_base(void* phys_base)
@@ -128,7 +130,7 @@ PhysAddr pm_arch_alloc(usize amount)
 {
 	spin_acquire_force(&lock);
 
-	kassert(num_free_pages != 0, "Out of physical memory!\n");
+	kassert(num_free_pages != 0, "Out of physical memory!");
 
 	PhysAddr mem = get_free_pages(amount, last_page);
 	// If we couldn't find a free region starting at our last page offset, do another check, but from the beginning.
@@ -139,7 +141,7 @@ PhysAddr pm_arch_alloc(usize amount)
 		mem = get_free_pages(amount, 0);
 	}
 
-	kassert(mem != 0, "Unable to allocate %zu consecutive pages, total %zu available!\n", amount, num_free_pages);
+	kassert(mem != 0, "Unable to allocate %zu consecutive pages, total %zu available!", amount, num_free_pages);
 
 	// Lastly, mark the pages as used now.
 	num_free_pages -= amount;

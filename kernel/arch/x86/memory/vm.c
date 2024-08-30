@@ -44,22 +44,22 @@ void vm_init(void* phys_base, PhysAddr kernel_base, PhysMemory* mem_map, usize n
 
 	for (usize cur = 0; cur < highest; cur += 2UL * MiB)
 		kassert(vm_arch_map_page(kernel_map, cur, phys_addr + cur, PAGE_PRESENT | PAGE_READ_WRITE | PAGE_SIZE),
-				"Unable to map lower memory!\n");
+				"Unable to map lower memory!");
 
 	// Map the kernel segments to the current physical address again.
 	for (usize cur = (usize)SEGMENT_START(text); cur < (usize)SEGMENT_END(text); cur += CONFIG_page_size)
 		kassert(vm_arch_map_page(kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, (void*)cur, PAGE_PRESENT),
-				"Unable to map text segment!\n");
+				"Unable to map text segment!");
 
 	for (usize cur = (usize)SEGMENT_START(rodata); cur < (usize)SEGMENT_END(rodata); cur += CONFIG_page_size)
 		kassert(vm_arch_map_page(kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, (void*)cur,
 								 PAGE_PRESENT | PAGE_EXECUTE_DISABLE),
-				"Unable to map rodata segment!\n");
+				"Unable to map rodata segment!");
 
 	for (usize cur = (usize)SEGMENT_START(data); cur < (usize)SEGMENT_END(data); cur += CONFIG_page_size)
 		kassert(vm_arch_map_page(kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, (void*)cur,
 								 PAGE_PRESENT | PAGE_READ_WRITE | PAGE_EXECUTE_DISABLE),
-				"Unable to map data segment!\n");
+				"Unable to map data segment!");
 
 	// If the physical base ever changes, update it in the physical memory manager as well.
 	pm_update_phys_base(phys_addr);
@@ -186,9 +186,7 @@ void interrupt_pf_handler(CpuRegisters* regs)
 	}
 	else
 	{
-		kmesg("Page fault in supervisor mode!\n");
-		kmesg("cs: 0x%hx cr2: 0x%p\n", regs->cs, cr2);
-		kmesg("Error: 0x%zu\n", regs->error);
-		kabort();
+		kassert(regs->cs != CPL_KERNEL, "Fatal page fault in supervisor mode at address 0x%zx! (Error: 0xzu)", cr2,
+				regs->error);
 	}
 }

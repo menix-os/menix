@@ -23,10 +23,10 @@ static u8 acpi_checksum(void* ptr, usize size)
 
 void acpi_init(AcpiRsdp* rsdp)
 {
-	kassert(rsdp != NULL, "Failed to set RSDP: None given!\n");
+	kassert(rsdp != NULL, "Failed to set RSDP: None given!");
 	rsdt = ACPI_ADDR(rsdp->xsdt_address);
 
-	kmesg("Initialized ACPI (Rev. %u)\n", rsdp->revision);
+	acpi_log("Initialized ACPI (Rev. %u)\n", rsdp->revision);
 
 #ifdef CONFIG_pci
 	// The PCI subsystem depends on ACPI. Now we can enable it.

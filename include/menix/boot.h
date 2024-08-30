@@ -11,6 +11,8 @@
 #include <menix/drv/acpi/types.h>
 #endif
 
+#define boot_kmesg(fmt, ...) kmesg("[Boot]\t" fmt, ##__VA_ARGS__)
+
 typedef struct
 {
 	void* address;	  // Start of the file

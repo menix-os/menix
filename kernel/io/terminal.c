@@ -8,6 +8,8 @@
 
 #include <string.h>
 
+#include "menix/common.h"
+
 // Internal render target.
 static FrameBuffer* internal_fb;
 
@@ -89,6 +91,11 @@ static void terminal_putchar(u32 ch)
 		{
 			ch_xpos = 0;
 			ch_ypos += 1;
+			return;
+		}
+		case '\t':
+		{
+			ch_xpos = ALIGN_UP(ch_xpos, 8);
 			return;
 		}
 		case '\0': return;

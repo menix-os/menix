@@ -1,5 +1,7 @@
 // Kernel C library - "string.h" implementation
 
+#include <menix/memory/alloc.h>
+
 #include <string.h>
 
 usize strlen(const char* str)
@@ -85,4 +87,16 @@ void* memset32(void* bufptr, u32 value, usize size)
 	for (usize i = 0; i < size; i++)
 		buf[i] = value;
 	return bufptr;
+}
+
+char* strdup(const char* src)
+{
+	if (src == NULL)
+		return NULL;
+
+	usize length = strlen(src) + 1;
+	char* dest = kmalloc(length);
+	if (dest == NULL)
+		return NULL;
+	return memcpy(dest, src, length);
 }

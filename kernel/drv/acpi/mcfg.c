@@ -25,7 +25,7 @@ void pci_init_acpi()
 	// On the other hand, if we aren't on x86 and there is no MCFG table, we cannot configure PCI.
 	if (acpi_mcfg == NULL)
 	{
-		kmesg("Unable to configure PCI system using ACPI: The MCFG table was not present. ");
+		pci_log("Unable to configure PCI system using ACPI: The MCFG table was not present. ");
 #ifdef CONFIG_arch_x86
 		kmesg("Falling back to x86 mode.\n");
 		// TODO: Set function callbacks to x86.
@@ -47,12 +47,12 @@ void pci_init_acpi()
 			if (!dev)
 				continue;
 			if (pci_register_device(dev) != 0)
-				kmesg("Failed to register PCI device %hx:%hx on bus %hhu, slot %hhu!\n", dev->vendor, dev->device,
-					  dev->bus, dev->slot);
+				pci_log("Failed to register PCI device %hx:%hx on bus %hhu, slot %hhu!\n", dev->vendor, dev->device,
+						dev->bus, dev->slot);
 		}
 	}
 
-	kmesg("Configured PCI using ACPI.\n");
+	pci_log("Configured PCI using ACPI.\n");
 }
 
 #define implement_read(type, name, fn) \

@@ -42,7 +42,7 @@ static const char* exception_names[0x20] = {
 static void interrupt_ud_handler(CpuRegisters* regs)
 {
 	// Make sure we're in user mode.
-	kassert(regs->cs & CPL_USER, "Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
+	kassert(regs->cs & CPL_USER, "Invalid opcode at 0x%zx on core %zu!", regs->rip, arch_current_cpu()->id);
 }
 
 void syscall_handler(CpuRegisters* regs)
@@ -84,8 +84,8 @@ void interrupt_handler(CpuRegisters* regs)
 		return;
 	}
 
-	kassert(regs->isr < ARRAY_SIZE(exception_handlers), "Unhandled exception %zu in kernel mode!\n", regs->isr);
-	kassert(exception_handlers[regs->isr] != NULL, "Unhandled exception \"%s\" (%zu) in kernel mode!\n",
+	kassert(regs->isr < ARRAY_SIZE(exception_handlers), "Unhandled exception %zu in kernel mode!", regs->isr);
+	kassert(exception_handlers[regs->isr] != NULL, "Unhandled exception \"%s\" (%zu) in kernel mode!",
 			exception_names[regs->isr], regs->isr);
 
 	exception_handlers[regs->isr](regs);

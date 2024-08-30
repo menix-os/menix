@@ -8,7 +8,7 @@
 #define kassert(expr, msg, ...) \
 	if (!(expr)) \
 	{ \
-		kmesg("Assertion failed: " msg "\nExpression:\n    " #expr "\n" __FILE__ ":" __PASTE_STR(__LINE__) "\n", \
+		kmesg("Assertion failed:\n\t" msg "\nExpression:\n    " #expr "\n" __FILE__ ":" __PASTE_STR(__LINE__) "\n", \
 			  ##__VA_ARGS__); \
 		ktrace(); \
 		kabort(); \

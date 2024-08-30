@@ -19,3 +19,4 @@ void* memset(void* dst, u8 val, usize len);
 void* memset32(void* bufptr, u32 value, usize size);
 usize strlen(const char* src);
 usize strnlen(const char* src, usize len);
+char* strdup(const char* src);

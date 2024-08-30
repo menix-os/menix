@@ -2,9 +2,11 @@
 
 #include <menix/common.h>
 #include <menix/fs/vfs.h>
+#include <menix/io/terminal.h>
 #include <menix/log.h>
 #include <menix/module.h>
 #include <menix/sys/syscall_list.h>
+#include <menix/thread/proc.h>
 
 void kernel_main(BootInfo* info)
 {
@@ -16,14 +18,12 @@ void kernel_main(BootInfo* info)
 	// Say hello to the console.
 	struct utsname uname;
 	syscall_uname((usize)&uname, 0, 0, 0, 0, 0);
-	kmesg("%s %s %s %s\n", uname.sysname, uname.release, uname.version, uname.machine);
+	kmesg("%s %s [%s] %s\n", uname.sysname, uname.release, uname.version, uname.machine);
 
 	// TODO: Call init program.
-	// exec("/usr/init");
+	// char* argv[] = {"/usr/init", NULL};
+	// proc_execve("init", argv, NULL);
 
 	// Clean up all modules and subsystems.
 	module_fini();
-
-	// Say goodbye.
-	kmesg("shutdown\n");
 }

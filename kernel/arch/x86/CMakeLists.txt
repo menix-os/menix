@@ -11,4 +11,5 @@ add_architecture(x86
 	io/serial.c
 	memory/vm.c
 	memory/pm.c
+	thread/elf.c
 )

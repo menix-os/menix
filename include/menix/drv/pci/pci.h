@@ -7,6 +7,8 @@
 #define PCI_ANY_ID			 (~0)
 #define PCI_DEVICE(ven, dev) .vendor = (ven), .device = (dev), .sub_vendor = PCI_ANY_ID, .sub_device = PCI_ANY_ID
 
+#define pci_log(fmt, ...) kmesg("[PCI]\t" fmt, ##__VA_ARGS__)
+
 typedef struct
 {
 	u8 (*pci_read8)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset);

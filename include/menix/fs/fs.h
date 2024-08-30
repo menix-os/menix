@@ -11,7 +11,7 @@ typedef struct VfsNode VfsNode;
 typedef struct FileSystem FileSystem;
 typedef struct FileSystem
 {
-	const char name[64];	// Name of the file system.
+	char name[64];	  // Name of the file system.
 
 	// Called to mount a file system onto the VFS.
 	VfsNode* (*mount)(VfsNode* mount_point, const char* name, VfsNode* source);

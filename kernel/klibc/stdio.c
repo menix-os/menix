@@ -184,7 +184,7 @@ check_fmt:
 					str = "(null)";
 				usize len = 0;
 				if (has_width)
-					len = width;
+					len = strnlen(str, width);
 				else
 					len = strlen(str);
 

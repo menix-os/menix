@@ -36,3 +36,6 @@
 
 // Uses the smaller of the two value.
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
+
+// Gets the parent structure where the field is contained in.
+#define parentof(parent_type, field) (offsetof(parent_type, field))
