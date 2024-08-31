@@ -22,3 +22,6 @@ typedef struct Handle
 // The function pointers are set to a default implementation instead of null.
 // `size`: The size of the handle. Needs to be at least sizeof(Handle) bytes.
 void* handle_new(usize size);
+
+// Returns a new dev_t ID for use by a Handle structure.
+usize handle_new_device();

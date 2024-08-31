@@ -7,7 +7,16 @@ set(MENIX_SRC ${CMAKE_CURRENT_SOURCE_DIR})
 
 # Project version.
 set(MENIX_RELEASE "0.0.1-dev")
-string(TIMESTAMP MENIX_VERSION "%Y-%m-%d %H:%M:%S" UTC)
+string(TIMESTAMP MENIX_VERSION "%a %b %d %H:%M:%S UTC %Y" UTC)
+
+# Get the current git commit hash.
+execute_process(
+	COMMAND git log -1 --format=%h
+	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
+	OUTPUT_VARIABLE GIT_HASH
+	OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+set(MENIX_VERSION "${MENIX_VERSION} (${GIT_HASH})")
 
 # Project license.
 set(MENIX_LICENSE "LGPL")

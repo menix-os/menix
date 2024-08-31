@@ -1,6 +1,7 @@
 // Virtual File System
 
 #include <menix/arch.h>
+#include <menix/fs/devtmpfs.h>
 #include <menix/fs/tmpfs.h>
 #include <menix/fs/vfs.h>
 #include <menix/log.h>
@@ -19,7 +20,7 @@ typedef struct
 	char* name;
 } VfsPathToNode;
 
-static SpinLock vfs_lock = spin_new();
+SpinLock vfs_lock = spin_new();
 static VfsNode* vfs_root;
 static HashMap(FileSystem*) fs_map;
 
@@ -33,6 +34,7 @@ void vfs_init()
 
 	vfs_log("Initialized virtual file system.\n");
 	tmpfs_init();
+	devtmpfs_init();
 
 	// Create the root directory.
 	vfs_mount(vfs_root, NULL, "/", "tmpfs");
@@ -41,9 +43,9 @@ void vfs_init()
 	vfs_node_add(vfs_root, "/tmp", 0755 | S_IFDIR);
 	kassert(vfs_mount(vfs_root, NULL, "/tmp", "tmpfs"), "Mount failed, tmpfs unavailable!");
 
-	// TODO: Create /dev.
-	// vfs_node_add(vfs_root, "/dev", 0755 | S_IFDIR);
-	// kassert(vfs_mount(vfs_root, NULL, "/dev", "devtmpfs"), "Mount failed, devtmpfs unavailable!");
+	// Create /dev.
+	vfs_node_add(vfs_root, "/dev", 0755 | S_IFDIR);
+	kassert(vfs_mount(vfs_root, NULL, "/dev", "devtmpfs"), "Mount failed, devtmpfs unavailable!");
 }
 
 VfsNode* vfs_get_root()
@@ -185,7 +187,7 @@ static VfsPathToNode vfs_parse_path(VfsNode* parent, const char* path)
 		{
 			if (last)
 				return (VfsPathToNode) {NULL, current_node, elem_str};
-			//*errno = ENOENT;
+			*errno = ENOENT;
 			return (VfsPathToNode) {NULL, NULL, NULL};
 		}
 
@@ -388,6 +390,9 @@ leave:
 
 usize vfs_get_path(VfsNode* target, char* buffer, usize length)
 {
+	if (target == NULL)
+		return 0;
+
 	usize offset = 0;
 	if (target->parent != vfs_root && target->parent != NULL)
 	{
@@ -406,4 +411,29 @@ usize vfs_get_path(VfsNode* target, char* buffer, usize length)
 		return strlen(target->name) + offset;
 	}
 	return offset;
+}
+
+VfsNode* vfs_get_node(VfsNode* parent, const char* path, bool follow_links)
+{
+	spin_acquire_force(&vfs_lock);
+
+	VfsNode* ret = NULL;
+
+	VfsPathToNode r = vfs_parse_path(parent, path);
+	if (r.target == NULL)
+		goto leave;
+
+	if (follow_links)
+	{
+		ret = vfs_resolve_node(r.target, true);
+		goto leave;
+	}
+
+	ret = r.target;
+
+leave:
+	if (r.name != NULL)
+		kfree(r.name);
+	spin_free(&vfs_lock);
+	return ret;
 }

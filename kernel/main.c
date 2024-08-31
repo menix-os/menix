@@ -2,7 +2,6 @@
 
 #include <menix/common.h>
 #include <menix/fs/vfs.h>
-#include <menix/io/terminal.h>
 #include <menix/log.h>
 #include <menix/module.h>
 #include <menix/sys/syscall_list.h>

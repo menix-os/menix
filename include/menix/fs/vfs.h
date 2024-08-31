@@ -23,6 +23,8 @@ typedef struct VfsNode
 	bool populated;				   // True if the children of this node have been populated.
 } VfsNode;
 
+extern SpinLock vfs_lock;
+
 // Initializes the virtual file system.
 void vfs_init();
 
@@ -80,3 +82,6 @@ VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target);
 // `node`: The node to resolve.
 // `follow_links`: Whether or not to follow symbolic links.
 VfsNode* vfs_resolve_node(VfsNode* node, bool follow_links);
+
+// Gets a node pointer to by a `path`.
+VfsNode* vfs_get_node(VfsNode* parent, const char* path, bool follow_links);
