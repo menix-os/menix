@@ -4,11 +4,13 @@
 #include <menix/common.h>
 #include <menix/drv/device.h>
 
-#define PCI_ANY_ID			 (~0)
-#define PCI_DEVICE(ven, dev) .vendor = (ven), .device = (dev), .sub_vendor = PCI_ANY_ID, .sub_device = PCI_ANY_ID
+#define PCI_ANY_ID							 (0xFFFF)
+#define PCI_DEVICE(ven, dev)				 .vendor = (ven), .device = (dev), .sub_vendor = PCI_ANY_ID, .sub_device = PCI_ANY_ID
+#define PCI_CLASS(class, sub_class, prog_if) ((class) | ((sub_class) << 8) | ((prog_if) << 16))
 
 #define pci_log(fmt, ...) kmesg("[PCI]\t" fmt, ##__VA_ARGS__)
 
+// Abstraction for PCI mechanisms. Can be e.g. x86 port IO or ACPI.
 typedef struct
 {
 	u8 (*pci_read8)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset);
@@ -22,26 +24,36 @@ typedef struct
 extern PciPlatform pci_platform;
 
 typedef struct PciDriver PciDriver;
-
 // Describes a PCI(e) device.
 typedef struct
 {
-	u16 vendor, device;			   // Vendor and device ID.
-	u16 sub_vendor, sub_device;	   // Subsystem IDs.
-	u8 class, sub_class;		   // PCI class.
-	bool is_pcie;				   // True if the device supports PCIe.
-	u8 bus, slot;				   // The bus and slot this device lives on.
+	u16 vendor, device;			   // Primary IDs of this device.
+	u16 sub_vendor, sub_device;	   // Secondary IDs of this device.
+	u16 command, status;
+	u8 revision, class, sub_class, prog_if;
+	u8 cache_line_size, latency_timer, header_type, bist;
+
+	u8 bus, slot;	 // The bus and slot this device lives on.
 
 	PciDriver* driver;	  // The driver managing this device.
 	usize variant_idx;	  // Index into a driver-defined structure array.
 } PciDevice;
 
+// Drivers can use this to create bindings.
+typedef struct
+{
+	u16 vendor, device;			   // Primary IDs of this device.
+	u16 sub_vendor, sub_device;	   // Secondary IDs of this device.
+	u8 class, sub_class, prog_if;
+	usize variant_idx;	  // Index into a driver-defined structure array.
+} PciVariant;
+
 // A PCI(e) driver with callbacks.
 typedef struct PciDriver
 {
-	const char* name;			  // Name of the device.
-	const PciDevice* variants;	  // Array of device variants that the driver can match.
-	const usize num_variants;	  // Amount of entries in the `variants` array.
+	const char* name;			   // Name of the device.
+	const PciVariant* variants;	   // Array of device variants that the driver can match.
+	const usize num_variants;	   // Amount of entries in the `variants` array.
 
 	// Called when a new device is being connected. Returns 0 if successful.
 	i32 (*probe)(PciDevice* dev);

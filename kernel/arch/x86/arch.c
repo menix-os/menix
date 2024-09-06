@@ -102,6 +102,9 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 	// Enable SMAP
 	if (ebx & CPUID_7B_SMAP)
 		cr4 |= CR4_SMAP;
+	// Enable FSGSBASE
+	if (ebx & CPUID_7B_FSGSBASE)
+		cr4 |= CR4_FSGSBASE;
 
 	// Write to the control registers.
 	asm_set_register(cr0, cr0);

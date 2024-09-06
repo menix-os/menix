@@ -56,13 +56,44 @@ PciDevice* pci_scan_device(u8 bus, u8 slot)
 
 	device->vendor = vendor_id;
 	device->device = pci_platform.pci_read16(0, bus, slot, 0, 0x2);
-	device->sub_class = pci_platform.pci_read8(0, bus, slot, 0, 0x10);
-	device->class = pci_platform.pci_read8(0, bus, slot, 0, 0x11);
+	device->command = pci_platform.pci_read16(0, bus, slot, 0, 0x4);
+	device->status = pci_platform.pci_read16(0, bus, slot, 0, 0x6);
+	device->revision = pci_platform.pci_read8(0, bus, slot, 0, 0x8);
+	device->prog_if = pci_platform.pci_read8(0, bus, slot, 0, 0x9);
+	device->sub_class = pci_platform.pci_read8(0, bus, slot, 0, 0xA);
+	device->class = pci_platform.pci_read8(0, bus, slot, 0, 0xB);
 	device->bus = bus;
 	device->slot = slot;
 
 	return device;
 }
+
+static const char* pci_class_names[] = {
+	[0x00] = "Unclassified",
+	[0x01] = "Mass Storage Controller",
+	[0x02] = "Network Controller",
+	[0x03] = "Display Controller",
+	[0x04] = "Multimedia Controller",
+	[0x05] = "Memory Controller",
+	[0x06] = "Bridge",
+	[0x07] = "Simple Communication Controller",
+	[0x08] = "Base System Peripheral",
+	[0x09] = "Input Device Controller",
+	[0x0A] = "Docking Station",
+	[0x0B] = "Processor",
+	[0x0C] = "Serial Bus Controller",
+	[0x0D] = "Wireless Controller",
+	[0x0E] = "Intelligent Controller",
+	[0x0F] = "Satellite Communication Controller",
+	[0x10] = "Encryption Controller",
+	[0x11] = "Signal Processing Controller",
+	[0x12] = "Processing Accelerator",
+	[0x13] = "Non-Essential Instrumentation",
+	[0x14 ... 0x3F] = NULL,
+	[0x40] = "Co-Processor",
+	[0x41 ... 0xFE] = NULL,
+	[0xFF] = "Unassigned",
+};
 
 i32 pci_register_driver(PciDriver* driver)
 {
@@ -82,8 +113,20 @@ i32 pci_register_driver(PciDriver* driver)
 		// Match all variants to the current device in the list.
 		for (usize variant = 0; variant <= driver->num_variants; variant++)
 		{
-			// If the IDs don't match, skip this.
-			if (dev->device != driver->variants[variant].device || dev->vendor != driver->variants[variant].vendor)
+			const PciVariant* const var = &driver->variants[variant];
+
+			// Check if this driver is a generic class driver. If it isn't, check if the IDs match.
+			if (var->vendor != (u16)PCI_ANY_ID)
+				if (dev->vendor != var->vendor)
+					continue;
+			if (var->device != (u16)PCI_ANY_ID)
+				if (var->device)
+					continue;
+
+			// Make sure the class types match.
+			if (var->class != dev->class)
+				continue;
+			if (var->sub_class != dev->sub_class)
 				continue;
 
 			// Connect the driver to the device.
@@ -91,17 +134,22 @@ i32 pci_register_driver(PciDriver* driver)
 			// Copy over the variant index so the driver knows which device was matched.
 			dev->variant_idx = driver->variants[variant].variant_idx;
 
-			pci_log("Matched driver \"%s\" to live device %hx:%hx on %hhu:%hhu\n", driver->name, dev->vendor,
+			pci_log("Matched driver \"%s\" to live device %04hx:%04hx on %hhu:%hhu\n", driver->name, dev->vendor,
 					dev->device, dev->bus, dev->slot);
 
 			// Now, probe the device using the registered driver.
-			kassert(dev->driver->probe != NULL, "Driver has no probe set!");
+			if (dev->driver->probe == NULL)
+			{
+				pci_log("Driver \"%s\" has no probe function! Registration failed.\n", driver->name);
+				return -ENOENT;
+			}
+
 			i32 ret = dev->driver->probe(dev);
 			// Probing failed, the driver is probably faulty so disable it.
 			if (ret != 0)
 			{
-				pci_log("Probing device %x:%x on %u:%u has failed with error code %i!\n", dev->vendor, dev->device,
-						dev->bus, dev->slot, ret);
+				pci_log("Probing device %04hx:%04hx on %hhu:%hhu has failed with error code %i!\n", dev->vendor,
+						dev->device, dev->bus, dev->slot, ret);
 				dev->driver = NULL;
 			}
 		}
@@ -157,7 +205,8 @@ i32 pci_register_device(PciDevice* device)
 
 	list_push(&pci_devices, device);
 
-	pci_log("New PCI device %hx:%hx on %hhu:%hhu\n", device->vendor, device->device, device->bus, device->slot);
+	pci_log("New PCI device %04hx:%04hx on %hhu:%hhu (%s)\n", device->vendor, device->device, device->bus, device->slot,
+			pci_class_names[device->class]);
 
 	return 0;
 }
