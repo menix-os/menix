@@ -3,7 +3,7 @@
 #include <menix/arch.h>
 #include <menix/memory/vm.h>
 #include <menix/sys/syscall.h>
-#include <menix/thread/proc.h>
+#include <menix/thread/process.h>
 
 // Maps a phyiscal address to a virtual one.
 SYSCALL_IMPL(mmap, void* hint, usize length, int prot, int flags)

@@ -1,4 +1,4 @@
-add_module(usb_core "Marvin Friedrich" "USB subsystem" MAIN OFF ON
+add_module(usb_core "Marvin Friedrich" "USB subsystem" MAIN ON ON
 	main.c
 )
 

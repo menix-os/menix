@@ -5,5 +5,6 @@ target_sources(menix PUBLIC
 	handle.c
 	devtmpfs.c
 	tmpfs.c
+	ustar.c
 	vfs.c
 )

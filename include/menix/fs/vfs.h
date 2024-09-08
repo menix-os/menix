@@ -83,5 +83,5 @@ VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target);
 // `follow_links`: Whether or not to follow symbolic links.
 VfsNode* vfs_resolve_node(VfsNode* node, bool follow_links);
 
-// Gets a node pointer to by a `path`.
+// Gets a reference to a node pointed to by a `path`.
 VfsNode* vfs_get_node(VfsNode* parent, const char* path, bool follow_links);

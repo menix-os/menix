@@ -26,8 +26,8 @@ typedef struct Cpu Cpu;
 typedef struct
 {
 	const char* cmd;	// Command line.
+	BootFile* files;	// Array of files.
 	usize file_num;		// Amount of files loaded.
-	BootFile* files;	// Modules.
 
 #ifdef CONFIG_smp
 	usize cpu_num;				  // Amount of processors detected.

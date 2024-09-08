@@ -6,7 +6,7 @@
 #include <menix/fs/vfs.h>
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
-#include <menix/thread/proc.h>
+#include <menix/thread/process.h>
 #include <menix/thread/spin.h>
 #include <menix/util/hash_map.h>
 
@@ -38,6 +38,10 @@ void vfs_init()
 
 	// Create the root directory.
 	vfs_mount(vfs_root, NULL, "/", "tmpfs");
+
+	// Create /boot.
+	vfs_node_add(vfs_root, "/boot", 0755 | S_IFDIR);
+	kassert(vfs_mount(vfs_root, NULL, "/boot", "tmpfs"), "Mount failed, tmpfs unavailable!");
 
 	// Create /tmp.
 	vfs_node_add(vfs_root, "/tmp", 0755 | S_IFDIR);

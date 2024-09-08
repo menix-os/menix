@@ -3,7 +3,7 @@
 #include <menix/abi.h>
 #include <menix/arch.h>
 #include <menix/fs/fd.h>
-#include <menix/thread/proc.h>
+#include <menix/thread/process.h>
 #include <menix/thread/spin.h>
 
 #include <errno.h>

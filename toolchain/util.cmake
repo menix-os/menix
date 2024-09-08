@@ -53,6 +53,7 @@ function(add_module name author desc license modular default)
 	elseif(${${MENIX_CURRENT_MOD}} STREQUAL MOD)
 		# Build as a relocatable executable.
 		add_executable(${MENIX_CURRENT_MOD} ${ARGN})
+		target_compile_options(${MENIX_CURRENT_MOD} PUBLIC -mcmodel=large)
 		target_link_options(${MENIX_CURRENT_MOD} PUBLIC -r "SHELL:-L ${MENIX_SRC}/toolchain/linker")
 		target_link_options(${MENIX_CURRENT_MOD} PUBLIC -T module.ld)
 		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/mod/")
@@ -136,7 +137,7 @@ endfunction(config_option)
 function(require_option optname)
 	# If it's explicitly turned off, we can't compile.
 	if(DEFINED ${optname})
-		if(NOT ${${optname}} STREQUAL ON)
+		if(${${optname}} STREQUAL OFF)
 			if(${optname} STREQUAL ${MENIX_CURRENT_MOD})
 				message(FATAL_ERROR "[!] \"${MENIX_CURRENT_MOD}\" cannot be disabled!\n"
 					"-> Enable \"${MENIX_CURRENT_MOD}\"\n")

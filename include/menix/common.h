@@ -26,13 +26,13 @@
 // Alias for inline assembly.
 #define asm __asm__
 
+#define ROUND_UP(value, to) (((value) + ((to) - 1)) / (to))
+
 // Align an integer, rounding down.
-#define ALIGN_DOWN(value, align) ((value) & ~((typeof(value))((align) - 1)))
+#define ALIGN_DOWN(value, align) (((value) / (align)) * (align))
 
 // Align an integer, rounding up.
-#define ALIGN_UP(value, align) (ALIGN_DOWN(value, align) + align)
-
-#define ROUND_UP(value, to) (((value) + ((to) - 1)) / (to))
+#define ALIGN_UP(value, align) (ROUND_UP(value, align) * align)
 
 // Uses the smaller of the two value.
 #define MIN(a, b) ((a) < (b) ? (a) : (b))

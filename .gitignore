@@ -27,3 +27,7 @@ config.cmake
 
 # Download dir for tools
 deps/
+
+# Rust files
+*target/
+*Cargo.lock

@@ -9,14 +9,24 @@
 
 i32 memcmp(const void* s1, const void* s2, usize len);
 
-// Copies `len` bytes from `src` to dst`.
+// Copies `len` bytes from `src` to `dst`. Pointers may not overlap.
 void* memcpy(void* restrict dst, const void* restrict src, usize len);
 
-// `Copies `len` 32-bit integers from `src` to `dst`.
+// Copies `len` 32-bit integers from `src` to `dst`. Pointers may not overlap.
 void* memcpy32(void* restrict dst, const void* restrict src, usize len);
+
+// Copies `len` bytes from `src` to `dst`.
 void* memmove(void* dst, const void* src, usize len);
+
+// Sets `len` bytes to `val`, starting at dst.
 void* memset(void* dst, u8 val, usize len);
-void* memset32(void* bufptr, u32 value, usize size);
+
+// Sets `len` 32-bit integers to `value`, starting at `dst`.
+void* memset32(void* dst, u32 value, usize size);
 usize strlen(const char* src);
 usize strnlen(const char* src, usize len);
 char* strdup(const char* src);
+
+// Copies a string with a maximum length of `len` from `src` to `dst`. Pointers may not overlap.
+char* strncpy(char* restrict dst, const char* restrict src, usize len);
+usize strncmp(const char* str1, const char* str2, usize len);

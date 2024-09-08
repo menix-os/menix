@@ -5,6 +5,18 @@
 
 #include <string.h>
 
+static Elf_Hdr* self_kernel_addr = NULL;
+
+void elf_set_kernel(Elf_Hdr* addr)
+{
+	self_kernel_addr = addr;
+}
+
+Elf_Hdr* elf_get_kernel()
+{
+	return self_kernel_addr;
+}
+
 void* elf_get_section(void* elf, const char* name)
 {
 	if (elf == NULL || name == NULL)

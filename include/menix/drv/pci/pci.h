@@ -4,11 +4,18 @@
 #include <menix/common.h>
 #include <menix/drv/device.h>
 
-#define PCI_ANY_ID							 (0xFFFF)
-#define PCI_DEVICE(ven, dev)				 .vendor = (ven), .device = (dev), .sub_vendor = PCI_ANY_ID, .sub_device = PCI_ANY_ID
-#define PCI_CLASS(class, sub_class, prog_if) ((class) | ((sub_class) << 8) | ((prog_if) << 16))
-
 #define pci_log(fmt, ...) kmesg("[PCI]\t" fmt, ##__VA_ARGS__)
+
+#define PCI_ANY_ID (~0U)
+#define PCI_DEVICE(ven, dev) \
+	.vendor = (u16)(ven), .device = (u16)(dev), .sub_vendor = (u16)PCI_ANY_ID, .sub_device = (u16)PCI_ANY_ID
+
+#define PCI_CLASS(cl, subcl, prog, is_subcl, is_prog) \
+	PCI_DEVICE(PCI_ANY_ID, PCI_ANY_ID), .class = (cl), .sub_class = (subcl), .prog_if = (prog), .has_class = true, \
+		.has_sub_class = (is_subcl), .has_prog_if = (is_prog)
+#define PCI_CLASS1(cl)				PCI_CLASS(cl, 0, 0, false, false)
+#define PCI_CLASS2(cl, subcl)		PCI_CLASS(cl, subcl, 0, true, false)
+#define PCI_CLASS3(cl, subcl, prog) PCI_CLASS(cl, subcl, prog, true, true)
 
 // Abstraction for PCI mechanisms. Can be e.g. x86 port IO or ACPI.
 typedef struct
@@ -21,8 +28,6 @@ typedef struct
 	void (*pci_write32)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u32 value);
 } PciPlatform;
 
-extern PciPlatform pci_platform;
-
 typedef struct PciDriver PciDriver;
 // Describes a PCI(e) device.
 typedef struct
@@ -33,8 +38,8 @@ typedef struct
 	u8 revision, class, sub_class, prog_if;
 	u8 cache_line_size, latency_timer, header_type, bist;
 
-	u8 bus, slot;	 // The bus and slot this device lives on.
-
+	u8 bus, slot;		  // The bus and slot this device lives on.
+	Device* dev;		  // Underlying device.
 	PciDriver* driver;	  // The driver managing this device.
 	usize variant_idx;	  // Index into a driver-defined structure array.
 } PciDevice;
@@ -42,10 +47,11 @@ typedef struct
 // Drivers can use this to create bindings.
 typedef struct
 {
-	u16 vendor, device;			   // Primary IDs of this device.
-	u16 sub_vendor, sub_device;	   // Secondary IDs of this device.
-	u8 class, sub_class, prog_if;
-	usize variant_idx;	  // Index into a driver-defined structure array.
+	u16 vendor, device;							   // Primary IDs of this device.
+	u16 sub_vendor, sub_device;					   // Secondary IDs of this device.
+	u8 class, sub_class, prog_if;				   // Class type.
+	bool has_class, has_sub_class, has_prog_if;	   // If `true`, then the respective class type is checked.
+	usize variant_idx;							   // Index into a driver-defined structure array.
 } PciVariant;
 
 // A PCI(e) driver with callbacks.
@@ -66,6 +72,8 @@ typedef struct PciDriver
 	// Called to deinitialize a device during shutdown.
 	void (*shutdown)(PciDevice* dev);
 } PciDriver;
+
+extern PciPlatform pci_platform;
 
 // Initializes the PCI subsystem.
 void pci_init();

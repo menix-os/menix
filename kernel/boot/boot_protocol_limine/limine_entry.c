@@ -8,7 +8,7 @@
 #include <menix/memory/alloc.h>
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
-#include <menix/util/self.h>
+#include <menix/thread/elf.h>
 #include <menix/video/fb.h>
 #include <menix/video/fb_default.h>
 
@@ -131,7 +131,7 @@ void kernel_boot()
 	boot_kmesg("Kernel file loaded at: 0x%p, Size = 0x%lx\n", kernel_res->kernel_file->address,
 			   kernel_res->kernel_file->size);
 
-	self_set_kernel(kernel_res->kernel_file->address);
+	elf_set_kernel(kernel_res->kernel_file->address);
 
 	// Get command line.
 	boot_kmesg("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);

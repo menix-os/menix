@@ -40,7 +40,7 @@ void ktrace()
 #endif
 
 	// Parse kernel ELF.
-	Elf_Hdr* kernel = self_get_kernel();
+	Elf_Hdr* kernel = elf_get_kernel();
 	void* data = kernel;
 	// Find symbol and string table.
 	Elf_Shdr* strtab = elf_get_section(kernel, ".strtab");

@@ -6,7 +6,7 @@
 #include <menix/fs/tmpfs.h>
 #include <menix/fs/vfs.h>
 #include <menix/memory/alloc.h>
-#include <menix/thread/proc.h>
+#include <menix/thread/process.h>
 #include <menix/thread/spin.h>
 
 #include <errno.h>
@@ -30,7 +30,7 @@ static isize tmpfs_handle_read(struct Handle* self, FileDescriptor* fd, void* bu
 		total_read -= ((amount + offset) - self->stat.st_size);
 
 	// Copy all data to the buffer.
-	memcpy(buffer, handle->buffer, total_read);
+	memcpy(buffer, handle->buffer + offset, total_read);
 
 	spin_free(&self->lock);
 	return total_read;
@@ -47,6 +47,8 @@ static isize tmpfs_handle_write(struct Handle* self, FileDescriptor* fd, const v
 	if (offset + amount >= handle->buffer_cap)
 	{
 		usize new_capacity = handle->buffer_cap;
+		if (new_capacity == 0)
+			new_capacity = CONFIG_page_size;
 		while (offset + amount >= new_capacity)
 			new_capacity *= 2;
 

@@ -116,17 +116,17 @@ i32 pci_register_driver(PciDriver* driver)
 			const PciVariant* const var = &driver->variants[variant];
 
 			// Check if this driver is a generic class driver. If it isn't, check if the IDs match.
-			if (var->vendor != (u16)PCI_ANY_ID)
-				if (dev->vendor != var->vendor)
-					continue;
-			if (var->device != (u16)PCI_ANY_ID)
-				if (var->device)
-					continue;
-
-			// Make sure the class types match.
-			if (var->class != dev->class)
+			if (var->vendor != (u16)PCI_ANY_ID && var->vendor != dev->vendor)
 				continue;
-			if (var->sub_class != dev->sub_class)
+			if (var->device != (u16)PCI_ANY_ID && var->device != dev->device)
+				continue;
+
+			// If it's generic make sure the class types match.
+			if (var->has_class && var->class != dev->class)
+				continue;
+			if (var->has_sub_class && var->sub_class != dev->sub_class)
+				continue;
+			if (var->has_prog_if && var->prog_if != dev->prog_if)
 				continue;
 
 			// Connect the driver to the device.
@@ -134,7 +134,7 @@ i32 pci_register_driver(PciDriver* driver)
 			// Copy over the variant index so the driver knows which device was matched.
 			dev->variant_idx = driver->variants[variant].variant_idx;
 
-			pci_log("Matched driver \"%s\" to live device %04hx:%04hx on %hhu:%hhu\n", driver->name, dev->vendor,
+			pci_log("Matched driver \"%s\" to live device %04hx:%04hx on %02hhu:%02hhu\n", driver->name, dev->vendor,
 					dev->device, dev->bus, dev->slot);
 
 			// Now, probe the device using the registered driver.
@@ -148,7 +148,7 @@ i32 pci_register_driver(PciDriver* driver)
 			// Probing failed, the driver is probably faulty so disable it.
 			if (ret != 0)
 			{
-				pci_log("Probing device %04hx:%04hx on %hhu:%hhu has failed with error code %i!\n", dev->vendor,
+				pci_log("Probing device %04hx:%04hx on %02hhu:%02hhu has failed with error code %i!\n", dev->vendor,
 						dev->device, dev->bus, dev->slot, ret);
 				dev->driver = NULL;
 			}
@@ -205,8 +205,8 @@ i32 pci_register_device(PciDevice* device)
 
 	list_push(&pci_devices, device);
 
-	pci_log("New PCI device %04hx:%04hx on %hhu:%hhu (%s)\n", device->vendor, device->device, device->bus, device->slot,
-			pci_class_names[device->class]);
+	pci_log("New PCI device %04hx:%04hx on %02hhu:%02hhu (%s)\n", device->vendor, device->device, device->bus,
+			device->slot, pci_class_names[device->class]);
 
 	return 0;
 }

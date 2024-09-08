@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <menix/thread/elf.h>
 #include <menix/util/types.h>
 
 extern const u8 __ld_kernel_start[];
@@ -27,9 +26,3 @@ extern const u8 __ld_kernel_end[];
 #define SEGMENT_START(segment) (__ld_seg_##segment##_start)
 #define SEGMENT_END(segment)   (__ld_seg_##segment##_end)
 #define SEGMENT_SIZE(segment)  (SECTION_END(segment) - SECTION_START(segment))
-
-// Sets the current kernel context to the given address.
-void self_set_kernel(Elf_Hdr* addr);
-
-// Returns a pointer to where the kernel was loaded into memory.
-Elf_Hdr* self_get_kernel();

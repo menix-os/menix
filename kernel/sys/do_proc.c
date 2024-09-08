@@ -1,7 +1,7 @@
 // Syscall "exec"
 
 #include <menix/sys/syscall.h>
-#include <menix/thread/proc.h>
+#include <menix/thread/process.h>
 
 #include <errno.h>
 

@@ -8,13 +8,12 @@
 #include <menix/fs/vfs.h>
 #include <menix/memory/alloc.h>
 #include <menix/module.h>
-#include <menix/thread/proc.h>
+#include <menix/thread/process.h>
 #include <menix/thread/spin.h>
+#include <menix/util/hash_map.h>
 
 #include <errno.h>
 #include <string.h>
-
-#include "menix/util/hash_map.h"
 
 static FileSystem devtmpfs;
 

@@ -3,18 +3,26 @@
 #include <menix/common.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/vm.h>
-#include <menix/thread/proc.h>
+#include <menix/thread/process.h>
 #include <menix/thread/spin.h>
 
 #include <string.h>
 
-SpinLock lock = spin_new();
-usize pid_counter = 0;
+static SpinLock lock = spin_new();
+static usize pid_counter = 0;
+
+void proc_create(char* name, ProcessState state, usize ip, bool is_user, Process* parent)
+{
+	spin_acquire_force(&lock);
+
+	Process* proc = kzalloc(sizeof(Process));
+	strncpy(proc->name, name, sizeof(proc->name));
+
+	spin_free(&lock);
+}
 
 bool proc_execve(const char* path, char** argv, char** envp)
 {
-	Process* proc = kzalloc(sizeof(Process));
-
 	// TODO
 
 	return true;

@@ -3,69 +3,84 @@
 #pragma once
 
 #include <menix/common.h>
+#include <menix/fs/handle.h>
+#include <menix/log.h>
+#include <menix/memory/vm.h>
 
 #include <bits/elf.h>
 
 // ELF Header Identification
-#define EI_MAG0		  0		// 0x7F
-#define EI_MAG1		  1		// 'E'
-#define EI_MAG2		  2		// 'L'
-#define EI_MAG3		  3		// 'F'
-#define EI_CLASS	  4		// File class
-#define EI_DATA		  5		// Data encoding
-#define EI_VERSION	  6		// File version
-#define EI_OSABI	  7		// OS/ABI identification
-#define EI_ABIVERSION 8		// ABI version
-#define EI_PAD		  9		// Start of padding bytes
-#define EI_NIDENT	  16	// Size of e_ident[]
+#define ELF_MAG \
+	(const char[4]) \
+	{ \
+		0x7F, 'E', 'L', 'F' \
+	}
+#define EI_MAG0				0	  // 0x7F
+#define EI_MAG1				1	  // 'E'
+#define EI_MAG2				2	  // 'L'
+#define EI_MAG3				3	  // 'F'
+#define EI_CLASS			4	  // File class
+#define EI_DATA				5	  // Data encoding
+#define EI_VERSION			6	  // File version
+#define EI_OSABI			7	  // OS/ABI identification
+#define EI_ABIVERSION		8	  // ABI version
+#define EI_PAD				9	  // Start of padding bytes
+#define EI_NIDENT			16	  // Size of e_ident[]
 // ELF Identification Type
-#define ELFCLASS32	  1
-#define ELFCLASS64	  2
-#define ELFCLASSNUM	  3
-#define ELFDATA2LSB	  1
-#define ELFDATA2MSB	  2
-#define ELFDATANUM	  3
-#define E_NONE		  0
-#define E_CURRENT	  1
-#define E_NUM		  2
+#define ELFCLASS32			1
+#define ELFCLASS64			2
+#define ELFCLASSNUM			3
+#define ELFDATA2LSB			1
+#define ELFDATA2MSB			2
+#define ELFDATANUM			3
+#define EV_NONE				0
+#define EV_CURRENT			1
+#define EV_NUM				2
+#define ELFOSABI_SYSV		0	   // System V ABI
+#define ELFOSABI_HPUX		1	   // HP-UX operating system
+#define ELFOSABI_STANDALONE 255	   // Standalone (embedded) application
 // ELF Header Type
-#define ET_NONE		  0
-#define ET_REL		  1
-#define ET_EXEC		  2
-#define ET_DYN		  3
-#define ET_CORE		  4
+#define ET_NONE				0
+#define ET_REL				1
+#define ET_EXEC				2
+#define ET_DYN				3
+#define ET_CORE				4
+#define ET_LOOS				0xFE00	  // Environment-specific use
+#define ET_HIOS				0xFEFF	  //
+#define ET_LOPROC			0xFF00	  // Processor-specific use
+#define ET_HIPROC			0xFFFF	  //
 // Program Header Type
-#define PT_NULL		  0x00000000
-#define PT_LOAD		  0x00000001
-#define PT_DYNAMIC	  0x00000002
-#define PT_INTERP	  0x00000003
-#define PT_NOTE		  0x00000004
-#define PT_SHLIB	  0x00000005
-#define PT_PHDR		  0x00000006
-#define PT_TLS		  0x00000007
+#define PT_NULL				0x00000000
+#define PT_LOAD				0x00000001
+#define PT_DYNAMIC			0x00000002
+#define PT_INTERP			0x00000003
+#define PT_NOTE				0x00000004
+#define PT_SHLIB			0x00000005
+#define PT_PHDR				0x00000006
+#define PT_TLS				0x00000007
 // Program Header Flags
-#define PF_X		  0x01
-#define PF_W		  0x02
-#define PF_R		  0x04
+#define PF_X				0x01
+#define PF_W				0x02
+#define PF_R				0x04
 // Section Header
-#define SHF_WRITE	  0x1			// Section contains writable data
-#define SHF_ALLOC	  0x2			// Section is allocated in memory image of program
-#define SHF_EXECINSTR 0x4			// Section contains executable instructions
-#define SHF_MASKOS	  0x0F000000	// Environment - specific use
-#define SHF_MASKPROC  0xF0000000	// Processor - specific use
+#define SHF_WRITE			0x1			  // Section contains writable data
+#define SHF_ALLOC			0x2			  // Section is allocated in memory image of program
+#define SHF_EXECINSTR		0x4			  // Section contains executable instructions
+#define SHF_MASKOS			0x0F000000	  // Environment - specific use
+#define SHF_MASKPROC		0xF0000000	  // Processor - specific use
 // Section Header Linkage Type
-#define SHT_NULL	  0		// Marks an unused section header
-#define SHT_PROGBITS  1		// Contains information defined by the program
-#define SHT_SYMTAB	  2		// Contains a linker symbol table
-#define SHT_STRTAB	  3		// Contains a string table
-#define SHT_RELA	  4		// Contains “Rela” type relocation entries
-#define SHT_HASH	  5		// Contains a symbol hash table
-#define SHT_DYNAMIC	  6		// Contains dynamic linking tables
-#define SHT_NOTE	  7		// Contains note information
-#define SHT_NOBITS	  8		// Contains uninitialized space; does not occupy any space in the file
-#define SHT_REL		  9		// Contains “Rel” type relocation entries
-#define SHT_SHLIB	  10	// Reserved
-#define SHT_DYNSYM	  11	// Contains a dynamic loader symbol table
+#define SHT_NULL			0	  // Marks an unused section header
+#define SHT_PROGBITS		1	  // Contains information defined by the program
+#define SHT_SYMTAB			2	  // Contains a linker symbol table
+#define SHT_STRTAB			3	  // Contains a string table
+#define SHT_RELA			4	  // Contains “Rela” type relocation entries
+#define SHT_HASH			5	  // Contains a symbol hash table
+#define SHT_DYNAMIC			6	  // Contains dynamic linking tables
+#define SHT_NOTE			7	  // Contains note information
+#define SHT_NOBITS			8	  // Contains uninitialized space; does not occupy any space in the file
+#define SHT_REL				9	  // Contains “Rel” type relocation entries
+#define SHT_SHLIB			10	  // Reserved
+#define SHT_DYNSYM			11	  // Contains a dynamic loader symbol table
 
 #define ELF_ST_BIND(i)	  ((i) >> 4)
 #define ELF_ST_TYPE(i)	  ((i) & 0xf)
@@ -80,6 +95,36 @@
 #define ELF32_R_TYPE(i)	   ((u8)(i))
 #define ELF32_R_INFO(s, t) (((s) << 8) + (u8)(t))
 
+#if CONFIG_bits == 64
+#define ELF_R_SYM(i)	 ELF64_R_SYM(i)
+#define ELF_R_TYPE(i)	 ELF64_R_TYPE(i)
+#define ELF_R_INFO(s, t) ELF64_R_INFO(s, t)
+#else
+#define ELF_R_SYM(i)	 ELF32_R_SYM(i)
+#define ELF_R_TYPE(i)	 ELF32_R_TYPE(i)
+#define ELF_R_INFO(s, t) ELF32_R_INFO(s, t)
+#endif
+
+// Symbol bindings
+#define STB_LOCAL  0	 // Not visible outside the object file
+#define STB_GLOBAL 1	 // Global symbol, visible to all object files
+#define STB_WEAK   2	 // Global scope, but with lower precedence than global symbols
+#define STB_LOOS   10	 // Environment-specific use
+#define STB_HIOS   12	 //
+#define STB_LOPROC 13	 // Processor-specific use
+#define STB_HIPROC 15	 //
+
+// Symbol types
+#define STT_NOTYPE	0	  // No type specified (e.g., an absolute symbol)
+#define STT_OBJECT	1	  // Data object
+#define STT_FUNC	2	  // Function entry point
+#define STT_SECTION 3	  // Symbol is associated with a section
+#define STT_FILE	4	  // Source file associated with the object file
+#define STT_LOOS	10	  // Environment-specific use
+#define STT_HIOS	12	  //
+#define STT_LOPROC	13	  // Processor-specific use
+#define STT_HIPROC	15	  //
+
 // ELF types that are related to the build host.
 #if CONFIG_bits == 64
 #define Elf_Hdr	 Elf64_Hdr
@@ -90,6 +135,9 @@
 #define Elf_Addr Elf64_Addr
 #define Elf_Off	 Elf64_Off
 #define Elf_Sym	 Elf64_Sym
+#define Elf_Rel	 Elf64_Rel
+#define Elf_Rela Elf64_Rela
+#define Elf_Nhdr Elf64_Nhdr
 #else
 #define Elf_Hdr	 Elf32_Hdr
 #define Elf_Phdr Elf32_Phdr
@@ -99,6 +147,9 @@
 #define Elf_Addr Elf32_Addr
 #define Elf_Off	 Elf32_Off
 #define Elf_Sym	 Elf32_Sym
+#define Elf_Rel	 Elf32_Rel
+#define Elf_Rela Elf32_Rela
+#define Elf_Nhdr Elf32_Nhdr
 #endif
 
 #if CONFIG_bits == 64
@@ -270,5 +321,19 @@ typedef struct
 	u32 n_type;
 } Elf32_Nhdr;
 
+#define elf_log(fmt, ...) kmesg("[ELF]\t" fmt, ##__VA_ARGS__)
+
 // Gets a section from an ELF by name.
 void* elf_get_section(void* elf, const char* name);
+
+// Sets the current kernel context to the given address.
+void elf_set_kernel(Elf_Hdr* addr);
+
+// Returns a pointer to where the kernel was loaded into memory.
+Elf_Hdr* elf_get_kernel();
+
+// Loads an ELF executable.
+usize elf_load(PageMap* page_map, Handle* handle, usize base);
+
+// Loads a kernel module from a path.
+i32 elf_module_load(const char* path);

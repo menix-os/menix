@@ -4,7 +4,7 @@
 #include <menix/common.h>
 #include <menix/log.h>
 #include <menix/sys/syscall.h>
-#include <menix/thread/proc.h>
+#include <menix/thread/process.h>
 
 #include <idt.h>
 #include <interrupts.h>

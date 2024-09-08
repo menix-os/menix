@@ -73,20 +73,20 @@ void* memmove(void* dstptr, const void* srcptr, usize size)
 	return dstptr;
 }
 
-void* memset(void* bufptr, u8 value, usize size)
+void* memset(void* dst, u8 value, usize size)
 {
-	u8* buf = (u8*)bufptr;
+	u8* buf = (u8*)dst;
 	for (usize i = 0; i < size; i++)
 		buf[i] = (u8)value;
-	return bufptr;
+	return dst;
 }
 
-void* memset32(void* bufptr, u32 value, usize size)
+void* memset32(void* dst, u32 value, usize size)
 {
-	u32* buf = (u32*)bufptr;
+	u32* buf = (u32*)dst;
 	for (usize i = 0; i < size; i++)
 		buf[i] = value;
-	return bufptr;
+	return dst;
 }
 
 char* strdup(const char* src)
@@ -99,4 +99,30 @@ char* strdup(const char* src)
 	if (dest == NULL)
 		return NULL;
 	return memcpy(dest, src, length);
+}
+
+char* strncpy(char* restrict dst, const char* restrict src, usize len)
+{
+	usize dst_len = strnlen(dst, len);
+	usize src_len = strnlen(src, len);
+
+	return memcpy(dst, src, MIN(dst_len, src_len));
+}
+
+usize strncmp(const char* str1, const char* str2, usize len)
+{
+	while (len && *str1 && (*str1 == *str2))
+	{
+		++str1;
+		++str2;
+		--len;
+	}
+	if (len == 0)
+	{
+		return 0;
+	}
+	else
+	{
+		return (*(unsigned char*)str1 - *(unsigned char*)str2);
+	}
 }

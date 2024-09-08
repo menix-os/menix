@@ -6,6 +6,7 @@
 
 MODULE_FN i32 init_fn()
 {
+	module_log("Registering new keyboard input.\n");
 	return 0;
 }
 

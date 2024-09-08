@@ -9,9 +9,9 @@ MODULE_FN i32 xhci_pci_probe(PciDevice* dev)
 	return 0;
 }
 
-static const PciVariant xhci_match = {PCI_DEVICE(PCI_ANY_ID, PCI_ANY_ID), 0xC, 0x3, 0x30};
+static const PciVariant xhci_match = {PCI_CLASS3(0xC, 0x3, 0x30)};
 
-static PciDriver usb_xhci_driver = {
+static PciDriver driver = {
 	.name = MODULE_NAME,
 	.variants = &xhci_match,
 	.num_variants = 1,
@@ -20,17 +20,13 @@ static PciDriver usb_xhci_driver = {
 
 MODULE_FN i32 init_fn()
 {
-	return pci_register_driver(&usb_xhci_driver);
+	return pci_register_driver(&driver);
 }
 
 MODULE_FN void exit_fn()
 {
-	pci_unregister_driver(&usb_xhci_driver);
+	pci_unregister_driver(&driver);
 }
 
-MODULE = {
-	.name = MODULE_NAME,
-	.init = init_fn,
-	.exit = exit_fn,
-	MODULE_META,
-};
+static const char* deps[] = {"usb_core"};
+MODULE_DEFAULT(init_fn, exit_fn, deps);

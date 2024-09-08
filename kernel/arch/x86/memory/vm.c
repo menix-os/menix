@@ -102,6 +102,10 @@ static u64* vm_arch_traverse(u64* top, usize idx, bool allocate)
 
 bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags)
 {
+	// TODO: This might be a really bad security flaw, but shouldn't be reachable from user space...
+	if (page_map == NULL)
+		page_map = kernel_map;
+
 	spin_acquire_force(&page_map->lock);
 
 	const usize virt_val = (usize)virt_addr;
@@ -186,7 +190,7 @@ void interrupt_pf_handler(CpuRegisters* regs)
 	}
 	else
 	{
-		kassert(regs->cs != CPL_KERNEL, "Fatal page fault in supervisor mode at address 0x%zx! (Error: 0xzu)", cr2,
+		kassert(regs->cs != CPL_KERNEL, "Fatal page fault in supervisor mode at address 0x%zx! (Error: 0x %zu)", cr2,
 				regs->error);
 	}
 }
