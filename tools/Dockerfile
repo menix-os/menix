@@ -1,6 +1,6 @@
-FROM opensuse/tumbleweed
+FROM archlinux/archlinux
 
-RUN zypper install -y cmake ninja clang gcc
+RUN pacman -Syuu cmake ninja clang gcc --noconfirm
 
 COPY include /app/include
 COPY kernel /app/kernel
