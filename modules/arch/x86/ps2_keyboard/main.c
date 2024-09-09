@@ -1,4 +1,10 @@
 #include <menix/common.h>
+#include <menix/fs/devtmpfs.h>
+#include <menix/fs/fd.h>
+#include <menix/fs/handle.h>
+#include <menix/io/terminal.h>
+
+#include <interrupts.h>
 
 #ifndef CONFIG_arch_x86
 #error This driver is only compatible with x86!
@@ -8,10 +14,14 @@
 #include <menix/module.h>
 
 #include <io.h>
+#include <pic.h>
 
 #define KB_KEY_DOWN_LSHIFT	 0x2A
 #define KB_KEY_UP_LSHIFT	 0xAA
 #define KB_KEY_DOWN_CAPSLOCK 0x3A
+
+#define KEYBOARD_DATA_PORT	 0x60
+#define KEYBOARD_STATUS_PORT 0x64
 
 unsigned char keyboard_map[128] = {
 	'\0', '\e', '1',  '2', '3',	 '4',  '5',	 '6',  '7',	 '8',  '9',	 '0',  '-',	 '=',  '\b', '\t', 'q',	 'w',
@@ -27,16 +37,44 @@ unsigned char keyboard_shift_map[128] = {
 	'\0', '*',	'\0', ' ', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '\0', '7',
 	'8',  '9',	'-',  '4', '5',	 '6',  '+',	 '1',  '2',	 '3',  '0',	 '.',  '\0', '\0', '\0', '\0', '\0'};
 
+static u8 shift = 1;
+
 static u8 ps2_read()
 {
-	while (!!arch_x86_read8(0x64) == 0)
+	while (!!arch_x86_read8(KEYBOARD_STATUS_PORT) == 0)
 		asm_pause();
-	return arch_x86_read8(0x60);
+	return arch_x86_read8(KEYBOARD_DATA_PORT);
+}
+
+static void interrupt_keyboard(CpuRegisters* regs)
+{
+	arch_x86_write8(PIC1_COMMAND_PORT, 0x20);
+
+	u8 keycode = ps2_read();
+
+	// Determine shift.
+	if (keycode == KB_KEY_DOWN_LSHIFT || keycode == KB_KEY_UP_LSHIFT || keycode == KB_KEY_DOWN_CAPSLOCK)
+	{
+		shift = !shift;
+		return;
+	}
+
+	// Only get press events.
+	if (keycode > 128)
+		return;
+
+	char ch = shift ? keyboard_map[keycode] : keyboard_shift_map[keycode];
+	terminal_puts(terminal_get_active(), &ch, 1);
 }
 
 MODULE_FN i32 init_fn()
 {
-	// TODO
+	// Add this keyboard as a new input method.
+	interrupt_register(0x21, interrupt_keyboard);
+
+	// Mark as ready.
+	arch_x86_write8(PIC1_DATA_PORT, 0xFD);
+
 	module_log("Registered PS/2 keyboard input.\n");
 	return 0;
 }

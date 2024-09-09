@@ -34,6 +34,9 @@ void kernel_main(BootInfo* info)
 	char* argv[] = {"/boot/init", NULL};
 	proc_execve("init", argv, NULL);
 
+	while (1)
+		asm_pause();
+
 	// Clean up all modules and subsystems.
 	module_fini();
 }

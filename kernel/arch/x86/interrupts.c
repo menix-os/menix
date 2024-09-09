@@ -1,6 +1,5 @@
 // Interrupt handlers (called by ASM stubs)
 
-#include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
 #include <menix/sys/syscall.h>
@@ -65,6 +64,17 @@ static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
 	[0x0E] = interrupt_pf_handler,
 	[0x80] = syscall_handler,
 };
+
+void interrupt_register(usize idx, void (*handler)(CpuRegisters*))
+{
+	if (idx > IDT_MAX_SIZE)
+		return;
+
+	if (exception_handlers[idx] != NULL)
+		return;
+
+	exception_handlers[idx] = handler;
+}
 
 void interrupt_handler(CpuRegisters* regs)
 {

@@ -17,6 +17,9 @@
 static BootInfo* boot_info;
 static SpinLock cpu_lock = spin_new();
 
+// Assembly stub for syscall via SYSCALL/SYSRET.
+extern void sc_syscall(void);
+
 // Initialize one CPU.
 void arch_init_cpu(Cpu* cpu, Cpu* boot)
 {

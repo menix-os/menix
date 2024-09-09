@@ -2,6 +2,7 @@
 
 #pragma once
 
+#include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
 
@@ -9,5 +10,4 @@
 #define INT_HANDLER(num)	  interrupt_##num
 #define INT_HANDLER_DECL(num) extern void INT_HANDLER(num)(void)
 
-// Assembly stub for syscall via SYSCALL/SYSRET.
-extern void sc_syscall(void);
+void interrupt_register(usize idx, void (*handler)(CpuRegisters*));

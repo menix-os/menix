@@ -90,7 +90,7 @@ void idt_init()
 
 	// clang-format on
 
-	// Remap PIC and disable.
+	// Remap PIC so all interrupts start at 0x20 since interrupts 0x00..0x1F are used by the CPU vector.
 	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);
 	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);
 	arch_x86_write8(PIC1_DATA_PORT, 0x20);
@@ -98,9 +98,9 @@ void idt_init()
 	arch_x86_write8(PIC1_DATA_PORT, 0x0);
 	arch_x86_write8(PIC2_DATA_PORT, 0x0);
 	arch_x86_write8(PIC1_DATA_PORT, 0x1);
-	arch_x86_write8(PIC1_DATA_PORT, 0x1);
+	arch_x86_write8(PIC2_DATA_PORT, 0x1);
 	arch_x86_write8(PIC1_DATA_PORT, 0xFF);
-	arch_x86_write8(PIC1_DATA_PORT, 0xFF);
+	arch_x86_write8(PIC2_DATA_PORT, 0xFF);
 
 	idt_reload();
 	asm_interrupt_enable();
