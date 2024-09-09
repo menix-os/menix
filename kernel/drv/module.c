@@ -74,8 +74,8 @@ void module_init(BootInfo* info)
 	for (usize sym = 0; sym < symtab->sh_size / symtab->sh_entsize; sym++)
 	{
 		const char* symbol_name = strtab_data + symtab_data[sym].st_name;
-		// Only match global function symbols.
-		if (symtab_data[sym].st_info == (STB_GLOBAL << 4 | STT_FUNC))
+		// Only match global symbols.
+		if (symtab_data[sym].st_info & (STB_GLOBAL << 4) && symtab_data[sym].st_size != 0)
 			module_register_symbol(symbol_name, symtab_data + sym);
 	}
 
