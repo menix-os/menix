@@ -67,6 +67,7 @@ static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
 
 void interrupt_register(usize idx, void (*handler)(CpuRegisters*))
 {
+	asm_interrupt_disable();
 	if (idx > IDT_MAX_SIZE)
 		return;
 
@@ -74,6 +75,7 @@ void interrupt_register(usize idx, void (*handler)(CpuRegisters*))
 		return;
 
 	exception_handlers[idx] = handler;
+	asm_interrupt_enable();
 }
 
 void interrupt_handler(CpuRegisters* regs)

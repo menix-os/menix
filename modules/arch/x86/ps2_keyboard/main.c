@@ -48,6 +48,7 @@ static u8 ps2_read()
 
 static void interrupt_keyboard(CpuRegisters* regs)
 {
+	// Send End of Interrupt to the master PIC.
 	arch_x86_write8(PIC1_COMMAND_PORT, 0x20);
 
 	u8 keycode = ps2_read();
@@ -72,7 +73,17 @@ MODULE_FN i32 init_fn()
 	// Add this keyboard as a new input method.
 	interrupt_register(0x21, interrupt_keyboard);
 
-	// Mark as ready.
+	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xFF);	// Reset PS/2 controller.
+	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xAE);	// Enable PS/2 keyboard.
+	arch_x86_write8(KEYBOARD_DATA_PORT, 0xFF);		// Reset the keyboard.
+	// Wait for acknowledgment.
+	while (arch_x86_read8(KEYBOARD_DATA_PORT) != 0xFA)
+		;
+
+	arch_x86_write8(KEYBOARD_DATA_PORT, 0xF0);	  // Send "Set Scan Code Set" command.
+	arch_x86_write8(KEYBOARD_DATA_PORT, 0x02);	  // Set scan code set 2.
+
+	// Mask everything but IRQ1 (keyboard).
 	arch_x86_write8(PIC1_DATA_PORT, 0xFD);
 
 	module_log("Registered PS/2 keyboard input.\n");

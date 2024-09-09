@@ -51,42 +51,10 @@ MODULE_FN void fbcon_scroll()
 	fbcon_copy_screen();
 }
 
-MODULE_FN void fbcon_putchar(u32 ch)
+static void fbcon_putchar(u32 ch)
 {
 	if (!internal_fb)
 		return;
-
-	switch (ch)
-	{
-		case '\n':
-		{
-			ch_xpos = 0;
-			ch_ypos += 1;
-			return;
-		}
-		case '\t':
-		{
-			ch_xpos = ALIGN_UP(ch_xpos + 1, 8);
-			return;
-		}
-		case '\0': return;
-		default: break;
-	}
-
-	// Line break.
-	if (ch_xpos >= ch_width)
-	{
-		ch_xpos = 0;
-		ch_ypos += 1;
-	}
-
-	// If writing past the last line, scroll.
-	if (ch_ypos >= ch_height)
-	{
-		fbcon_scroll();
-		// Move cursor to the most bottom line.
-		ch_ypos = ch_height - 1;
-	}
 
 	const u8 c = (u8)ch;
 	FbModeInfo* mode = &internal_fb->mode;
@@ -128,7 +96,50 @@ MODULE_FN isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf,
 {
 	// Write each character to the buffer.
 	for (usize i = 0; i < len; i++)
-		fbcon_putchar(((char*)buf)[i]);
+	{
+		char ch = ((char*)buf)[i];
+		switch (ch)
+		{
+			case '\b':
+			{
+				if (ch_xpos > 0)
+					ch_xpos -= 1;
+				fbcon_putchar(' ');
+				ch_xpos -= 1;
+				continue;
+			}
+			case '\n':
+			{
+				ch_xpos = 0;
+				ch_ypos += 1;
+				continue;
+			}
+			case '\t':
+			{
+				ch_xpos = ALIGN_UP(ch_xpos + 1, 8);
+				continue;
+			}
+			case '\0': continue;
+			default: break;
+		}
+
+		// Line break.
+		if (ch_xpos >= ch_width)
+		{
+			ch_xpos = 0;
+			ch_ypos += 1;
+		}
+
+		// If writing past the last line, scroll.
+		if (ch_ypos >= ch_height)
+		{
+			fbcon_scroll();
+			// Move cursor to the most bottom line.
+			ch_ypos = ch_height - 1;
+		}
+
+		fbcon_putchar(ch);
+	}
 
 	// After we're done drawing, copy the modified pixels from the backbuffer.
 	for (usize i = 0; i < update_count; i++)

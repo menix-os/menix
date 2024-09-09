@@ -57,10 +57,8 @@ void idt_init()
 	asm_interrupt_disable();
 
 	// Set all gates.
-	// TODO: Consider using a better method than this.
 
 	// clang-format off
-
 	IDT_SET(0); IDT_SET(1); IDT_SET(2); IDT_SET(3); IDT_SET(4); IDT_SET(5); IDT_SET(6); IDT_SET(7); IDT_SET(8); IDT_SET(9);
 	IDT_SET(10); IDT_SET(11); IDT_SET(12); IDT_SET(13); IDT_SET(14); IDT_SET(15); IDT_SET(16); IDT_SET(17); IDT_SET(18); IDT_SET(19);
 	IDT_SET(20); IDT_SET(21); IDT_SET(22); IDT_SET(23); IDT_SET(24); IDT_SET(25); IDT_SET(26); IDT_SET(27); IDT_SET(28); IDT_SET(29);
@@ -87,21 +85,23 @@ void idt_init()
 	IDT_SET(230); IDT_SET(231); IDT_SET(232); IDT_SET(233); IDT_SET(234); IDT_SET(235); IDT_SET(236); IDT_SET(237); IDT_SET(238); IDT_SET(239);
 	IDT_SET(240); IDT_SET(241); IDT_SET(242); IDT_SET(243); IDT_SET(244); IDT_SET(245); IDT_SET(246); IDT_SET(247); IDT_SET(248); IDT_SET(249);
 	IDT_SET(250); IDT_SET(251); IDT_SET(252); IDT_SET(253); IDT_SET(254); IDT_SET(255);
-
 	// clang-format on
 
-	// Remap PIC so all interrupts start at 0x20 since interrupts 0x00..0x1F are used by the CPU vector.
-	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);
-	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);
-	arch_x86_write8(PIC1_DATA_PORT, 0x20);
-	arch_x86_write8(PIC2_DATA_PORT, 0x28);
-	arch_x86_write8(PIC1_DATA_PORT, 0x0);
-	arch_x86_write8(PIC2_DATA_PORT, 0x0);
-	arch_x86_write8(PIC1_DATA_PORT, 0x1);
-	arch_x86_write8(PIC2_DATA_PORT, 0x1);
-	arch_x86_write8(PIC1_DATA_PORT, 0xFF);
-	arch_x86_write8(PIC2_DATA_PORT, 0xFF);
-
 	idt_reload();
+
+	// Remap IRQs so they start at 0x20 since interrupts 0x00..0x1F are used by CPU exceptions.
+	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);	 // ICW1: Begin initialization and set cascade mode.
+	arch_x86_write8(PIC1_DATA_PORT, 0x20);		 // ICW2: Set where interrupts should be mapped to (0x20-0x27).
+	arch_x86_write8(PIC1_DATA_PORT, 0x04);		 // ICW3: Connect IRQ2 (0x04) to the slave PIC.
+	arch_x86_write8(PIC1_DATA_PORT, 0x01);		 // ICW4: Set the PIC to operate in 8086/88 mode.
+	arch_x86_write8(PIC1_DATA_PORT, 0xFF);		 // Mask all interrupts.
+
+	// Same for the slave PIC.
+	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);	 // ICW1: Begin initialization.
+	arch_x86_write8(PIC2_DATA_PORT, 0x28);		 // ICW2: Set where interrupts should be mapped to (0x28-0x2F).
+	arch_x86_write8(PIC2_DATA_PORT, 0x02);		 // ICW3: Connect to master PIC at IRQ2.
+	arch_x86_write8(PIC2_DATA_PORT, 0x01);		 // ICW4: Set the PIC to operate in 8086/88 mode.
+	arch_x86_write8(PIC2_DATA_PORT, 0xFF);		 // Mask all interrupts.
+
 	asm_interrupt_enable();
 }
