@@ -10,4 +10,3 @@
 
 i32 printf(const char* restrict fmt, ...);
 i32 vprintf(const char* restrict fmt, va_list args);
-i32 putchar(i32 ch);

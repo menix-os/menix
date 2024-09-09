@@ -3,6 +3,7 @@
 #pragma once
 
 #include <menix/common.h>
+#include <menix/fs/handle.h>
 
 // Expression must be true, or else execution will stop.
 #define kassert(expr, msg, ...) \
@@ -19,6 +20,8 @@ typedef struct ATTR(packed) StackFrame
 	struct StackFrame* prev;	// The inner frame.
 	void* return_addr;			// The address this frame returns to.
 } StackFrame;
+
+void kmesg_set_output(Handle* handle);
 
 // Print a message to the kernel log.
 void kmesg(const char* fmt, ...);

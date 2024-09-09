@@ -11,6 +11,7 @@ function(add_architecture name)
 	target_link_options(menix PUBLIC "SHELL:-L ${MENIX_SRC}" "SHELL:-L ${MENIX_SRC}/toolchain/linker")
 
 	require_option(arch_${name})
+	conflicts_option(arch_*)
 endfunction(add_architecture)
 
 # Appends this directory to the Linker Script include search path.

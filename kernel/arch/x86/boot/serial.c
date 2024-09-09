@@ -1,9 +1,10 @@
 // x86 Serial interface
 
 #include <menix/common.h>
-#include <menix/io/serial.h>
+#include <menix/io/terminal.h>
 
 #include <io.h>
+#include <serial.h>
 
 #define COM1_BASE			 0x3F8	  // Serial port
 #define DATA_REG			 0		  // Data Register
@@ -20,7 +21,9 @@
 // If the COM port works or not.
 static bool can_use_serial = false;
 
-void serial_initialize()
+static Handle serial_driver;
+
+void serial_init()
 {
 	arch_x86_write8(COM1_BASE + INT_ENABLE_REG, 0x00);			// Disable interrupts
 	arch_x86_write8(COM1_BASE + LINE_CTRL_REG, 0x80);			// Enable DLAB (set baud rate divisor)
@@ -29,17 +32,19 @@ void serial_initialize()
 	arch_x86_write8(COM1_BASE + LINE_CTRL_REG, 0x03);			// 8 bits, no parity, one stop bit
 	arch_x86_write8(COM1_BASE + INT_ID_FIFO_CTRL_REG, 0xC7);	// Enable FIFO, clear them, with 14-byte threshold
 	arch_x86_write8(COM1_BASE + MODEM_CTRL_REG, 0x0B);			// IRQs enabled, RTS/DSR set
-	arch_x86_write8(COM1_BASE + MODEM_CTRL_REG, 0x1E);			// Set to loopback mode for testing.
 
-	arch_x86_write8(COM1_BASE + DATA_REG, 0xAE);		 // Send a test byte.
-	if (arch_x86_read8(COM1_BASE + DATA_REG) == 0xAE)	 // If we get the same back, we're ready.
+	arch_x86_write8(COM1_BASE + MODEM_CTRL_REG, 0x1E);	  // Set to loopback mode for testing.
+	arch_x86_write8(COM1_BASE + DATA_REG, 0xAE);		  // Send a test byte.
+	if (arch_x86_read8(COM1_BASE + DATA_REG) == 0xAE)	  // If we get the same back, we're ready.
 	{
 		can_use_serial = true;
 		arch_x86_write8(COM1_BASE + MODEM_CTRL_REG, 0x0F);	  // Set back to normal operation mode.
 	}
+
+	terminal_set_driver(0, &serial_driver);
 }
 
-void serial_putchar(char c)
+static void serial_putchar(char c)
 {
 	if (!can_use_serial)
 		return;
@@ -55,8 +60,12 @@ void serial_putchar(char c)
 	}
 }
 
-void serial_write(const u8* data, usize size)
+static isize serial_write(Handle* handle, FileDescriptor* fd, const void* data, usize size, off_t off)
 {
 	for (usize i = 0; i < size; i++)
-		serial_putchar(data[i]);
+		serial_putchar(((char*)data)[i]);
+
+	return size;
 }
+
+static Handle serial_driver = {.write = serial_write};

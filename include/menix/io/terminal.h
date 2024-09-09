@@ -2,9 +2,26 @@
 
 #pragma once
 #include <menix/common.h>
-#include <menix/video/fb.h>
+#include <menix/fs/handle.h>
 
-// Initializes the console with a framebuffer.
+#define TERMINAL_MAX 8
+
+typedef struct
+{
+	Handle* driver;
+} Terminal;
+
+// Initializes all terminals.
 void terminal_init();
 
-void terminal_puts(const char* buf, u32 len);
+// Set the active terminal to display.
+void terminal_set_active(usize terminal);
+
+// Gets the active terminal.
+usize terminal_get_active();
+
+// Set the active terminal to display.
+void terminal_set_driver(usize terminal, Handle* driver);
+
+// Writes a string to the active terminal.
+void terminal_puts(usize terminal, const char* buf, usize len);

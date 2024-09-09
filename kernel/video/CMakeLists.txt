@@ -1,4 +1,4 @@
-# Graphics Drivers
+# Graphics stack
 
 target_sources(menix PUBLIC
 	fb.c

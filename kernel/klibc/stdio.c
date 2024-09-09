@@ -8,21 +8,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-static bool print(const char* data, usize length)
-{
-	const char* bytes = (char*)data;
-	terminal_puts(bytes, length);
-	return true;
-}
+typedef bool (*PrintFn)(const char* buf, usize length);
 
-i32 putchar(i32 ic)
-{
-	const char c = ic;
-	terminal_puts(&c, 1);
-	return ic;
-}
-
-i32 vprintf(const char* restrict fmt, va_list args)
+// Prints to somewhere using a callback.
+static i32 printf_internal(PrintFn print, const char* restrict fmt, va_list args)
 {
 	// Amount of bytes written.
 	i32 written = 0;
@@ -320,6 +309,17 @@ print_num:
 		}
 	}
 	return written;
+}
+
+static bool print_to_terminal(const char* data, usize length)
+{
+	terminal_puts(0, data, length);
+	return true;
+}
+
+i32 vprintf(const char* restrict fmt, va_list args)
+{
+	return printf_internal(print_to_terminal, fmt, args);
 }
 
 i32 printf(const char* restrict fmt, ...)

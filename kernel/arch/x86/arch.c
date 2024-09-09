@@ -5,7 +5,6 @@
 #include <menix/drv/pci/pci.h>
 #include <menix/drv/pci/pci_acpi.h>
 #include <menix/fs/vfs.h>
-#include <menix/io/serial.h>
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
 #include <menix/thread/spin.h>
@@ -13,6 +12,7 @@
 #include <gdt.h>
 #include <idt.h>
 #include <interrupts.h>
+#include <serial.h>
 
 static BootInfo* boot_info;
 static SpinLock cpu_lock = spin_new();
@@ -128,7 +128,7 @@ void arch_early_init(BootInfo* info)
 	asm_interrupt_disable();
 	gdt_init();
 	idt_init();
-	serial_initialize();
+	serial_init();
 	boot_info = info;
 }
 

@@ -57,7 +57,7 @@ void kernel_boot()
 	// Get the memory map.
 	kassert(memmap_request.response, "Unable to get memory map!");
 	struct limine_memmap_response* const mm_res = memmap_request.response;
-	boot_kmesg("Bootloader provided memory map at 0x%p\n", mm_res);
+	boot_log("Bootloader provided memory map at 0x%p\n", mm_res);
 
 	PhysMemory map[mm_res->entry_count];
 	info.mm_num = mm_res->entry_count;
@@ -99,7 +99,7 @@ void kernel_boot()
 	FrameBuffer buffer = {0};
 
 	if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count == 0)
-		boot_kmesg("Unable to get a framebuffer!\n");
+		boot_log("Unable to get a framebuffer!\n");
 	else
 	{
 		// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
@@ -118,23 +118,22 @@ void kernel_boot()
 		if (fb_get_early() == NULL)
 		{
 			fb_set_early(&buffer);
-			terminal_init();
 		}
-		boot_kmesg("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n",
-				   buffer.info.mmio_base, buffer.mode.width, buffer.mode.height, buffer.mode.cpp * 8,
-				   buffer.mode.v_width, buffer.mode.v_height);
+		boot_log("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n",
+				 buffer.info.mmio_base, buffer.mode.width, buffer.mode.height, buffer.mode.cpp * 8, buffer.mode.v_width,
+				 buffer.mode.v_height);
 	}
 
 	// Get kernel file.
 	kassert(kernel_file_request.response, "Unable to get kernel file info!");
 	struct limine_kernel_file_response* const kernel_res = kernel_file_request.response;
-	boot_kmesg("Kernel file loaded at: 0x%p, Size = 0x%lx\n", kernel_res->kernel_file->address,
-			   kernel_res->kernel_file->size);
+	boot_log("Kernel file loaded at: 0x%p, Size = 0x%lx\n", kernel_res->kernel_file->address,
+			 kernel_res->kernel_file->size);
 
 	elf_set_kernel(kernel_res->kernel_file->address);
 
 	// Get command line.
-	boot_kmesg("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);
+	boot_log("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);
 	info.cmd = kernel_res->kernel_file->cmdline;
 
 #ifdef CONFIG_smp
@@ -142,7 +141,7 @@ void kernel_boot()
 	kassert(smp_request.response, "Unable to get kernel SMP info!");
 	const struct limine_smp_response* smp_res = smp_request.response;
 	info.cpu_num = smp_res->cpu_count;
-	boot_kmesg("Initializing %zu cores.\n", info.cpu_num);
+	boot_log("Initializing %zu cores.\n", info.cpu_num);
 	info.cpu_active = 0;
 	info.boot_cpu = smp_res->bsp_lapic_id;	  // Mark the boot CPU.
 	info.cpus = kzalloc(sizeof(Cpu) * info.cpu_num);
@@ -171,32 +170,32 @@ void kernel_boot()
 	// From now on we have to use the spin lock mechanism to keep track of the current CPU.
 	spin_use(true);
 #endif
-	boot_kmesg("Total processors active: %zu\n", info.cpu_active);
+	boot_log("Total processors active: %zu\n", info.cpu_active);
 
-	boot_kmesg("HHDM offset: 0x%p\n", hhdm_request.response->offset);
-	boot_kmesg("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
-			   kernel_address_request.response->physical_base);
+	boot_log("HHDM offset: 0x%p\n", hhdm_request.response->offset);
+	boot_log("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
+			 kernel_address_request.response->physical_base);
 
 #ifdef CONFIG_acpi
 	// Get ACPI RSDP.
 	kassert(rsdp_request.response, "Unable to get ACPI RSDP!");
-	boot_kmesg("ACPI RSDP at 0x%p\n", rsdp_request.response->address);
+	boot_log("ACPI RSDP at 0x%p\n", rsdp_request.response->address);
 	info.acpi_rsdp = rsdp_request.response->address;
 	kassert(memcmp(info.acpi_rsdp->signature, "RSD PTR", 7) == 0, "Invalid signature, expected \"RSD PTR\"!");
 #endif
 
 #ifdef CONFIG_open_firmware
 	kassert(dtb_request.response, "Unable to get device tree!");
-	boot_kmesg("FDT blob at 0x%p\n", dtb_request.response->dtb_ptr);
+	boot_log("FDT blob at 0x%p\n", dtb_request.response->dtb_ptr);
 	info.fdt_blob = dtb_request.response->dtb_ptr;
 #endif
 
 	// Get modules.
 	if (module_request.response == NULL)
-		boot_kmesg("Unable to get modules, or none were provided!");
+		boot_log("Unable to get modules, or none were provided!");
 	else
 	{
-		boot_kmesg("Got modules:\n");
+		boot_log("Got modules:\n");
 		const struct limine_module_response* module_res = module_request.response;
 		BootFile* files = kmalloc(sizeof(BootFile) * module_res->module_count);
 		for (usize i = 0; i < module_res->module_count; i++)
@@ -204,8 +203,8 @@ void kernel_boot()
 			files[i].address = module_res->modules[i]->address;
 			files[i].size = module_res->modules[i]->size;
 			files[i].path = module_res->modules[i]->path;
-			boot_kmesg("    [%i] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
-					   files[i].path);
+			boot_log("    [%i] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
+					 files[i].path);
 		}
 		info.file_num = module_res->module_count;
 		info.files = files;

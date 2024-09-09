@@ -23,8 +23,9 @@ void proc_create(char* name, ProcessState state, usize ip, bool is_user, Process
 
 bool proc_execve(const char* path, char** argv, char** envp)
 {
-	// TODO
+	spin_acquire_force(&lock);
 
+	spin_free(&lock);
 	return true;
 }
 
