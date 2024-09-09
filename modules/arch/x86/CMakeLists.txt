@@ -1,4 +1,4 @@
-# File systems
+# x86 platform drivers
 
 # Include all subdirectories with CMakeLists.
 file(GLOB_RECURSE subdir_list LIST_DIRECTORIES true "*")

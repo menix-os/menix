@@ -4,16 +4,16 @@ set(MENIX_PARENT_CAT menix_builtin)
 add_library(${MENIX_PARENT_CAT} INTERFACE)
 include(${MENIX_UTIL_PATH})
 
-# Include all subdirectories with CMakeLists.
-file(GLOB_RECURSE subdir_list LIST_DIRECTORIES true "*")
-
 # Prepare module build folder so we can create an archive, even if there's no modules to be packed.
 file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin/mod")
 
-include_directories(${CMAKE_CURRENT_SOURCE_DIR})
+# Architecture dependent drivers
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/arch/${MENIX_ARCH})
+	add_subdirectory(arch/${MENIX_ARCH})
+endif()
 
-foreach(item ${subdir_list})
-	if(IS_DIRECTORY ${item} AND EXISTS "${item}/CMakeLists.txt")
-		add_subdirectory(${item})
-	endif()
-endforeach()
+# Generic drivers
+add_subdirectory(drv)
+
+# File systems
+add_subdirectory(fs)
