@@ -29,11 +29,11 @@ static HashMap(Elf_Sym*) module_symbol_map;
 void module_init(BootInfo* info)
 {
 	// Initialize subsystems.
-#ifdef CONFIG_pci
-	pci_init();
-#endif
 #ifdef CONFIG_acpi
 	acpi_init(info->acpi_rsdp);
+#endif
+#ifdef CONFIG_pci
+	pci_init();
 #endif
 
 	// Initialize the module map.

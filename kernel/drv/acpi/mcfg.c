@@ -37,19 +37,15 @@ void pci_init_acpi()
 	}
 
 	const usize num_entries = (acpi_mcfg->header.length - sizeof(AcpiMcfg)) / sizeof(AcpiMcfgEntry);
+	list_new(pci_platform.buses, num_entries);
 
 	// Scan all buses for devices.
 	for (usize i = 0; i < num_entries; i++)
 	{
-		for (usize slot = 0; slot < 16; slot++)
-		{
-			PciDevice* dev = pci_scan_device(i, slot);
-			if (!dev)
-				continue;
-			if (pci_register_device(dev) != 0)
-				pci_log("Failed to register PCI device %hx:%hx on bus %hhu, slot %hhu!\n", dev->vendor, dev->device,
-						dev->bus, dev->slot);
-		}
+		PciBus* bus = kzalloc(sizeof(PciBus));
+		bus->id = i;
+
+		list_push(&pci_platform.buses, bus);
 	}
 
 	pci_log("Configured PCI using ACPI.\n");

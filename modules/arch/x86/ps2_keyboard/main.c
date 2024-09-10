@@ -76,9 +76,6 @@ MODULE_FN i32 init_fn()
 	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xFF);	// Reset PS/2 controller.
 	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xAE);	// Enable PS/2 keyboard.
 	arch_x86_write8(KEYBOARD_DATA_PORT, 0xFF);		// Reset the keyboard.
-	// Wait for acknowledgment.
-	while (arch_x86_read8(KEYBOARD_DATA_PORT) != 0xFA)
-		;
 
 	arch_x86_write8(KEYBOARD_DATA_PORT, 0xF0);	  // Send "Set Scan Code Set" command.
 	arch_x86_write8(KEYBOARD_DATA_PORT, 0x02);	  // Set scan code set 2.

@@ -27,11 +27,6 @@ void acpi_init(AcpiRsdp* rsdp)
 	rsdt = ACPI_ADDR(rsdp->xsdt_address);
 
 	acpi_log("Initialized ACPI (Rev. %u)\n", rsdp->revision);
-
-#ifdef CONFIG_pci
-	// The PCI subsystem depends on ACPI. Now we can enable it.
-	pci_init_acpi();
-#endif
 }
 
 void* acpi_find_table(const char* signature, usize index)
