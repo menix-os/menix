@@ -55,7 +55,7 @@ typedef struct
 	{
 		void* address;	  // Base address of the mapping.
 		usize size;		  // Bytes allocated.
-	} maps[16];			  // Mapping list.
+	} maps[16];			  // Mapping list of dynamically allocated pages.
 	bool loaded;		  // If the init() function has been called.
 } LoadedModule;
 
