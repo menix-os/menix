@@ -95,30 +95,33 @@ void* pm_get_phys_base()
 static PhysAddr get_free_pages(usize amount, usize start)
 {
 	usize i = start;
+	usize range_start = 0;
 
 	// Get a region of consecutive pages that fulfill the requested amount.
 	while (i < num_pages)
 	{
 		// If this page is used, skip it.
-		if (bitmap_get(bit_map, i) == true)
+		if (bitmap_get(bit_map, i))
 			goto next_page;
+
+		range_start = i;
 
 		// Otherwise, check if the next pages are free as well.
 		// Start with the page after `i`.
-		for (usize j = i; j < i + amount; j++)
+		for (usize j = 0; j < amount; j++)
 		{
-			if (bitmap_get(bit_map, j) == true)
-			{
-				i = j;
+			if (bitmap_get(bit_map, range_start + j))
 				goto next_page;
-			}
 		}
+
 		// If we got here, that means we have found a region with `amount` consecutive pages.
-		for (usize x = i; x < i + amount; x++)
+		for (usize x = 0; x < amount; x++)
 		{
-			bitmap_set(bit_map, x);
+			bitmap_set(bit_map, range_start + x);
 		}
-		return (PhysAddr)(i * CONFIG_page_size);
+
+		last_page = range_start;
+		return (PhysAddr)(range_start * CONFIG_page_size);
 
 next_page:
 		i++;
@@ -131,15 +134,14 @@ PhysAddr pm_arch_alloc(usize amount)
 {
 	spin_acquire_force(&lock);
 
-	kassert(num_free_pages != 0, "Out of physical memory!");
-
 	PhysAddr mem = get_free_pages(amount, last_page);
 	// If we couldn't find a free region starting at our last page offset, do another check, but from the beginning.
 	// This is a lot slower, but a last resort because the other option is to panic as we are out of physical memory.
 	if (mem == 0)
 	{
+		kassert(num_free_pages > 0, "Out of physical memory!");
 		last_page = 0;
-		mem = get_free_pages(amount, 0);
+		mem = get_free_pages(amount, last_page);
 	}
 
 	kassert(mem != 0, "Unable to allocate %zu consecutive pages, total %zu available!", amount, num_free_pages);
@@ -158,7 +160,9 @@ void pm_arch_free(PhysAddr addr, usize amount)
 	// Mark the page(s) as free.
 	const usize page_idx = addr / CONFIG_page_size;
 	for (usize i = page_idx; i < page_idx + amount; i++)
+	{
 		bitmap_clear(bit_map, i);
+	}
 	num_free_pages += 1;
 
 	spin_free(&lock);
