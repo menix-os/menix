@@ -33,7 +33,7 @@ typedef i32 (*ModuleInitFn)(void);
 typedef void (*ModuleExitFn)(void);
 
 // Module metadata and init/exit hooks for loading modules.
-typedef struct ATTR(packed) ATTR(aligned(0x20))
+typedef struct ATTR(packed)
 {
 	const char name[64];			// Name of the module.
 	const char author[64];			// Author(s) of this module.

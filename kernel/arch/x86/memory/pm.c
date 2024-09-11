@@ -108,7 +108,7 @@ static PhysAddr get_free_pages(usize amount, usize start)
 
 		// Otherwise, check if the next pages are free as well.
 		// Start with the page after `i`.
-		for (usize j = 0; j < amount; j++)
+		for (usize j = 1; j < amount; j++)
 		{
 			if (bitmap_get(bit_map, range_start + j))
 				goto next_page;
@@ -120,7 +120,7 @@ static PhysAddr get_free_pages(usize amount, usize start)
 			bitmap_set(bit_map, range_start + x);
 		}
 
-		last_page = range_start;
+		last_page = range_start + amount + 1;
 		return (PhysAddr)(range_start * CONFIG_page_size);
 
 next_page:
