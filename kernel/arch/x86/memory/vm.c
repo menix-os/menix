@@ -1,7 +1,5 @@
 // Virtual memory management for x86.
 
-#include "bits/vm.h"
-
 #include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
@@ -184,13 +182,15 @@ void interrupt_pf_handler(CpuRegisters* regs)
 
 	// If the current protection level wasn't 3, that means the page fault was
 	// caused by the supervisor! If this happens, we messed up big time!
-	if (regs->cs & CPL_USER)
+	if (!(regs->cs & CPL_USER))
 	{
-		// TODO Handle user page fault.
+		// TODO: Check error.
+
+		// If we can't recover, abort.
+		kmesg("Fatal page fault in supervisor mode at address 0x%zx! (Error: 0x%zx)\n", cr2, regs->error);
+		ktrace();
+		kabort();
 	}
-	else
-	{
-		kassert(regs->cs != CPL_KERNEL, "Fatal page fault in supervisor mode at address 0x%zx! (Error: 0x %zu)", cr2,
-				regs->error);
-	}
+
+	// TODO: Handle user page fault.
 }

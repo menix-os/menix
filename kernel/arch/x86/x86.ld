@@ -1,6 +1,12 @@
 /* Linker script for x86 builds */
 
-INCLUDE common.ld
+PHDRS
+{
+	headers	PT_LOAD		FILEHDR PHDRS;
+	text	PT_LOAD		FLAGS(5);
+	rodata	PT_LOAD		FLAGS(4);
+	data	PT_LOAD		FLAGS(6);
+}
 
 SECTIONS
 {
@@ -37,7 +43,6 @@ SECTIONS
 	__ld_seg_rodata_end = .;
 	} :rodata
 
-
 	.data ALIGN(4K):
 	{
 	__ld_seg_data_start = .;
@@ -66,6 +71,11 @@ SECTIONS
 
 	/DISCARD/ :
 	{
-		INCLUDE discard.ld
+		*(.comment*)
+		*(.eh_frame*)
+		*(.gcc_except_table*)
+		*(.note*)
+		*(.rel.eh_frame*)
+		*(.interp)
 	}
 }

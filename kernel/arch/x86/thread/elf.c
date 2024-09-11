@@ -10,6 +10,52 @@
 #include <errno.h>
 #include <string.h>
 
+#include "bits/pm.h"
+
+static i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data, Elf_Shdr* section_headers,
+						void* base_virt)
+{
+	Elf_Sym* symbol = symtab_data + ELF64_R_SYM(reloc->r_info);
+	const char* symbol_name = strtab_data + symbol->st_name;
+
+	void* location = (void*)section_headers[symbol->st_shndx].sh_addr + reloc->r_offset;
+
+	switch (ELF_R_TYPE(reloc->r_info))
+	{
+		case R_X86_64_64:
+		case R_X86_64_GLOB_DAT:
+		case R_X86_64_JUMP_SLOT:
+		{
+			void* resolved;
+			if (symbol->st_shndx == 0)
+				resolved = (void*)module_get_symbol(symbol_name)->st_value;
+			else
+			{
+				Elf_Shdr* symbol_section = (section_headers + symbol->st_shndx);
+				resolved = (void*)symbol_section->sh_addr + symbol->st_value + reloc->r_addend;
+			}
+			if (resolved == NULL)
+			{
+				module_log("Failed to find symbol \"%s\"!\n", symbol_name);
+				return 1;
+			}
+			*(void**)location = resolved;
+			break;
+		}
+		case R_X86_64_RELATIVE:
+		{
+			*(void**)location = base_virt + reloc->r_addend;
+			break;
+		}
+		default:
+		{
+			module_log("Unhandled relocation %zu!\n", ELF_R_TYPE(reloc->r_info));
+			return 1;
+		}
+	}
+	return 0;
+}
+
 i32 elf_module_load(const char* path)
 {
 	// Get module handle from file.
@@ -68,21 +114,25 @@ i32 elf_module_load(const char* path)
 	usize dt_rela = 0;
 	isize dt_relasz = 0;
 	isize dt_relaent = 0;
+	isize dt_pltrelsz = 0;
+	usize dt_jmprel = 0;
+
+	// Reserve memory for the entire file.
+	PhysAddr base_phys = pm_arch_alloc((handle->stat.st_size / CONFIG_page_size) + 1);
+	void* base_virt = pm_get_phys_base() + base_phys;
 
 	for (usize i = 0; i < hdr->e_phnum; i++)
 	{
 		Elf_Phdr* seg = program_headers + i;
+
 		if (seg->p_type == PT_LOAD)
 		{
-			// Allocate enough pages.
-			PhysAddr data = pm_arch_alloc((seg->p_memsz / CONFIG_page_size) + 1);
-
-			// Update the section location to the one we allocated.
-			seg->p_paddr = (Elf_Addr)data;
-			seg->p_vaddr = (Elf_Addr)(pm_get_phys_base() + data);
+			// Relocate the segment addresses.
+			seg->p_paddr = (Elf_Addr)base_phys + seg->p_offset;
+			seg->p_vaddr = (Elf_Addr)(base_virt + seg->p_vaddr);
 
 			// Keep track of allocated data for unloading.
-			loaded->maps[loaded->num_maps].address = (void*)seg->p_vaddr;
+			loaded->maps[loaded->num_maps].address = seg->p_vaddr;
 			loaded->maps[loaded->num_maps].size = seg->p_memsz;
 			loaded->num_maps++;
 
@@ -90,10 +140,13 @@ i32 elf_module_load(const char* path)
 			handle->read(handle, NULL, (void*)seg->p_vaddr, seg->p_filesz, seg->p_offset);
 			// Zero out unloaded data.
 			memset((void*)seg->p_vaddr + seg->p_filesz, 0, seg->p_memsz - seg->p_filesz);
+
+			// Map the segment into memory at the requested location. (RW temporarily so we can do relocations).
+			vm_arch_map_page(NULL, seg->p_paddr, (void*)seg->p_vaddr, PAGE_READ_WRITE);
 		}
 		else if (seg->p_type == PT_DYNAMIC)
 		{
-			// Handle dynamic table.
+			// Extract the dynamic table information.
 			Elf_Dyn* dynamic_table = kmalloc(seg->p_memsz);
 			handle->read(handle, NULL, dynamic_table, seg->p_filesz, seg->p_offset);
 
@@ -107,13 +160,42 @@ i32 elf_module_load(const char* path)
 					case DT_RELA: dt_rela = dynamic_table[i].d_un.d_ptr; break;
 					case DT_RELASZ: dt_relasz = dynamic_table[i].d_un.d_val; break;
 					case DT_RELAENT: dt_relaent = dynamic_table[i].d_un.d_val; break;
+					case DT_PLTRELSZ: dt_pltrelsz = dynamic_table[i].d_un.d_val; break;
+					case DT_JMPREL: dt_jmprel = dynamic_table[i].d_un.d_ptr; break;
 				}
+			}
+
+			kfree(dynamic_table);
+
+			// Sanity check.
+			if (dt_strtab == 0 || dt_symtab == 0 || dt_strsz == 0 || dt_rela == 0 || dt_relasz == 0 || dt_relaent == 0)
+			{
+				module_log("Failed to load module \"%s\": Dynamic section is malformed!\n", path);
+				goto reloc_fail;
 			}
 		}
 	}
 
-	// Base address where the first PT_LOAD entry has been loaded at.
-	void* base_addr = loaded->maps[0].address;
+	// Load section string table.
+	char* shstrtab_data = kmalloc(section_headers[hdr->e_shstrndx].sh_size);
+	handle->read(handle, NULL, shstrtab_data, section_headers[hdr->e_shstrndx].sh_size,
+				 section_headers[hdr->e_shstrndx].sh_offset);
+
+	// Update the section vaddrs and get the section header containing the module metadata.
+	Module* module = 0;
+	for (usize i = 0; i < hdr->e_shnum; i++)
+	{
+		section_headers[i].sh_addr = (Elf_Addr)base_virt + section_headers[i].sh_addr;
+		if (strncmp(".mod", shstrtab_data + section_headers[i].sh_name, 4) == 0)
+			module = (Module*)section_headers[i].sh_addr;
+	}
+
+	// Check if the module information was found.
+	if (module == NULL)
+	{
+		module_log("Failed to load module \"%s\": Module does not contain a .mod section!\n", path);
+		goto reloc_fail;
+	}
 
 	// Load string table.
 	char* strtab_data = kmalloc(dt_strsz);
@@ -124,58 +206,25 @@ i32 elf_module_load(const char* path)
 	Elf_Sym* symtab_data = kmalloc(dt_symsz);
 	handle->read(handle, NULL, symtab_data, dt_symsz, dt_symtab);
 
-	// Load relocation table.
+	// Handle relocations for .rela.dyn
 	Elf_Rela* relocation_data = kmalloc(dt_relasz);
 	handle->read(handle, NULL, relocation_data, dt_relasz, dt_rela);
-
-	// Handle relocations.
-	for (usize rel = 0; rel < dt_relasz / dt_relaent; rel++)
+	for (usize rel = 0; rel < dt_relasz / sizeof(Elf_Rela); rel++)
 	{
-		Elf_Rela* reloc = relocation_data + rel;
-		Elf_Sym* symbol = symtab_data + ELF64_R_SYM(reloc->r_info);
-		const char* symbol_name = strtab_data + symbol->st_name;
-
-		void* target_section_data = base_addr + (section_headers[symbol->st_shndx].sh_addr);
-		void* location = target_section_data + reloc->r_offset;
-
-		switch (ELF_R_TYPE(reloc->r_info))
-		{
-			case R_X86_64_64:
-			{
-				break;
-			}
-			case R_X86_64_GLOB_DAT:
-			case R_X86_64_JUMP_SLOT:
-			{
-				void* resolved;
-				if (symbol->st_shndx == 0)
-					resolved = (void*)module_get_symbol(symbol_name)->st_value;
-				else
-				{
-					Elf_Shdr* symbol_section = (section_headers + symbol->st_shndx);
-					resolved = base_addr + symbol_section->sh_addr + symbol->st_value + reloc->r_addend;
-				}
-				if (resolved == NULL)
-				{
-					module_log("Failed to find symbol \"%s\"!\n", symbol_name);
-					return 1;
-				}
-				*(void**)location = resolved;
-				break;
-			}
-			case R_X86_64_RELATIVE:
-			{
-				*(void**)location = base_addr + reloc->r_addend;
-				break;
-			}
-			default:
-			{
-				module_log("Unhandled relocation %zu (Relocation No. %zu in \"%s\")!\n", ELF_R_TYPE(reloc->r_info), rel,
-						   path);
-				goto reloc_fail;
-			}
-		}
+		if (elf_do_reloc(relocation_data + rel, symtab_data, strtab_data, section_headers, base_virt) != 0)
+			goto reloc_fail;
 	}
+	kfree(relocation_data);
+
+	// Handle relocations for .rela.plt
+	relocation_data = kmalloc(dt_pltrelsz);
+	handle->read(handle, NULL, relocation_data, dt_pltrelsz, dt_jmprel);
+	for (usize rel = 0; rel < dt_pltrelsz / sizeof(Elf_Rela); rel++)
+	{
+		if (elf_do_reloc(relocation_data + rel, symtab_data, strtab_data, section_headers, base_virt) != 0)
+			goto reloc_fail;
+	}
+	kfree(relocation_data);
 
 	// Correct mappings so not every page is read/write.
 	for (usize i = 0; i < hdr->e_phnum; i++)
@@ -183,7 +232,7 @@ i32 elf_module_load(const char* path)
 		const Elf_Phdr* segment = program_headers + i;
 
 		// Get only sections with data.
-		if ((segment->p_type & PT_LOAD) == 0)
+		if (segment->p_type != PT_LOAD)
 			continue;
 
 		usize flags = 0;
@@ -195,52 +244,29 @@ i32 elf_module_load(const char* path)
 		vm_arch_map_page(NULL, segment->p_paddr, (void*)segment->p_vaddr, flags);
 	}
 
-	// Find .mod section.
-	isize mod_index = -1;
-	char* shstrndx = kmalloc(section_headers[hdr->e_shstrndx].sh_size);
-	handle->read(handle, NULL, shstrndx, section_headers[hdr->e_shstrndx].sh_size,
-				 section_headers[hdr->e_shstrndx].sh_offset);
-	for (usize i = 0; i < hdr->e_shnum; i++)
+	// Register all symbols.
+	for (usize i = 0; i < dt_symsz / sizeof(Elf_Sym); i++)
 	{
-		const Elf_Shdr* section = section_headers + i;
-		if (strncmp(shstrndx + section->sh_name, ".mod", 4) == 0)
-		{
-			mod_index = i;
-			break;
-		}
+		if (symtab_data[i].st_info == (STB_GLOBAL << 4))
+			module_register_symbol(strtab_data + (symtab_data[i].st_name), symtab_data + i);
 	}
-	if (mod_index == -1)
-	{
-		module_log("Failed to load module \"%s\", module doesn't contain a .mod section!\n", path);
-		goto mod_section_fail;
-	}
-
-	// TODO: Register all symbols.
-	// if (symtab_index != -1 && strtab_index != -1)
-	//{
-	//	Elf_Sym* symbols = (Elf_Sym*)section_headers[symtab_index].sh_addr;
-	//	const char* symbol_names = (const char*)section_headers[strtab_index].sh_addr;
-	//
-	//	for (usize i = 0; i < section_headers[symtab_index].sh_size / section_headers[symtab_index].sh_entsize; i++)
-	//	{
-	//		if (symbols[i].st_info == (STB_GLOBAL << 4 | STT_FUNC))
-	//			module_register_symbol(symbol_names + (symbols[i].st_name), symbols + i);
-	//	}
-	//}
 
 	// Register module.
-	loaded->module = kmalloc(section_headers[mod_index].sh_size);
-	handle->read(handle, NULL, loaded->module, section_headers[mod_index].sh_size,
-				 section_headers[mod_index].sh_offset);
+	loaded->module = module;
 	module_register(loaded);
 
 	// Everything went smoothly, so exit.
 	ret = 0;
+	kfree(shstrtab_data);
+	kfree(strtab_data);
+	kfree(symtab_data);
+	kfree(program_headers);
+	kfree(section_headers);
 	goto leave;
 
-mod_section_fail:
 reloc_fail:
 	kfree(loaded);
+	pm_arch_free(base_phys, (handle->stat.st_size / CONFIG_page_size) + 1);
 
 leave:
 	kfree(hdr);

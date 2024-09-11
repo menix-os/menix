@@ -6,8 +6,11 @@ set(MENIX_BITS 64)
 set(MENIX_ARCH_DIR x86)
 set(MENIX_ARCH_NAME x86_64)
 
-add_compile_options(
+target_compile_options(common INTERFACE
 	-mgeneral-regs-only
 	-mno-red-zone
+)
+
+target_compile_options(common_kernel INTERFACE
 	-mcmodel=kernel
 )

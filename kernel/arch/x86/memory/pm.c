@@ -113,10 +113,11 @@ static PhysAddr get_free_pages(usize amount, usize start)
 				goto next_page;
 			}
 		}
-
 		// If we got here, that means we have found a region with `amount` consecutive pages.
 		for (usize x = i; x < i + amount; x++)
+		{
 			bitmap_set(bit_map, x);
+		}
 		return (PhysAddr)(i * CONFIG_page_size);
 
 next_page:

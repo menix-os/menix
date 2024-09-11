@@ -1,8 +1,6 @@
 # Main kernel sources
 
-add_executable(menix
-	main.c
-)
+target_sources(menix PUBLIC main.c)
 
 set_target_properties(menix PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/")
 
@@ -23,6 +21,3 @@ add_subdirectory(sys)
 add_subdirectory(thread)
 add_subdirectory(util)
 add_subdirectory(video)
-
-# Boot protocols are defined as a module.
-target_link_libraries(menix PUBLIC menix_boot)

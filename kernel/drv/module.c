@@ -95,6 +95,9 @@ void module_init(BootInfo* info)
 	}
 	for (usize b = 0; b < module_path->children.capacity; b++)
 	{
+		if (module_path->children.buckets == NULL)
+			break;
+
 		auto bucket = module_path->children.buckets + b;
 		for (usize i = 0; i < bucket->count; i++)
 		{
@@ -110,17 +113,13 @@ void module_init(BootInfo* info)
 		}
 	}
 skip_dynamic:
-	module_log("Loading %zu built-in modules.\n", module_count);
-	for (usize i = 0; i < module_count; i++)
-	{
-		i32 ret = module_load(modules[i].name);
-		if (ret != 0)
-			module_log("\"%s\" failed to initialize with error code %i!\n", modules[i].name, ret);
-	}
 
 	// Load every registered module.
 	for (usize b = 0; b < module_map.capacity; b++)
 	{
+		if (module_map.buckets == NULL)
+			break;
+
 		auto bucket = module_map.buckets + b;
 		for (usize i = 0; i < bucket->count; i++)
 		{
@@ -170,7 +169,34 @@ void module_register(LoadedModule* module)
 	if (module_get(module->module->name))
 		return;
 
-	hashmap_insert(&module_map, module->module->name, strlen(module->module->name), module);
+	do
+	{
+		auto __key = module->module->name;
+		auto __key_len = strlen(module->module->name);
+		auto __map = &module_map;
+		if (__map->buckets == ((void*)0))
+			__map->buckets = kzalloc(__map->capacity * sizeof(*(__map->buckets)));
+		usize __hash = hash(__key, __key_len);
+		usize __index = __hash % __map->capacity;
+		auto __bucket = &__map->buckets[__index];
+		if (__bucket->capacity == 0)
+		{
+			__bucket->capacity = 16;
+			__bucket->items = kzalloc(__bucket->capacity * sizeof(*__bucket->items));
+		}
+		if (__bucket->count == __bucket->capacity)
+		{
+			__bucket->capacity *= 2;
+			__bucket->items = krealloc(__bucket->items, __bucket->capacity * sizeof(*__bucket->items));
+		}
+		auto __item = &__bucket->items[__bucket->count];
+		memcpy(&__item->key_data[0], __key, __key_len);
+		__item->key_len = __key_len;
+		__item->item = (module);
+		__bucket->count++;
+	} while (0);
+	// hashmap_insert(&module_map, module->module->name, strlen(module->module->name), module);
+	module_log("Registered new module \"%s\"\n", module->module->name);
 }
 
 // Loads a previously registered module.
@@ -185,9 +211,7 @@ i32 module_load(const char* name)
 		return -ENOENT;
 	}
 	if (loaded->loaded)
-	{
 		return 0;
-	}
 
 	Module* const mod = loaded->module;
 	module_log("Loading module \"%s\" at 0x%p: %s (%s, %s)\n", mod->name, loaded->module, mod->description, mod->author,
@@ -196,7 +220,11 @@ i32 module_load(const char* name)
 	// Load all dependencies.
 	for (usize i = 0; i < mod->num_dependencies; i++)
 	{
-		module_load(mod->dependencies[i]);
+		if (module_load(mod->dependencies[i]) != 0)
+		{
+			module_log("Failed to load \"%s\", which \"%s\" depends on!\n", mod->dependencies[i], name);
+			return -ENOENT;
+		}
 	}
 
 	// If there's no init function, ignore the module. All modules should have one.

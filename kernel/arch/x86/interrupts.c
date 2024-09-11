@@ -96,6 +96,9 @@ void interrupt_handler(CpuRegisters* regs)
 		return;
 	}
 
+	// Disable spinlocks so we have a chance of displaying a message.
+	spin_use(false);
+
 	kassert(regs->isr < ARRAY_SIZE(exception_handlers), "Unhandled exception %zu in kernel mode!", regs->isr);
 	kassert(exception_handlers[regs->isr] != NULL, "Unhandled exception \"%s\" (%zu) in kernel mode!",
 			exception_names[regs->isr], regs->isr);

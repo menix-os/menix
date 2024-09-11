@@ -13,6 +13,9 @@ void spin_use(bool on)
 
 bool spin_acquire(SpinLock* lock)
 {
+	if (!use_spin)
+		return true;
+
 	if (!lock)
 		return false;
 
@@ -27,6 +30,9 @@ bool spin_acquire(SpinLock* lock)
 
 void spin_acquire_force(SpinLock* lock)
 {
+	if (!use_spin)
+		return;
+
 	if (!lock)
 		return;
 
@@ -43,13 +49,15 @@ void spin_acquire_force(SpinLock* lock)
 	lock->owner = __builtin_return_address(0);
 
 #ifdef CONFIG_smp
-	if (use_spin)
-		lock->cpu = arch_current_cpu()->id;
+	lock->cpu = arch_current_cpu()->id;
 #endif
 }
 
 void spin_free(SpinLock* lock)
 {
+	if (!use_spin)
+		return;
+
 	if (!lock)
 		return;
 

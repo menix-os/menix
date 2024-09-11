@@ -1,3 +1,5 @@
 # Options required for building with clang.
 
-add_compile_options(-Wno-unused-command-line-argument)
+target_compile_options(common INTERFACE
+	-Wno-unused-command-line-argument
+)

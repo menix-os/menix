@@ -51,20 +51,21 @@ function(add_module name author desc license modular default)
 
 		# If built-in, define MODULE_TYPE to let the module know.
 		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_TYPE='B')
+		target_link_libraries(${MENIX_CURRENT_MOD} PRIVATE common_kernel)
 	elseif(${${MENIX_CURRENT_MOD}} STREQUAL MOD)
 		# Build as a relocatable executable.
 		add_executable(${MENIX_CURRENT_MOD} ${ARGN})
-		target_compile_options(${MENIX_CURRENT_MOD} PUBLIC -fPIC)
-		target_link_options(${MENIX_CURRENT_MOD} PUBLIC -shared)
 		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/mod/")
 		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_NAME "${MENIX_CURRENT_MOD}.ko")
 
 		# If modular, define MODULE_TYPE to let the module know.
 		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_TYPE='M')
+		target_link_libraries(${MENIX_CURRENT_MOD} PRIVATE common_ko)
 	endif()
 
 	# Shared flags
 	if(${${MENIX_CURRENT_MOD}} STREQUAL ON OR ${${MENIX_CURRENT_MOD}} STREQUAL MOD)
+		target_link_libraries(${MENIX_CURRENT_MOD} PRIVATE common)
 		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE
 			MODULE_NAME="${name}"
 			MODULE_AUTHOR="${author}"
