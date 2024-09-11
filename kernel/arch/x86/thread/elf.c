@@ -10,8 +10,6 @@
 #include <errno.h>
 #include <string.h>
 
-#include "bits/pm.h"
-
 static i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data, Elf_Shdr* section_headers,
 						void* base_virt)
 {
