@@ -2,11 +2,9 @@
 
 #include <menix/common.h>
 #include <menix/memory/alloc.h>
+#include <menix/memory/slab.h>
 
 #include <string.h>
-
-#ifdef CONFIG_allocator_slab
-#include <menix/memory/slab.h>
 
 void alloc_init()
 {
@@ -34,7 +32,3 @@ void kfree(void* memory)
 {
 	slab_free(memory);
 }
-
-#else
-#error "No allocator selected! Enable any allocator_* option and rebuild."
-#endif

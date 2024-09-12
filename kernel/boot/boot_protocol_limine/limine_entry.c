@@ -115,9 +115,9 @@ void kernel_boot()
 		buffer.funcs = FB_DEFAULT_FUNCS;
 
 		// If no early framebuffer has been set previously, do it now.
-		if (fb_get_early() == NULL)
+		if (fb_get_active() == NULL)
 		{
-			fb_set_early(&buffer);
+			fb_register(&buffer);
 		}
 		boot_log("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n",
 				 buffer.info.mmio_base, buffer.mode.width, buffer.mode.height, buffer.mode.cpp * 8, buffer.mode.v_width,

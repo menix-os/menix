@@ -53,7 +53,7 @@ function(add_module name author desc license modular default)
 		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_TYPE='B')
 		target_link_libraries(${MENIX_CURRENT_MOD} PRIVATE common_kernel)
 	elseif(${${MENIX_CURRENT_MOD}} STREQUAL MOD)
-		# Build as a relocatable executable.
+		# Build as an "executable" but in reality, link with -shared.
 		add_executable(${MENIX_CURRENT_MOD} ${ARGN})
 		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/mod/")
 		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_NAME "${MENIX_CURRENT_MOD}.ko")
@@ -85,6 +85,57 @@ function(add_module name author desc license modular default)
 		target_include_directories(${MENIX_CURRENT_MOD} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)
 	endif()
 endfunction(add_module)
+
+# Setup a new Rust module for the build process.
+# * name		Name of the module (e.g. example)
+# * author		Author of the module (e.g. "John Smith")
+# * desc		Short description of the module
+# * license		License of the module (e.g. "MIT") or "MAIN", if the project's main license.
+# * default		Default configuration value (ON/MOD/OFF)
+function(add_rust_module name author desc license default)
+	set(MENIX_CURRENT_MOD ${name} CACHE INTERNAL "")
+
+	# Generate a config entry if there is none already. If there is, include its values.
+	add_option(${MENIX_CURRENT_MOD} BOOL ${default})
+
+	# If the option is not in cache yet, use the default value.
+	if(NOT DEFINED CACHE{${MENIX_CURRENT_MOD}})
+		set(${MENIX_CURRENT_MOD} ${default} CACHE INTERNAL "")
+	endif()
+
+	if(${${MENIX_CURRENT_MOD}} STREQUAL ON OR default STREQUAL ON)
+		message(FATAL_ERROR "[!] Rust modules cannot be statically linked!\n-> Set ${MENIX_CURRENT_MOD} to \"MOD\" or \"OFF\"!")
+	elseif(${${MENIX_CURRENT_MOD}} STREQUAL MOD)
+		# TODO: Handle CMake build type
+		if(${CMAKE_BUILD_TYPE} STREQUAL Release)
+			set(CARGO_BUILD_COMMAND cargo rustc --release)
+		elseif(${CMAKE_BUILD_TYPE} STREQUAL MinSizeRel)
+			set(CARGO_BUILD_COMMAND cargo rustc --release -- -C opt-level=s -C strip=debuginfo)
+		elseif(${CMAKE_BUILD_TYPE} STREQUAL RelWithDebInfo)
+			set(CARGO_BUILD_COMMAND cargo rustc --release -- -C strip=none)
+		else()
+			set(CARGO_BUILD_COMMAND cargo rustc)
+		endif()
+
+		add_custom_target(${MENIX_CURRENT_MOD}
+			COMMAND ${CARGO_BUILD_COMMAND}
+			COMMAND cp target/debug/lib${MENIX_CURRENT_MOD}.so ${CMAKE_BINARY_DIR}/bin/mod/${MENIX_CURRENT_MOD}.ko
+			BYPRODUCTS target/debug/lib${MENIX_CURRENT_MOD}.so
+			SOURCES ${ARGN}
+			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+		)
+		add_dependencies(menix ${MENIX_CURRENT_MOD})
+		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/mod/")
+		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_NAME "${MENIX_CURRENT_MOD}.ko")
+
+		# Evaluate module license
+		if(${license} STREQUAL "MAIN")
+			require_option(license_${MENIX_LICENSE} BOOL)
+		else()
+			require_option(license_${license} BOOL)
+		endif()
+	endif()
+endfunction(add_rust_module)
 
 # Write an option to the config header.
 function(define_option optname type)

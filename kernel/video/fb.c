@@ -2,53 +2,28 @@
 
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
+#include <menix/thread/spin.h>
 #include <menix/util/list.h>
 #include <menix/video/fb.h>
 
-static FrameBuffer* early_buffer = NULL;
-static List(FrameBuffer*) buffers = {0};
-
-void fb_set_early(FrameBuffer* fb)
-{
-	early_buffer = fb;
-	// Also register as a regular framebuffer.
-	list_push(&buffers, fb);
-}
-
-FrameBuffer* fb_get_early()
-{
-	return early_buffer;
-}
+static FrameBuffer* fb_active = NULL;
+static SpinLock fb_lock = spin_new();
 
 void fb_register(FrameBuffer* fb)
 {
-	list_push(&buffers, fb);
+	spin_acquire_force(&fb_lock);
+	fb_active = fb;
+	spin_free(&fb_lock);
 }
 
-void fb_unregister(FrameBuffer* fb)
+void fb_unregister()
 {
-	isize idx;
-	list_find(&buffers, idx, fb);
-	if (idx == -1)
-	{
-		kmesg("Failed to unregister framebuffer 0x%p: Buffer wasn't previously registered.", fb);
-		return;
-	}
-
-	list_pop(&buffers, idx);
+	spin_acquire_force(&fb_lock);
+	fb_active = NULL;
+	spin_free(&fb_lock);
 }
 
-void fb_unregister_all()
+FrameBuffer* fb_get_active()
 {
-	list_free(&buffers);
-}
-
-FrameBuffer* fb_get_next()
-{
-	list_iter(&buffers, buf_iter)
-	{
-		if (*buf_iter != NULL)
-			return *buf_iter;
-	}
-	return NULL;
+	return fb_active;
 }

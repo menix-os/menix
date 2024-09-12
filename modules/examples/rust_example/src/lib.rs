@@ -36,8 +36,8 @@ extern "C" {
 #[link_section = ".mod"]
 pub static THIS_MODULE: Module = Module {
     name: fixed_str(*b"rust_module"),
-    author: fixed_str(*b"Marvin Friedrich"),
-    description: fixed_str(*b"This is a module demonstrating the menix FFI!\n"),
+    author: fixed_str(*b"John Doe"),
+    description: fixed_str(*b"This is a Rust example demonstrating the menix FFI"),
     license: fixed_str(*b"LGPL"),
     init: init_fn,
     exit: exit_fn,

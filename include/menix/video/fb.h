@@ -97,21 +97,12 @@ struct FrameBuffer
 	FbModeInfo mode;	  // Information about the current video mode.
 };
 
-// Sets a single framebuffer for early output. Only one can be active at one time.
-void fb_set_early(FrameBuffer* fb);
-
-// Gets the early framebuffer if one has been provided. Otherwise returns NULL.
-FrameBuffer* fb_get_early();
-
-// Registers a framebuffer to be visible to the kernel.
+// Registers a framebuffer as the active rendering target.
 void fb_register(FrameBuffer* fb);
 
-// Unregisters a framebuffer.
-void fb_unregister(FrameBuffer* fb);
+// Unregisters the active framebuffer.
+// This is useful when e.g. a new video card has been detected.
+void fb_unregister();
 
-// Unregisters all previous framebuffers. This is useful when e.g. a new video card
-// has been detected and wants to overwrite all previously detected framebuffers.
-void fb_unregister_all();
-
-// Get the next available framebuffer.
-FrameBuffer* fb_get_next();
+// Get the active framebuffer.
+FrameBuffer* fb_get_active();

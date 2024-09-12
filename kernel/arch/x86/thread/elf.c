@@ -113,6 +113,8 @@ i32 elf_module_load(const char* path)
 	isize dt_relaent = 0;
 	isize dt_pltrelsz = 0;
 	usize dt_jmprel = 0;
+	usize dt_init_array = 0;
+	isize dt_init_arraysz = 0;
 
 	// Reserve memory for the entire file.
 	PhysAddr base_phys = pm_arch_alloc((handle->stat.st_size / CONFIG_page_size) + 1);
@@ -159,6 +161,8 @@ i32 elf_module_load(const char* path)
 					case DT_RELAENT: dt_relaent = dynamic_table[i].d_un.d_val; break;
 					case DT_PLTRELSZ: dt_pltrelsz = dynamic_table[i].d_un.d_val; break;
 					case DT_JMPREL: dt_jmprel = dynamic_table[i].d_un.d_ptr; break;
+					case DT_INIT_ARRAY: dt_init_array = dynamic_table[i].d_un.d_ptr; break;
+					case DT_INIT_ARRAYSZ: dt_init_arraysz = dynamic_table[i].d_un.d_val; break;
 				}
 			}
 
@@ -251,6 +255,14 @@ i32 elf_module_load(const char* path)
 	// Register module.
 	loaded->module = module;
 	module_register(loaded);
+
+	// At this point, everything should be loaded correctly. If we have an init array, we call each function from it.
+	void (**init_array)() = base_virt + dt_init_array;
+	for (usize i = 0; i < dt_init_arraysz / sizeof(void*); i++)
+	{
+		if (init_array[i] != NULL)
+			init_array[i]();
+	}
 
 	// Everything went smoothly, so exit.
 	ret = 0;

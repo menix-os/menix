@@ -17,7 +17,7 @@
 #define MODULE ATTR(used) ATTR(section(".mod")) static const Module this_module
 
 // Defines a new module function.
-#define MODULE_FN ATTR(used) static
+#define MODULE_FN static ATTR(used)
 
 // Add all module information that is provided by the build system.
 #define MODULE_META .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION, .license = MODULE_LICENSE
@@ -28,7 +28,7 @@
 
 // Default values for the module struct.
 #define MODULE_DEFAULT(init_fn, exit_fn, ...) \
-	MODULE = {.name = MODULE_NAME, .init = init_fn, .exit = exit_fn, MODULE_META, MODULE_DEPS(__VA_ARGS__)}
+	MODULE = {.name = MODULE_NAME, MODULE_META, .init = init_fn, .exit = exit_fn, MODULE_DEPS(__VA_ARGS__)}
 
 typedef i32 (*ModuleInitFn)(void);
 typedef void (*ModuleExitFn)(void);

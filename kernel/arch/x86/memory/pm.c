@@ -95,7 +95,6 @@ void* pm_get_phys_base()
 static PhysAddr get_free_pages(usize amount, usize start)
 {
 	usize i = start;
-	usize range_start = 0;
 
 	// Get a region of consecutive pages that fulfill the requested amount.
 	while (i < num_pages)
@@ -104,24 +103,22 @@ static PhysAddr get_free_pages(usize amount, usize start)
 		if (bitmap_get(bit_map, i))
 			goto next_page;
 
-		range_start = i;
-
 		// Otherwise, check if the next pages are free as well.
 		// Start with the page after `i`.
 		for (usize j = 1; j < amount; j++)
 		{
-			if (bitmap_get(bit_map, range_start + j))
+			if (bitmap_get(bit_map, i + j))
 				goto next_page;
 		}
 
 		// If we got here, that means we have found a region with `amount` consecutive pages.
 		for (usize x = 0; x < amount; x++)
 		{
-			bitmap_set(bit_map, range_start + x);
+			bitmap_set(bit_map, i + x);
 		}
 
-		last_page = range_start + amount + 1;
-		return (PhysAddr)(range_start * CONFIG_page_size);
+		last_page = i + amount;
+		return (PhysAddr)(i * CONFIG_page_size);
 
 next_page:
 		i++;

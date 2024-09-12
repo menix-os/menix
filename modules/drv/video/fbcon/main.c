@@ -152,7 +152,7 @@ MODULE_FN isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf,
 
 MODULE_FN i32 fbcon_init()
 {
-	FrameBuffer* fb = fb_get_next();
+	FrameBuffer* fb = fb_get_active();
 
 	// If no regular framebuffer is available, we can't init.
 	if (fb == NULL)

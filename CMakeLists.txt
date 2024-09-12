@@ -44,7 +44,7 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_SYSTEM_NAME Generic)
 
-project(menix LANGUAGES C ASM)
+project(menix LANGUAGES C CXX ASM)
 
 # Generate a header file for the configuration.
 set(MENIX_CONFIG ${MENIX_SRC}/include/generated/config.h CACHE INTERNAL "")
