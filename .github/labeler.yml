@@ -3,10 +3,18 @@ docs:
   - README.md
 
 kernel:
+  - include/*
   - kernel/*
+
+drivers:
+  - modules/drv/*
+
+file systems:
+  - modules/fs/*
 
 maintenance:
   - .github/*
   - .gitignore
   - README.md
   - LICENSE
+  - tools/*
