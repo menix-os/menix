@@ -393,5 +393,6 @@ Elf_Hdr* elf_get_kernel();
 // Loads an ELF executable.
 usize elf_load(PageMap* page_map, Handle* handle, usize base);
 
-// Loads a kernel module from a path.
-i32 elf_module_load(const char* path);
+// Does a relocation on a symbol.
+i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data, Elf_Shdr* section_headers,
+				 void* base_virt);

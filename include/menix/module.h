@@ -72,6 +72,9 @@ void module_register(LoadedModule* module);
 // Loads a previously registered module.
 i32 module_load(const char* name);
 
+// Loads a kernel module from a path.
+i32 module_load_elf(const char* path);
+
 // Unloads a relocatable module.
 // `name`: The name of the module.
 void module_unregister(const char* name);

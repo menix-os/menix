@@ -5,9 +5,19 @@
 #include <menix/sys/syscall.h>
 #include <menix/thread/process.h>
 
+#include <errno.h>
+
 SYSCALL_IMPL(modadd, const char* path)
 {
-	return module_load(path);
+	usize* errno = &arch_current_cpu()->thread->errno;
+
+	if (path == NULL)
+	{
+		*errno = -ENOENT;
+		return 0;
+	}
+
+	return module_load_elf(path);
 }
 
 SYSCALL_IMPL(modrem, const char* path)

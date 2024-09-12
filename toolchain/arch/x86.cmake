@@ -14,3 +14,10 @@ target_compile_options(common INTERFACE
 target_compile_options(common_kernel INTERFACE
 	-mcmodel=kernel
 )
+
+# Memory allocation
+add_option(page_size NUMBER 0x1000)
+
+# User-space constants
+add_option(user_stack_size NUMBER 0x200000)
+add_option(user_stack_addr NUMBER 0x70000000000)
