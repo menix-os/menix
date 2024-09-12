@@ -75,6 +75,7 @@ void interrupt_register(usize idx, void (*handler)(CpuRegisters*))
 		return;
 
 	exception_handlers[idx] = handler;
+	arch_log("Registered handler 0x%p for interrupt %zu!\n", handler, idx);
 	asm_interrupt_enable();
 }
 

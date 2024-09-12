@@ -299,6 +299,9 @@ leave:
 bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, const char* fs_name)
 {
 	bool result = false;
+	VfsPathToNode parsed = {0};
+	VfsNode* source_node = NULL;
+
 	spin_acquire_force(&vfs_lock);
 	usize* const errno = &arch_current_cpu()->thread->errno;
 
@@ -311,10 +314,9 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 		goto leave;
 	}
 
-	VfsNode* source_node = NULL;
 	if (src_path != NULL && strlen(src_path) != 0)
 	{
-		VfsPathToNode parsed = vfs_parse_path(parent, src_path);
+		parsed = vfs_parse_path(parent, src_path);
 		source_node = parsed.target;
 		if (source_node == NULL)
 			goto leave;
@@ -325,7 +327,7 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 		}
 	}
 
-	VfsPathToNode parsed = vfs_parse_path(parent, dest_path);
+	parsed = vfs_parse_path(parent, dest_path);
 
 	if (parsed.target == NULL)
 		goto leave;

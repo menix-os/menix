@@ -16,7 +16,7 @@ static i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strta
 	Elf_Sym* symbol = symtab_data + ELF64_R_SYM(reloc->r_info);
 	const char* symbol_name = strtab_data + symbol->st_name;
 
-	void* location = (void*)section_headers[symbol->st_shndx].sh_addr + reloc->r_offset;
+	void* location = base_virt + reloc->r_offset;
 
 	switch (ELF_R_TYPE(reloc->r_info))
 	{
@@ -28,16 +28,15 @@ static i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strta
 			if (symbol->st_shndx == 0)
 				resolved = (void*)module_get_symbol(symbol_name)->st_value;
 			else
-			{
-				Elf_Shdr* symbol_section = (section_headers + symbol->st_shndx);
-				resolved = (void*)symbol_section->sh_addr + symbol->st_value + reloc->r_addend;
-			}
+				resolved = base_virt + symbol->st_value;
+
 			if (resolved == NULL)
 			{
 				module_log("Failed to find symbol \"%s\"!\n", symbol_name);
 				return 1;
 			}
-			*(void**)location = resolved;
+
+			*(void**)location = resolved + reloc->r_addend;
 			break;
 		}
 		case R_X86_64_RELATIVE:
