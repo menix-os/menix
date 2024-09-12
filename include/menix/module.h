@@ -23,11 +23,12 @@
 #define MODULE_META .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION, .license = MODULE_LICENSE
 
 // Adds a list of dependencies to the module info.
-#define MODULE_DEPS(list) .dependencies = list, .num_dependencies = ARRAY_SIZE(list)
+#define MODULE_DEPS(...) \
+	.dependencies = (const char*[]) {__VA_ARGS__}, .num_dependencies = ARRAY_SIZE(((const char*[]) {__VA_ARGS__}))
 
 // Default values for the module struct.
-#define MODULE_DEFAULT(init_fn, exit_fn, deps) \
-	MODULE = {.name = MODULE_NAME, .init = init_fn, .exit = exit_fn, MODULE_META, MODULE_DEPS(deps)}
+#define MODULE_DEFAULT(init_fn, exit_fn, ...) \
+	MODULE = {.name = MODULE_NAME, .init = init_fn, .exit = exit_fn, MODULE_META, MODULE_DEPS(__VA_ARGS__)}
 
 typedef i32 (*ModuleInitFn)(void);
 typedef void (*ModuleExitFn)(void);

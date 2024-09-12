@@ -8,4 +8,4 @@
 
 #define FONT_GLYPH_SIZE ((FONT_WIDTH * FONT_HEIGHT) / 8)
 
-extern char builtin_font[256 * FONT_GLYPH_SIZE];
+extern u8 builtin_font[256 * FONT_GLYPH_SIZE];

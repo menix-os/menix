@@ -49,7 +49,7 @@ void idt_reload()
 #define DUP128 DUP64 DUP64
 #define DUP256 DUP128 DUP128
 
-DUP256;
+DUP256
 #define IDT_SET(num) idt_set(num, INT_HANDLER(num), IDT_TYPE(0, IDT_GATE_INT))
 
 void idt_init()

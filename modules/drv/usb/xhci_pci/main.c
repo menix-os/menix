@@ -28,5 +28,4 @@ MODULE_FN void exit_fn()
 	pci_unregister_driver(&driver);
 }
 
-static const char* deps[] = {"usb_core"};
-MODULE_DEFAULT(init_fn, exit_fn, deps);
+MODULE_DEFAULT(init_fn, exit_fn, "usb_core");

@@ -191,5 +191,4 @@ MODULE_FN i32 fbcon_init()
 	return 0;
 }
 
-const char* deps[] = {};
-MODULE_DEFAULT(fbcon_init, NULL, deps);
+MODULE_DEFAULT(fbcon_init, NULL);
