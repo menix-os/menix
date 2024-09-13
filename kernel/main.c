@@ -15,7 +15,7 @@ void kernel_main(BootInfo* info)
 	// TODO: Move this to scheduler.
 	arch_current_cpu()->thread = kzalloc(sizeof(Thread));
 	arch_current_cpu()->thread->parent = kzalloc(sizeof(Process));
-	arch_current_cpu()->thread->parent->map_base = 0x60000000000;
+	arch_current_cpu()->thread->parent->map_base = CONFIG_vm_map_base;
 
 	vfs_init();
 
@@ -35,11 +35,15 @@ void kernel_main(BootInfo* info)
 	kmesg("%s %s [%s] %s\n", uname.sysname, uname.release, uname.version, uname.machine);
 
 	// Call init program.
-	char* argv[] = {"/boot/init", NULL};
+	char* argv[] = {"/sbin/init", NULL};
 	proc_execve("init", argv, NULL);
 
-	while (1)
-		asm_pause();
+	// TODO: ELF test
+	// PageMap* map = vm_page_map_new();
+	// VfsNode* init = vfs_get_node(vfs_get_root(), "/sbin/init", true);
+	// elf_load(map, init->handle, 0);
+
+	// If we get here, the init program has terminated, so shutdown is requested.
 
 	// Clean up all modules and subsystems.
 	module_fini();

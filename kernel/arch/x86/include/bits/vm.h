@@ -35,7 +35,10 @@ void vm_x86_set_page_map(PageMap* map);
 bool vm_x86_map_page(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, usize flags);
 
 // Redefines an existing mapping. Returns true if successful.
-bool vm_x86_remap_page(PageMap* page_map, void* virt_addr, usize flags);
+bool vm_x86_remap_page(PageMap* page_map, VirtAddr virt_addr, usize flags);
+
+// Destroys an existing mapping. Returns true if successful.
+bool vm_x86_unmap_page(PageMap* page_map, VirtAddr virt_addr);
 
 // Page fault interrupt handler. Set by vm_init().
 void interrupt_pf_handler(CpuRegisters* regs);

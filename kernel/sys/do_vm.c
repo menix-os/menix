@@ -13,14 +13,14 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags)
 
 	// TODO: Get fd and offset.
 
-	void* mem = vm_map(proc->page_map, hint, length, prot, flags, NULL, 0);
+	VirtAddr mem = vm_map(proc->page_map, hint, length, prot, flags, NULL, 0);
 
-	return (usize)mem;
+	return mem;
 }
 
 // Updates the permissions of an existing mappping.
 // Returns 0 upon success, otherwise -1.
-SYSCALL_IMPL(mprotect, void* addr, usize length, int prot)
+SYSCALL_IMPL(mprotect, VirtAddr addr, usize length, int prot)
 {
 	Process* proc = arch_current_cpu()->thread->parent;
 
@@ -32,7 +32,7 @@ SYSCALL_IMPL(mprotect, void* addr, usize length, int prot)
 
 // Destroys an existing mapping.
 // Returns 0 upon success, otherwise -1.
-SYSCALL_IMPL(munmap, void* addr, usize length)
+SYSCALL_IMPL(munmap, VirtAddr addr, usize length)
 {
 	Process* proc = arch_current_cpu()->thread->parent;
 

@@ -7,8 +7,6 @@
 #include <menix/log.h>
 #include <menix/memory/vm.h>
 
-#include <bits/elf.h>
-
 // ELF Header Identification
 #define ELF_MAG \
 	(const char[4]) \
@@ -160,6 +158,9 @@
 #define STT_HIOS	12	  //
 #define STT_LOPROC	13	  // Processor-specific use
 #define STT_HIPROC	15	  //
+
+// Architecture specific ELF definitions
+#include <bits/elf.h>
 
 // ELF types that are related to the build host.
 #if CONFIG_bits == 64
@@ -390,8 +391,11 @@ void elf_set_kernel(Elf_Hdr* addr);
 // Returns a pointer to where the kernel was loaded into memory.
 Elf_Hdr* elf_get_kernel();
 
-// Loads an ELF executable.
-usize elf_load(PageMap* page_map, Handle* handle, usize base);
+// Loads an ELF executable into memory. Returns true if successful.
+// `page_map`: The page map of the process to map into.
+// `handle`: A reference to a data stream of where to read the ELF from.
+// `base`: If not 0: The image base where in virtual memory to load the executable.
+bool elf_load(PageMap* page_map, Handle* handle, usize base);
 
 // Does a relocation on a symbol.
 i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data, Elf_Shdr* section_headers,

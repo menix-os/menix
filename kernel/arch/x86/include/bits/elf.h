@@ -41,3 +41,7 @@
 #define R_X86_64_GOTPC32   26	 //	dword	GOT + A – P
 #define R_X86_64_SIZE32	   32	 //	dword	Z + A
 #define R_X86_64_SIZE64	   33	 //	qword	Z + A
+
+#define EI_ARCH_CLASS	ELFCLASS64
+#define EI_ARCH_DATA	ELFDATA2LSB
+#define EI_ARCH_MACHINE EM_X86_64

@@ -19,8 +19,9 @@ SEGMENT_DECLARE_SYMBOLS(text)
 SEGMENT_DECLARE_SYMBOLS(rodata)
 SEGMENT_DECLARE_SYMBOLS(data)
 
-PageMap* kernel_map = NULL;		  // Page map used for the kernel.
-static void* phys_base = NULL;	  // Memory mapped lower physical memory.
+static PageMap* kernel_map = NULL;									 // Page map used for the kernel.
+static void* phys_base = NULL;										 // Memory mapped lower physical memory.
+static VirtAddr kernel_foreign_base = CONFIG_vm_map_foreign_base;	 // Start of foreign mappings.
 
 void vm_init(void* base, PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 {
@@ -69,6 +70,22 @@ void vm_init(void* base, PhysAddr kernel_base, PhysMemory* mem_map, usize num_en
 	vm_x86_set_page_map(kernel_map);
 }
 
+PageMap* vm_page_map_new()
+{
+	PageMap* result = kmalloc(sizeof(PageMap));
+	result->lock = spin_new();
+	// Allocate the first page table.
+	usize* pt = pm_alloc(1) + pm_get_phys_base();
+	memset(pt, 0, CONFIG_page_size);
+	result->head = pt;
+	for (usize i = 256; i < 512; i++)
+	{
+		result->head[i] = kernel_map->head[i];
+	}
+
+	return result;
+}
+
 PageMap* vm_get_kernel_map()
 {
 	return kernel_map;
@@ -100,7 +117,7 @@ static u64* vm_x86_traverse(u64* top, usize idx, bool allocate)
 	return (u64*)(phys_base + next_level);
 }
 
-static usize* vm_x86_get_pte(PageMap* page_map, void* virt_addr, bool allocate)
+static usize* vm_x86_get_pte(PageMap* page_map, VirtAddr virt_addr, bool allocate)
 {
 	kassert(page_map != NULL, "No page map was provided! Unable to get page table entry for 0x%p!", virt_addr);
 
@@ -136,8 +153,6 @@ bool vm_x86_map_page(PageMap* page_map, VirtAddr phys_addr, VirtAddr virt_addr, 
 	kassert(page_map != NULL, "No page map was provided! Unable to map page 0x%p to 0x%p!", phys_addr, virt_addr);
 
 	spin_acquire_force(&page_map->lock);
-
-	const usize virt_val = (usize)virt_addr;
 	u64* cur_head = page_map->head;
 	usize index = 0;
 
@@ -146,7 +161,7 @@ bool vm_x86_map_page(PageMap* page_map, VirtAddr phys_addr, VirtAddr virt_addr, 
 		// Mask the respective bits for the address (9 bits per level, starting at bit 12).
 		const usize shift = (12 + (9 * (lvl - 1)));
 		// Index into the current level map.
-		index = (virt_val >> shift) & 0x1FF;
+		index = (virt_addr >> shift) & 0x1FF;
 
 		// If we allocate a 2MiB page, there is one less level in that page map branch.
 		// In either case, don't traverse further after setting the index for writing.
@@ -164,16 +179,15 @@ bool vm_x86_map_page(PageMap* page_map, VirtAddr phys_addr, VirtAddr virt_addr, 
 
 	cur_head[index] = (phys_addr & PAGE_ADDR) | (flags & ~(PAGE_ADDR));
 	spin_free(&page_map->lock);
+
 	return true;
 }
 
-bool vm_x86_remap_page(PageMap* page_map, void* virt_addr, usize flags)
+bool vm_x86_remap_page(PageMap* page_map, VirtAddr virt_addr, usize flags)
 {
 	kassert(page_map != NULL, "No page map was provided! Unable to remap page 0x%p to 0x%p!", phys_base, virt_addr);
 
 	spin_acquire_force(&page_map->lock);
-
-	const usize virt_val = (usize)virt_addr;
 	u64* cur_head = page_map->head;
 	usize index = 0;
 
@@ -182,7 +196,7 @@ bool vm_x86_remap_page(PageMap* page_map, void* virt_addr, usize flags)
 		// Mask the respective bits for the address (9 bits per level, starting at bit 12).
 		const usize shift = (12 + (9 * (lvl - 1)));
 		// Index into the current level map.
-		index = (virt_val >> shift) & 0x1FF;
+		index = (virt_addr >> shift) & 0x1FF;
 
 		// If we allocate a 2MiB page, there is one less level in that page map branch.
 		// In either case, don't traverse further after setting the index for writing.
@@ -198,15 +212,63 @@ bool vm_x86_remap_page(PageMap* page_map, void* virt_addr, usize flags)
 		}
 	}
 
+	if ((cur_head[index] & PAGE_PRESENT) == 0)
+	{
+		spin_free(&page_map->lock);
+		return false;
+	}
+
 	// Clear old flags.
 	cur_head[index] &= PAGE_ADDR;
 	// Set new ones.
 	cur_head[index] |= (flags & ~(PAGE_ADDR));
 	spin_free(&page_map->lock);
+
 	return true;
 }
 
-PhysAddr vm_virt_to_phys(PageMap* page_map, void* address)
+bool vm_x86_unmap_page(PageMap* page_map, VirtAddr virt_addr)
+{
+	kassert(page_map != NULL, "No page map was provided! Unable to remap page 0x%p to 0x%p!", phys_base, virt_addr);
+
+	spin_acquire_force(&page_map->lock);
+	const usize virt_val = (usize)virt_addr;
+	u64* cur_head = page_map->head;
+	usize index = 0;
+
+	for (usize lvl = 4; lvl >= 1; lvl--)
+	{
+		// Mask the respective bits for the address (9 bits per level, starting at bit 12).
+		const usize shift = (12 + (9 * (lvl - 1)));
+		// Index into the current level map.
+		index = (virt_val >> shift) & 0x1FF;
+
+		if (lvl == 1)
+			break;
+
+		// Update the head.
+		cur_head = vm_x86_traverse(cur_head, index, false);
+		if (cur_head == NULL)
+		{
+			spin_free(&page_map->lock);
+			return false;
+		}
+	}
+
+	if ((cur_head[index] & PAGE_PRESENT) == 0)
+	{
+		spin_free(&page_map->lock);
+		return false;
+	}
+
+	// Clear everything.
+	cur_head[index] = 0;
+	spin_free(&page_map->lock);
+
+	return true;
+}
+
+PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 {
 	spin_acquire_force(&page_map->lock);
 	usize* pte = vm_x86_get_pte(page_map, address, false);
@@ -233,12 +295,12 @@ static usize vm_posix_prot_to_x86(PageMap* page_map, int prot)
 	return x86_flags;
 }
 
-void* vm_map(PageMap* page_map, VirtAddr hint, usize length, int prot, int flags, Handle* fd, usize off)
+VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, int flags, Handle* fd, usize off)
 {
 	if (length == 0)
 	{
 		proc_errno = EINVAL;
-		return NULL;
+		return (VirtAddr)MAP_FAILED;
 	}
 
 	// Convert flags to x86 page flags.
@@ -257,8 +319,8 @@ void* vm_map(PageMap* page_map, VirtAddr hint, usize length, int prot, int flags
 	{
 		// Check if there already is a mapping at the hinted address.
 		// If there is not, we can take the hint as is.
-		if (!vm_unmap(page_map, (void*)aligned_hint, length) && (flags & MAP_FIXED))
-			return MAP_FAILED;
+		if (!vm_unmap(page_map, aligned_hint, length) && (flags & MAP_FIXED))
+			return (VirtAddr)MAP_FAILED;
 
 		// Check if we're mapping between pages. If yes, we need one more page.
 		if (aligned_hint < hint)
@@ -274,7 +336,7 @@ void* vm_map(PageMap* page_map, VirtAddr hint, usize length, int prot, int flags
 
 	// TODO: The map_base should only be relevant when not doing a MAP_FIXED.
 	// TODO: This might waste a ton of available virtual address space!
-	proc->map_base += CONFIG_page_size * (page_count + 1);
+	proc->map_base += CONFIG_page_size * page_count;
 
 	for (usize i = 0; i < page_count; i++)
 	{
@@ -282,29 +344,57 @@ void* vm_map(PageMap* page_map, VirtAddr hint, usize length, int prot, int flags
 		if (vm_x86_map_page(page_map, page, addr + (i * CONFIG_page_size), x86_flags) == false)
 		{
 			pm_free(page, 1);
-			return MAP_FAILED;
+			return (VirtAddr)MAP_FAILED;
 		}
 	}
 
-	return (void*)addr;
+	return addr;
 }
 
-bool vm_protect(PageMap* page_map, void* virt_addr, usize length, usize prot)
+bool vm_protect(PageMap* page_map, VirtAddr virt_addr, usize length, usize prot)
 {
 	const usize page_count = ALIGN_UP(length, CONFIG_page_size) / CONFIG_page_size;
 	usize x86_flags = vm_posix_prot_to_x86(page_map, prot);
 
 	for (usize i = 0; i < page_count; i++)
-		vm_x86_remap_page(page_map, virt_addr + i, x86_flags);
+		vm_x86_remap_page(page_map, virt_addr + (i * CONFIG_page_size), x86_flags);
 
 	vm_flush_tlb(virt_addr);
 	return true;
 }
 
-bool vm_unmap(PageMap* page_map, void* virt_addr, usize length)
+bool vm_unmap(PageMap* page_map, VirtAddr virt_addr, usize length)
 {
 	// TODO
 	vm_flush_tlb(virt_addr);
+	return true;
+}
+
+void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
+{
+	VirtAddr start = kernel_foreign_base;
+
+	for (usize page = 0; page < num_pages; page++)
+	{
+		if (vm_x86_map_page(kernel_map, vm_virt_to_phys(page_map, foreign_addr + (page * CONFIG_page_size)),
+							start + (page * CONFIG_page_size), PAGE_READ_WRITE | PAGE_PRESENT) == false)
+		{
+			return MAP_FAILED;
+		}
+	}
+
+	kernel_foreign_base += num_pages * CONFIG_page_size;
+
+	return (void*)start;
+}
+
+bool vm_unmap_foreign(void* kernel_addr, usize num_pages)
+{
+	for (usize page = 0; page < num_pages; page++)
+	{
+		if (vm_x86_unmap_page(kernel_map, (VirtAddr)kernel_addr + (page * CONFIG_page_size)) == false)
+			return false;
+	}
 	return true;
 }
 

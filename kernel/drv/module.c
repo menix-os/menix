@@ -254,9 +254,9 @@ i32 module_load_elf(const char* path)
 	}
 
 	// Check rest of the identification fields. x86_64 is 64-bit, little endian.
-	if (hdr->e_ident[EI_CLASS] != ELFCLASS64 || hdr->e_ident[EI_DATA] != ELFDATA2LSB ||
+	if (hdr->e_ident[EI_CLASS] != EI_ARCH_CLASS || hdr->e_ident[EI_DATA] != EI_ARCH_DATA ||
 		hdr->e_ident[EI_VERSION] != EV_CURRENT || hdr->e_ident[EI_OSABI] != ELFOSABI_SYSV ||
-		hdr->e_machine != EM_X86_64)
+		hdr->e_machine != EI_ARCH_MACHINE)
 	{
 		module_log("Module \"%s\" is not designed to run on this machine!\n", path);
 		goto leave;
@@ -301,7 +301,7 @@ i32 module_load_elf(const char* path)
 			// Set the address of the first mapping.
 			if (base_virt == 0)
 			{
-				base_virt = vm_map(vm_get_kernel_map(), 0, seg->p_memsz, PROT_READ | PROT_WRITE, 0, NULL, 0);
+				base_virt = (void*)vm_map(vm_get_kernel_map(), 0, seg->p_memsz, PROT_READ | PROT_WRITE, 0, NULL, 0);
 			}
 			else
 			{
@@ -421,7 +421,7 @@ i32 module_load_elf(const char* path)
 		if (segment->p_flags & PF_X)
 			prot |= PROT_EXEC;
 
-		vm_protect(vm_get_kernel_map(), (void*)segment->p_vaddr, segment->p_memsz, prot);
+		vm_protect(vm_get_kernel_map(), segment->p_vaddr, segment->p_memsz, prot);
 	}
 
 	// Register all global symbols.
@@ -457,9 +457,9 @@ i32 module_load_elf(const char* path)
 reloc_fail:
 	for (usize i = 0; i < loaded->num_maps; i++)
 	{
-		vm_unmap(vm_get_kernel_map(), loaded->maps[i].address, loaded->maps[i].size);
+		vm_unmap(vm_get_kernel_map(), (VirtAddr)loaded->maps[i].address, loaded->maps[i].size);
 	}
-	vm_unmap(vm_get_kernel_map(), base_virt, handle->stat.st_size);
+	vm_unmap(vm_get_kernel_map(), (VirtAddr)base_virt, handle->stat.st_size);
 	kfree(loaded);
 
 leave:
