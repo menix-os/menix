@@ -28,4 +28,9 @@ add_option(pci BOOL ON)
 add_option(boot_logo BOOL OFF)
 
 # Memory allocation
-add_option(vm_mmap_min_addr NUMBER 0x10000)
+add_option(vm_map_min_addr NUMBER 0x10000)
+add_option(vm_map_anon_base NUMBER 0x80000000000)
+
+# User-space constants
+add_option(user_stack_size NUMBER 0x200000)
+add_option(user_stack_addr NUMBER 0x70000000000)

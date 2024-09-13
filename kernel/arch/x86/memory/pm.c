@@ -127,7 +127,7 @@ next_page:
 	return 0;
 }
 
-PhysAddr pm_arch_alloc(usize amount)
+PhysAddr pm_alloc(usize amount)
 {
 	spin_acquire_force(&lock);
 
@@ -150,7 +150,7 @@ PhysAddr pm_arch_alloc(usize amount)
 	return mem;
 }
 
-void pm_arch_free(PhysAddr addr, usize amount)
+void pm_free(PhysAddr addr, usize amount)
 {
 	spin_acquire_force(&lock);
 

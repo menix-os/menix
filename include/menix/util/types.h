@@ -52,3 +52,6 @@ typedef usize Bits;
 
 // Represents a physical address.
 typedef usize PhysAddr;
+
+// Represents a virtual address not ready for access.
+typedef usize VirtAddr;

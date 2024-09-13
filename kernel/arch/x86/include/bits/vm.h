@@ -19,7 +19,7 @@
 #define PAGE_AVAILABLE			 (1 << 9)
 #define PAGE_ATTRIBUTE_TABLE	 (1 << 10)
 #define PAGE_PROTECTION_KEY(key) ((key & 0xFUL) << 59)
-#define PAGE_EXECUTE_DISABLE	 (1ULL << 63)
+#define PAGE_EXECUTE_DISABLE	 (1UL << 63)
 #define PAGE_ADDR				 (0x0000FFFFFFFFF000UL)
 
 typedef struct PageMap
@@ -29,17 +29,13 @@ typedef struct PageMap
 } PageMap;
 
 // Updates the active page map.
-void vm_arch_set_page_map(PageMap* map);
-
-// Translates a virtual address to a physical address.
-// Returns 0 if not mapped.
-PhysAddr vm_arch_virt_to_phys(PageMap* page_map, void* address);
+void vm_x86_set_page_map(PageMap* map);
 
 // Maps a virtual address to physical memory. Returns true if successful.
-bool vm_arch_map_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags);
+bool vm_x86_map_page(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, usize flags);
 
 // Redefines an existing mapping. Returns true if successful.
-bool vm_arch_remap_page(PageMap* page_map, PhysAddr phys_addr, void* virt_addr, usize flags);
+bool vm_x86_remap_page(PageMap* page_map, void* virt_addr, usize flags);
 
 // Page fault interrupt handler. Set by vm_init().
 void interrupt_pf_handler(CpuRegisters* regs);
