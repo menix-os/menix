@@ -12,7 +12,11 @@
 
 void kernel_main(BootInfo* info)
 {
+	// TODO: Move this to scheduler.
 	arch_current_cpu()->thread = kzalloc(sizeof(Thread));
+	arch_current_cpu()->thread->parent = kzalloc(sizeof(Process));
+	arch_current_cpu()->thread->parent->map_base = 0x60000000000;
+
 	vfs_init();
 
 	// Load initrd(s).

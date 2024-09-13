@@ -4,6 +4,7 @@
 #include <menix/drv/pci/pci.h>
 #include <menix/fs/vfs.h>
 #include <menix/log.h>
+#include <menix/memory/vm.h>
 #include <menix/module.h>
 #include <menix/thread/elf.h>
 #include <menix/util/hash_map.h>
@@ -288,9 +289,8 @@ i32 module_load_elf(const char* path)
 	usize dt_init_array = 0;
 	isize dt_init_arraysz = 0;
 
-	// Reserve memory for the entire file.
-	PhysAddr base_phys = pm_arch_alloc((handle->stat.st_size / CONFIG_page_size) + 1);
-	void* base_virt = pm_get_phys_base() + base_phys;
+	// Base address where the first mapping was created.
+	void* base_virt = 0;
 
 	for (usize i = 0; i < hdr->e_phnum; i++)
 	{
@@ -298,12 +298,22 @@ i32 module_load_elf(const char* path)
 
 		if (seg->p_type == PT_LOAD)
 		{
+			// Set the address of the first mapping.
+			if (base_virt == 0)
+			{
+				base_virt = vm_map(vm_get_kernel_map(), 0, seg->p_memsz, PROT_READ | PROT_WRITE, 0, NULL, 0);
+			}
+			else
+			{
+				vm_map(vm_get_kernel_map(), (VirtAddr)(base_virt + seg->p_vaddr), seg->p_memsz, PROT_READ | PROT_WRITE,
+					   MAP_FIXED, NULL, 0);
+			}
+
 			// Relocate the segment addresses.
-			seg->p_paddr = (Elf_Addr)base_phys + seg->p_offset;
 			seg->p_vaddr = (Elf_Addr)(base_virt + seg->p_vaddr);
 
 			// Keep track of allocated data for unloading.
-			loaded->maps[loaded->num_maps].address = seg->p_vaddr;
+			loaded->maps[loaded->num_maps].address = (void*)seg->p_vaddr;
 			loaded->maps[loaded->num_maps].size = seg->p_memsz;
 			loaded->num_maps++;
 
@@ -311,9 +321,6 @@ i32 module_load_elf(const char* path)
 			handle->read(handle, NULL, (void*)seg->p_vaddr, seg->p_filesz, seg->p_offset);
 			// Zero out unloaded data.
 			memset((void*)seg->p_vaddr + seg->p_filesz, 0, seg->p_memsz - seg->p_filesz);
-
-			// Map the segment into memory at the requested location. (RW temporarily so we can do relocations).
-			vm_arch_map_page(NULL, seg->p_paddr, (void*)seg->p_vaddr, PAGE_READ_WRITE);
 		}
 		else if (seg->p_type == PT_DYNAMIC)
 		{
@@ -408,13 +415,13 @@ i32 module_load_elf(const char* path)
 		if (segment->p_type != PT_LOAD)
 			continue;
 
-		usize flags = 0;
+		usize prot = PROT_READ;
 		if (segment->p_flags & PF_W)
-			flags |= PAGE_READ_WRITE;
-		if ((segment->p_flags & PF_X) == 0)
-			flags |= PAGE_EXECUTE_DISABLE;
+			prot |= PROT_WRITE;
+		if (segment->p_flags & PF_X)
+			prot |= PROT_EXEC;
 
-		vm_arch_map_page(NULL, segment->p_paddr, (void*)segment->p_vaddr, flags);
+		vm_protect(vm_get_kernel_map(), (void*)segment->p_vaddr, segment->p_memsz, prot);
 	}
 
 	// Register all global symbols.
@@ -448,8 +455,12 @@ i32 module_load_elf(const char* path)
 	goto leave;
 
 reloc_fail:
+	for (usize i = 0; i < loaded->num_maps; i++)
+	{
+		vm_unmap(vm_get_kernel_map(), loaded->maps[i].address, loaded->maps[i].size);
+	}
+	vm_unmap(vm_get_kernel_map(), base_virt, handle->stat.st_size);
 	kfree(loaded);
-	pm_arch_free(base_phys, (handle->stat.st_size / CONFIG_page_size) + 1);
 
 leave:
 	kfree(hdr);
