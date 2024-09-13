@@ -89,7 +89,7 @@ static isize devtmpfs_handle_write(struct Handle* self, FileDescriptor* fd, cons
 		void* new_data = krealloc(handle->buffer, new_capacity);
 		if (new_data == NULL)
 		{
-			arch_current_cpu()->thread->errno = ENOMEM;
+			proc_errno = ENOMEM;
 			goto fail;
 		}
 
@@ -239,12 +239,11 @@ i32 devtmpfs_init()
 
 bool devtmpfs_add_device(Handle* device, const char* name)
 {
-	usize* const errno = &arch_current_cpu()->thread->errno;
 	VfsNode* node = vfs_get_node(devtmpfs_root, name, false);
 	// Already have a node with this name, so fail.
 	if (node != NULL)
 	{
-		*errno = EEXIST;
+		proc_errno = EEXIST;
 		return false;
 	}
 

@@ -132,11 +132,9 @@ static bool vfs_populate(VfsNode* directory)
 
 static VfsPathToNode vfs_parse_path(VfsNode* parent, const char* path)
 {
-	usize* const errno = &arch_current_cpu()->thread->errno;
-
 	if (path == NULL || strlen(path) == 0)
 	{
-		*errno = ENOENT;
+		proc_errno = ENOENT;
 		return (VfsPathToNode) {NULL, NULL, NULL};
 	}
 
@@ -191,7 +189,7 @@ static VfsPathToNode vfs_parse_path(VfsNode* parent, const char* path)
 		{
 			if (last)
 				return (VfsPathToNode) {NULL, current_node, elem_str};
-			*errno = ENOENT;
+			proc_errno = ENOENT;
 			return (VfsPathToNode) {NULL, NULL, NULL};
 		}
 
@@ -203,7 +201,7 @@ static VfsPathToNode vfs_parse_path(VfsNode* parent, const char* path)
 		{
 			if (path_is_dir && !S_ISDIR(new_node->handle->stat.st_mode))
 			{
-				*errno = ENOTDIR;
+				proc_errno = ENOTDIR;
 				return (VfsPathToNode) {NULL, current_node, elem_str};
 			}
 			return (VfsPathToNode) {new_node, current_node, elem_str};
@@ -221,12 +219,12 @@ static VfsPathToNode vfs_parse_path(VfsNode* parent, const char* path)
 
 		if (!S_ISDIR(current_node->handle->stat.st_mode))
 		{
-			*errno = ENOTDIR;
+			proc_errno = ENOTDIR;
 			return (VfsPathToNode) {NULL, NULL, NULL};
 		}
 	}
 
-	*errno = ENOENT;
+	proc_errno = ENOENT;
 	return (VfsPathToNode) {NULL, NULL, NULL};
 }
 
@@ -261,7 +259,6 @@ VfsNode* vfs_resolve_node(VfsNode* node, bool follow_links)
 VfsNode* vfs_node_add(VfsNode* parent, const char* name, mode_t mode)
 {
 	spin_acquire_force(&vfs_lock);
-	usize* const errno = &arch_current_cpu()->thread->errno;
 
 	VfsNode* node = NULL;
 	VfsPathToNode parsed = vfs_parse_path(parent, name);
@@ -271,7 +268,7 @@ VfsNode* vfs_node_add(VfsNode* parent, const char* name, mode_t mode)
 
 	if (parsed.target != NULL)
 	{
-		*errno = EEXIST;
+		proc_errno = EEXIST;
 		goto leave;
 	}
 
@@ -303,14 +300,13 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 	VfsNode* source_node = NULL;
 
 	spin_acquire_force(&vfs_lock);
-	usize* const errno = &arch_current_cpu()->thread->errno;
 
 	// Check if the file system has been registered.
 	FileSystem* fs;
 	if (!hashmap_get(&fs_map, fs, fs_name, strlen(fs_name)))
 	{
 		vfs_log("Unable to mount file system \"%s\": Not previously registered!\n", fs_name);
-		*errno = ENODEV;
+		proc_errno = ENODEV;
 		goto leave;
 	}
 
@@ -322,7 +318,7 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 			goto leave;
 		if (S_ISDIR(source_node->handle->stat.st_mode))
 		{
-			*errno = EISDIR;
+			proc_errno = EISDIR;
 			goto leave;
 		}
 	}
@@ -334,7 +330,7 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 
 	if (parsed.target != vfs_root && !S_ISDIR(parsed.target->handle->stat.st_mode))
 	{
-		*errno = EISDIR;
+		proc_errno = EISDIR;
 		goto leave;
 	}
 
@@ -366,7 +362,6 @@ leave:
 VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target)
 {
 	spin_acquire_force(&vfs_lock);
-	usize* const errno = &arch_current_cpu()->thread->errno;
 
 	VfsNode* result = NULL;
 	// Parse the path.
@@ -379,7 +374,7 @@ VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target)
 	// Target already exists!
 	if (parsed.target != NULL)
 	{
-		*errno = EEXIST;
+		proc_errno = EEXIST;
 		goto leave;
 	}
 

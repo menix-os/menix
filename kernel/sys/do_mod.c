@@ -9,11 +9,9 @@
 
 SYSCALL_IMPL(modadd, const char* path)
 {
-	usize* errno = &arch_current_cpu()->thread->errno;
-
 	if (path == NULL)
 	{
-		*errno = -ENOENT;
+		proc_errno = -ENOENT;
 		return 0;
 	}
 

@@ -3,13 +3,15 @@
 #pragma once
 
 #include <menix/abi.h>
-#include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/fs/fd.h>
 #include <menix/fs/vfs.h>
 #include <menix/memory/vm.h>
 #include <menix/thread/spin.h>
 #include <menix/util/list.h>
+
+// errno of the current process
+#define proc_errno arch_current_cpu()->thread->errno
 
 typedef struct Process Process;
 
@@ -61,6 +63,7 @@ typedef struct Process
 	VfsNode* working_dir;	 // The current working directory.
 	SpinLock lock;			 // Access lock.
 	PageMap* page_map;		 // Process page map.
+	VirtAddr map_base;		 // Virtual base to create new memory mappings at.
 
 	ThreadList threads;		 // Threads owned by the process.
 	ProcessState state;		 // Current state of the process.
