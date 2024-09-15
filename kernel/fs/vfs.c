@@ -21,7 +21,7 @@ typedef struct
 } VfsPathToNode;
 
 SpinLock vfs_lock = spin_new();
-static VfsNode* vfs_root;
+static VfsNode* vfs_root = NULL;
 static HashMap(FileSystem*) fs_map;
 
 void vfs_init()
@@ -50,6 +50,7 @@ void vfs_init()
 	// Create /dev.
 	vfs_node_add(vfs_root, "/dev", 0755 | S_IFDIR);
 	kassert(vfs_mount(vfs_root, NULL, "/dev", "devtmpfs"), "Mount failed, devtmpfs unavailable!");
+	devtmpfs_register_default();
 }
 
 VfsNode* vfs_get_root()

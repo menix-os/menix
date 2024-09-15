@@ -20,6 +20,8 @@ static SpinLock cpu_lock = spin_new();
 // Assembly stub for syscall via SYSCALL/SYSRET.
 extern void sc_syscall(void);
 
+extern bool can_smap;
+
 // Initialize one CPU.
 void arch_init_cpu(Cpu* cpu, Cpu* boot)
 {
@@ -27,10 +29,6 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 	spin_acquire_force(&cpu_lock);
 
 	gdt_reload();
-
-	// Set KERNEL_GSBASE
-	asm_wrmsr(MSR_KERNEL_GS_BASE, (u64)cpu);
-	asm_wrmsr(MSR_GS_BASE, (u64)cpu);
 
 	gdt_load_tss((usize)&cpu->tss);
 
@@ -104,10 +102,18 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 		cr4 |= CR4_SMEP;
 	// Enable SMAP
 	if (ebx & CPUID_7B_SMAP)
+	{
 		cr4 |= CR4_SMAP;
+		can_smap = true;
+	}
 	// Enable FSGSBASE
 	if (ebx & CPUID_7B_FSGSBASE)
+	{
 		cr4 |= CR4_FSGSBASE;
+		asm_wrmsr(MSR_KERNEL_GS_BASE, 0);
+		asm_wrmsr(MSR_GS_BASE, (u64)cpu);
+		asm_wrmsr(MSR_FS_BASE, 0);
+	}
 
 	// Write to the control registers.
 	asm_set_register(cr0, cr0);
@@ -167,31 +173,37 @@ Cpu* arch_current_cpu()
 #endif
 }
 
-void arch_dump_registers()
+void arch_get_registers(CpuRegisters* regs)
 {
-	CpuRegisters regs;
-	asm_get_register(regs.rax, rax);
-	asm_get_register(regs.rbx, rbx);
-	asm_get_register(regs.rcx, rcx);
-	asm_get_register(regs.rdx, rdx);
-	asm_get_register(regs.rsi, rsi);
-	asm_get_register(regs.rdi, rdi);
-	asm_get_register(regs.rbp, rbp);
-	asm_get_register(regs.rsp, rsp);
-	asm_get_register(regs.r8, r8);
-	asm_get_register(regs.r9, r9);
-	asm_get_register(regs.r10, r10);
-	asm_get_register(regs.r11, r11);
-	asm_get_register(regs.r12, r12);
-	asm_get_register(regs.r13, r13);
-	asm_get_register(regs.r14, r14);
-	asm_get_register(regs.r15, r15);
-	asm_get_register(regs.cs, cs);
-	asm_get_register(regs.ss, ss);
+	if (regs == NULL)
+		return;
 
-	kmesg("rax: 0x%p rbx: 0x%p rcx: 0x%p rdx: 0x%p\n", regs.rax, regs.rbx, regs.rcx, regs.rdx);
-	kmesg("rsi: 0x%p rdi: 0x%p rbp: 0x%p rsp: 0x%p\n", regs.rsi, regs.rdi, regs.rbp, regs.rsp);
-	kmesg("r8:  0x%p r9:  0x%p r10: 0x%p r11: 0x%p\n", regs.r8, regs.r9, regs.r10, regs.r11);
-	kmesg("r12: 0x%p r13: 0x%p r14: 0x%p r15: 0x%p\n", regs.r12, regs.r13, regs.r14, regs.r15);
-	kmesg("cs:  0x%p ss:  0x%p\n", regs.cs, regs.ss);
+	asm_get_register(regs->rax, rax);
+	asm_get_register(regs->rbx, rbx);
+	asm_get_register(regs->rcx, rcx);
+	asm_get_register(regs->rdx, rdx);
+	asm_get_register(regs->rsi, rsi);
+	asm_get_register(regs->rdi, rdi);
+	asm_get_register(regs->rbp, rbp);
+	asm_get_register(regs->rsp, rsp);
+	asm_get_register(regs->r8, r8);
+	asm_get_register(regs->r9, r9);
+	asm_get_register(regs->r10, r10);
+	asm_get_register(regs->r11, r11);
+	asm_get_register(regs->r12, r12);
+	asm_get_register(regs->r13, r13);
+	asm_get_register(regs->r14, r14);
+	asm_get_register(regs->r15, r15);
+	asm_get_register(regs->cs, cs);
+	asm_get_register(regs->ss, ss);
+}
+
+void arch_dump_registers(CpuRegisters* regs)
+{
+	kmesg("rax: 0x%p rbx: 0x%p rcx: 0x%p rdx: 0x%p\n", regs->rax, regs->rbx, regs->rcx, regs->rdx);
+	kmesg("rsi: 0x%p rdi: 0x%p rbp: 0x%p rsp: 0x%p\n", regs->rsi, regs->rdi, regs->rbp, regs->rsp);
+	kmesg("r8:  0x%p r9:  0x%p r10: 0x%p r11: 0x%p\n", regs->r8, regs->r9, regs->r10, regs->r11);
+	kmesg("r12: 0x%p r13: 0x%p r14: 0x%p r15: 0x%p\n", regs->r12, regs->r13, regs->r14, regs->r15);
+	kmesg("core:0x%p isr: 0x%p err: 0x%p rip: 0x%p\n", regs->core, regs->isr, regs->error, regs->rip);
+	kmesg("cs:  0x%p rfl: 0x%p ss:  0x%p\n", regs->cs, regs->rflags, regs->ss);
 }

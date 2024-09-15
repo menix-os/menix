@@ -1,11 +1,14 @@
 // Process creation
 
 #include <menix/common.h>
+#include <menix/fs/vfs.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/vm.h>
+#include <menix/thread/elf.h>
 #include <menix/thread/process.h>
 #include <menix/thread/spin.h>
 
+#include <errno.h>
 #include <string.h>
 
 static SpinLock lock = spin_new();
@@ -25,8 +28,64 @@ bool proc_execve(const char* path, char** argv, char** envp)
 {
 	spin_acquire_force(&lock);
 
+	// Open the file and ensure it's there.
+	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
+	if (node == NULL)
+	{
+		proc_log("Unable to load file \"%s\"\n", path);
+		return false;
+	}
+
+	// Create a new page map for the process.
+	PageMap* map = vm_page_map_new();
+
+	// Load the executable into the new page map.
+	ElfInfo info = {0};
+	if (elf_load(map, node->handle, 0, &info) == false)
+	{
+		proc_log("Unable to load file \"%s\"\n", path);
+		return false;
+	}
+
+	// If an interpreter was requested, load it at the configured base address.
+	if (info.ld_path != NULL)
+	{
+		VfsNode* interp = vfs_get_node(vfs_get_root(), info.ld_path, true);
+		if (interp == NULL)
+		{
+			proc_log("Unable to load interpreter \"%s\" for \"%s\"\n", info.ld_path, path);
+			return false;
+		}
+		ElfInfo interp_info;
+		elf_load(map, interp->handle, CONFIG_user_interp_base, &interp_info);
+	}
+
+	// Allocate a new process structure.
+	Thread* thread = arch_current_cpu()->thread;
+	thread->parent = kzalloc(sizeof(Process));
+	thread->parent->page_map = map;
+
+	// TODO: Open stdout, stdin and stderr
+	FileDescriptor* fd = kzalloc(sizeof(FileDescriptor));
+	fd->handle = vfs_get_node(vfs_get_root(), "/dev/terminal0", true)->handle;
+	thread->parent->file_descs[0] = fd;
+	thread->parent->file_descs[1] = fd;
+	thread->parent->file_descs[2] = fd;
+
+	// TODO: Set CWD.
+	thread->parent->working_dir = vfs_get_root();
+
+	// Map the process stack. Subtract size from the start since stack grows down.
+	vm_map(map, CONFIG_user_stack_addr - CONFIG_user_stack_size, CONFIG_user_stack_size,
+		   PROT_READ | PROT_WRITE | PROT_EXEC, MAP_FIXED, NULL, 0);
+
+	arch_current_cpu()->user_stack = CONFIG_user_stack_addr;
+
+	vm_set_page_map(map);
+	asm_get_register(arch_current_cpu()->kernel_stack, rsp);
 	spin_free(&lock);
-	return true;
+	arch_return_to_user(info.entry_point);
+	return false;
 }
 
 usize proc_fork(Process* proc, Thread* thread)
@@ -45,4 +104,33 @@ usize proc_fork(Process* proc, Thread* thread)
 
 	spin_free(&lock);
 	return fork->id;
+}
+
+void proc_kill(Process* proc)
+{
+	// TODO
+	while (1)
+		;
+}
+
+FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
+{
+	kassert(process != NULL, "No process specified! This is a kernel bug.");
+
+	if (fd >= OPEN_MAX)
+	{
+		proc_errno = EBADF;
+		return NULL;
+	}
+
+	FileDescriptor* file_desc = NULL;
+	spin_lock(&process->fd_lock, {
+		file_desc = process->file_descs[fd];
+		if (file_desc == NULL)
+		{
+			proc_errno = EBADF;
+			break;
+		}
+	});
+	return file_desc;
 }

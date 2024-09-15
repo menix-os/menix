@@ -35,13 +35,11 @@ void kernel_main(BootInfo* info)
 	kmesg("%s %s [%s] %s\n", uname.sysname, uname.release, uname.version, uname.machine);
 
 	// Call init program.
-	char* argv[] = {"/sbin/init", NULL};
-	proc_execve("init", argv, NULL);
-
-	// TODO: ELF test
-	// PageMap* map = vm_page_map_new();
-	// VfsNode* init = vfs_get_node(vfs_get_root(), "/sbin/init", true);
-	// elf_load(map, init->handle, 0);
+	char* argv[] = {
+		"init",
+		NULL,
+	};
+	proc_execve("/bin/init", argv, NULL);
 
 	// If we get here, the init program has terminated, so shutdown is requested.
 

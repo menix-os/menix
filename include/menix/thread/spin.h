@@ -17,6 +17,12 @@ typedef struct
 		0 \
 	}
 
+#define spin_lock(lock, scope) \
+	spin_acquire_force(lock); \
+	do \
+		scope while (0); \
+	spin_free(lock);
+
 // Toggles if spinlocks do anything or not. Used for single processor machines/during setup.
 void spin_use(bool on);
 

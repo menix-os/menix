@@ -17,3 +17,6 @@ target_compile_options(common_kernel INTERFACE
 
 # Memory allocation
 add_option(page_size NUMBER 0x1000)
+
+# Debug information for page faults
+add_option(x86_pf_debug BOOL OFF)

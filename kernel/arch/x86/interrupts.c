@@ -2,11 +2,14 @@
 
 #include <menix/common.h>
 #include <menix/log.h>
+#include <menix/memory/vm.h>
 #include <menix/sys/syscall.h>
 #include <menix/thread/process.h>
 
 #include <idt.h>
 #include <interrupts.h>
+
+#include "bits/asm.h"
 
 static const char* exception_names[0x20] = {
 	[0x00] = "Division Error",
@@ -40,7 +43,7 @@ static const char* exception_names[0x20] = {
 
 static void interrupt_ud_handler(CpuRegisters* regs)
 {
-	// Make sure we're in user mode.
+	// Make sure we're in user mode, otherwise we have to crash.
 	kassert(regs->cs & CPL_USER, "Invalid opcode at 0x%zx on core %zu!", regs->rip, arch_current_cpu()->id);
 }
 
@@ -81,28 +84,34 @@ void interrupt_register(usize idx, void (*handler)(CpuRegisters*))
 
 void interrupt_handler(CpuRegisters* regs)
 {
-	// If caused by the user, terminate the process with SIGILL.
+	// If we have a handler for this interrupt, call it.
+	if (regs->isr < ARRAY_SIZE(exception_handlers) && exception_handlers[regs->isr])
+	{
+		exception_handlers[regs->isr](regs);
+		return;
+	}
+
+	// If unhandled and caused by the user, terminate the process with SIGILL.
 	if (regs->cs & CPL_USER)
 	{
-		// If we don't have a handler for this function, terminate the program immediately.
-		if (regs->isr < ARRAY_SIZE(exception_handlers) && exception_handlers[regs->isr])
-		{
-			exception_handlers[regs->isr](regs);
-			return;
-		}
-
 		Process* proc = arch_current_cpu()->thread->parent;
 		kmesg("Unhandled exception %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
 		// TODO: Terminate program.
+		arch_dump_registers(regs);
+		proc_kill(proc);
 		return;
 	}
 
 	// Disable spinlocks so we have a chance of displaying a message.
+	// In this state everything could be broken anyways.
 	spin_use(false);
 
-	kassert(regs->isr < ARRAY_SIZE(exception_handlers), "Unhandled exception %zu in kernel mode!", regs->isr);
-	kassert(exception_handlers[regs->isr] != NULL, "Unhandled exception \"%s\" (%zu) in kernel mode!",
-			exception_names[regs->isr], regs->isr);
+	// Exception was not caused by the user and is not handled, abort.
+	if (regs->isr < ARRAY_SIZE(exception_names))
+		kmesg("Unhandled exception \"%s\" (%zu) in kernel mode!\n", exception_names[regs->isr], regs->isr);
+	else
+		kmesg("Unhandled exception %zu in kernel mode!\n", regs->isr);
 
-	exception_handlers[regs->isr](regs);
+	arch_dump_registers(regs);
+	kabort();
 }

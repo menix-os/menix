@@ -72,6 +72,12 @@ void module_register(LoadedModule* module);
 // Loads a previously registered module.
 i32 module_load(const char* name);
 
+// Loads all symbols from the kernel image.
+void module_load_kernel_syms(void* kernel_elf);
+
+// Finds the symbol living at `addr` and writes it to `out_name` and `out_symbol`. If not found, returns false.
+bool module_find_symbol(void* addr, const char** out_name, Elf_Sym** out_symbol);
+
 // Loads a kernel module from a path.
 i32 module_load_elf(const char* path);
 

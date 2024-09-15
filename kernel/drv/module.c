@@ -57,28 +57,6 @@ void module_init(BootInfo* info)
 		}
 	}
 
-	// Add all kernel symbols to the symbol map.
-	void* const kernel = elf_get_kernel();
-	hashmap_init(module_symbol_map, 128);
-
-	// Get symbol table.
-	Elf_Shdr* symtab = elf_get_section(kernel, ".symtab");
-	Elf_Sym* symtab_data = kernel + symtab->sh_offset;
-	kassert(symtab != NULL, "Couldn't find kernel symbol table!");
-
-	// Get string table.
-	Elf_Shdr* strtab = elf_get_section(kernel, ".strtab");
-	const char* strtab_data = kernel + strtab->sh_offset;
-	kassert(symtab != NULL, "Couldn't find kernel string table!");
-
-	for (usize sym = 0; sym < symtab->sh_size / symtab->sh_entsize; sym++)
-	{
-		const char* symbol_name = strtab_data + symtab_data[sym].st_name;
-		// Only match global symbols.
-		if (symtab_data[sym].st_info & (STB_GLOBAL << 4) && symtab_data[sym].st_size != 0)
-			module_register_symbol(symbol_name, symtab_data + sym);
-	}
-
 	// Load modules from VFS.
 	// Check if /boot/modules exists.
 	const char* dyn_modules_path = "/boot/modules/";	// TODO: cmdline override of this value.
@@ -224,6 +202,54 @@ Elf_Sym* module_get_symbol(const char* name)
 	hashmap_get(&module_symbol_map, ret, name, strlen(name));
 
 	return ret;
+}
+
+void module_load_kernel_syms(void* kernel_elf)
+{
+	// Add all kernel symbols to the symbol map.
+	void* const kernel = kernel_elf;
+	hashmap_init(module_symbol_map, 128);
+
+	// Get symbol table.
+	Elf_Shdr* symtab = elf_get_section(kernel, ".symtab");
+	Elf_Sym* symtab_data = kernel + symtab->sh_offset;
+	kassert(symtab != NULL, "Couldn't find kernel symbol table!");
+
+	// Get string table.
+	Elf_Shdr* strtab = elf_get_section(kernel, ".strtab");
+	const char* strtab_data = kernel + strtab->sh_offset;
+	kassert(symtab != NULL, "Couldn't find kernel string table!");
+
+	for (usize sym = 0; sym < symtab->sh_size / symtab->sh_entsize; sym++)
+	{
+		const char* symbol_name = strtab_data + symtab_data[sym].st_name;
+		// Only match global symbols.
+		if (symtab_data[sym].st_info & (STB_GLOBAL << 4) && symtab_data[sym].st_size != 0)
+			module_register_symbol(symbol_name, symtab_data + sym);
+	}
+}
+
+bool module_find_symbol(void* addr, const char** out_name, Elf_Sym** out_symbol)
+{
+	for (usize b = 0; b < module_symbol_map.capacity; b++)
+	{
+		if (module_symbol_map.buckets == NULL)
+			break;
+
+		auto bucket = module_symbol_map.buckets + b;
+		for (usize i = 0; i < bucket->count; i++)
+		{
+			Elf_Sym* symbol = bucket->items[i].item;
+			// Check if our address is inside the bounds of the current symobl.
+			if (addr >= (void*)symbol->st_value && addr < (void*)(symbol->st_value + symbol->st_size))
+			{
+				*out_name = (const char*)bucket->items[i].key_data;
+				*out_symbol = bucket->items[i].item;
+				return true;
+			}
+		}
+	}
+	return false;
 }
 
 i32 module_load_elf(const char* path)
@@ -429,6 +455,7 @@ i32 module_load_elf(const char* path)
 	{
 		if (symtab_data[i].st_info == (STB_GLOBAL << 4))
 		{
+			symtab_data[i].st_value += (VirtAddr)base_virt;
 			module_register_symbol(strtab_data + symtab_data[i].st_name, symtab_data + i);
 		}
 	}

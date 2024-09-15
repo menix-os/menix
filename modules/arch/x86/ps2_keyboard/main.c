@@ -6,6 +6,8 @@
 
 #include <interrupts.h>
 
+#include "bits/asm.h"
+
 #ifndef CONFIG_arch_x86
 #error This driver is only compatible with x86!
 #endif
@@ -75,15 +77,21 @@ MODULE_FN i32 init_fn()
 
 	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xFF);	// Reset PS/2 controller.
 	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xAE);	// Enable PS/2 keyboard.
-	arch_x86_write8(KEYBOARD_DATA_PORT, 0xFF);		// Reset the keyboard.
+
+	arch_x86_write8(KEYBOARD_DATA_PORT, 0xFF);	  // Reset the keyboard.
+
+	if (ps2_read() != 0xFA)
+	{
+		module_log("Failed to register PS/2 keyboard because it didn't send an ACK response!\n");
+		return 1;
+	}
 
 	arch_x86_write8(KEYBOARD_DATA_PORT, 0xF0);	  // Send "Set Scan Code Set" command.
-	arch_x86_write8(KEYBOARD_DATA_PORT, 0x02);	  // Set scan code set 2.
+	arch_x86_write8(KEYBOARD_DATA_PORT, 0x02);	  // Set scan code set to 2.
 
-	// Mask everything but IRQ1 (keyboard).
+	// Unmask IRQ1 (keyboard).
 	arch_x86_write8(PIC1_DATA_PORT, 0xFD);
 
-	module_log("Registered PS/2 keyboard input.\n");
 	return 0;
 }
 

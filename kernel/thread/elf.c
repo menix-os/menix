@@ -7,18 +7,6 @@
 
 #include <string.h>
 
-static Elf_Hdr* self_kernel_addr = NULL;
-
-void elf_set_kernel(Elf_Hdr* addr)
-{
-	self_kernel_addr = addr;
-}
-
-Elf_Hdr* elf_get_kernel()
-{
-	return self_kernel_addr;
-}
-
 void* elf_get_section(void* elf, const char* name)
 {
 	if (elf == NULL || name == NULL)
@@ -72,8 +60,14 @@ void* elf_get_section(void* elf, const char* name)
 	return result;
 }
 
-bool elf_load(PageMap* page_map, Handle* handle, usize base)
+bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 {
+	if (handle == NULL)
+	{
+		elf_log("Failed to load ELF: Could not read the file.\n");
+		return false;
+	}
+
 	// Read ELF header.
 	Elf_Hdr hdr;
 	if (handle->read(handle, NULL, &hdr, sizeof(hdr), 0) != sizeof(hdr))
@@ -135,7 +129,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base)
 					return false;
 				}
 
-				// Create temporarily mapping in the kernel.
+				// Create temporary mapping in the kernel page map so we can write to it.
 				void* foreign = vm_map_foreign(page_map, phdr.p_vaddr + base, page_count);
 				if (foreign == MAP_FAILED)
 				{
@@ -165,6 +159,8 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base)
 			}
 		}
 	}
+
+	info->entry_point = hdr.e_entry;
 
 	return true;
 }

@@ -48,8 +48,14 @@ void arch_shutdown(BootInfo* info);
 // Halts all CPUs.
 void arch_stop(BootInfo* info);
 
+// Writes the contents of all registers to regs.
+void arch_get_registers(CpuRegisters* regs);
+
 // Writes all registers to the current output stream.
-void arch_dump_registers();
+void arch_dump_registers(CpuRegisters* regs);
 
 // Gets processor metadata.
 Cpu* arch_current_cpu();
+
+// Jump to user mode and set the instruction pointer to `ip`.
+extern void arch_return_to_user(VirtAddr ip);

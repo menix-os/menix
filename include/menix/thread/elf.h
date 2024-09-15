@@ -380,23 +380,29 @@ typedef struct
 	u32 n_type;
 } Elf32_Nhdr;
 
+typedef struct
+{
+	Elf_Addr entry_point;
+	char* ld_path;
+} ElfInfo;
+
 #define elf_log(fmt, ...) kmesg("[ELF]\t" fmt, ##__VA_ARGS__)
 
 // Gets a section from an ELF by name.
 void* elf_get_section(void* elf, const char* name);
 
-// Sets the current kernel context to the given address.
-void elf_set_kernel(Elf_Hdr* addr);
-
-// Returns a pointer to where the kernel was loaded into memory.
-Elf_Hdr* elf_get_kernel();
-
 // Loads an ELF executable into memory. Returns true if successful.
 // `page_map`: The page map of the process to map into.
 // `handle`: A reference to a data stream of where to read the ELF from.
 // `base`: If not 0: The image base where in virtual memory to load the executable.
-bool elf_load(PageMap* page_map, Handle* handle, usize base);
+// `info`: A reference to an ElfInfo structure to store important ELF information in.
+bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info);
 
 // Does a relocation on a symbol.
+// `reloc`: The relocation to perform.
+// `symtab_data`: Start of the symbol table.
+// `strtab_data`: Start of the string table.
+// `section_headers`: Start of the section header array.
+// `base_virt`: The base address where the ELF was loaded.
 i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data, Elf_Shdr* section_headers,
 				 void* base_virt);

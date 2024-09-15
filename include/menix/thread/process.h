@@ -13,6 +13,8 @@
 // errno of the current process
 #define proc_errno arch_current_cpu()->thread->errno
 
+#define proc_log(fmt, ...) kmesg("[Process]\t" fmt, ##__VA_ARGS__)
+
 typedef struct Process Process;
 
 // Describes the state of a thread.
@@ -98,3 +100,6 @@ usize proc_fork(Process* proc, Thread* thread);
 // Terminates a process.
 // `proc`: The process to kill.
 void proc_kill(Process* proc);
+
+// Converts a file descriptor ID for the active process to a reference.
+FileDescriptor* proc_fd_to_ptr(Process* process, usize fd);

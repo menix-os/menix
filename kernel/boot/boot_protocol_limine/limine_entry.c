@@ -15,6 +15,7 @@
 #include <string.h>
 
 #include "limine.h"
+#include <menix/module.h>
 
 #define LIMINE_REQUEST(request, tag, rev) \
 	ATTR(used, section(".requests")) static volatile struct limine_##request request = { \
@@ -130,8 +131,6 @@ void kernel_boot()
 	boot_log("Kernel file loaded at: 0x%p, Size = 0x%lx\n", kernel_res->kernel_file->address,
 			 kernel_res->kernel_file->size);
 
-	elf_set_kernel(kernel_res->kernel_file->address);
-
 	// Get command line.
 	boot_log("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);
 	info.cmd = kernel_res->kernel_file->cmdline;
@@ -148,7 +147,7 @@ void kernel_boot()
 	for (usize i = 0; i < info.cpu_num; i++)
 	{
 		struct limine_smp_info* smp_cpu = smp_res->cpus[i];
-		smp_cpu->extra_argument = (u64)&info.cpus[i];
+		smp_cpu->extra_argument = (usize)&info.cpus[i];
 		Cpu* cpu = &info.cpus[i];
 		cpu->id = i;
 #ifdef CONFIG_arch_x86
@@ -209,6 +208,8 @@ void kernel_boot()
 		info.file_num = module_res->module_count;
 		info.files = files;
 	}
+
+	module_load_kernel_syms(kernel_res->kernel_file->address);
 
 	arch_init(&info);
 	// TODO: Swap out for call to scheduler.

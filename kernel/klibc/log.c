@@ -3,6 +3,7 @@
 #include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
+#include <menix/module.h>
 #include <menix/thread/elf.h>
 #include <menix/thread/spin.h>
 #include <menix/util/self.h>
@@ -10,18 +11,12 @@
 #include <stdarg.h>
 #include <stdio.h>
 
-static SpinLock lock = spin_new();
-
 void kmesg(const char* fmt, ...)
 {
-	spin_acquire_force(&lock);
-
 	va_list args;
 	va_start(args, fmt);
 	vprintf(fmt, args);
 	va_end(args);
-
-	spin_free(&lock);
 }
 
 void ktrace()
@@ -36,45 +31,23 @@ void ktrace()
 #ifdef CONFIG_ktrace_registers
 	// Write out registers.
 	kmesg("Registers:\n");
-	arch_dump_registers();
+	CpuRegisters regs;
+	arch_get_registers(&regs);
+	arch_dump_registers(&regs);
 #endif
-
-	// Parse kernel ELF.
-	Elf_Hdr* kernel = elf_get_kernel();
-	void* data = kernel;
-	// Find symbol and string table.
-	Elf_Shdr* strtab = elf_get_section(kernel, ".strtab");
-	Elf_Shdr* symtab = elf_get_section(kernel, ".symtab");
-	if (symtab == NULL || strtab == NULL)
-		return;
-
-	const char* strtab_data = data + strtab->sh_offset;
-	Elf_Sym* symbols = data + symtab->sh_offset;
-	const usize symbol_count = symtab->sh_size / symtab->sh_entsize;
 
 	// Print stack trace.
 	kmesg("Stack trace:\n");
 	for (usize i = 0; i < CONFIG_ktrace_max && fp != NULL; fp = fp->prev, i++)
 	{
-		const char* symbol_name = NULL;
-		usize offset = 0;
-		const usize addr = (usize)fp->return_addr;
-
 		// Try to resolve the symbol name and offset.
-		for (usize k = 0; k < symbol_count; k++)
+		const char* name;
+		Elf_Sym* sym;
+		if (module_find_symbol(fp->return_addr, &name, &sym))
 		{
-			// Check if our address is inside the bounds of the current symobl.
-			if (addr >= symbols[k].st_value && addr < (symbols[k].st_value + symbols[k].st_size))
-			{
-				symbol_name = strtab_data + symbols[k].st_name;
-				offset = addr - symbols[k].st_value;
-				break;
-			}
+			// If we have found the corresponding symbol, print its name + offset.
+			kmesg("    [%zu] 0x%p <%s+0x%x>\n", i, fp->return_addr, name, sym->st_value);
 		}
-
-		// If we have found the corresponding symbol, print its name + offset.
-		if (symbol_name != NULL)
-			kmesg("    [%zu] 0x%p <%s+0x%x>\n", i, fp->return_addr, symbol_name, offset);
 		// If the address is not NULL, but we don't have any matching symbol, just print the address.
 		else if (fp->return_addr)
 		{

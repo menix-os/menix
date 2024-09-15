@@ -1,6 +1,5 @@
 // Virtual memory management for x86.
 
-#include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/log.h>
 #include <menix/memory/alloc.h>
@@ -22,6 +21,9 @@ SEGMENT_DECLARE_SYMBOLS(data)
 static PageMap* kernel_map = NULL;									 // Page map used for the kernel.
 static void* phys_base = NULL;										 // Memory mapped lower physical memory.
 static VirtAddr kernel_foreign_base = CONFIG_vm_map_foreign_base;	 // Start of foreign mappings.
+
+// If we can use the Supervisor Mode Access Prevention to run vm_hide_user() and vm_show_user()
+bool can_smap = false;
 
 void vm_init(void* base, PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 {
@@ -67,7 +69,8 @@ void vm_init(void* base, PhysAddr kernel_base, PhysMemory* mem_map, usize num_en
 	pm_update_phys_base(base);
 
 	// Load the new page directory.
-	vm_x86_set_page_map(kernel_map);
+
+	asm_set_register(((usize)kernel_map->head - (usize)phys_base), cr3);
 }
 
 PageMap* vm_page_map_new()
@@ -78,6 +81,9 @@ PageMap* vm_page_map_new()
 	usize* pt = pm_alloc(1) + pm_get_phys_base();
 	memset(pt, 0, CONFIG_page_size);
 	result->head = pt;
+
+	// Copy over the upper half data which isn't accessible to user processes.
+	// This way we don't have to swap page maps on a syscall.
 	for (usize i = 256; i < 512; i++)
 	{
 		result->head[i] = kernel_map->head[i];
@@ -91,9 +97,9 @@ PageMap* vm_get_kernel_map()
 	return kernel_map;
 }
 
-void vm_x86_set_page_map(PageMap* map)
+void vm_set_page_map(PageMap* page_map)
 {
-	asm_set_register(((usize)map->head - (usize)phys_base), cr3);
+	asm_set_register(((VirtAddr)page_map->head - (VirtAddr)phys_base), cr3);
 }
 
 // Returns the next level of the current page map level. Optionally allocates a page.
@@ -163,6 +169,10 @@ bool vm_x86_map_page(PageMap* page_map, VirtAddr phys_addr, VirtAddr virt_addr, 
 		// Index into the current level map.
 		index = (virt_addr >> shift) & 0x1FF;
 
+		// If we want to map a page for user mode access, we also have to map all previous levels for that.
+		if (flags & PAGE_USER_MODE)
+			cur_head[index] |= PAGE_USER_MODE;
+
 		// If we allocate a 2MiB page, there is one less level in that page map branch.
 		// In either case, don't traverse further after setting the index for writing.
 		if (lvl == (flags & PAGE_SIZE ? 2 : 1))
@@ -197,6 +207,9 @@ bool vm_x86_remap_page(PageMap* page_map, VirtAddr virt_addr, usize flags)
 		const usize shift = (12 + (9 * (lvl - 1)));
 		// Index into the current level map.
 		index = (virt_addr >> shift) & 0x1FF;
+
+		if (flags & PAGE_USER_MODE)
+			cur_head[index] |= PAGE_USER_MODE;
 
 		// If we allocate a 2MiB page, there is one less level in that page map branch.
 		// In either case, don't traverse further after setting the index for writing.
@@ -282,9 +295,9 @@ PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 }
 
 // Converts POSIX protection flags to x86 page flags
-static usize vm_posix_prot_to_x86(PageMap* page_map, int prot)
+static PageFlags vm_posix_prot_to_x86(PageMap* page_map, int prot)
 {
-	usize x86_flags = PAGE_PRESENT;
+	PageFlags x86_flags = PAGE_PRESENT;
 	if (page_map != kernel_map)
 		x86_flags |= PAGE_USER_MODE;
 	if (prot & PROT_WRITE)
@@ -304,7 +317,7 @@ VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, int 
 	}
 
 	// Convert flags to x86 page flags.
-	usize x86_flags = vm_posix_prot_to_x86(page_map, prot);
+	PageFlags x86_flags = vm_posix_prot_to_x86(page_map, prot);
 
 	VirtAddr addr = 0;
 	length = ALIGN_UP(length, CONFIG_page_size);
@@ -398,22 +411,79 @@ bool vm_unmap_foreign(void* kernel_addr, usize num_pages)
 	return true;
 }
 
+void vm_hide_user()
+{
+	if (can_smap)
+		asm volatile("clac");
+}
+
+void vm_show_user()
+{
+	if (can_smap)
+		asm volatile("stac");
+}
+
 void interrupt_pf_handler(CpuRegisters* regs)
 {
+	// CR2 holds the address that was accessed.
 	usize cr2;
 	asm_get_register(cr2, cr2);
+
+	Process* proc = arch_current_cpu()->thread->parent;
+
+#ifdef CONFIG_x86_pf_debug
+	kmesg("Page fault: \n");
+
+	// Present
+	if (BIT(regs->error, 0))
+	{
+		kmesg("\t- Fault was a protection violation, permissions are: PAGE_READ ");
+		usize flags = *vm_x86_get_pte(proc->page_map, cr2, false) & ~PAGE_ADDR;
+		if (flags & PAGE_READ_WRITE)
+			kmesg("| PAGE_WRITE");
+		if (flags & PAGE_EXECUTE_DISABLE)
+			kmesg("| PAGE_EXECUTE_DISABLE");
+		kmesg("\n");
+	}
+	else
+		kmesg("\t- Page was not present\n");
+
+	// Write
+	if (BIT(regs->error, 1))
+		kmesg("\t- Fault was caused by a write access\n");
+	else
+		kmesg("\t- Fault was caused by a read access\n");
+
+	// User
+	if (BIT(regs->error, 2))
+		kmesg("\t- Fault was caused by the user\n");
+	else
+		kmesg("\t- Fault was caused by the kernel\n");
+
+	// Instruction fetch
+	if (BIT(regs->error, 4))
+		kmesg("\t- Fault was caused by an instruction fetch\n");
+
+	// Check if SMAP is blocking this access
+	if (can_smap & !BIT(regs->rflags, 18) & !(regs->cs & CPL_USER))
+		kmesg("\t- Fault was caused by SMAP (missing vm_show_user()?)\n");
+
+	kmesg("Attempted to access 0x%p!\n");
+	ktrace();
+#endif
 
 	// If the current protection level wasn't 3, that means the page fault was
 	// caused by the supervisor! If this happens, we messed up big time!
 	if (!(regs->cs & CPL_USER))
 	{
-		// TODO: Check error.
-
 		// If we can't recover, abort.
-		kmesg("Fatal page fault in supervisor mode while trying to access 0x%p! (Error: 0x%zx)\n", cr2, regs->error);
-		ktrace();
+		kmesg("Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx)\n", cr2, regs->error);
 		kabort();
 	}
 
 	// TODO: Handle user page fault.
+
+	// If nothing can make the process recover, we have to put it out of its misery.
+	kmesg("PID %zu terminated with SIGSEGV.\n", proc->id);
+	proc_kill(proc);
 }

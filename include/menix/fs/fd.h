@@ -9,6 +9,7 @@ typedef struct FileDescriptor
 	struct Handle* handle;	  // Handle connected to this descriptor.
 	usize num_refs;			  // Amount of references to this descriptor.
 	usize offset;			  // Current offset into the file.
+	struct VfsNode* node;	  // The node that this descriptor is pointing to.
 	SpinLock lock;			  // Access lock.
 } FileDescriptor;
 

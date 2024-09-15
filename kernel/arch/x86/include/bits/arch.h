@@ -225,9 +225,9 @@ struct CpuRegisters
 	// Pushed onto the stack by the interrupt handler stub.
 	u64 core;
 	u64 isr;
-
-	// Pushed onto the stack by the CPU during an interrupt.
+	// Pushed onto the stack by the CPU if exception has an error code.
 	u64 error;
+	// Pushed onto the stack by the CPU during an interrupt.
 	u64 rip;
 	u64 cs;
 	u64 rflags;

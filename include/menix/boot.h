@@ -56,3 +56,6 @@ typedef struct
 // Gets called after platform initialization has finished.
 // This is the main kernel function.
 void kernel_main(BootInfo* const info);
+
+// Gets called if a shutdown was requested by the firmware, a syscall or if the init program terminated.
+void kernel_shutdown(i32 reason);

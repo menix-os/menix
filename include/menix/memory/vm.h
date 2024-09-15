@@ -6,6 +6,15 @@
 #include <menix/fs/handle.h>
 #include <menix/memory/pm.h>
 
+#include <bits/vm.h>
+
+// Temporarily makes user mappings accessible.
+// Usage: vm_user_access({ do_stuff(); });
+#define vm_user_access(scope) \
+	vm_show_user(); \
+	scope; \
+	vm_hide_user()
+
 // Defined in <bits/vm.h> since page maps might require processor specific information.
 typedef struct PageMap PageMap;
 
@@ -17,11 +26,14 @@ void vm_init(void* phys_base, PhysAddr kernel_base, PhysMemory* mem_map, usize n
 // Returns a reference to the kernel page map.
 PageMap* vm_get_kernel_map();
 
+// Updates the active page map.
+void vm_set_page_map(PageMap* page_map);
+
 // Creates a new page map.
 PageMap* vm_page_map_new();
 
 // Creates a new mapping for a region of memory.
-// If `page_map` is equal to vm_get_kernel_map(), the returned value may be interpreted as a void*.
+// If `page_map` is equal to vm_get_kernel_map(), the returned value may be interpreted as a `void*`.
 VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, int flags, Handle* fd, usize off);
 
 // Changes the protection of an existing virtual address. Returns true if successful.
@@ -46,4 +58,8 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages);
 // `num_pages`: Amount of pages in the original mapping.
 bool vm_unmap_foreign(void* kernel_addr, usize num_pages);
 
-#include <bits/vm.h>
+// Make user memory inaccessible to the kernel.
+void vm_hide_user();
+
+// Unhide user memory so that it's accessible to the kernel.
+void vm_show_user();

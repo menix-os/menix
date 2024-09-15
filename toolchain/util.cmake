@@ -190,10 +190,7 @@ function(require_option optname)
 	# If it's explicitly turned off, we can't compile.
 	if(DEFINED ${optname})
 		if(${${optname}} STREQUAL OFF)
-			if(${optname} STREQUAL ${MENIX_CURRENT_MOD})
-				message(FATAL_ERROR "[!] \"${MENIX_CURRENT_MOD}\" cannot be disabled!\n"
-					"-> Enable \"${MENIX_CURRENT_MOD}\"\n")
-			else()
+			if(NOT ${optname} STREQUAL ${MENIX_CURRENT_MOD})
 				message(FATAL_ERROR "[!] \"${MENIX_CURRENT_MOD}\" requires \"${optname}\" to build, but this was explicitly turned off in the config!\n"
 					"-> Either enable \"${optname}\", or disable \"${MENIX_CURRENT_MOD}\".\n")
 			endif()

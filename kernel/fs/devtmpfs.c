@@ -186,6 +186,9 @@ static VfsNode* devtmpfs_root = NULL;
 
 static VfsNode* devtmpfs_mount(VfsNode* mount_point, const char* name, VfsNode* source)
 {
+	devtmpfs_root = devtmpfs.create(&devtmpfs, mount_point, name, 0644 | S_IFDIR);
+	kassert(devtmpfs_root != NULL, "Couldn't create devtmpfs!\n");
+
 	return devtmpfs_root;
 }
 
@@ -198,11 +201,8 @@ static FileSystem devtmpfs = {
 	.sym_link = devtmpfs_sym_link,
 };
 
-i32 devtmpfs_init()
+void devtmpfs_register_default()
 {
-	devtmpfs_root = devtmpfs.create(&devtmpfs, NULL, "", 0755 | S_IFDIR);
-	kassert(devtmpfs_root != NULL, "Couldn't create devtmpfs!\n");
-
 	// Add /dev/null, /dev/full and /dev/zero
 	Handle* null = handle_new(sizeof(Handle));
 	null->read = null_read;
@@ -233,17 +233,29 @@ i32 devtmpfs_init()
 	zero->stat.st_rdev = handle_new_device();
 	zero->stat.st_mode = 0666 | S_IFCHR;
 	devtmpfs_add_device(zero, "zero");
+}
 
+i32 devtmpfs_init()
+{
 	return vfs_fs_register(&devtmpfs);
 }
 
 bool devtmpfs_add_device(Handle* device, const char* name)
 {
+	// We're a bit early, the VFS isn't set up yet.
+	if (vfs_get_root() == NULL)
+		return false;
+
 	VfsNode* node = vfs_get_node(devtmpfs_root, name, false);
 	// Already have a node with this name, so fail.
 	if (node != NULL)
 	{
 		proc_errno = EEXIST;
+
+		// TODO: Free old handle.
+
+		// Update handle.
+		node->handle = device;
 		return false;
 	}
 
@@ -262,6 +274,8 @@ bool devtmpfs_add_device(Handle* device, const char* name)
 
 	spin_acquire_force(&vfs_lock);
 	hashmap_insert(&devtmpfs_root->children, name, strlen(name), node);
+	char path[256];
+	vfs_get_path(node, path, 256);
 	spin_free(&vfs_lock);
 
 	return true;

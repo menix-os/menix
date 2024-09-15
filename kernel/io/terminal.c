@@ -17,8 +17,11 @@ void terminal_init()
 {
 	for (usize i = 0; i < TERMINAL_MAX; i++)
 	{
+		if (terminal_list[i].driver == NULL)
+			continue;
+
 		char name[32] = "terminal";
-		u32toa(i, name + sizeof("terminal"), 10);
+		u32toa(i, name + 8, 10);
 		devtmpfs_add_device(terminal_list[i].driver, name);
 	}
 }
@@ -46,6 +49,12 @@ void terminal_set_driver(usize terminal, Handle* driver)
 
 	spin_acquire_force(&terminal_lock);
 	terminal_list[terminal].driver = driver;
+	if (driver != NULL)
+	{
+		char name[32] = "terminal";
+		u32toa(terminal, name + 8, 10);
+		devtmpfs_add_device(terminal_list[terminal].driver, name);
+	}
 	spin_free(&terminal_lock);
 }
 
@@ -54,10 +63,8 @@ void terminal_puts(usize terminal, const char* buf, usize len)
 	if (terminal > TERMINAL_MAX)
 		return;
 
-	spin_acquire_force(&terminal_lock);
 	// Write each character to the buffer.
 	Handle* handle = terminal_list[terminal].driver;
 	if (handle != NULL)
 		handle->write(handle, NULL, buf, len, 0);
-	spin_free(&terminal_lock);
 }
