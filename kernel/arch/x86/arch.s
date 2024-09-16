@@ -1,8 +1,22 @@
-// Interrupt handling
+/* x86 architecture specific functions */
 
 .section .text
 
-// Pushes all general purpose registers onto the stack.
+/* Jumps to user code at %rdi */
+.align 0x10
+.global arch_return_to_user
+arch_return_to_user:
+	cli						/* Disable interrupts. */
+	movq	%rsp,	%gs:8	/* Save kernel stack to `Cpu.kernel_stack`. */
+	movq	%gs:16,	%rsp	/* Load user stack from `Cpu.user_stack`. */
+	movq	%rsp,	%rbp	/* Save stack base pointer. */
+	movq	%rdi,	%rcx	/* rcx = Instruction pointer */
+	mov		$0x202,	%r11	/* Set RFLAGS */
+	swapgs					/* Change GS to user mode. */
+	sti						/* Resume interrupts. */
+	sysretq					/* Return to user mode */
+
+/* Pushes all general purpose registers onto the stack. */
 .macro push_all_regs
 pushq %rax
 pushq %rbx
@@ -21,7 +35,7 @@ pushq %r14
 pushq %r15
 .endm
 
-// Pops all general purpose registers from the stack.
+/* Pops all general purpose registers from the stack. */
 .macro pop_all_regs
 popq %r15
 popq %r14
@@ -40,20 +54,7 @@ popq %rbx
 popq %rax
 .endm
 
-.align 0x10
-.global arch_return_to_user
-arch_return_to_user:
-	cli						/* Disable interrupts. */
-	movq	%rsp,	%gs:8	/* Save kernel stack to `Cpu.kernel_stack`. */
-	movq	%gs:16,	%rsp	/* Load user stack from `Cpu.user_stack`. */
-	movq	%rsp,	%rbp	/* Save stack base pointer. */
-	movq	%rdi,	%rcx	/* rcx = Instruction pointer */
-	mov		$0x202,	%r11	/* Set RFLAGS */
-	swapgs					/* Change GS to user mode. */
-	sti						/* Resume interrupts. */
-	sysretq					/* Return to user mode */
-
-// Enter syscall via AMD64 syscall/sysret instructions.
+/* Enter syscall via AMD64 syscall/sysret instructions. */
 .global sc_syscall
 .extern syscall_handler
 .align 0x10
@@ -85,7 +86,7 @@ sc_syscall:
 	sti							/* Resume interrupts. */
 	sysretq						/* Return to user mode */
 
-// Swaps GSBASE if CPL == USER
+/* Swaps GSBASE if CPL == USER */
 .macro swapgs_if_necessary
 	cmpw	$0x08,	0x8(%rsp)
 	je		1f
@@ -93,7 +94,7 @@ sc_syscall:
 1:
 .endm
 
-// Internal function called by one of the stubs.
+/* Internal function called by one of the stubs. */
 .align 0x10
 interrupt_internal:
 	pushq	%gs					/* Push CPU ID. */
@@ -106,7 +107,7 @@ interrupt_internal:
 	swapgs_if_necessary			/* Change GS back to user mode if we came from user mode. */
 	iretq
 
-// Interrupt stub that pushes 0 as the error code.
+/* Interrupt stub that pushes 0 as the error code. */
 .macro interrupt_stub num
 .global interrupt_\num
 .align 0x10
@@ -117,7 +118,7 @@ interrupt_\num:
 	jmp		interrupt_internal
 .endm
 
-// Interrupt stub with an actual error code.
+/* Interrupt stub with an actual error code. */
 .macro interrupt_stub_err num
 .global interrupt_\num
 .align 0x10
@@ -127,7 +128,7 @@ interrupt_\num:
 	jmp		interrupt_internal
 .endm
 
-// Define 256 interrupt stubs using the macros above.
+/* Define 256 interrupt stubs using the macros above. */
 .extern interrupt_handler
 .altmacro
 .set i, 0
