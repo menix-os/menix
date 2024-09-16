@@ -6,22 +6,22 @@
 #define EILSEQ 2
 #define ERANGE 3
 
-#define E2BIG			0x01
-#define EACCES			0x02
-#define EADDRINUSE		0x03
-#define EADDRNOTAVAIL	0x04
-#define EAFNOSUPPORT	0x05
-#define EAGAIN			0x06
-#define EALREADY		0x07
-#define EBADF			0x08
-#define EBADMSG			0x09
-#define EBUSY			0x0A
-#define ECANCELED		0x0B
-#define ECHILD			0x0C
-#define ECONNABORTED	0x0D
-#define ECONNREFUSED	0x0E
-#define ECONNRESET		0x0F
-#define EDEADLK			0x10
+#define E2BIG			0x11
+#define EACCES			0x12
+#define EADDRINUSE		0x13
+#define EADDRNOTAVAIL	0x14
+#define EAFNOSUPPORT	0x15
+#define EAGAIN			0x16
+#define EALREADY		0x17
+#define EBADF			0x18
+#define EBADMSG			0x19
+#define EBUSY			0x1A
+#define ECANCELED		0x1B
+#define ECHILD			0x1C
+#define ECONNABORTED	0x1D
+#define ECONNREFUSED	0x1E
+#define ECONNRESET		0x1F
+#define EDEADLK			0x20
 #define EDESTADDRREQ	0x21
 #define EDQUOT			0x22
 #define EEXIST			0x23
@@ -123,3 +123,5 @@
 #define EBADRQC			0x83
 
 #define EIEIO 0x41424344
+
+const char* strerror(int errno);
