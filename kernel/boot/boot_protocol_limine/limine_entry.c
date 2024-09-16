@@ -10,6 +10,7 @@
 #include <menix/memory/vm.h>
 #include <menix/module.h>
 #include <menix/thread/elf.h>
+#include <menix/thread/scheduler.h>
 #include <menix/video/fb.h>
 #include <menix/video/fb_default.h>
 
@@ -212,6 +213,13 @@ void kernel_boot()
 	module_load_kernel_syms(kernel_res->kernel_file->address);
 
 	arch_init(&info);
-	// TODO: Swap out for call to scheduler.
-	kernel_main(&info);
+
+	boot_log("Initialization complete, handing over to scheduler.\n");
+
+	scheduler_init(&info);
+
+	while (true)
+	{
+		asm_pause();
+	}
 }

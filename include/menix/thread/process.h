@@ -38,6 +38,7 @@ typedef struct Process
 	ThreadList threads;		 // Threads owned by the process.
 	ProcessState state;		 // Current state of the process.
 	Process* parent;		 // The owner of this process.
+	Process* next;			 // Linked list entry for the next process.
 	ProcessList children;	 // Processes owned by the process.
 
 	SpinLock fd_lock;						 // Access lock for file descriptors.
@@ -52,7 +53,7 @@ typedef struct Process
 // `ip`: The instruction pointer address to initialize the process with.
 // `is_user`: True if this process belongs to the user, otherwise it's a kernel process.
 // `parent`: (Optional) The parent process of the to be created process.
-void process_create(char* name, ProcessState state, usize ip, bool is_user, Process* parent);
+void process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent);
 
 // Starts a new process from an ELF executable. Returns true if successful.
 // `path`: File path pointing to the executable to run.
@@ -68,6 +69,11 @@ usize process_fork(Process* proc, Thread* thread);
 // Terminates a process.
 // `proc`: The process to kill.
 void process_kill(Process* proc);
+
+// Sets up a process context.
+// `proc`: The process to set up.
+// `is_user`: True if this process belongs to the user, otherwise it's a kernel process.
+void process_setup(Process* proc, bool is_user);
 
 // Converts a file descriptor ID for the active process to a reference.
 FileDescriptor* process_fd_to_ptr(Process* process, usize fd);

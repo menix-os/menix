@@ -47,6 +47,19 @@ typedef List(Thread*) ThreadList;
 // `is_user`: If true, the thread is a user thread, otherwise it's a kernel thread.
 void thread_create(Process* parent, VirtAddr start, bool is_user);
 
+// Prepares a thread for `process_execve`.
+// `parent`: The parent process of the new thread.
+// `target`: The thread to prepare.
+// `start`: The start address of the new thread.
+// `argv`: A NULL-terminated list of program arguments to be passed to the thread.
+// `envp`: A NULL-terminated list of environment variables to be passed to the thread.
+void thread_execve(Process* parent, Thread* target, VirtAddr start, char** argv, char** envp);
+
+// Forks an existing thread by copying its attributes.
+// `parent`: The process the target and new thread belong to.
+// `target`: The thread to fork.
+void thread_fork(Process* parent, Thread* target);
+
 // Marks a thread as ready to be killed. Death may not be instant.
 // `victim`: The thread to kill.
 void thread_hang(Thread* victim);

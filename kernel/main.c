@@ -7,19 +7,13 @@
 #include <menix/io/terminal.h>
 #include <menix/log.h>
 #include <menix/module.h>
-#include <menix/sys/syscall_list.h>
-#include <menix/thread/process.h>
+#include <menix/thread/scheduler.h>
 
 static BootInfo* boot_info;
 
 ATTR(noreturn) void kernel_main(BootInfo* info)
 {
 	boot_info = info;
-
-	// TODO: Move this to scheduler.
-	arch_current_cpu()->thread = kzalloc(sizeof(Thread));
-	arch_current_cpu()->thread->parent = kzalloc(sizeof(Process));
-	arch_current_cpu()->thread->parent->map_base = CONFIG_vm_map_base;
 
 	vfs_init();
 
@@ -33,18 +27,17 @@ ATTR(noreturn) void kernel_main(BootInfo* info)
 	// Initialize all modules and subsystems.
 	module_init(boot_info);
 
-	// Say hello to the console.
-	struct utsname uname;
-	syscall_uname((usize)&uname, 0, 0, 0, 0, 0);
-	kmesg("%s %s [%s] %s\n", uname.sysname, uname.release, uname.version, uname.machine);
-
 	// Call init program.
 	char* argv[] = {"init", NULL};
 	process_execve("/sbin/init", argv, NULL);
 
+	kmesg("[WARNING]\tinit has terminated!\n");
+
+	// Should be unreachable.
 	while (true)
 	{
-		// sched_invoke();
+		asm_pause();
+		scheduler_invoke();
 	}
 }
 

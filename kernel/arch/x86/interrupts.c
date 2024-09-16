@@ -95,9 +95,9 @@ void interrupt_handler(CpuRegisters* regs)
 	if (regs->cs & CPL_USER)
 	{
 		Process* proc = arch_current_cpu()->thread->parent;
-		kmesg("Unhandled exception %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
-		// TODO: Terminate program.
+		kmesg("Unhandled interrupt %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
 		arch_dump_registers(regs);
+
 		process_kill(proc);
 		return;
 	}
@@ -108,9 +108,9 @@ void interrupt_handler(CpuRegisters* regs)
 
 	// Exception was not caused by the user and is not handled, abort.
 	if (regs->isr < ARRAY_SIZE(exception_names))
-		kmesg("Unhandled exception \"%s\" (%zu) in kernel mode!\n", exception_names[regs->isr], regs->isr);
+		kmesg("Unhandled interrupt \"%s\" (%zu) in kernel mode!\n", exception_names[regs->isr], regs->isr);
 	else
-		kmesg("Unhandled exception %zu in kernel mode!\n", regs->isr);
+		kmesg("Unhandled interrupt %zu in kernel mode!\n", regs->isr);
 
 	arch_dump_registers(regs);
 	kabort();

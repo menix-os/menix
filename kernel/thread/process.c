@@ -6,6 +6,7 @@
 #include <menix/memory/vm.h>
 #include <menix/thread/elf.h>
 #include <menix/thread/process.h>
+#include <menix/thread/scheduler.h>
 #include <menix/thread/spin.h>
 
 #include <errno.h>
@@ -14,12 +15,19 @@
 static SpinLock lock = spin_new();
 static usize pid_counter = 0;
 
-void process_create(char* name, ProcessState state, usize ip, bool is_user, Process* parent)
+void process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent)
 {
 	spin_acquire_force(&lock);
 
 	Process* proc = kzalloc(sizeof(Process));
 	strncpy(proc->name, name, sizeof(proc->name));
+
+	proc->state = state;
+	proc->id = pid_counter++;
+
+	process_setup(proc, is_user);
+
+	proc->working_dir = vfs_get_root();
 
 	spin_free(&lock);
 }
@@ -43,7 +51,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 	ElfInfo info = {0};
 	if (elf_load(map, node->handle, 0, &info) == false)
 	{
-		proc_log("Unable to load file \"%s\"\n", path);
+		proc_log("Unable to load file \"%s\": %s\n", path, strerror(thread_errno));
 		return false;
 	}
 
@@ -65,13 +73,6 @@ bool process_execve(const char* path, char** argv, char** envp)
 	thread->parent = kzalloc(sizeof(Process));
 	thread->parent->page_map = map;
 
-	// TODO: Open stdout, stdin and stderr
-	FileDescriptor* fd = kzalloc(sizeof(FileDescriptor));
-	fd->handle = vfs_get_node(vfs_get_root(), "/dev/terminal0", true)->handle;
-	thread->parent->file_descs[0] = fd;
-	thread->parent->file_descs[1] = fd;
-	thread->parent->file_descs[2] = fd;
-
 	// Set CWD.
 	thread->parent->working_dir = node->parent;
 
@@ -84,7 +85,8 @@ bool process_execve(const char* path, char** argv, char** envp)
 	vm_set_page_map(map);
 	asm_get_register(arch_current_cpu()->kernel_stack, rsp);
 	spin_free(&lock);
-	arch_return_to_user(info.entry_point);
+	scheduler_invoke();
+
 	return false;
 }
 
