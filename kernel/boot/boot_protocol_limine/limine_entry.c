@@ -8,6 +8,7 @@
 #include <menix/memory/alloc.h>
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
+#include <menix/module.h>
 #include <menix/thread/elf.h>
 #include <menix/video/fb.h>
 #include <menix/video/fb_default.h>
@@ -15,7 +16,6 @@
 #include <string.h>
 
 #include "limine.h"
-#include <menix/module.h>
 
 #define LIMINE_REQUEST(request, tag, rev) \
 	ATTR(used, section(".requests")) static volatile struct limine_##request request = { \
@@ -214,6 +214,4 @@ void kernel_boot()
 	arch_init(&info);
 	// TODO: Swap out for call to scheduler.
 	kernel_main(&info);
-	arch_shutdown(&info);	 // Shut the system down safely.
-	arch_stop(&info);		 // If we're still here, something went wrong. In that case, just try to stop.
 }

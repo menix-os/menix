@@ -312,7 +312,7 @@ VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, int 
 {
 	if (length == 0)
 	{
-		proc_errno = EINVAL;
+		thread_errno = EINVAL;
 		return (VirtAddr)MAP_FAILED;
 	}
 
@@ -485,5 +485,5 @@ void interrupt_pf_handler(CpuRegisters* regs)
 
 	// If nothing can make the process recover, we have to put it out of its misery.
 	kmesg("PID %zu terminated with SIGSEGV.\n", proc->id);
-	proc_kill(proc);
+	process_kill(proc);
 }

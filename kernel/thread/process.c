@@ -14,7 +14,7 @@
 static SpinLock lock = spin_new();
 static usize pid_counter = 0;
 
-void proc_create(char* name, ProcessState state, usize ip, bool is_user, Process* parent)
+void process_create(char* name, ProcessState state, usize ip, bool is_user, Process* parent)
 {
 	spin_acquire_force(&lock);
 
@@ -24,7 +24,7 @@ void proc_create(char* name, ProcessState state, usize ip, bool is_user, Process
 	spin_free(&lock);
 }
 
-bool proc_execve(const char* path, char** argv, char** envp)
+bool process_execve(const char* path, char** argv, char** envp)
 {
 	spin_acquire_force(&lock);
 
@@ -32,7 +32,7 @@ bool proc_execve(const char* path, char** argv, char** envp)
 	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
 	if (node == NULL)
 	{
-		proc_log("Unable to load file \"%s\"\n", path);
+		proc_log("Unable to load file \"%s\": %s\n", path, strerror(thread_errno));
 		return false;
 	}
 
@@ -72,8 +72,8 @@ bool proc_execve(const char* path, char** argv, char** envp)
 	thread->parent->file_descs[1] = fd;
 	thread->parent->file_descs[2] = fd;
 
-	// TODO: Set CWD.
-	thread->parent->working_dir = vfs_get_root();
+	// Set CWD.
+	thread->parent->working_dir = node->parent;
 
 	// Map the process stack. Subtract size from the start since stack grows down.
 	vm_map(map, CONFIG_user_stack_addr - CONFIG_user_stack_size, CONFIG_user_stack_size,
@@ -88,7 +88,7 @@ bool proc_execve(const char* path, char** argv, char** envp)
 	return false;
 }
 
-usize proc_fork(Process* proc, Thread* thread)
+usize process_fork(Process* proc, Thread* thread)
 {
 	spin_acquire_force(&lock);
 
@@ -106,20 +106,20 @@ usize proc_fork(Process* proc, Thread* thread)
 	return fork->id;
 }
 
-void proc_kill(Process* proc)
+void process_kill(Process* proc)
 {
 	// TODO
 	while (1)
 		;
 }
 
-FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
+FileDescriptor* process_fd_to_ptr(Process* process, usize fd)
 {
 	kassert(process != NULL, "No process specified! This is a kernel bug.");
 
 	if (fd >= OPEN_MAX)
 	{
-		proc_errno = EBADF;
+		thread_errno = EBADF;
 		return NULL;
 	}
 
@@ -128,7 +128,7 @@ FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
 		file_desc = process->file_descs[fd];
 		if (file_desc == NULL)
 		{
-			proc_errno = EBADF;
+			thread_errno = EBADF;
 			break;
 		}
 	});

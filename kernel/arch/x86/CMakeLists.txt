@@ -12,4 +12,5 @@ add_architecture(x86
 	memory/vm.c
 	memory/pm.c
 	thread/elf.c
+	thread/scheduler.c
 )

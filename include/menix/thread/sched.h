@@ -1,3 +1,0 @@
-// Process scheduling
-
-#pragma once

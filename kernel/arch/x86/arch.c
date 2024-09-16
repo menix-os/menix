@@ -148,8 +148,6 @@ void arch_init(BootInfo* info)
 
 void arch_shutdown(BootInfo* info)
 {
-	// Say goodbye.
-	kmesg("shutdown\n");
 	arch_stop(info);
 }
 

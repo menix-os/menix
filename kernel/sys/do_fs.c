@@ -21,7 +21,7 @@ SYSCALL_IMPL(write, u32 fd, void* buf, usize size)
 		return 0;
 
 	Process* process = arch_current_cpu()->thread->parent;
-	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+	FileDescriptor* file_desc = process_fd_to_ptr(process, fd);
 
 	// Write to the handle.
 	Handle* const handle = file_desc->handle;
@@ -41,7 +41,7 @@ SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
 		return 0;
 
 	Process* process = arch_current_cpu()->thread->parent;
-	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+	FileDescriptor* file_desc = process_fd_to_ptr(process, fd);
 
 	// Read from the handle.
 	Handle* const handle = file_desc->handle;
@@ -62,7 +62,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 
 	if (path == NULL)
 	{
-		proc_errno = ENOENT;
+		thread_errno = ENOENT;
 		return -1;
 	}
 
@@ -74,7 +74,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 	}
 	else
 	{
-		FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+		FileDescriptor* file_desc = process_fd_to_ptr(process, fd);
 		if (file_desc == NULL)
 		{
 			return -1;
@@ -105,7 +105,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 		// We can't open any more files.
 		if (last_fd == -1)
 		{
-			proc_errno = ENFILE;
+			thread_errno = ENFILE;
 			return -1;
 		}
 

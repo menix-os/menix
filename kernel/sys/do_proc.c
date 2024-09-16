@@ -11,7 +11,7 @@
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
 SYSCALL_IMPL(execve, const char* path, char** argv, char** envp)
 {
-	if (proc_execve(path, argv, envp))
+	if (process_execve(path, argv, envp))
 		return 0;
 	else
 		return -ENOEXEC;

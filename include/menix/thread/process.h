@@ -8,23 +8,10 @@
 #include <menix/fs/vfs.h>
 #include <menix/memory/vm.h>
 #include <menix/thread/spin.h>
+#include <menix/thread/thread.h>
 #include <menix/util/list.h>
 
-// errno of the current process
-#define proc_errno arch_current_cpu()->thread->errno
-
 #define proc_log(fmt, ...) kmesg("[Process]\t" fmt, ##__VA_ARGS__)
-
-typedef struct Process Process;
-
-// Describes the state of a thread.
-typedef enum
-{
-	ThreadState_Running,	 // Everything is OK.
-	ThreadState_Ready,		 // Ready to run.
-	ThreadState_Sleeping,	 // Thread is currently sleeping.
-	ThreadState_Waiting,	 // Thread is waiting for something else.
-} ThreadState;
 
 // Describes the state of a process.
 typedef enum
@@ -36,27 +23,8 @@ typedef enum
 	ProcessState_Dead,		 // Process is dead and is waiting for cleanup.
 } ProcessState;
 
-// Thread information.
-typedef struct Thread
-{
-	usize id;				   // Thread ID.
-	SpinLock lock;			   // Access lock.
-	Process* parent;		   // The parent process of this thread.
-	ThreadState state;		   // Current state of the thread.
-	CpuRegisters registers;	   // The register state at the time of context switch.
-	usize stack;			   // The stack pointer.
-	usize errno;			   // `errno` value.
-
-	// Architecture dependent fields go here.
-#if defined CONFIG_arch_x86
-	u64 fs_base;		// FS register base address.
-	u64 gs_base;		// GS register base address.
-	void* saved_fpu;	// Saved FPU state.
-#endif
-} Thread;
-
+typedef struct Process Process;
 typedef List(Process*) ProcessList;
-typedef List(Thread*) ThreadList;
 
 typedef struct Process
 {
@@ -84,22 +52,22 @@ typedef struct Process
 // `ip`: The instruction pointer address to initialize the process with.
 // `is_user`: True if this process belongs to the user, otherwise it's a kernel process.
 // `parent`: (Optional) The parent process of the to be created process.
-void proc_create(char* name, ProcessState state, usize ip, bool is_user, Process* parent);
+void process_create(char* name, ProcessState state, usize ip, bool is_user, Process* parent);
 
 // Starts a new process from an ELF executable. Returns true if successful.
 // `path`: File path pointing to the executable to run.
 // `argv`: A NULL-terminated list of program arguments to be passed to the new process.
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
-bool proc_execve(const char* path, char** argv, char** envp);
+bool process_execve(const char* path, char** argv, char** envp);
 
 // Forks an exisiting process and returns its process ID.
 // `proc`: The process to fork.
 // `thread`: The executing thread.
-usize proc_fork(Process* proc, Thread* thread);
+usize process_fork(Process* proc, Thread* thread);
 
 // Terminates a process.
 // `proc`: The process to kill.
-void proc_kill(Process* proc);
+void process_kill(Process* proc);
 
 // Converts a file descriptor ID for the active process to a reference.
-FileDescriptor* proc_fd_to_ptr(Process* process, usize fd);
+FileDescriptor* process_fd_to_ptr(Process* process, usize fd);

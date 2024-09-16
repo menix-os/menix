@@ -13,6 +13,7 @@
 #define asm_pause()					  asm volatile("pause")
 #define asm_nop()					  asm volatile("nop")
 #define asm_swapgs()				  asm volatile("swapgs" ::: "memory")
+#define asm_int(int_num)			  asm volatile("int %0" ::"i"(int_num))
 
 // A purposefully invalid instruction for debugging #UD faults. This should never be used in release builds
 #ifdef NDEBUG

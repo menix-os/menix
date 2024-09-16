@@ -11,7 +11,7 @@ SYSCALL_IMPL(modadd, const char* path)
 {
 	if (path == NULL)
 	{
-		proc_errno = -ENOENT;
+		thread_errno = -ENOENT;
 		return 0;
 	}
 

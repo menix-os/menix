@@ -10,8 +10,12 @@
 #include <menix/sys/syscall_list.h>
 #include <menix/thread/process.h>
 
-void kernel_main(BootInfo* info)
+static BootInfo* boot_info;
+
+ATTR(noreturn) void kernel_main(BootInfo* info)
 {
+	boot_info = info;
+
 	// TODO: Move this to scheduler.
 	arch_current_cpu()->thread = kzalloc(sizeof(Thread));
 	arch_current_cpu()->thread->parent = kzalloc(sizeof(Process));
@@ -27,7 +31,7 @@ void kernel_main(BootInfo* info)
 	terminal_init();
 
 	// Initialize all modules and subsystems.
-	module_init(info);
+	module_init(boot_info);
 
 	// Say hello to the console.
 	struct utsname uname;
@@ -35,14 +39,26 @@ void kernel_main(BootInfo* info)
 	kmesg("%s %s [%s] %s\n", uname.sysname, uname.release, uname.version, uname.machine);
 
 	// Call init program.
-	char* argv[] = {
-		"init",
-		NULL,
-	};
-	proc_execve("/bin/init", argv, NULL);
+	char* argv[] = {"init", NULL};
+	process_execve("/sbin/init", argv, NULL);
 
-	// If we get here, the init program has terminated, so shutdown is requested.
+	while (true)
+	{
+		// sched_invoke();
+	}
+}
+
+void kernel_shutdown(i32 reason)
+{
+	// Say goodbye.
+	kmesg("System is shutting down...\n");
 
 	// Clean up all modules and subsystems.
 	module_fini();
+
+	// Shut the system down safely.
+	arch_shutdown(boot_info);
+
+	// If we're still here, something went wrong. In that case, just try to stop.
+	arch_stop(boot_info);
 }

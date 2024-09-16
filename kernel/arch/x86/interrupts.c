@@ -98,7 +98,7 @@ void interrupt_handler(CpuRegisters* regs)
 		kmesg("Unhandled exception %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
 		// TODO: Terminate program.
 		arch_dump_registers(regs);
-		proc_kill(proc);
+		process_kill(proc);
 		return;
 	}
 
