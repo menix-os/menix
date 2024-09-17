@@ -2,15 +2,18 @@
 
 include(${MENIX_UTIL_PATH})
 add_architecture(x86
-	boot/gdt.c
-	boot/idt.c
-	boot/tss.c
-	boot/serial.c
-	arch.s
-	arch.c
-	interrupts.c
+	system/gdt.c
+	system/idt.c
+	system/tss.c
+	system/serial.c
+	system/arch.s
+	system/arch.c
+	system/apic.c
+	system/interrupts.c
 	memory/vm.c
 	memory/pm.c
 	thread/elf.c
 	thread/scheduler.c
+	thread/process.c
+	thread/thread.c
 )

@@ -16,6 +16,14 @@ arch_return_to_user:
 	sti						/* Resume interrupts. */
 	sysretq					/* Return to user mode */
 
+/* Swaps GSBASE if CPL == USER */
+.macro swapgs_if_necessary
+	cmpw	$0x08,	0x8(%rsp)
+	je		1f
+	swapgs
+1:
+.endm
+
 /* Pushes all general purpose registers onto the stack. */
 .macro push_all_regs
 pushq %rax
@@ -54,6 +62,16 @@ popq %rbx
 popq %rax
 .endm
 
+/* Performs a context switch. */
+.global scheduler_context_switch
+scheduler_context_switch:
+	mov		%rdi,	%rsp		/* First argument is a reference to the thread's CpuRegisters field. */
+	pop_all_regs				/* Pop all values stored in that struct into the actual registers. */
+	add		$0x18,	%rsp		/* Skip .error, .isr and .core fields */
+	swapgs						/* Swap GSBASE to user mode. */
+	iretq						/* Instead of returning via interrupt_internal,
+								   return directly so we always land in user mode. */
+
 /* Enter syscall via AMD64 syscall/sysret instructions. */
 .global sc_syscall
 .extern syscall_handler
@@ -85,14 +103,6 @@ sc_syscall:
 	swapgs						/* Change GS to user mode. */
 	sti							/* Resume interrupts. */
 	sysretq						/* Return to user mode */
-
-/* Swaps GSBASE if CPL == USER */
-.macro swapgs_if_necessary
-	cmpw	$0x08,	0x8(%rsp)
-	je		1f
-	swapgs
-1:
-.endm
 
 /* Internal function called by one of the stubs. */
 .align 0x10

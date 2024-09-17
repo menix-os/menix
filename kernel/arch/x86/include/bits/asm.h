@@ -2,6 +2,10 @@
 
 #pragma once
 
+#ifndef MENIX_BITS_INCLUDE
+#error "Don't include bits headers directly!"
+#endif
+
 #include <menix/common.h>
 
 #define asm_set_register(value, reg)  asm volatile("mov %0, %%" #reg ::"r"(value) : "memory")

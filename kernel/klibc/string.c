@@ -103,8 +103,7 @@ char* strdup(const char* src)
 
 char* strncpy(char* restrict dst, const char* restrict src, usize len)
 {
-	usize src_len = strnlen(src, len);
-
+	usize src_len = strnlen(src, len) + 1;
 	return memcpy(dst, src, MIN(len, src_len));
 }
 

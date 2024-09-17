@@ -1,5 +1,11 @@
 // x86-specific ELF constants.
 
+#pragma once
+
+#ifndef MENIX_BITS_INCLUDE
+#error "Don't include bits headers directly!"
+#endif
+
 #define EM_X86_64 62
 
 #define R_386_NONE	   0	 // None	None

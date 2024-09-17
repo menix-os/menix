@@ -3,8 +3,8 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/log.h>
 #include <menix/memory/pm.h>
+#include <menix/util/log.h>
 #include <menix/video/fb.h>
 
 #ifdef CONFIG_acpi

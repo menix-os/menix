@@ -4,8 +4,8 @@
 
 #include <menix/common.h>
 #include <menix/fs/handle.h>
-#include <menix/log.h>
 #include <menix/memory/vm.h>
+#include <menix/util/log.h>
 
 // ELF Header Identification
 #define ELF_MAG \
@@ -160,7 +160,9 @@
 #define STT_HIPROC	15	  //
 
 // Architecture specific ELF definitions
+#define MENIX_BITS_INCLUDE
 #include <bits/elf.h>
+#undef MENIX_BITS_INCLUDE
 
 // ELF types that are related to the build host.
 #if CONFIG_bits == 64

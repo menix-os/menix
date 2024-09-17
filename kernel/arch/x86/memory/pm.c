@@ -1,11 +1,11 @@
 // x86 physical memory allocator.
 
-#include <menix/arch.h>
 #include <menix/common.h>
-#include <menix/log.h>
 #include <menix/memory/pm.h>
+#include <menix/system/arch.h>
 #include <menix/thread/spin.h>
 #include <menix/util/bitmap.h>
+#include <menix/util/log.h>
 
 #include <string.h>
 

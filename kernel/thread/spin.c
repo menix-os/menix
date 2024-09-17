@@ -1,6 +1,6 @@
 // Spinlock implementation
 
-#include <menix/arch.h>
+#include <menix/system/arch.h>
 #include <menix/thread/spin.h>
 
 static void* last_addr = NULL;

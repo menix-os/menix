@@ -6,7 +6,7 @@
 #include <menix/drv/pci/pci.h>
 #include <menix/drv/pci/pci_acpi.h>
 #include <menix/io/mmio.h>
-#include <menix/log.h>
+#include <menix/util/log.h>
 
 AcpiMcfg* acpi_mcfg;
 

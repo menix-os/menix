@@ -2,9 +2,13 @@
 
 #pragma once
 
-#include <menix/arch.h>
+#ifndef MENIX_BITS_INCLUDE
+#error "Don't include bits headers directly!"
+#endif
+
 #include <menix/common.h>
 #include <menix/memory/pm.h>
+#include <menix/system/arch.h>
 #include <menix/thread/spin.h>
 
 typedef enum : usize

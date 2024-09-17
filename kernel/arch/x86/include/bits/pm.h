@@ -2,4 +2,6 @@
 
 #pragma once
 
-#include <menix/common.h>
+#ifndef MENIX_BITS_INCLUDE
+#error "Don't include bits headers directly!"
+#endif

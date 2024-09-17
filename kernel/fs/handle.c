@@ -1,9 +1,9 @@
 // Handle for managing input/output streams.
 
-#include <menix/arch.h>
 #include <menix/fs/fd.h>
 #include <menix/fs/handle.h>
 #include <menix/memory/alloc.h>
+#include <menix/system/arch.h>
 #include <menix/thread/process.h>
 #include <menix/thread/spin.h>
 

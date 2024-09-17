@@ -1,8 +1,8 @@
 // File system abstraction
 
 #pragma once
-#include <menix/abi.h>
 #include <menix/common.h>
+#include <menix/system/abi.h>
 
 // Describes a UNIX-file permission mode.
 typedef struct VfsNode VfsNode;

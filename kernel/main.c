@@ -1,13 +1,13 @@
 // Kernel entry point
 
-#include <menix/arch.h>
 #include <menix/common.h>
+#include <menix/drv/module.h>
 #include <menix/fs/ustar.h>
 #include <menix/fs/vfs.h>
 #include <menix/io/terminal.h>
-#include <menix/log.h>
-#include <menix/module.h>
+#include <menix/system/arch.h>
 #include <menix/thread/scheduler.h>
+#include <menix/util/log.h>
 
 static BootInfo* boot_info;
 

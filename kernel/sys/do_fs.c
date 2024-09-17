@@ -1,11 +1,11 @@
 // File system syscalls
 
-#include <menix/abi.h>
-#include <menix/arch.h>
 #include <menix/common.h>
 #include <menix/fs/fd.h>
 #include <menix/memory/vm.h>
 #include <menix/sys/syscall.h>
+#include <menix/system/abi.h>
+#include <menix/system/arch.h>
 #include <menix/thread/process.h>
 #include <menix/thread/spin.h>
 

@@ -5,4 +5,5 @@ target_sources(menix PUBLIC
 	spin.c
 	process.c
 	scheduler.c
+	thread.c
 )

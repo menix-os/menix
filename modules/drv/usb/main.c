@@ -1,6 +1,6 @@
 #include <menix/common.h>
-#include <menix/log.h>
-#include <menix/module.h>
+#include <menix/drv/module.h>
+#include <menix/util/log.h>
 
 MODULE_FN i32 init_fn()
 {

@@ -1,11 +1,12 @@
 // Interrupt handlers (called by ASM stubs)
 
 #include <menix/common.h>
-#include <menix/log.h>
 #include <menix/memory/vm.h>
 #include <menix/sys/syscall.h>
 #include <menix/thread/process.h>
+#include <menix/util/log.h>
 
+#include <apic.h>
 #include <idt.h>
 #include <interrupts.h>
 
@@ -65,6 +66,7 @@ typedef void (*InterruptFn)(CpuRegisters* regs);
 static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
 	[0x06] = interrupt_ud_handler,
 	[0x0E] = interrupt_pf_handler,
+	[0x30] = timer_handler,
 	[0x80] = syscall_handler,
 };
 
@@ -98,7 +100,7 @@ void interrupt_handler(CpuRegisters* regs)
 		kmesg("Unhandled interrupt %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
 		arch_dump_registers(regs);
 
-		process_kill(proc);
+		process_kill(proc, true);
 		return;
 	}
 

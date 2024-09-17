@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include <menix/boot.h>
 #include <menix/common.h>
-#include <menix/log.h>
+#include <menix/system/boot.h>
 #include <menix/thread/elf.h>
+#include <menix/util/log.h>
 
 #if defined(MODULE_TYPE) && defined(MODULE_NAME)
 #define module_log(fmt, ...) kmesg("[" MODULE_NAME "]\t" fmt, ##__VA_ARGS__)

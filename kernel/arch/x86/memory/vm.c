@@ -1,12 +1,12 @@
 // Virtual memory management for x86.
 
 #include <menix/common.h>
-#include <menix/log.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
 #include <menix/thread/process.h>
 #include <menix/thread/spin.h>
+#include <menix/util/log.h>
 #include <menix/util/self.h>
 
 #include <errno.h>
@@ -152,6 +152,41 @@ static usize* vm_x86_get_pte(PageMap* page_map, VirtAddr virt_addr, bool allocat
 	}
 
 	return &cur_head[index];
+}
+
+static void destroy_level(u64* pml, usize start, usize end, u8 level)
+{
+	if (level == 0)
+		return;
+
+	for (usize i = start; i < end; i++)
+	{
+		u64* next_level = vm_x86_traverse(pml, i, false);
+		destroy_level(next_level, 0, 512, level - 1);
+	}
+
+	pm_free((PhysAddr)pml - (PhysAddr)pm_get_phys_base(), 1);
+}
+
+void vm_page_map_destroy(PageMap* map)
+{
+	destroy_level(map->head, 0, 256, 4);
+	kfree(map);
+}
+
+PageMap* vm_page_map_fork(PageMap* source)
+{
+	spin_acquire_force(&source->lock);
+	PageMap* result = vm_page_map_new();
+
+	if (result == NULL)
+		goto fail;
+
+fail:
+	spin_free(&source->lock);
+	if (result != NULL)
+		vm_page_map_destroy(result);
+	return result;
 }
 
 bool vm_x86_map_page(PageMap* page_map, VirtAddr phys_addr, VirtAddr virt_addr, usize flags)
@@ -485,5 +520,5 @@ void interrupt_pf_handler(CpuRegisters* regs)
 
 	// If nothing can make the process recover, we have to put it out of its misery.
 	kmesg("PID %zu terminated with SIGSEGV.\n", proc->id);
-	process_kill(proc);
+	process_kill(proc, true);
 }

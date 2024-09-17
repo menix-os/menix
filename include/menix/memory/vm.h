@@ -6,7 +6,9 @@
 #include <menix/fs/handle.h>
 #include <menix/memory/pm.h>
 
+#define MENIX_BITS_INCLUDE
 #include <bits/vm.h>
+#undef MENIX_BITS_INCLUDE
 
 // Temporarily makes user mappings accessible.
 // Usage: vm_user_access({ do_stuff(); });
@@ -31,6 +33,12 @@ void vm_set_page_map(PageMap* page_map);
 
 // Creates a new page map.
 PageMap* vm_page_map_new();
+
+// Creates a new page map by forking an existing one.
+PageMap* vm_page_map_fork(PageMap* source);
+
+// Destroys a page map.
+void vm_page_map_destroy(PageMap* map);
 
 // Creates a new mapping for a region of memory.
 // If `page_map` is equal to vm_get_kernel_map(), the returned value may be interpreted as a `void*`.

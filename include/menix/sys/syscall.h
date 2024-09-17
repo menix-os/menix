@@ -3,7 +3,9 @@
 #include <menix/common.h>
 #include <menix/util/self.h>
 
+#define MENIX_BITS_INCLUDE
 #include <bits/syscall.h>
+#undef MENIX_BITS_INCLUDE
 
 // This macro should be used when implementing a syscall, so that the naming scheme is centralized.
 #define SYSCALL_IMPL(name, ...) usize syscall_##name(__VA_ARGS__)

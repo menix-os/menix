@@ -1,13 +1,13 @@
 // x86 platform initialization
 
-#include <menix/arch.h>
 #include <menix/drv/acpi/acpi.h>
 #include <menix/drv/pci/pci.h>
 #include <menix/drv/pci/pci_acpi.h>
 #include <menix/fs/vfs.h>
-#include <menix/log.h>
 #include <menix/memory/alloc.h>
+#include <menix/system/arch.h>
 #include <menix/thread/spin.h>
+#include <menix/util/log.h>
 
 #include <gdt.h>
 #include <idt.h>

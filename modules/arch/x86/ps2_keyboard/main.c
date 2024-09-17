@@ -12,8 +12,8 @@
 #error This driver is only compatible with x86!
 #endif
 
-#include <menix/log.h>
-#include <menix/module.h>
+#include <menix/drv/module.h>
+#include <menix/util/log.h>
 
 #include <io.h>
 #include <pic.h>

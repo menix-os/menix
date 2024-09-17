@@ -1,11 +1,11 @@
 // Kernel error output
 
-#include <menix/arch.h>
 #include <menix/common.h>
-#include <menix/log.h>
-#include <menix/module.h>
+#include <menix/drv/module.h>
+#include <menix/system/arch.h>
 #include <menix/thread/elf.h>
 #include <menix/thread/spin.h>
+#include <menix/util/log.h>
 #include <menix/util/self.h>
 
 #include <stdarg.h>

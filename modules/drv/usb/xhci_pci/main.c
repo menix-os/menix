@@ -1,7 +1,7 @@
 #include <menix/common.h>
+#include <menix/drv/module.h>
 #include <menix/drv/pci/pci.h>
-#include <menix/log.h>
-#include <menix/module.h>
+#include <menix/util/log.h>
 
 MODULE_FN i32 xhci_pci_probe(PciDevice* dev)
 {

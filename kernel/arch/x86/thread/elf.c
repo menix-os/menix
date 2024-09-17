@@ -1,9 +1,9 @@
 // x86-specific ELF handling.
 
+#include <menix/drv/module.h>
 #include <menix/fs/vfs.h>
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
-#include <menix/module.h>
 #include <menix/thread/elf.h>
 #include <menix/util/hash_map.h>
 

@@ -18,4 +18,6 @@ SYSCALL(32, uname)
 SYSCALL(128, modadd)
 SYSCALL(129, modrem)
 
+#define MENIX_BITS_INCLUDE
 #include <bits/syscall_list.h>
+#undef MENIX_BITS_INCLUDE

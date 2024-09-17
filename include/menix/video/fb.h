@@ -2,10 +2,10 @@
 
 #pragma once
 
-#include <menix/abi.h>
 #include <menix/common.h>
 #include <menix/drv/driver.h>
 #include <menix/io/mmio.h>
+#include <menix/system/abi.h>
 #include <menix/thread/spin.h>
 
 // Fixed framebuffer information that cannot change after it has been initialized.

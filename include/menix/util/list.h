@@ -73,8 +73,7 @@
 
 // Looks for a `value` in the `list` and returns the index of the first match in `result`. If unsuccessful, returns -1.
 #define list_find(list, result, value) \
-	do \
-	{ \
+	({ \
 		result = -1; \
 		for (usize __i = 0; __i < (list)->length; __i++) \
 		{ \
@@ -84,4 +83,5 @@
 				break; \
 			} \
 		} \
-	} while (0)
+		true; \
+	})

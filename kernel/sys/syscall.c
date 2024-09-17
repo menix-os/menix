@@ -1,7 +1,7 @@
 // Abstract syscall selector
 
-#include <menix/log.h>
 #include <menix/sys/syscall.h>
+#include <menix/util/log.h>
 
 #include <errno.h>
 

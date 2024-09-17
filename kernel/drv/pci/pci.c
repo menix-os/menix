@@ -2,9 +2,9 @@
 
 #include <menix/common.h>
 #include <menix/drv/pci/pci.h>
-#include <menix/log.h>
 #include <menix/memory/alloc.h>
 #include <menix/util/list.h>
+#include <menix/util/log.h>
 
 #include <errno.h>
 

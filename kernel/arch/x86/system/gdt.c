@@ -1,6 +1,7 @@
 // Global Descriptor table
 
 #include <menix/common.h>
+#include <menix/system/arch.h>
 #include <menix/thread/spin.h>
 
 #include <gdt.h>

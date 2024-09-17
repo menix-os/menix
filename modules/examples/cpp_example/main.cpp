@@ -1,8 +1,8 @@
 extern "C"
 {
 #include <menix/common.h>
-#include <menix/log.h>
-#include <menix/module.h>
+#include <menix/drv/module.h>
+#include <menix/util/log.h>
 }
 
 class Foo

@@ -2,6 +2,10 @@
 
 #pragma once
 
+#ifndef MENIX_BITS_INCLUDE
+#error "Don't include bits headers directly!"
+#endif
+
 #include <menix/common.h>
 
 #include <tss.h>

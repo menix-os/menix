@@ -1,9 +1,9 @@
 // Frame buffer operations
 
-#include <menix/log.h>
 #include <menix/memory/alloc.h>
 #include <menix/thread/spin.h>
 #include <menix/util/list.h>
+#include <menix/util/log.h>
 #include <menix/video/fb.h>
 
 static FrameBuffer* fb_active = NULL;

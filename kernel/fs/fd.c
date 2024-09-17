@@ -1,8 +1,8 @@
 // File descriptor utils
 
-#include <menix/abi.h>
-#include <menix/arch.h>
 #include <menix/fs/fd.h>
+#include <menix/system/abi.h>
+#include <menix/system/arch.h>
 #include <menix/thread/process.h>
 #include <menix/thread/spin.h>
 

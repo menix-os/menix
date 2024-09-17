@@ -2,9 +2,9 @@
 
 #pragma once
 
-#include <menix/arch.h>
 #include <menix/common.h>
-#include <menix/log.h>
+#include <menix/system/arch.h>
+#include <menix/util/log.h>
 
 // Declares an interrupt handler.
 #define INT_HANDLER(num)	  interrupt_##num

@@ -3,8 +3,8 @@
 #include <menix/drv/acpi/acpi.h>
 #include <menix/drv/acpi/types.h>
 #include <menix/drv/pci/pci_acpi.h>
-#include <menix/log.h>
 #include <menix/memory/alloc.h>
+#include <menix/util/log.h>
 
 #include <string.h>
 

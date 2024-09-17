@@ -1,8 +1,8 @@
 // Module loading/unloading
 
-#include <menix/arch.h>
-#include <menix/module.h>
+#include <menix/drv/module.h>
 #include <menix/sys/syscall.h>
+#include <menix/system/arch.h>
 #include <menix/thread/process.h>
 
 #include <errno.h>

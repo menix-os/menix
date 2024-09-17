@@ -1,6 +1,6 @@
 // Task State Segement helper functions
 
-#include <menix/log.h>
+#include <menix/util/log.h>
 
 #include <tss.h>
 

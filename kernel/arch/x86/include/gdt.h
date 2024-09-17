@@ -4,8 +4,6 @@
 
 #include <menix/common.h>
 
-#include <bits/asm.h>
-
 #define GDTA_PRESENT	   (1 << 7)
 #define GDTA_PRIV_LVL(lvl) ((lvl & 3) << 5)
 #define GDTA_SEGMENT	   (1 << 4)

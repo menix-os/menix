@@ -1,14 +1,14 @@
 // Virtual File System
 
-#include <menix/arch.h>
 #include <menix/fs/devtmpfs.h>
 #include <menix/fs/tmpfs.h>
 #include <menix/fs/vfs.h>
-#include <menix/log.h>
 #include <menix/memory/alloc.h>
+#include <menix/system/arch.h>
 #include <menix/thread/process.h>
 #include <menix/thread/spin.h>
 #include <menix/util/hash_map.h>
+#include <menix/util/log.h>
 
 #include <errno.h>
 #include <string.h>

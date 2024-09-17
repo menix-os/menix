@@ -1,5 +1,7 @@
 // Task State Segment
 
+#pragma once
+
 #include <menix/common.h>
 
 #include <gdt.h>

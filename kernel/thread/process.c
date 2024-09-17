@@ -8,16 +8,19 @@
 #include <menix/thread/process.h>
 #include <menix/thread/scheduler.h>
 #include <menix/thread/spin.h>
+#include <menix/util/list.h>
 
 #include <errno.h>
 #include <string.h>
 
-static SpinLock lock = spin_new();
+static SpinLock process_lock = spin_new();
 static usize pid_counter = 0;
+
+ProcessList dead_processes;
 
 void process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent)
 {
-	spin_acquire_force(&lock);
+	spin_acquire_force(&process_lock);
 
 	Process* proc = kzalloc(sizeof(Process));
 	strncpy(proc->name, name, sizeof(proc->name));
@@ -29,18 +32,41 @@ void process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, P
 
 	proc->working_dir = vfs_get_root();
 
-	spin_free(&lock);
+	// If we have a parent, copy over the parent's attributes.
+	if (parent != NULL)
+	{
+		if (parent->working_dir != NULL)
+			proc->working_dir = parent->working_dir;
+		proc->parent = parent;
+		proc->map_base = parent->map_base;
+	}
+	else
+	{
+		proc->map_base = CONFIG_vm_map_base;
+	}
+
+	proc->next = NULL;
+
+	list_new(proc->threads, 0);
+	list_new(proc->children, 0);
+
+	scheduler_add_process(&process_list, proc);
+	thread_create(proc, ip, is_user);
+
+	spin_free(&process_lock);
 }
 
 bool process_execve(const char* path, char** argv, char** envp)
 {
-	spin_acquire_force(&lock);
+	spin_acquire_force(&process_lock);
+	scheduler_pause();
 
 	// Open the file and ensure it's there.
 	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
 	if (node == NULL)
 	{
-		proc_log("Unable to load file \"%s\": %s\n", path, strerror(thread_errno));
+		proc_log("Unable to read \"%s\": %s\n", path, strerror(thread_errno));
+		spin_free(&process_lock);
 		return false;
 	}
 
@@ -51,7 +77,8 @@ bool process_execve(const char* path, char** argv, char** envp)
 	ElfInfo info = {0};
 	if (elf_load(map, node->handle, 0, &info) == false)
 	{
-		proc_log("Unable to load file \"%s\": %s\n", path, strerror(thread_errno));
+		proc_log("Unable to load \"%s\": %s\n", path, strerror(thread_errno));
+		spin_free(&process_lock);
 		return false;
 	}
 
@@ -61,11 +88,15 @@ bool process_execve(const char* path, char** argv, char** envp)
 		VfsNode* interp = vfs_get_node(vfs_get_root(), info.ld_path, true);
 		if (interp == NULL)
 		{
-			proc_log("Unable to load interpreter \"%s\" for \"%s\"\n", info.ld_path, path);
+			proc_log("Unable to load interpreter \"%s\" for \"%s\": %s\n", info.ld_path, path, strerror(thread_errno));
+			spin_free(&process_lock);
 			return false;
 		}
-		ElfInfo interp_info;
-		elf_load(map, interp->handle, CONFIG_user_interp_base, &interp_info);
+
+		ElfInfo interp_info = {0};
+		if (elf_load(map, interp->handle, CONFIG_user_interp_base, &interp_info) == false)
+		{
+		}
 	}
 
 	// Allocate a new process structure.
@@ -83,8 +114,9 @@ bool process_execve(const char* path, char** argv, char** envp)
 	arch_current_cpu()->user_stack = CONFIG_user_stack_addr;
 
 	vm_set_page_map(map);
-	asm_get_register(arch_current_cpu()->kernel_stack, rsp);
-	spin_free(&lock);
+	spin_free(&process_lock);
+
+	// Run the scheduler.
 	scheduler_invoke();
 
 	return false;
@@ -92,27 +124,107 @@ bool process_execve(const char* path, char** argv, char** envp)
 
 usize process_fork(Process* proc, Thread* thread)
 {
-	spin_acquire_force(&lock);
+	spin_acquire_force(&process_lock);
 
 	Process* fork = kzalloc(sizeof(Process));
-	fixed_strncpy(fork->name, proc->name);
+	strncpy(fork->name, proc->name, sizeof(proc->name));
 
+	// Copy relevant process info.
+	fork->map_base = proc->map_base;
+	fork->stack_top = proc->stack_top;
 	fork->id = pid_counter++;
+	fork->permissions = proc->permissions;
 	fork->parent = proc;
 	fork->working_dir = proc->working_dir;
+	fork->next = NULL;
 
-	fork->children = (ProcessList) {0};
-	fork->threads = (ThreadList) {0};
+	list_new(fork->children, 0);
+	list_new(fork->threads, 0);
 
-	spin_free(&lock);
+	// Link the newly forked process to the parent.
+	list_push(&proc->children, fork);
+
+	for (usize i = 0; i < OPEN_MAX; i++)
+	{
+		if (proc->file_descs[i] == NULL)
+			continue;
+
+		// TODO: Duplicate FDs.
+	}
+
+	scheduler_add_process(&process_list, fork);
+	thread_fork(fork, thread);
+
+	fork->state = ProcessState_Ready;
+	spin_free(&process_lock);
+
 	return fork->id;
 }
 
-void process_kill(Process* proc)
+void process_kill(Process* proc, bool is_crash)
 {
-	// TODO
-	while (1)
-		;
+	scheduler_pause();
+	kassert(proc->id > 1, "Tried to kill init or kernel process!");
+
+	// If the process being killed is the currently running process.
+	bool is_suicide = false;
+	if (arch_current_cpu()->thread->parent == proc)
+		is_suicide = true;
+
+	// Hand the threads over to the hangman.
+	spin_lock(&process_lock, {
+		for (usize i = 0; i < proc->threads.length; i++)
+		{
+			scheduler_remove_thread(&thread_list, proc->threads.items[i]);
+			scheduler_add_thread(&hanging_thread_list, proc->threads.items[i]);
+		}
+	});
+
+	// Remove the process from its parent.
+	if (proc->parent != NULL)
+	{
+		usize idx;
+		if (list_find(&proc->parent->children, idx, proc))
+			list_pop(&proc->parent->children, idx);
+	}
+
+	Process* init = process_list->next;
+
+	list_iter(&proc->children, iter)
+	{
+		(*iter)->parent = init;
+		list_push(&init->children, *iter);
+	}
+
+	if (is_suicide && !is_crash)
+	{
+	}
+	else
+	{
+		proc->return_code = -1;
+		proc->state = ProcessState_Dead;
+	}
+
+	for (usize i = 0; i < OPEN_MAX; i++)
+	{
+		if (proc->file_descs[i] == NULL)
+			continue;
+		// TODO: fdnum_close(proc, i);
+	}
+
+	list_push(&dead_processes, proc);
+	list_free(&proc->children);
+	list_free(&proc->threads);
+
+	spin_lock(&process_lock, {
+		scheduler_remove_process(&process_list, proc);
+		scheduler_add_process(&hanging_process_list, proc);
+	});
+
+	if (is_suicide)
+		arch_current_cpu()->thread = NULL;
+
+	scheduler_invoke();
 }
 
 FileDescriptor* process_fd_to_ptr(Process* process, usize fd)

@@ -3,7 +3,7 @@
 #include <menix/fs/fs.h>
 #include <menix/fs/ustar.h>
 #include <menix/fs/vfs.h>
-#include <menix/log.h>
+#include <menix/util/log.h>
 
 #include <string.h>
 
