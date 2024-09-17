@@ -45,7 +45,7 @@ typedef struct
 	AcpiDescHeader header;
 	u32 lapic_addr;
 	u32 flags;
-
+	u8 entries[];
 } ATTR(packed) AcpiMadt;
 
 typedef struct

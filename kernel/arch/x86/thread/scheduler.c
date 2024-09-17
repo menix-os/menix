@@ -8,7 +8,7 @@
 #include <menix/thread/spin.h>
 #include <menix/thread/thread.h>
 
-#include "apic.h"
+#include <apic.h>
 
 SpinLock rope_lock = spin_new();
 SpinLock wakeup_lock = spin_new();

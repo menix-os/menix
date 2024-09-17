@@ -2,15 +2,15 @@
 
 #include <menix/common.h>
 #include <menix/drv/acpi/acpi.h>
+#include <menix/drv/acpi/mcfg.h>
 #include <menix/drv/acpi/types.h>
 #include <menix/drv/pci/pci.h>
-#include <menix/drv/pci/pci_acpi.h>
 #include <menix/io/mmio.h>
 #include <menix/util/log.h>
 
 AcpiMcfg* acpi_mcfg;
 
-void pci_init_acpi()
+void mcfg_init()
 {
 	acpi_mcfg = acpi_find_table("MCFG", 0);
 	pci_platform.pci_read8 = mcfg_read8;
@@ -86,10 +86,10 @@ void pci_init_acpi()
 		} \
 	}
 
-implement_read(u8, mcfg_read8, read8);
-implement_read(u16, mcfg_read16, read16);
-implement_read(u32, mcfg_read32, read32);
+implement_read(u8, mcfg_read8, mmio_read8);
+implement_read(u16, mcfg_read16, mmio_read16);
+implement_read(u32, mcfg_read32, mmio_read32);
 
-implement_write(u8, mcfg_write8, write8);
-implement_write(u16, mcfg_write16, write16);
-implement_write(u32, mcfg_write32, write32);
+implement_write(u8, mcfg_write8, mmio_write8);
+implement_write(u16, mcfg_write16, mmio_write16);
+implement_write(u32, mcfg_write32, mmio_write32);

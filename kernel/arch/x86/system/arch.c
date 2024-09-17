@@ -1,18 +1,17 @@
 // x86 platform initialization
 
-#include <menix/drv/acpi/acpi.h>
-#include <menix/drv/pci/pci.h>
-#include <menix/drv/pci/pci_acpi.h>
-#include <menix/fs/vfs.h>
 #include <menix/memory/alloc.h>
 #include <menix/system/arch.h>
 #include <menix/thread/spin.h>
 #include <menix/util/log.h>
 
+#include <apic.h>
 #include <gdt.h>
 #include <idt.h>
 #include <interrupts.h>
 #include <serial.h>
+
+#include "menix/drv/acpi/acpi.h"
 
 static BootInfo* boot_info;
 static SpinLock cpu_lock = spin_new();
@@ -135,14 +134,18 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 void arch_early_init(BootInfo* info)
 {
 	asm_interrupt_disable();
+
 	gdt_init();
 	idt_init();
 	serial_init();
+
 	boot_info = info;
 }
 
 void arch_init(BootInfo* info)
 {
+	acpi_init(info->acpi_rsdp);
+
 	asm_interrupt_enable();
 }
 

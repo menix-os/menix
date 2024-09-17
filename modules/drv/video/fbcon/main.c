@@ -70,7 +70,7 @@ static void fbcon_putchar(u32 ch)
 			const u32 pixel =
 				builtin_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0xFF000000;
 			// Write to back buffer.
-			write32(internal_buffer + offset, pixel);
+			mmio_write32(internal_buffer + offset, pixel);
 		}
 	}
 	// Increment cursor.

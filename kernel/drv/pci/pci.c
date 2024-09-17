@@ -8,10 +8,6 @@
 
 #include <errno.h>
 
-#ifdef CONFIG_acpi
-#include <menix/drv/pci/pci_acpi.h>
-#endif
-
 PciPlatform pci_platform = {0};
 
 static List(PciDriver*) pci_drivers;
@@ -19,13 +15,6 @@ static List(PciDevice*) pci_devices;
 
 void pci_init()
 {
-#ifdef CONFIG_acpi
-	pci_init_acpi();
-#else
-#warning No PCI mechanism selected, this might be unwanted!
-	return;
-#endif
-
 	list_new(pci_drivers, 128);
 	list_new(pci_devices, 128);
 	pci_scan_devices();

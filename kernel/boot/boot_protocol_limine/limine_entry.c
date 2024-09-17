@@ -136,6 +136,8 @@ void kernel_boot()
 	boot_log("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);
 	info.cmd = kernel_res->kernel_file->cmdline;
 
+	arch_init(&info);
+
 #ifdef CONFIG_smp
 	// Get SMP info
 	kassert(smp_request.response, "Unable to get kernel SMP info!");
@@ -211,8 +213,6 @@ void kernel_boot()
 	}
 
 	module_load_kernel_syms(kernel_res->kernel_file->address);
-
-	arch_init(&info);
 
 	boot_log("Initialization complete, handing over to scheduler.\n");
 

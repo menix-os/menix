@@ -20,7 +20,7 @@ void apic_send_ipi(u32 id, u32 flags);
 void apic_redirect_irq(u32 irq, u8 interrupt);
 
 // Initializes the LAPIC
-void lapic_init();
+void lapic_init(usize id);
 
 // Reads data from a LAPIC register.
 u32 lapic_read(u32 register);
@@ -29,6 +29,6 @@ u32 lapic_read(u32 register);
 void lapic_write(u32 register, u32 value);
 
 // Returns the ID of the processor-local APIC.
-u8 lapic_get_id();
+usize lapic_get_id();
 
 void timer_handler(CpuRegisters* regs);

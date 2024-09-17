@@ -11,13 +11,13 @@ typedef volatile u64 mmio64;
 
 // Macros for reading and writing data from and to memory mapped addresses.
 
-#define read8(addr)			 (*((mmio8*)(addr)))
-#define write8(addr, value)	 (*((mmio8*)(addr)) = (u8)(value))
-#define read16(addr)		 (*((mmio16*)(addr)))
-#define write16(addr, value) (*((mmio16*)(addr)) = (u16)(value))
-#define read32(addr)		 (*((mmio32*)(addr)))
-#define write32(addr, value) (*((mmio32*)(addr)) = (u32)(value))
+#define mmio_read8(addr)		  (*((mmio8*)(addr)))
+#define mmio_write8(addr, value)  (*((mmio8*)(addr)) = (u8)(value))
+#define mmio_read16(addr)		  (*((mmio16*)(addr)))
+#define mmio_write16(addr, value) (*((mmio16*)(addr)) = (u16)(value))
+#define mmio_read32(addr)		  (*((mmio32*)(addr)))
+#define mmio_write32(addr, value) (*((mmio32*)(addr)) = (u32)(value))
 #if CONFIG_bits >= 64
-#define read64(addr)		 (*((mmio64*)(addr)))
-#define write64(addr, value) (*((mmio64*)(addr)) = (u64)(value))
+#define mmio_read64(addr)		  (*((mmio64*)(addr)))
+#define mmio_write64(addr, value) (*((mmio64*)(addr)) = (u64)(value))
 #endif

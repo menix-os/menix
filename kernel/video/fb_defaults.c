@@ -22,13 +22,13 @@ void fb_default_fill_region(FrameBuffer* fb, FbFillRegion* args)
 			u8* rgb_ptr = ((u8*)addr_dst + (x * mode->cpp));
 			switch (mode->cpp)
 			{
-				case 2: write16(rgb_ptr, (u16)args->color);
+				case 2: mmio_write16(rgb_ptr, (u16)args->color);
 				case 3:
 					rgb_ptr[0] = args->color >> 16 & 0xFF;
 					rgb_ptr[1] = args->color >> 8 & 0xFF;
 					rgb_ptr[2] = args->color >> 0 & 0xFF;
 					break;
-				case 4: write32(rgb_ptr, (u32)args->color); break;
+				case 4: mmio_write32(rgb_ptr, (u32)args->color); break;
 				default: break;
 			}
 		}

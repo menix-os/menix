@@ -1,8 +1,10 @@
 // RSDP/XSDT functions.
 
 #include <menix/drv/acpi/acpi.h>
+#include <menix/drv/acpi/hpet.h>
+#include <menix/drv/acpi/madt.h>
+#include <menix/drv/acpi/mcfg.h>
 #include <menix/drv/acpi/types.h>
-#include <menix/drv/pci/pci_acpi.h>
 #include <menix/memory/alloc.h>
 #include <menix/util/log.h>
 
@@ -25,6 +27,10 @@ void acpi_init(AcpiRsdp* rsdp)
 {
 	kassert(rsdp != NULL, "Failed to set RSDP: None given!");
 	rsdt = ACPI_ADDR(rsdp->xsdt_address);
+
+	madt_init();
+	hpet_init();
+	mcfg_init();
 
 	acpi_log("Initialized ACPI (Rev. %u)\n", rsdp->revision);
 }

@@ -58,6 +58,3 @@ void arch_dump_registers(CpuRegisters* regs);
 
 // Gets processor metadata.
 Cpu* arch_current_cpu();
-
-// Jump to user mode and set the instruction pointer to `ip`.
-extern void arch_return_to_user(VirtAddr ip);
