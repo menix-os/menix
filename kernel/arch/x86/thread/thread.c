@@ -12,8 +12,13 @@
 void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 {
 	target->registers.rip = start;
+
+	// Allocate kernel stack for this thread.
 	target->kernel_stack = (VirtAddr)kmalloc(CONFIG_kernel_stack_size);
+	// Stack grows down, so move to the end of the allocated memory.
 	target->kernel_stack += CONFIG_kernel_stack_size;
+
+	// Allocate memory for the FPU state.
 	target->saved_fpu = pm_alloc(ROUND_UP(arch_current_cpu()->fpu_size, CONFIG_page_size)) + pm_get_phys_base();
 	memset(target->saved_fpu, 0, arch_current_cpu()->fpu_size);
 
@@ -33,6 +38,7 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 				   PROT_READ | PROT_WRITE, MAP_ANONYMOUS, NULL, 0);
 
 			target->registers.rsp = proc->stack_top;
+			proc->stack_top -= CONFIG_user_stack_size;
 		}
 		else
 		{
@@ -40,13 +46,13 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 			target->stack = target->registers.rsp;
 		}
 
-		// Prepare FPU.
-		arch_current_cpu()->fpu_restore(target->saved_fpu);
-		u16 default_fcw = 0b1100111111;
-		asm volatile("fldcw %0" ::"m"(default_fcw) : "memory");
-		u32 default_mxcsr = 0b1111110000000;
-		asm volatile("ldmxcsr %0" ::"m"(default_mxcsr) : "memory");
-		arch_current_cpu()->fpu_save(target->saved_fpu);
+		// TODO: Prepare FPU.
+		// arch_current_cpu()->fpu_restore(target->saved_fpu);
+		// u16 default_fcw = 0b1100111111;
+		// asm volatile("fldcw %0" ::"m"(default_fcw) : "memory");
+		// u32 default_mxcsr = 0b1111110000000;
+		// asm volatile("ldmxcsr %0" ::"m"(default_mxcsr) : "memory");
+		// arch_current_cpu()->fpu_save(target->saved_fpu);
 
 		target->fs_base = 0;
 		target->gs_base = 0;

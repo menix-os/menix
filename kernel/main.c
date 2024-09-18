@@ -7,6 +7,7 @@
 #include <menix/io/terminal.h>
 #include <menix/system/arch.h>
 #include <menix/system/fw.h>
+#include <menix/thread/process.h>
 #include <menix/thread/scheduler.h>
 #include <menix/util/log.h>
 
@@ -30,10 +31,8 @@ ATTR(noreturn) void kernel_main()
 	module_init(boot_info);
 
 	// Call init program.
-	char* argv[] = {"init", NULL};
-	process_execve("/sbin/init", argv, NULL);
-
-	kmesg("[WARNING]\tinit has terminated!\n");
+	kassert(process_create_elf("init", ProcessState_Ready, arch_current_cpu()->thread->parent, "/sbin/init"),
+			"Failed to run init binary!");
 
 	// Should be unreachable.
 	while (true)

@@ -13,12 +13,15 @@
 #include <errno.h>
 #include <string.h>
 
+#include "generated/config.h"
+#include "menix/system/abi.h"
+
 static SpinLock process_lock = spin_new();
 static usize pid_counter = 0;
 
 ProcessList dead_processes;
 
-void process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent)
+Process* process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent)
 {
 	spin_acquire_force(&process_lock);
 
@@ -37,15 +40,15 @@ void process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, P
 	{
 		if (parent->working_dir != NULL)
 			proc->working_dir = parent->working_dir;
+		proc->permissions = parent->permissions;
 		proc->parent = parent;
 		proc->map_base = parent->map_base;
 	}
 	else
 	{
+		proc->permissions = S_IWGRP | S_IWOTH;
 		proc->map_base = CONFIG_vm_map_base;
 	}
-
-	proc->next = NULL;
 
 	list_new(proc->threads, 0);
 	list_new(proc->children, 0);
@@ -54,12 +57,38 @@ void process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, P
 	thread_create(proc, ip, is_user);
 
 	spin_free(&process_lock);
+	return proc;
 }
 
-bool process_execve(const char* path, char** argv, char** envp)
+bool process_create_elf(char* name, ProcessState state, Process* parent, const char* path)
 {
 	spin_acquire_force(&process_lock);
-	scheduler_pause();
+
+	Process* proc = kzalloc(sizeof(Process));
+	strncpy(proc->name, name, sizeof(proc->name));
+
+	proc->state = state;
+	proc->id = pid_counter++;
+
+	process_setup(proc, true);
+
+	proc->working_dir = vfs_get_root();
+	proc->stack_top = CONFIG_user_stack_addr;
+
+	// If we have a parent, copy over the parent's attributes.
+	if (parent != NULL)
+	{
+		if (parent->working_dir != NULL)
+			proc->working_dir = parent->working_dir;
+		proc->permissions = parent->permissions;
+		proc->parent = parent;
+		proc->map_base = parent->map_base;
+	}
+	else
+	{
+		proc->permissions = S_IWGRP | S_IWOTH;
+		proc->map_base = CONFIG_vm_map_base;
+	}
 
 	// Open the file and ensure it's there.
 	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
@@ -70,6 +99,62 @@ bool process_execve(const char* path, char** argv, char** envp)
 		return false;
 	}
 
+	// Load the executable into the new page map.
+	ElfInfo info = {0};
+	if (elf_load(proc->page_map, node->handle, 0, &info) == false)
+	{
+		proc_log("Unable to load \"%s\": %s\n", path, strerror(thread_errno));
+		return false;
+	}
+
+	// If an interpreter was requested, load it at the configured base address.
+	if (info.ld_path != NULL)
+	{
+		VfsNode* interp = vfs_get_node(vfs_get_root(), info.ld_path, true);
+		if (interp == NULL)
+		{
+			proc_log("Unable to load interpreter \"%s\" for \"%s\": %s\n", info.ld_path, path, strerror(thread_errno));
+			return false;
+		}
+
+		ElfInfo interp_info = {0};
+		if (elf_load(proc->page_map, interp->handle, CONFIG_user_interp_base, &interp_info) == false)
+		{
+			proc_log("Unable to load interpreter \"%s\" for \"%s\": %s\n", info.ld_path, path, strerror(thread_errno));
+			return false;
+		}
+	}
+
+	list_new(proc->threads, 0);
+	list_new(proc->children, 0);
+
+	scheduler_add_process(&process_list, proc);
+	thread_create(proc, info.entry_point, true);
+
+	spin_free(&process_lock);
+	return proc;
+}
+
+bool process_execve(const char* path, char** argv, char** envp)
+{
+	spin_acquire_force(&process_lock);
+	scheduler_pause();
+
+	// Use the current thread's structures.
+	Thread* thread = arch_current_cpu()->thread;
+	Process* proc = thread->parent;
+
+	// Open the file and ensure it's there.
+	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
+	if (node == NULL)
+	{
+		proc_log("Unable to read \"%s\": %s\n", path, strerror(thread_errno));
+		spin_free(&process_lock);
+		return false;
+	}
+
+	process_setup(proc, true);
+
 	// Create a new page map for the process.
 	PageMap* map = vm_page_map_new();
 
@@ -78,6 +163,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 	if (elf_load(map, node->handle, 0, &info) == false)
 	{
 		proc_log("Unable to load \"%s\": %s\n", path, strerror(thread_errno));
+		vm_page_map_destroy(map);
 		spin_free(&process_lock);
 		return false;
 	}
@@ -89,6 +175,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 		if (interp == NULL)
 		{
 			proc_log("Unable to load interpreter \"%s\" for \"%s\": %s\n", info.ld_path, path, strerror(thread_errno));
+			vm_page_map_destroy(map);
 			spin_free(&process_lock);
 			return false;
 		}
@@ -96,22 +183,30 @@ bool process_execve(const char* path, char** argv, char** envp)
 		ElfInfo interp_info = {0};
 		if (elf_load(map, interp->handle, CONFIG_user_interp_base, &interp_info) == false)
 		{
+			proc_log("Unable to load interpreter \"%s\" for \"%s\": %s\n", info.ld_path, path, strerror(thread_errno));
+			vm_page_map_destroy(map);
+			spin_free(&process_lock);
+			return false;
 		}
 	}
 
-	// Allocate a new process structure.
-	Thread* thread = arch_current_cpu()->thread;
-	thread->parent = kzalloc(sizeof(Process));
+	// If loading was successful, set the new map.
 	thread->parent->page_map = map;
 
 	// Set CWD.
 	thread->parent->working_dir = node->parent;
+
+	proc->map_base = CONFIG_vm_map_base;
+	proc->stack_top = CONFIG_user_stack_addr;
+	proc->state = ProcessState_Ready;
 
 	// Map the process stack. Subtract size from the start since stack grows down.
 	vm_map(map, CONFIG_user_stack_addr - CONFIG_user_stack_size, CONFIG_user_stack_size,
 		   PROT_READ | PROT_WRITE | PROT_EXEC, MAP_FIXED, NULL, 0);
 
 	arch_current_cpu()->user_stack = CONFIG_user_stack_addr;
+
+	thread_execve(proc, thread, info.entry_point, argv, envp);
 
 	vm_set_page_map(map);
 	spin_free(&process_lock);
@@ -198,6 +293,7 @@ void process_kill(Process* proc, bool is_crash)
 
 	if (is_suicide && !is_crash)
 	{
+		// TODO
 	}
 	else
 	{

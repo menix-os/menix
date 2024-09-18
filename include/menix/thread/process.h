@@ -53,15 +53,18 @@ typedef struct Process
 	i32 return_code;	// If the process is in a dead state, contains the code to return to the parent.
 } Process;
 
-// Creates a new process.
+// Creates a new process. Returns a reference to the newly created process.
 // `name`: Name of the process.
 // `state`: Which state the process should be initialized with.
 // `ip`: The instruction pointer address to initialize the process with.
 // `is_user`: True if this process belongs to the user, otherwise it's a kernel process.
 // `parent`: (Optional) The parent process of the to be created process.
-void process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent);
+Process* process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent);
 
-// Starts a new process from an ELF executable. Returns true if successful.
+// Same as `process_create`, but also loads an ELF executable into memory without taking over the current process.
+bool process_create_elf(char* name, ProcessState state, Process* parent, const char* path);
+
+// Starts a new process from an ELF executable.
 // `path`: File path pointing to the executable to run.
 // `argv`: A NULL-terminated list of program arguments to be passed to the new process.
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.

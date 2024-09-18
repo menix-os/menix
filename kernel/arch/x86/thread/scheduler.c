@@ -68,7 +68,9 @@ void scheduler_reschedule(CpuRegisters* regs)
 	asm_interrupt_disable();
 
 	vm_set_page_map(vm_get_kernel_map());
-	arch_current_cpu()->ticks_active++;
+
+	Cpu* cur = arch_current_cpu();
+	cur->ticks_active++;
 	// timer_stop_sched();
 
 	kill_dying_threads();
@@ -93,7 +95,8 @@ void scheduler_reschedule(CpuRegisters* regs)
 			running->registers = *regs;
 			running->fs_base = asm_rdmsr(MSR_FS_BASE);
 			running->gs_base = asm_rdmsr(MSR_GS_BASE);
-			arch_current_cpu()->fpu_save(running->saved_fpu);
+			// TODO: Causes a GPF
+			// arch_current_cpu()->fpu_save(running->saved_fpu);
 			running->stack = arch_current_cpu()->user_stack;
 			running->kernel_stack = arch_current_cpu()->kernel_stack;
 
@@ -110,14 +113,27 @@ void scheduler_reschedule(CpuRegisters* regs)
 	{
 		apic_send_eoi();
 		arch_current_cpu()->thread = NULL;
-		kmesg("[Scheduler]\tNo more threads to run, halting!");
+		kmesg("[Scheduler]\tNo more threads to run, halting!\n");
 		asm_interrupt_enable();
 		while (true)
 			asm volatile("hlt");
 	}
 
-	arch_current_cpu()->thread = running;
-	arch_current_cpu()->tss.rsp0 = running->kernel_stack;
+	cur->thread = running;
+	cur->tss.rsp0 = running->kernel_stack;
+	cur->user_stack = running->stack;
+	cur->kernel_stack = running->kernel_stack;
+	cur->thread->state = ThreadState_Running;
+	// TODO: Causes a GPF
+	// cur->fpu_restore(running->saved_fpu);
+
+	// Reload page map.
+	vm_set_page_map(running->parent->page_map);
+	usize cr3;
+	asm_get_register(cr3, cr3);
+	asm_set_register(cr3, cr3);
+
+	apic_send_eoi();
 
 	scheduler_context_switch(&running->registers);
 }
