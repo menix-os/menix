@@ -119,7 +119,7 @@ void thread_setup_execve(Thread* target, VirtAddr start, char** argv, char** env
 
 	// TODO: auxvals
 
-	// Set each evnp pointer.
+	// Set each envp pointer.
 	*(--sized_stack) = 0;		// End of envp (== NULL).
 	sized_stack -= num_envp;	// Make room for all envp entries.
 	usize offset = 0;

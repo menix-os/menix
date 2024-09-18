@@ -79,10 +79,8 @@ sc_syscall:
 	pushq	$0x00				/* CpuRegisters.isr field */
 	pushq	$0x00				/* CpuRegisters.core field */
 	push_all_regs				/* Push general purpose registers so they can be written to by syscalls */
-
 	mov		%rsp,	%rdi		/* Put CpuRegisters* as first argument */
 	call	syscall_handler		/* Call syscall handler */
-
 	pop_all_regs				/* Pop stack values back to the general purpose registers. */
 	add		$0x18,	%rsp		/* Skip .error, .isr and .core fields */
 	movq	%gs:16,	%rsp		/* Load user stack from `Cpu.user_stack`. */
