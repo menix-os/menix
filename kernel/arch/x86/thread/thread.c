@@ -54,7 +54,7 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 	else
 	{
 		target->registers.cs = offsetof(Gdt, kernel_code) | CPL_KERNEL;
-		target->registers.cs = offsetof(Gdt, kernel_data) | CPL_KERNEL;
+		target->registers.ss = offsetof(Gdt, kernel_data) | CPL_KERNEL;
 
 		// Load kernel stack.
 		target->stack = target->kernel_stack;

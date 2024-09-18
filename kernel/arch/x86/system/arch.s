@@ -54,7 +54,7 @@ scheduler_context_switch:
 	mov		%rdi,	%rsp		/* First argument is a reference to the thread's CpuRegisters field. */
 	pop_all_regs				/* Pop all values stored in that struct into the actual registers. */
 	add		$0x18,	%rsp		/* Skip .error, .isr and .core fields */
-	swapgs						/* Swap GSBASE to user mode. */
+	swapgs_if_necessary			/* Swap GSBASE to user mode. */
 	iretq						/* Instead of returning via interrupt_internal,
 								   return directly so we always land in user mode. */
 

@@ -8,7 +8,7 @@
 #include <menix/video/fb.h>
 
 #ifdef CONFIG_acpi
-#include <menix/drv/acpi/types.h>
+#include <menix/system/acpi/types.h>
 #endif
 
 #define boot_log(fmt, ...) kmesg("[Boot]\t" fmt, ##__VA_ARGS__)
@@ -55,7 +55,7 @@ typedef struct
 
 // Gets called after platform initialization has finished.
 // This is the main kernel function.
-ATTR(noreturn) void kernel_main(BootInfo* const info);
+ATTR(noreturn) void kernel_main();
 
 // Gets called if a shutdown was requested by the firmware, a syscall or if the init program terminated.
 void kernel_shutdown(i32 reason);

@@ -6,20 +6,22 @@
 #include <menix/fs/vfs.h>
 #include <menix/io/terminal.h>
 #include <menix/system/arch.h>
+#include <menix/system/fw.h>
 #include <menix/thread/scheduler.h>
 #include <menix/util/log.h>
 
 static BootInfo* boot_info;
 
-ATTR(noreturn) void kernel_main(BootInfo* info)
+ATTR(noreturn) void kernel_main()
 {
-	boot_info = info;
+	boot_info = fw_get_boot_info();
 
+	// Initialize virtual file system.
 	vfs_init();
 
 	// Load initrd(s).
-	for (usize i = 0; i < info->file_num; i++)
-		ustarfs_init(vfs_get_root(), info->files[i].address, info->files[i].size);
+	for (usize i = 0; i < boot_info->file_num; i++)
+		ustarfs_init(vfs_get_root(), boot_info->files[i].address, boot_info->files[i].size);
 
 	// Register all terminal devices.
 	terminal_init();

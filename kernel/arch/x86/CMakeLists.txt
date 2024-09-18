@@ -10,6 +10,7 @@ add_architecture(x86
 	system/arch.c
 	system/apic.c
 	system/interrupts.c
+	system/acpi/hpet.c
 	memory/vm.c
 	memory/pm.c
 	thread/elf.c

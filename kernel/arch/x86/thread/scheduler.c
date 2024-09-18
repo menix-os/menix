@@ -110,6 +110,7 @@ void scheduler_reschedule(CpuRegisters* regs)
 	{
 		apic_send_eoi();
 		arch_current_cpu()->thread = NULL;
+		kmesg("[Scheduler]\tNo more threads to run, halting!");
 		asm_interrupt_enable();
 		while (true)
 			asm volatile("hlt");

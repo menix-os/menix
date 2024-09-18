@@ -1,11 +1,11 @@
 // PCI configuration using the MCFG table.
 
 #include <menix/common.h>
-#include <menix/drv/acpi/acpi.h>
-#include <menix/drv/acpi/mcfg.h>
-#include <menix/drv/acpi/types.h>
 #include <menix/drv/pci/pci.h>
 #include <menix/io/mmio.h>
+#include <menix/system/acpi/acpi.h>
+#include <menix/system/acpi/mcfg.h>
+#include <menix/system/acpi/types.h>
 #include <menix/util/log.h>
 
 AcpiMcfg* acpi_mcfg;

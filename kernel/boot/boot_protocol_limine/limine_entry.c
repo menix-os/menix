@@ -97,9 +97,9 @@ void kernel_boot()
 	vm_init(info.phys_map, info.kernel_phys, info.memory_map, info.mm_num);
 	// Initialize memory allocator.
 	alloc_init();
+
 	// Get early framebuffer.
 	FrameBuffer buffer = {0};
-
 	if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count == 0)
 		boot_log("Unable to get a framebuffer!\n");
 	else
@@ -118,9 +118,7 @@ void kernel_boot()
 
 		// If no early framebuffer has been set previously, do it now.
 		if (fb_get_active() == NULL)
-		{
 			fb_register(&buffer);
-		}
 		boot_log("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n",
 				 buffer.info.mmio_base, buffer.mode.width, buffer.mode.height, buffer.mode.cpp * 8, buffer.mode.v_width,
 				 buffer.mode.v_height);
@@ -132,9 +130,25 @@ void kernel_boot()
 	boot_log("Kernel file loaded at: 0x%p, Size = 0x%lx\n", kernel_res->kernel_file->address,
 			 kernel_res->kernel_file->size);
 
+	module_load_kernel_syms(kernel_res->kernel_file->address);
+
 	// Get command line.
 	boot_log("Command line: \"%s\"\n", kernel_res->kernel_file->cmdline);
 	info.cmd = kernel_res->kernel_file->cmdline;
+
+#ifdef CONFIG_acpi
+	// Get ACPI RSDP.
+	kassert(rsdp_request.response, "Unable to get ACPI RSDP!");
+	boot_log("ACPI RSDP at 0x%p\n", rsdp_request.response->address);
+	info.acpi_rsdp = rsdp_request.response->address;
+	kassert(memcmp(info.acpi_rsdp->signature, "RSD PTR", 7) == 0, "Invalid signature, expected \"RSD PTR\"!");
+#endif
+
+#ifdef CONFIG_open_firmware
+	kassert(dtb_request.response, "Unable to get device tree!");
+	boot_log("FDT blob at 0x%p\n", dtb_request.response->dtb_ptr);
+	info.fdt_blob = dtb_request.response->dtb_ptr;
+#endif
 
 	arch_init(&info);
 
@@ -178,20 +192,6 @@ void kernel_boot()
 	boot_log("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
 			 kernel_address_request.response->physical_base);
 
-#ifdef CONFIG_acpi
-	// Get ACPI RSDP.
-	kassert(rsdp_request.response, "Unable to get ACPI RSDP!");
-	boot_log("ACPI RSDP at 0x%p\n", rsdp_request.response->address);
-	info.acpi_rsdp = rsdp_request.response->address;
-	kassert(memcmp(info.acpi_rsdp->signature, "RSD PTR", 7) == 0, "Invalid signature, expected \"RSD PTR\"!");
-#endif
-
-#ifdef CONFIG_open_firmware
-	kassert(dtb_request.response, "Unable to get device tree!");
-	boot_log("FDT blob at 0x%p\n", dtb_request.response->dtb_ptr);
-	info.fdt_blob = dtb_request.response->dtb_ptr;
-#endif
-
 	// Get modules.
 	if (module_request.response == NULL)
 		boot_log("Unable to get modules, or none were provided!");
@@ -212,10 +212,7 @@ void kernel_boot()
 		info.files = files;
 	}
 
-	module_load_kernel_syms(kernel_res->kernel_file->address);
-
 	boot_log("Initialization complete, handing over to scheduler.\n");
-
 	scheduler_init(&info);
 
 	while (true)

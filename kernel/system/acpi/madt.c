@@ -1,8 +1,7 @@
 // Multiple APIC Description Table
 
-#include <menix/drv/acpi/acpi.h>
-#include <menix/drv/acpi/madt.h>
-#include <menix/drv/acpi/types.h>
+#include <menix/system/acpi/acpi.h>
+#include <menix/system/acpi/madt.h>
 #include <menix/util/log.h>
 
 AcpiMadt* acpi_madt;

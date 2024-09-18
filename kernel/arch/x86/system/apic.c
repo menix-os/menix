@@ -1,8 +1,8 @@
 // x86 advanced programmable interrupt controller
 
 #include <menix/common.h>
-#include <menix/drv/acpi/madt.h>
 #include <menix/memory/pm.h>
+#include <menix/system/acpi/madt.h>
 #include <menix/system/arch.h>
 #include <menix/thread/scheduler.h>
 
@@ -12,6 +12,7 @@
 
 static PhysAddr lapic_addr = 0;
 static bool has_x2apic = 0;
+u32 tick_in_10ms = 0;
 
 void apic_init()
 {
@@ -29,7 +30,7 @@ void apic_init()
 	arch_x86_write8(PIC2_DATA_PORT, 0x01);		 // ICW4: Set the PIC to operate in 8086/88 mode.
 	arch_x86_write8(PIC2_DATA_PORT, 0xFF);		 // Mask all interrupts.
 
-	apic_redirect_irq(0, 48);
+	// apic_redirect_irq(0, 48);
 }
 
 static u32 ioapic_read(PhysAddr ioapic_address, usize reg)
@@ -189,7 +190,7 @@ void lapic_init(usize cpu_id)
 	// Set timer init counter to -1
 	lapic_write(0x380, 0xFFFFFFFF);
 
-	timer_sleep(10);
+	// timer_sleep(10);
 
 	// Stop the APIC timer
 	lapic_write(0x320, 0x10000);

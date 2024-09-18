@@ -13,10 +13,6 @@
 #include <errno.h>
 #include <string.h>
 
-#ifdef CONFIG_acpi
-#include <menix/drv/acpi/acpi.h>
-#endif
-
 // We need to see the location and size of the .mod section.
 SECTION_DECLARE_SYMBOLS(mod)
 
@@ -29,9 +25,6 @@ static HashMap(Elf_Sym*) module_symbol_map;
 void module_init(BootInfo* info)
 {
 	// Initialize subsystems.
-#ifdef CONFIG_acpi
-	acpi_init(info->acpi_rsdp);
-#endif
 #ifdef CONFIG_pci
 	pci_init();
 #endif

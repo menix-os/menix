@@ -1,14 +1,17 @@
 // RSDP/XSDT functions.
 
-#include <menix/drv/acpi/acpi.h>
-#include <menix/drv/acpi/hpet.h>
-#include <menix/drv/acpi/madt.h>
-#include <menix/drv/acpi/mcfg.h>
-#include <menix/drv/acpi/types.h>
 #include <menix/memory/alloc.h>
+#include <menix/system/acpi/acpi.h>
+#include <menix/system/acpi/madt.h>
+#include <menix/system/acpi/mcfg.h>
+#include <menix/system/acpi/types.h>
 #include <menix/util/log.h>
 
 #include <string.h>
+
+#ifdef CONFIG_arch_x86
+#include <hpet.h>
+#endif
 
 static AcpiRsdt* rsdt;
 
@@ -28,8 +31,13 @@ void acpi_init(AcpiRsdp* rsdp)
 	kassert(rsdp != NULL, "Failed to set RSDP: None given!");
 	rsdt = ACPI_ADDR(rsdp->xsdt_address);
 
-	madt_init();
+	// Initialize architecture dependent tables.
+#ifdef CONFIG_arch_x86
 	hpet_init();
+#endif
+
+	// Initialize independent tables.
+	madt_init();
 	mcfg_init();
 
 	acpi_log("Initialized ACPI (Rev. %u)\n", rsdp->revision);

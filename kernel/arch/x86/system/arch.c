@@ -2,6 +2,7 @@
 
 #include <menix/memory/alloc.h>
 #include <menix/system/arch.h>
+#include <menix/system/fw.h>
 #include <menix/thread/spin.h>
 #include <menix/util/log.h>
 
@@ -10,8 +11,6 @@
 #include <idt.h>
 #include <interrupts.h>
 #include <serial.h>
-
-#include "menix/drv/acpi/acpi.h"
 
 static BootInfo* boot_info;
 static SpinLock cpu_lock = spin_new();
@@ -144,7 +143,8 @@ void arch_early_init(BootInfo* info)
 
 void arch_init(BootInfo* info)
 {
-	acpi_init(info->acpi_rsdp);
+	fw_init(info);
+	apic_init();
 
 	asm_interrupt_enable();
 }
