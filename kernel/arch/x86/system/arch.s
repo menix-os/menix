@@ -70,10 +70,10 @@ sc_syscall:
 	cld							/* Clear direction bit from RFLAGS */
 	/* We're pretending to be an interrupt, so fill the bottom fields of CpuRegisters. */
 	/* For details see: https://www.felixcloutier.com/x86/syscall */
-	pushq	$0x23				/* SS and CS are not changed during SYSCALL. Use `gdt_table.user_data & CPL_USER`. */
+	pushq	$0x23				/* SS and CS are not changed during SYSCALL. Use `gdt_table.user_data | CPL_USER`. */
 	pushq	%gs:16				/* Get RSP from when we saved it */
 	pushq	%r11				/* RFLAGS is moved into r11 by the CPU. */
-	pushq	$0x2b				/* Same as SS. Use `gdt_table.user_code64 & CPL_USER` */
+	pushq	$0x2b				/* Same as SS. Use `gdt_table.user_code64 | CPL_USER` */
 	pushq	%rcx				/* RIP is moved into rcx by the CPU. */
 	pushq	$0x00				/* CpuRegisters.error field */
 	pushq	$0x00				/* CpuRegisters.isr field */
