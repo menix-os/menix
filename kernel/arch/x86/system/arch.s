@@ -2,20 +2,6 @@
 
 .section .text
 
-/* Jumps to user code at %rdi */
-.align 0x10
-.global arch_return_to_user
-arch_return_to_user:
-	cli						/* Disable interrupts. */
-	movq	%rsp,	%gs:8	/* Save kernel stack to `Cpu.kernel_stack`. */
-	movq	%gs:16,	%rsp	/* Load user stack from `Cpu.user_stack`. */
-	movq	%rsp,	%rbp	/* Save stack base pointer. */
-	movq	%rdi,	%rcx	/* rcx = Instruction pointer */
-	mov		$0x202,	%r11	/* Set RFLAGS */
-	swapgs					/* Change GS to user mode. */
-	sti						/* Resume interrupts. */
-	sysretq					/* Return to user mode */
-
 /* Swaps GSBASE if CPL == USER */
 .macro swapgs_if_necessary
 	cmpw	$0x08,	0x8(%rsp)
