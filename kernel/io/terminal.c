@@ -2,7 +2,6 @@
 
 #include <menix/common.h>
 #include <menix/fs/devtmpfs.h>
-#include <menix/fs/vfs.h>
 #include <menix/io/terminal.h>
 #include <menix/thread/spin.h>
 
@@ -39,6 +38,13 @@ void terminal_set_active(usize terminal)
 usize terminal_get_active()
 {
 	return terminal_active;
+}
+
+VfsNode* terminal_get_active_node()
+{
+	char name[32] = "/dev/terminal";
+	u32toa(terminal_active, name + 13, 10);
+	return vfs_get_node(vfs_get_root(), name, false);
 }
 
 // Set the active terminal to display.

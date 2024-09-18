@@ -29,13 +29,18 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 		target->registers.cs = offsetof(Gdt, user_code64) | CPL_USER;
 		target->registers.ss = offsetof(Gdt, user_data) | CPL_USER;
 
-		// Create stack.
+		// Check if we have to allocate a stack.
 		if (stack == 0)
 		{
-			target->registers.rsp = pm_alloc(CONFIG_user_stack_size / CONFIG_page_size);
-			target->stack = target->registers.rsp;
-			vm_map(proc->page_map, proc->stack_top - CONFIG_user_stack_size, CONFIG_user_stack_size,
-				   PROT_READ | PROT_WRITE, MAP_ANONYMOUS, NULL, 0);
+			PhysAddr phys_stack = pm_alloc(CONFIG_user_stack_size / CONFIG_page_size);
+			target->stack = phys_stack;
+			for (usize i = 0; i < CONFIG_user_stack_size / CONFIG_page_size; i++)
+			{
+				// Map all pages.
+				vm_x86_map_page(proc->page_map, phys_stack + (i * CONFIG_page_size),
+								(proc->stack_top - CONFIG_user_stack_size) + (i * CONFIG_page_size),
+								PAGE_READ_WRITE | PAGE_PRESENT | PAGE_USER_MODE);
+			}
 
 			target->registers.rsp = proc->stack_top;
 			proc->stack_top -= CONFIG_user_stack_size;

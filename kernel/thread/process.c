@@ -13,8 +13,8 @@
 #include <errno.h>
 #include <string.h>
 
-#include "generated/config.h"
-#include "menix/system/abi.h"
+#include "menix/fs/fd.h"
+#include "menix/io/terminal.h"
 
 static SpinLock process_lock = spin_new();
 static usize pid_counter = 0;
@@ -127,6 +127,17 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 
 	list_new(proc->threads, 0);
 	list_new(proc->children, 0);
+
+	// TODO: Make a proper IO interface
+	FileDescriptor* desc = kzalloc(sizeof(FileDescriptor));
+	VfsNode* terminal = terminal_get_active_node();
+	if (terminal)
+	{
+		desc->handle = terminal->handle;
+		proc->file_descs[0] = desc;
+		proc->file_descs[1] = desc;
+		proc->file_descs[2] = desc;
+	}
 
 	scheduler_add_process(&process_list, proc);
 	thread_create(proc, info.entry_point, true);
@@ -259,7 +270,8 @@ usize process_fork(Process* proc, Thread* thread)
 void process_kill(Process* proc, bool is_crash)
 {
 	scheduler_pause();
-	kassert(proc->id > 1, "Tried to kill init or kernel process!");
+	if (proc->id <= 1)
+		kmesg("[WARNING]\tKilling init or kernel process!\n");
 
 	// If the process being killed is the currently running process.
 	bool is_suicide = false;

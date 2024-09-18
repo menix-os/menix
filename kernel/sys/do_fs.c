@@ -21,7 +21,10 @@ SYSCALL_IMPL(write, u32 fd, void* buf, usize size)
 		return 0;
 
 	Process* process = arch_current_cpu()->thread->parent;
+
 	FileDescriptor* file_desc = process_fd_to_ptr(process, fd);
+	if (file_desc == NULL)
+		return 0;
 
 	// Write to the handle.
 	Handle* const handle = file_desc->handle;
@@ -41,7 +44,10 @@ SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
 		return 0;
 
 	Process* process = arch_current_cpu()->thread->parent;
+
 	FileDescriptor* file_desc = process_fd_to_ptr(process, fd);
+	if (file_desc == NULL)
+		return 0;
 
 	// Read from the handle.
 	Handle* const handle = file_desc->handle;

@@ -466,7 +466,7 @@ void interrupt_pf_handler(CpuRegisters* regs)
 
 	Process* proc = arch_current_cpu()->thread->parent;
 
-#ifdef CONFIG_x86_pf_debug
+#if !defined(NDEBUG) && defined(CONFIG_x86_pf_debug)
 	kmesg("Page fault: \n");
 
 	// Present
@@ -503,7 +503,7 @@ void interrupt_pf_handler(CpuRegisters* regs)
 	if (can_smap & !BIT(regs->rflags, 18) & !(regs->cs & CPL_USER))
 		kmesg("\t- Fault was caused by SMAP (missing vm_show_user()?)\n");
 
-	kmesg("Attempted to access 0x%p!\n");
+	kmesg("Attempted to access 0x%p!\n", cr2);
 	ktrace();
 #endif
 
@@ -519,6 +519,6 @@ void interrupt_pf_handler(CpuRegisters* regs)
 	// TODO: Handle user page fault.
 
 	// If nothing can make the process recover, we have to put it out of its misery.
-	kmesg("PID %zu terminated with SIGSEGV.\n", proc->id);
 	process_kill(proc, true);
+	kmesg("PID %zu terminated with SIGSEGV.\n", proc->id);
 }
