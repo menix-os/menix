@@ -7,8 +7,6 @@
 #include <menix/thread/elf.h>
 #include <menix/util/hash_map.h>
 
-#include <string.h>
-
 i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data, Elf_Shdr* section_headers,
 				 void* base_virt)
 {
@@ -26,13 +24,13 @@ i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data,
 			void* resolved;
 			if (symbol->st_shndx == 0)
 			{
-				Elf_Sym* resolved_sym = module_get_symbol(symbol_name);
-				if (resolved_sym == NULL)
+				Elf_Sym resolved_sym = module_get_symbol(symbol_name);
+				if (resolved_sym.st_value == 0)
 				{
 					module_log("Failed to find symbol \"%s\"!\n", symbol_name);
 					return 1;
 				}
-				resolved = (void*)resolved_sym->st_value;
+				resolved = (void*)resolved_sym.st_value;
 			}
 			else
 				resolved = base_virt + symbol->st_value;

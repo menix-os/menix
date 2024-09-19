@@ -23,8 +23,7 @@
 #define MODULE_META .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION, .license = MODULE_LICENSE
 
 // Adds a list of dependencies to the module info.
-#define MODULE_DEPS(...) \
-	.dependencies = (const char*[]) {__VA_ARGS__}, .num_dependencies = ARRAY_SIZE(((const char*[]) {__VA_ARGS__}))
+#define MODULE_DEPS(...) .num_dependencies = ARRAY_SIZE(((const char*[]) {__VA_ARGS__})), .dependencies = {__VA_ARGS__}
 
 // Default values for the module struct.
 #define MODULE_DEFAULT(init_fn, exit_fn, ...) \
@@ -36,14 +35,14 @@ typedef void (*ModuleExitFn)(void);
 // Module metadata and init/exit hooks for loading modules.
 typedef struct ATTR(packed) ATTR(aligned(0x20))
 {
-	const char name[64];			// Name of the module.
-	const char author[64];			// Author(s) of this module.
-	const char description[128];	// Information about this module.
-	const char license[48];			// License information.
-	ModuleInitFn init;				// Called to initialize the module. Should return 0 upon success.
-	ModuleExitFn exit;				// Called to unload the module (Optional, as not every module can be unloaded).
-	const char** dependencies;		// A list of modules this module depends on.
-	usize num_dependencies;			// Amount of dependencies.
+	ModuleInitFn init;				  // Called to initialize the module. Should return 0 upon success.
+	ModuleExitFn exit;				  // Called to unload the module (Optional, as not every module can be unloaded).
+	const char name[64];			  // Name of the module.
+	const char author[64];			  // Author(s) of this module.
+	const char description[128];	  // Information about this module.
+	const char license[40];			  // License information.
+	usize num_dependencies;			  // Amount of dependencies.
+	const char dependencies[][64];	  // A list of modules this module depends on.
 } Module;
 
 // Keeps track of memory allocated by a module at runtime.
@@ -67,7 +66,7 @@ void module_init(BootInfo* info);
 void module_fini();
 
 // Registers a module to the list of loaded modules.
-void module_register(LoadedModule* module);
+void module_register(const char* name, LoadedModule* module);
 
 // Loads a previously registered module.
 i32 module_load(const char* name);
@@ -89,7 +88,7 @@ void module_unregister(const char* name);
 LoadedModule* module_get(const char* name);
 
 // Registers a symbol.
-void module_register_symbol(const char* name, Elf_Sym* symbol);
+void module_register_symbol(const char* name, Elf_Sym symbol);
 
 // Gets a registered symbol.
-Elf_Sym* module_get_symbol(const char* name);
+Elf_Sym module_get_symbol(const char* name);

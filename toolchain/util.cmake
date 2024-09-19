@@ -56,7 +56,7 @@ function(add_module name author desc license modular default)
 		# Build as an "executable" but in reality, link with -shared.
 		add_executable(${MENIX_CURRENT_MOD} ${ARGN})
 		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/mod/")
-		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_NAME "${MENIX_CURRENT_MOD}.ko")
+		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_NAME "${MENIX_CURRENT_MOD}")
 
 		# If modular, define MODULE_TYPE to let the module know.
 		target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_TYPE='M')

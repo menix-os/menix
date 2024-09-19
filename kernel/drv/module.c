@@ -20,11 +20,12 @@ SECTION_DECLARE_SYMBOLS(mod)
 static HashMap(LoadedModule*) module_map;
 
 // Stores all known symbols.
-static HashMap(Elf_Sym*) module_symbol_map;
+static HashMap(Elf_Sym) module_symbol_map;
 
 void module_init(BootInfo* info)
 {
 	// Initialize subsystems.
+	// TODO: Move to fw_init().
 #ifdef CONFIG_pci
 	pci_init();
 #endif
@@ -33,21 +34,18 @@ void module_init(BootInfo* info)
 	hashmap_init(module_map, 128);
 
 	// Calculate the module count.
-	const usize module_count = SECTION_SIZE(mod) / sizeof(Module);
-	Module* const modules = (Module*)SECTION_START(mod);
+	u8* module_ptr = (u8*)SECTION_START(mod);
 
-	// Check if the .mod section size is sane.
-	if (SECTION_SIZE(mod) % sizeof(Module) != 0)
-		module_log("Ignoring built-in modules: The .mod section has a bogus size of 0x%zx!\n", SECTION_SIZE(mod));
-	else
+	// Register all built-in modules.
+	while (module_ptr < SECTION_END(mod))
 	{
-		// Register all built-in modules.
-		for (usize i = 0; i < module_count; i++)
-		{
-			LoadedModule* module_info = kzalloc(sizeof(LoadedModule));
-			module_info->module = modules + i;
-			module_register(module_info);
-		}
+		Module* const module = (Module*)module_ptr;
+		LoadedModule* module_info = kzalloc(sizeof(LoadedModule));
+		module_info->module = module;
+		module_register(module->name, module_info);
+
+		// Go to the next module. This contains the dependency string table.
+		module_ptr += sizeof(Module) + (sizeof(module->dependencies[0]) * module->num_dependencies);
 	}
 
 	// Load modules from VFS.
@@ -64,6 +62,8 @@ void module_init(BootInfo* info)
 		module_log("Can't find dynamic modules, \"%s\" is not a directory!\n", dyn_modules_path);
 		goto skip_dynamic;
 	}
+
+	// Find all module files in the directory.
 	for (usize b = 0; b < module_path->children.capacity; b++)
 	{
 		if (module_path->children.buckets == NULL)
@@ -73,18 +73,46 @@ void module_init(BootInfo* info)
 		for (usize i = 0; i < bucket->count; i++)
 		{
 			VfsNode* node = bucket->items[i].item;
+
 			// Only get real files.
 			if (node->handle == NULL)
 				continue;
 			if (!S_ISREG(node->handle->stat.st_mode))
 				continue;
-			char* full_path = kmalloc(256);
+
+			// Load only the file's path into the meta info.
+			char full_path[256];
+			vfs_get_path(node, full_path, 256);
+			LoadedModule* module_info = kzalloc(sizeof(LoadedModule));
+			strncpy(module_info->file_path, full_path, sizeof(module_info->file_path));
+			module_register(node->name, module_info);
+		}
+	}
+
+	// After registering them all, load the ELFs.
+	for (usize b = 0; b < module_path->children.capacity; b++)
+	{
+		if (module_path->children.buckets == NULL)
+			break;
+
+		auto bucket = module_path->children.buckets + b;
+		for (usize i = 0; i < bucket->count; i++)
+		{
+			VfsNode* node = bucket->items[i].item;
+
+			// Only get real files.
+			if (node->handle == NULL)
+				continue;
+			if (!S_ISREG(node->handle->stat.st_mode))
+				continue;
+
+			char full_path[256];
 			vfs_get_path(node, full_path, 256);
 			module_load_elf(full_path);
 		}
 	}
-skip_dynamic:
 
+skip_dynamic:
 	// Load every registered module.
 	for (usize b = 0; b < module_map.capacity; b++)
 	{
@@ -131,14 +159,11 @@ LoadedModule* module_get(const char* name)
 	return get;
 }
 
-void module_register(LoadedModule* module)
+void module_register(const char* name, LoadedModule* module)
 {
-	// If the module is already loaded, skip.
-	if (module_get(module->module->name))
-		return;
-
-	hashmap_insert(&module_map, module->module->name, strlen(module->module->name), module);
-	module_log("Registered new module \"%s\"\n", module->module->name);
+	// If the module is already loaded, override the information.
+	hashmap_insert(&module_map, name, strlen(name), module);
+	module_log("Registered new module \"%s\"\n", name);
 }
 
 // Loads a previously registered module.
@@ -181,16 +206,16 @@ i32 module_load(const char* name)
 	return ret;
 }
 
-void module_register_symbol(const char* name, Elf_Sym* symbol)
+void module_register_symbol(const char* name, Elf_Sym symbol)
 {
 	// If the symbol hasn't been registered yet, do so now.
 	if (!hashmap_get(&module_symbol_map, symbol, name, strlen(name)))
 		hashmap_insert(&module_symbol_map, name, strlen(name), symbol);
 }
 
-Elf_Sym* module_get_symbol(const char* name)
+Elf_Sym module_get_symbol(const char* name)
 {
-	Elf_Sym* ret = NULL;
+	Elf_Sym ret = {0};
 
 	hashmap_get(&module_symbol_map, ret, name, strlen(name));
 
@@ -218,7 +243,7 @@ void module_load_kernel_syms(void* kernel_elf)
 		const char* symbol_name = strtab_data + symtab_data[sym].st_name;
 		// Only match global symbols.
 		if (symtab_data[sym].st_info & (STB_GLOBAL << 4) && symtab_data[sym].st_size != 0)
-			module_register_symbol(symbol_name, symtab_data + sym);
+			module_register_symbol(symbol_name, symtab_data[sym]);
 	}
 }
 
@@ -232,12 +257,12 @@ bool module_find_symbol(void* addr, const char** out_name, Elf_Sym** out_symbol)
 		auto bucket = module_symbol_map.buckets + b;
 		for (usize i = 0; i < bucket->count; i++)
 		{
-			Elf_Sym* symbol = bucket->items[i].item;
+			Elf_Sym* symbol = &bucket->items[i].item;
 			// Check if our address is inside the bounds of the current symobl.
 			if (addr >= (void*)symbol->st_value && addr < (void*)(symbol->st_value + symbol->st_size))
 			{
 				*out_name = (const char*)bucket->items[i].key_data;
-				*out_symbol = bucket->items[i].item;
+				*out_symbol = symbol;
 				return true;
 			}
 		}
@@ -258,8 +283,16 @@ i32 module_load_elf(const char* path)
 	i32 ret = 1;
 	Handle* const handle = node->handle;
 
-	LoadedModule* loaded = kzalloc(sizeof(LoadedModule));
-	strncpy(loaded->file_path, path, sizeof(loaded->file_path));
+	LoadedModule* loaded = module_get(node->name);
+	if (loaded == NULL)
+	{
+		module_log("Module \"%s\" was not registered correctly!\n", path);
+		return 1;
+	}
+	if (loaded->module != NULL)
+	{
+		return 0;
+	}
 
 	// Read ELF header.
 	Elf_Hdr* const hdr = kmalloc(sizeof(Elf_Hdr));
@@ -396,6 +429,23 @@ i32 module_load_elf(const char* path)
 		goto reloc_fail;
 	}
 
+	// Before we do relocations, we have to handle module dependencies, otherwise those symbol resolutions will fail.
+	for (usize i = 0; i < module->num_dependencies; i++)
+	{
+		// Try to find the dependency.
+		LoadedModule* loaded_dep = module_get(module->dependencies[i]);
+		if (loaded_dep == NULL)
+		{
+			module_log("Unable to find dynamic dependency \"%64s\" of module \"%s\"!\n", module->dependencies[i],
+					   module->name);
+			goto reloc_fail;
+		}
+
+		// If the dependency exists and is dynamic, load it before this module.
+		if (strlen(loaded_dep->file_path) > 0)
+			module_load_elf(loaded_dep->file_path);
+	}
+
 	// Load string table.
 	char* strtab_data = kmalloc(dt_strsz);
 	handle->read(handle, NULL, strtab_data, dt_strsz, dt_strtab);
@@ -446,16 +496,16 @@ i32 module_load_elf(const char* path)
 	// Register all global symbols.
 	for (usize i = 0; i < dt_symsz / sizeof(Elf_Sym); i++)
 	{
-		if (symtab_data[i].st_info == (STB_GLOBAL << 4))
+		if ((symtab_data[i].st_info & (STB_GLOBAL << 4)) && symtab_data[i].st_size != 0)
 		{
 			symtab_data[i].st_value += (VirtAddr)base_virt;
-			module_register_symbol(strtab_data + symtab_data[i].st_name, symtab_data + i);
+			module_register_symbol(strtab_data + symtab_data[i].st_name, symtab_data[i]);
+			kmesg("symbol %s with 0x%p\n", strtab_data + symtab_data[i].st_name, symtab_data[i].st_value);
 		}
 	}
 
 	// Register module.
 	loaded->module = module;
-	module_register(loaded);
 
 	// At this point, everything should be loaded correctly. If we have an init array, we call each function from it.
 	void (**init_array)() = base_virt + dt_init_array;
@@ -480,7 +530,6 @@ reloc_fail:
 		vm_unmap(vm_get_kernel_map(), (VirtAddr)loaded->maps[i].address, loaded->maps[i].size);
 	}
 	vm_unmap(vm_get_kernel_map(), (VirtAddr)base_virt, handle->stat.st_size);
-	kfree(loaded);
 
 leave:
 	kfree(hdr);
