@@ -76,11 +76,12 @@ static isize ps2_keyboard_read(Handle* handle, FileDescriptor* fd, void* data, u
 {
 	for (usize i = 0; i < size; i++)
 	{
-again:
-		char ch = read_keycode();
-		if (ch == -1)
-			goto again;
-
+		char ch;
+		do
+		{
+			ch = read_keycode();
+			asm_pause();
+		} while (ch == -1);
 		((char*)data)[i] = ch;
 	}
 

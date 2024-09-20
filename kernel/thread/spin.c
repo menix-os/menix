@@ -23,7 +23,10 @@ bool spin_acquire(SpinLock* lock)
 	bool result = __sync_bool_compare_and_swap(&lock->locked, 0, 1);
 
 	if (result)
+	{
 		lock->owner = __builtin_return_address(0);
+		lock->cpu = arch_current_cpu()->id;
+	}
 
 	return result;
 }
@@ -47,10 +50,7 @@ void spin_acquire_force(SpinLock* lock)
 	}
 
 	lock->owner = __builtin_return_address(0);
-
-#ifdef CONFIG_smp
 	lock->cpu = arch_current_cpu()->id;
-#endif
 }
 
 void spin_free(SpinLock* lock)

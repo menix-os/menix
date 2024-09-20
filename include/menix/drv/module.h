@@ -87,6 +87,11 @@ void module_unregister(const char* name);
 // Gets the information of a module.
 LoadedModule* module_get(const char* name);
 
+typedef void (*ModulePostFn)();
+
+// Registers a function to be called after all modules have been initialized.
+void module_register_post(ModulePostFn callback);
+
 // Registers a symbol.
 void module_register_symbol(const char* name, Elf_Sym symbol);
 

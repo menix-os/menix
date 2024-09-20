@@ -22,6 +22,9 @@ static HashMap(LoadedModule*) module_map;
 // Stores all known symbols.
 static HashMap(Elf_Sym) module_symbol_map;
 
+// Callbacks to run after all modules have been initialized.
+static List(ModulePostFn) module_post_fns;
+
 void module_init(BootInfo* info)
 {
 	// Initialize subsystems.
@@ -128,6 +131,13 @@ skip_dynamic:
 				module_log("\"%s\" failed to initialize with error code %i!\n", loaded->module->name, ret);
 		}
 	}
+
+	// After all modules have been loaded, run over all post-init callbacks registered by the modules.
+	for (usize i = 0; i < module_post_fns.length; i++)
+	{
+		module_post_fns.items[i]();
+	}
+	list_free(&module_post_fns);
 }
 
 void module_fini()
@@ -204,6 +214,11 @@ i32 module_load(const char* name)
 	i32 ret = mod->init();
 	loaded->loaded = true;
 	return ret;
+}
+
+void module_register_post(ModulePostFn callback)
+{
+	list_push(&module_post_fns, callback);
 }
 
 void module_register_symbol(const char* name, Elf_Sym symbol)

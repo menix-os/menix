@@ -9,8 +9,10 @@
 #include <menix/util/builtin_font.h>
 #include <menix/video/fb.h>
 
-#include <errno.h>
 #include <string.h>
+
+// Internal terminal handle.
+static Handle* handle;
 
 // Internal render target.
 static FrameBuffer* internal_fb;
@@ -51,7 +53,7 @@ MODULE_FN void fbcon_scroll()
 	fbcon_copy_screen();
 }
 
-static void fbcon_putchar(u32 ch)
+MODULE_FN void fbcon_putchar(u32 ch)
 {
 	if (!internal_fb)
 		return;
@@ -150,13 +152,13 @@ MODULE_FN isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf,
 	return len;
 }
 
-MODULE_FN i32 fbcon_init()
+MODULE_FN void fbcon_post()
 {
 	FrameBuffer* fb = fb_get_active();
 
-	// If no regular framebuffer is available, we can't init.
+	// If no regular framebuffer is available, we can't write to anything.
 	if (fb == NULL)
-		return -ENOENT;
+		return;
 
 	internal_fb = fb;
 
@@ -172,22 +174,29 @@ MODULE_FN i32 fbcon_init()
 	// Clear the screen.
 	memset((void*)internal_fb->info.mmio_base, 0, mode->pitch * mode->height);
 
+	module_log("Switching to framebuffer console\n");
+
+	Handle* h = terminal_get_active_node()->handle;
+	h->write = fbcon_write;
+
+	module_log("Switched to framebuffer console on /dev/terminal%zu\n", terminal_get_active());
+	module_log("Framebuffer Resolution = %ux%ux%hhu (Virtual = %ux%u)\n", internal_fb->mode.width,
+			   internal_fb->mode.height, internal_fb->mode.cpp * 8, internal_fb->mode.v_width,
+			   internal_fb->mode.v_height);
+}
+
+MODULE_FN i32 fbcon_init()
+{
 	// Register device.
-	Handle* handle = handle_new(sizeof(Handle));
+	handle = handle_new(sizeof(Handle));
 	handle->write = fbcon_write;
 	if (devtmpfs_add_device(handle, "fbcon") == false)
 	{
-		module_log("Failed to initialize /dev/fbcon!\n");
+		module_log("Failed to initialize fbcon!\n");
 		return 1;
 	}
 
-	module_log("Switching to framebuffer console\n");
-	for (usize i = 0; i < TERMINAL_MAX; i++)
-		terminal_set_driver(i, handle);
-	module_log("Switched to framebuffer console on /dev/terminal%zu\n", terminal_get_active());
-	module_log("Framebuffer Resolution = %ux%ux%hhu (Virtual = %ux%u)\n", fb->mode.width, fb->mode.height,
-			   fb->mode.cpp * 8, fb->mode.v_width, fb->mode.v_height);
-
+	module_register_post(fbcon_post);
 	return 0;
 }
 
