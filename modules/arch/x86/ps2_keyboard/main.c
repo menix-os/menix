@@ -6,8 +6,6 @@
 
 #include <interrupts.h>
 
-#include "bits/asm.h"
-
 #ifndef CONFIG_arch_x86
 #error This driver is only compatible with x86!
 #endif
@@ -43,37 +41,56 @@ static u8 shift = 1;
 
 static u8 ps2_read()
 {
-	while (!!arch_x86_read8(KEYBOARD_STATUS_PORT) == 0)
-		asm_pause();
+	u8 status;
+	do
+	{
+		status = arch_x86_read8(KEYBOARD_STATUS_PORT);
+	} while ((status & 0x01) == 0);
 	return arch_x86_read8(KEYBOARD_DATA_PORT);
 }
 
-static void interrupt_keyboard(CpuRegisters* regs)
+static char read_keycode()
 {
-	// Send End of Interrupt to the master PIC.
-	arch_x86_write8(PIC1_COMMAND_PORT, 0x20);
-
 	u8 keycode = ps2_read();
 
 	// Determine shift.
 	if (keycode == KB_KEY_DOWN_LSHIFT || keycode == KB_KEY_UP_LSHIFT || keycode == KB_KEY_DOWN_CAPSLOCK)
 	{
 		shift = !shift;
-		return;
+		return -1;
 	}
 
 	// Only get press events.
 	if (keycode > 128)
-		return;
+		return -1;
 
 	char ch = shift ? keyboard_map[keycode] : keyboard_shift_map[keycode];
-	terminal_puts(terminal_get_active(), &ch, 1);
+
+	Handle* h = terminal_get_active_node()->handle;
+	h->write(h, NULL, &ch, 1, 0);
+
+	return ch;
+}
+
+static isize ps2_keyboard_read(Handle* handle, FileDescriptor* fd, void* data, usize size, off_t offset)
+{
+	for (usize i = 0; i < size; i++)
+	{
+again:
+		char ch = read_keycode();
+		if (ch == -1)
+			goto again;
+
+		((char*)data)[i] = ch;
+	}
+
+	return size;
 }
 
 MODULE_FN i32 init_fn()
 {
 	// Add this keyboard as a new input method.
-	interrupt_register(0x21, interrupt_keyboard);
+	// interrupt_register(0x21, interrupt_keyboard);
 
 	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xFF);	// Reset PS/2 controller.
 	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xAE);	// Enable PS/2 keyboard.
@@ -90,7 +107,12 @@ MODULE_FN i32 init_fn()
 	arch_x86_write8(KEYBOARD_DATA_PORT, 0x02);	  // Set scan code set to 2.
 
 	// Unmask IRQ1 (keyboard).
-	arch_x86_write8(PIC1_DATA_PORT, 0xFD);
+	// arch_x86_write8(PIC1_DATA_PORT, 0xFD);
+
+	// Register input from PS/2 keyboard.
+	Handle* h = terminal_get_active_node()->handle;
+	if (h != NULL)
+		h->read = ps2_keyboard_read;
 
 	return 0;
 }

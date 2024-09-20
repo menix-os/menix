@@ -41,7 +41,8 @@ void serial_init()
 		arch_x86_write8(COM1_BASE + MODEM_CTRL_REG, 0x0F);	  // Set back to normal operation mode.
 	}
 
-	terminal_set_driver(0, &serial_driver);
+	if (can_use_serial)
+		terminal_set_driver(0, &serial_driver);
 }
 
 static void serial_putchar(char c)
@@ -68,4 +69,27 @@ static isize serial_write(Handle* handle, FileDescriptor* fd, const void* data, 
 	return size;
 }
 
-static Handle serial_driver = {.write = serial_write};
+static char serial_getchar()
+{
+	if (!can_use_serial)
+		return '\0';
+
+	// Wait until we can send things.
+	while (TRANSMIT_FREE == false)
+		;
+
+	return arch_x86_read8(COM1_BASE + DATA_REG);
+}
+
+static isize serial_read(Handle* handle, FileDescriptor* fd, void* data, usize size, off_t off)
+{
+	for (usize i = 0; i < size; i++)
+		((char*)data)[i] = serial_getchar();
+
+	return size;
+}
+
+static Handle serial_driver = {
+	.write = serial_write,
+	.read = serial_read,
+};

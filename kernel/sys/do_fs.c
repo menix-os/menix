@@ -26,8 +26,13 @@ SYSCALL_IMPL(write, u32 fd, void* buf, usize size)
 	if (file_desc == NULL)
 		return 0;
 
-	// Write to the handle.
 	Handle* const handle = file_desc->handle;
+	if (handle == NULL)
+		return 0;
+	if (handle->write == NULL)
+		return 0;
+
+	// Write to the handle.
 	isize result = 0;
 	vm_user_access({ result = handle->write(handle, file_desc, buf, size, file_desc->offset); });
 
@@ -49,8 +54,13 @@ SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
 	if (file_desc == NULL)
 		return 0;
 
-	// Read from the handle.
 	Handle* const handle = file_desc->handle;
+	if (handle == NULL)
+		return 0;
+	if (handle->read == NULL)
+		return 0;
+
+	// Read from the handle.
 	isize result = 0;
 	vm_user_access({ result = handle->read(handle, file_desc, buf, size, file_desc->offset); });
 

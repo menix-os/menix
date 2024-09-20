@@ -500,7 +500,6 @@ i32 module_load_elf(const char* path)
 		{
 			symtab_data[i].st_value += (VirtAddr)base_virt;
 			module_register_symbol(strtab_data + symtab_data[i].st_name, symtab_data[i]);
-			kmesg("symbol %s with 0x%p\n", strtab_data + symtab_data[i].st_name, symtab_data[i].st_value);
 		}
 	}
 
@@ -529,7 +528,6 @@ reloc_fail:
 	{
 		vm_unmap(vm_get_kernel_map(), (VirtAddr)loaded->maps[i].address, loaded->maps[i].size);
 	}
-	vm_unmap(vm_get_kernel_map(), (VirtAddr)base_virt, handle->stat.st_size);
 
 leave:
 	kfree(hdr);

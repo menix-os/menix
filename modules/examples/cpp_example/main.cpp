@@ -10,7 +10,7 @@ class Foo
   public:
 	Foo(const char* msg)
 	{
-		kmesg(msg);
+		module_log("%s", msg);
 	}
 };
 
@@ -18,7 +18,7 @@ static Foo foo("Hello from C++ constructor!\n");
 
 MODULE_FN i32 init_fn()
 {
-	kmesg("Hello from C++!\n");
+	module_log("Hello from C++!\n");
 	return 0;
 }
 

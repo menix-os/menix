@@ -27,7 +27,7 @@
 
 // Default values for the module struct.
 #define MODULE_DEFAULT(init_fn, exit_fn, ...) \
-	MODULE = {.name = MODULE_NAME, MODULE_META, .init = init_fn, .exit = exit_fn, MODULE_DEPS(__VA_ARGS__)}
+	MODULE = {.init = init_fn, .exit = exit_fn, .name = MODULE_NAME, MODULE_META, MODULE_DEPS(__VA_ARGS__)}
 
 typedef i32 (*ModuleInitFn)(void);
 typedef void (*ModuleExitFn)(void);

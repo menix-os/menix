@@ -119,14 +119,14 @@ function(add_rust_module name author desc license default)
 
 		add_custom_target(${MENIX_CURRENT_MOD}
 			COMMAND ${CARGO_BUILD_COMMAND}
-			COMMAND cp target/debug/lib${MENIX_CURRENT_MOD}.so ${CMAKE_BINARY_DIR}/bin/mod/${MENIX_CURRENT_MOD}.ko
+			COMMAND cp target/debug/lib${MENIX_CURRENT_MOD}.so ${CMAKE_BINARY_DIR}/bin/mod/${MENIX_CURRENT_MOD}
 			BYPRODUCTS target/debug/lib${MENIX_CURRENT_MOD}.so
 			SOURCES ${ARGN}
 			WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 		)
 		add_dependencies(menix ${MENIX_CURRENT_MOD})
 		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/mod/")
-		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_NAME "${MENIX_CURRENT_MOD}.ko")
+		set_target_properties(${MENIX_CURRENT_MOD} PROPERTIES RUNTIME_OUTPUT_NAME "${MENIX_CURRENT_MOD}")
 
 		# Evaluate module license
 		if(${license} STREQUAL "MAIN")
