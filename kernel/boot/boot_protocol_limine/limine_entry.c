@@ -167,7 +167,7 @@ void kernel_boot()
 		smp_cpu->extra_argument = (usize)&info.cpus[i];
 		Cpu* cpu = &info.cpus[i];
 		cpu->id = i;
-#ifdef CONFIG_arch_x86
+#ifdef CONFIG_arch_x86_64
 		cpu->lapic_id = smp_cpu->lapic_id;
 		// Allocate stack.
 		cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / CONFIG_page_size) + (u64)pm_get_phys_base();

@@ -43,7 +43,7 @@ typedef struct
 #endif
 
 // The following is architecture dependent, but almost every architecture should have it.
-#if defined(CONFIG_arch_x86) || defined(CONFIG_arch_aarch64) || defined(CONFIG_arch_riscv64)
+#if defined(CONFIG_arch_x86_64) || defined(CONFIG_arch_aarch64) || defined(CONFIG_arch_riscv64)
 	usize mm_num;			   // Amount of memory map entries.
 	PhysMemory* memory_map;	   // Physical memory mapping.
 	void* kernel_virt;		   // Virtual address of the kernel.

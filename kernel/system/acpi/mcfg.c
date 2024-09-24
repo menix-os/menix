@@ -26,7 +26,7 @@ void mcfg_init()
 	if (acpi_mcfg == NULL)
 	{
 		pci_log("Unable to configure PCI system using ACPI: The MCFG table was not present. ");
-#ifdef CONFIG_arch_x86
+#ifdef CONFIG_arch_x86_64
 		kmesg("Falling back to x86 mode.\n");
 		// TODO: Set function callbacks to x86.
 #else

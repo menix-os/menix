@@ -40,7 +40,7 @@ typedef struct Thread
 	Thread* next;		// Linked list entry for the next thread.
 
 	// Architecture dependent fields go here.
-#if defined CONFIG_arch_x86
+#if defined CONFIG_arch_x86_64
 	VirtAddr fs_base;	 // FS register base address.
 	VirtAddr gs_base;	 // GS register base address.
 	void* saved_fpu;	 // Saved FPU state.

@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-#ifdef CONFIG_arch_x86
+#ifdef CONFIG_arch_x86_64
 #include <hpet.h>
 #endif
 
@@ -32,7 +32,7 @@ void acpi_init(AcpiRsdp* rsdp)
 	rsdt = ACPI_ADDR(rsdp->xsdt_address);
 
 	// Initialize architecture dependent tables.
-#ifdef CONFIG_arch_x86
+#ifdef CONFIG_arch_x86_64
 	hpet_init();
 #endif
 

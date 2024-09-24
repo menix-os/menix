@@ -21,7 +21,7 @@ typedef struct Cpu
 	usize ticks_active;		  // The amount of ticks this thread has been active.
 
 	// Architecture dependent information.
-#ifdef CONFIG_arch_x86
+#ifdef CONFIG_arch_x86_64
 	TaskStateSegment tss;
 	u32 lapic_id;					   // Local APIC ID.
 	usize fpu_size;					   // Size of the FPU in bytes.

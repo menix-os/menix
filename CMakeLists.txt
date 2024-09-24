@@ -23,7 +23,7 @@ set(MENIX_LICENSE "LGPL")
 
 # Target architecture, default to x86 if none given.
 if(NOT DEFINED MENIX_ARCH)
-	set(MENIX_ARCH "x86")
+	set(MENIX_ARCH "x86_64")
 endif()
 
 # Common build system functionality.
