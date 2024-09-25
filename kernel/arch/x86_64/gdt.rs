@@ -52,16 +52,22 @@ pub static GDT_TABLE: Gdt = Gdt {
     tss_pad: GdtDesc::new(0, 0, 0, 0),
 };
 
-// GDT segment descriptor
+/// GDT segment descriptor
 #[derive(Copy, Clone, Debug)]
 #[repr(C, packed)]
 pub struct GdtDesc {
-    limit0: u16,      // Limit[0..15]
-    base0: u16,       // Base[0..15]
-    base1: u8,        // Base[16..23]
-    access: u8,       // Access modifider
-    limit1_flags: u8, // Limit[16..19] and Flags
-    base2: u8,        // Base[24..31]
+    /// Limit[0..15]
+    limit0: u16,
+    /// Base[0..15]
+    base0: u16,
+    /// Base[16..23]
+    base1: u8,
+    /// Access modifider
+    access: u8,
+    /// Limit[16..19] and Flags
+    limit1_flags: u8,
+    /// Base[24..31]
+    base2: u8,
 }
 
 impl GdtDesc {
