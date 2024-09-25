@@ -4,15 +4,15 @@ version = "1.0.0"
 archs = ["x86_64", "aarch64", "riscv64", "loongarch64"]
 
 [source]
-git = "https://github.com/limine-bootloader/limine"
+repo = "https://github.com/limine-bootloader/limine"
 branch = "v8.x"
 
 [build]
 script = """
-echo "Hello world!"
+echo "Build: Hello world!"
 """
 
 [install]
 script = """
-
+echo "Install: Hello world!"
 """
