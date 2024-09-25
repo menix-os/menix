@@ -6,7 +6,6 @@ labels: ["pending"]
 assignees: ''
 ---
 
-<br/>
 - [ ] New feature
 - [ ] Feature iteration
 - [ ] Bug Fix
@@ -14,7 +13,6 @@ assignees: ''
 - [ ] Tests
 - [ ] Documentation
 - [ ] General Maintenance
-<br/>
 
 ## What does this PR change?
 
