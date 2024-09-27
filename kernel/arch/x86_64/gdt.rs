@@ -1,17 +1,19 @@
-pub const GDTA_PRESENT: u8 = 1 << 7;
-pub const GDTA_CPL0: u8 = 0;
-pub const GDTA_CPL3: u8 = 3 << 5;
-pub const GDTA_SEGMENT: u8 = 1 << 4;
-pub const GDTA_EXECUTABLE: u8 = 1 << 3;
-pub const GDTA_DIR_CONF: u8 = 1 << 2;
-pub const GDTA_READ_WRITE: u8 = 1 << 1;
-pub const GDTA_ACCESSED: u8 = 1 << 0;
-pub const GDTF_GRANULARITY: u8 = 1 << 3;
-// 0 = 16-bit, 1 = 32-bit protected-mode segment
-pub const GDTF_PROT_MODE: u8 = 1 << 2;
-pub const GDTF_LONG_MODE: u8 = 1 << 1;
+use super::asm;
 
-pub static GDT_TABLE: Gdt = Gdt {
+const GDTA_PRESENT: u8 = 1 << 7;
+const GDTA_CPL0: u8 = 0;
+const GDTA_CPL3: u8 = 3 << 5;
+const GDTA_SEGMENT: u8 = 1 << 4;
+const GDTA_EXECUTABLE: u8 = 1 << 3;
+const GDTA_DIR_CONF: u8 = 1 << 2;
+const GDTA_READ_WRITE: u8 = 1 << 1;
+const GDTA_ACCESSED: u8 = 1 << 0;
+
+const GDTF_GRANULARITY: u8 = 1 << 3;
+const GDTF_PROT_MODE: u8 = 1 << 2;
+const GDTF_LONG_MODE: u8 = 1 << 1;
+
+pub static GDT_TABLE: GlobalDescriptorTable = GlobalDescriptorTable {
     null: GdtDesc::new(0, 0, 0, 0),
     kernel_code: GdtDesc::new(
         0xFFFFF,
@@ -71,7 +73,8 @@ pub struct GdtDesc {
 }
 
 impl GdtDesc {
-    pub const fn new(limit: u32, base: u32, access: u8, flags: u8) -> Self {
+    /// Encode a new GDT descriptor
+    const fn new(limit: u32, base: u32, access: u8, flags: u8) -> Self {
         GdtDesc {
             limit0: limit as u16,
             base0: base as u16,
@@ -83,15 +86,42 @@ impl GdtDesc {
     }
 }
 
-// These entries are ordered exactly like this because the SYSRET instruction
-// expects it.
-pub struct Gdt {
-    null: GdtDesc,        // Unused
-    kernel_code: GdtDesc, // Kernel CS
-    kernel_data: GdtDesc, // Kernel DS
-    user_code: GdtDesc,   // 32-bit compatibility mode user CS
-    user_data: GdtDesc,   // User DS
-    user_code64: GdtDesc, // 64-bit user CS
-    tss: GdtDesc,         // Task state segment
-    tss_pad: GdtDesc,     // TSS padding
+/// Global Descriptor Table.
+/// These entries are ordered exactly like this because the SYSRET instruction expects it.
+#[repr(C, packed)]
+pub struct GlobalDescriptorTable {
+    /// Unused
+    pub null: GdtDesc,
+    /// Kernel CS
+    pub kernel_code: GdtDesc,
+    /// Kernel DS
+    pub kernel_data: GdtDesc,
+    /// 32-bit compatibility mode user CS (unused)
+    pub user_code: GdtDesc,
+    /// User DS
+    pub user_data: GdtDesc,
+    /// 64-bit user CS
+    pub user_code64: GdtDesc,
+    /// Task state segment
+    pub tss: GdtDesc,
+    /// TSS is a long GdtDesc, but since these values are 0, just use another GdtDesc.
+    pub tss_pad: GdtDesc,
+}
+
+impl GlobalDescriptorTable {
+    /// Loads a global descriptor table into memory and sets it as the active one.
+    pub fn load(&self) {
+        unsafe {
+            let gdtr = GdtRegister {
+                limit: (size_of::<GlobalDescriptorTable>() - 1) as u16,
+                base: self,
+            };
+            asm::lgdt(&gdtr);
+        }
+    }
+}
+
+pub struct GdtRegister {
+    limit: u16,
+    base: *const GlobalDescriptorTable,
 }

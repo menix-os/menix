@@ -7,3 +7,4 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
+lto = true

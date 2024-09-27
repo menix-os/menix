@@ -1,5 +1,7 @@
 /* Linker script for x86 builds */
 
+ENTRY(kernel_boot)
+
 PHDRS
 {
 	headers	PT_LOAD		FILEHDR PHDRS;
@@ -18,9 +20,9 @@ SECTIONS
 	__ld_seg_text_start = .;
 
 		__ld_sect_boot_start = .;
-		KEEP(*(.requests_start_marker))
-		KEEP(*(.requests))
-		KEEP(*(.requests_end_marker))
+		KEEP(*(.limine_start_marker))
+		KEEP(*(.limine_requests))
+		KEEP(*(.limine_end_marker))
 		__ld_sect_boot_end = .;
 	} :text
 

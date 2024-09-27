@@ -1,10 +1,11 @@
 #![no_std]
 #![no_main]
 
+extern crate alloc;
 mod arch;
+mod boot;
 
-#[no_mangle]
-pub extern "C" fn _start() -> ! {
+pub fn kernel_main() -> ! {
     loop {}
 }
 
