@@ -15,6 +15,9 @@ endif()
 # Generic drivers
 add_subdirectory(drv)
 
+# Video drivers
+add_subdirectory(video)
+
 # File systems
 add_subdirectory(fs)
 
