@@ -1,6 +1,5 @@
 mod asm;
 mod consts;
-mod cpuid;
 mod elf;
 mod gdt;
 mod idt;
