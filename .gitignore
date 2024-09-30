@@ -3,31 +3,13 @@
 .idea/
 .cache/
 
-# Output files
-cmake-build*/
-out/
-build/
-bin/
-
-# CMake cache files
-CMakeLists.txt.user
-CMakeCache.txt
-CMakeFiles
-CMakeScripts
-Testing
-cmake_install.cmake
-install_manifest.txt
-compile_commands.json
-CTestTestfile.cmake
-_deps
-
-# Generated config headers
-include/generated/
-config.cmake
-
 # Download dir for tools
 deps/
 
 # Rust files
 *target/
 *Cargo.lock
+
+# Generated config files
+kernel/src/config.rs
+.config

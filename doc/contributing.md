@@ -49,27 +49,8 @@ project root to check if your code complies with these guidelines.
   > programmers learn directly from the code.
 - Split your code into paragraphs where it makes sense and comment what
   each one does.
-- Always use single line (aka C++ style) comments.
-- Headers should always use `#pragma once` instead of header guards.
-- Headers should first include standard libary headers, then `menix` headers,
-  then relative headers.
-- **DO NOT** include out of tree headers like `#include "../../random.h"`,
-  always use `#include <path/to/random.h>` instead.
-- For primitives, always use standard types like `i32` and `u8`
-  over built-in types like `int` or `unsigned char` (exception here is `char`).
 - Avoid `i64`, `u64`, `i128` and `u128`, as they might not be available on all platforms.
   > **Note:** Consider using `isize` and `usize` instead.
 - Avoid floating-point types.
-- Avoid using `this` as variable or identifier names, use `self` instead.
-- Function declarations are always in one line.
-- Structs and unions are to be declared via `typedef`. They should be anonymous.
-- Multi-line `typedef`s have the alias name and closing brace on the same line.
-- Pointer stars are part of the type and should be written as `Type*`.
 - Avoid raw and inline assembly at all costs to keep the codebase portable.
 - Prefer clear and descriptive variable names over short ones.
-- Local variables and fields use `snake_case`.
-- Defines use `SCREAMING_CASE`.
-- Functions use `snake_case`.
-- Types use `PascalCase`.
-- Function Types should have a `Fn` suffix.
-- Use the `const` keyword often to communicate intent with function parameters.

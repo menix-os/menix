@@ -1,0 +1,7 @@
+[unstable]
+mtime-on-use = true
+build-std = ["core", "alloc"]
+build-std-features = ["compiler-builtins-mem"]
+
+[build]
+target = ["arch/x86_64.json"]
