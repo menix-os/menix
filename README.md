@@ -2,26 +2,18 @@
 
 A minimal and expandable Unix-like operating system.
 
-menix uses a hybrid kernel design. The kernel itself handles:
-- Booting
-- Hardware Abstraction
-- Interprocess Communication
-- Scheduling
-- Memory Management
-- Virtual File System
+Unlike microkernel or monolithic designs, menix chooses to only keep core subsystems in the kernel,
+while the drivers using these subsystems.
 
-Unlike classic microkernel/monolithic designs, menix chooses to only keep core subsystems in the kernel,
-while the drivers using these subsystems
+> [!Note]
+> The project is currently in a pre-alpha stage of development and neither stable nor ready to use.
 
-## Building from source
+## Getting started
 ```sh
 cargo build --release
 ```
-See [Building](doc/building.md)
 
-> [!Note]
-> This is a hobby project to learn OS development.
-> The project is currently in a pre-alpha stage of development and neither stable nor ready to use.
+For more info, see [Building](doc/building.md)
 
 ## Contributing
 Contributions are _always_ welcome!
