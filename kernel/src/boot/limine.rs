@@ -1,7 +1,10 @@
 use core::str;
 use limine::{request::*, BaseRevision};
 
-use crate::arch::{Arch, CommonArch, VirtAddr};
+use crate::{
+    arch::{Arch, CommonArch, VirtAddr},
+    memory::pm::PhysMemory,
+};
 
 use super::BootInfo;
 
@@ -47,12 +50,18 @@ static END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
 /// This is the absolute entry point of menix.
 #[no_mangle]
 unsafe extern "C" fn kernel_boot() -> ! {
-    {
+    unsafe {
         let mut info = BootInfo::default();
 
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
         info.kernel_addr = (kernel_addr.physical_base(), kernel_addr.virtual_base());
+
+        // Get memory map. Has to be a fixed buffer since at this point there is no memory allocator available yet.
+        let map = MEMMAP_REQUEST.get_response().unwrap().entries();
+        let memory_map = Vec::new;
+
+        info.memory_map;
 
         // Initialize the allocator and serial output.
         Arch::early_init(&info);

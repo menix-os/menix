@@ -13,6 +13,7 @@ pub trait CommonPhysManager {
     unsafe fn get_phys_base() -> *mut u8;
 }
 
+#[derive(Clone, Debug, Default)]
 pub enum PhysMemoryUsage {
     /// Free and usable memory.
     Free,
@@ -23,10 +24,12 @@ pub enum PhysMemoryUsage {
     /// Kernel and modules are loaded here.
     Kernel,
     /// Unknown memory region.
+    #[default]
     Unknown,
 }
 
 /// Describes a region of physical memory and what it's used for.
+#[derive(Clone, Debug, Default)]
 pub struct PhysMemory {
     /// Start address of the memory region.
     address: PhysAddr,

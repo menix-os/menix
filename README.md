@@ -10,6 +10,7 @@ while the drivers using these subsystems.
 
 ## Getting started
 ```sh
+git clone https://github.com/menix-os/menix --recursive
 cargo build --release
 ```
 
