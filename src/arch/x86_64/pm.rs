@@ -3,13 +3,13 @@
 use crate::{arch::PhysAddr, boot::BootInfo, memory::pm::CommonPhysManager};
 use core::ptr::null_mut;
 
-pub unsafe fn init(info: &BootInfo) {
-    PHYS_BASE = info.hhdm_base as *mut u8;
-    // TODO
-}
-
 pub struct PhysManager;
 impl CommonPhysManager for PhysManager {
+    unsafe fn init(info: &BootInfo) {
+        PHYS_BASE = info.hhdm_base as *mut u8;
+        // TODO
+    }
+
     unsafe fn alloc(num_pages: usize) -> PhysAddr {
         todo!()
     }

@@ -7,7 +7,11 @@ pub mod pm;
 pub mod vm;
 
 use super::{CommonArch, CommonCpu};
-use crate::{boot::BootInfo, memory, thread::thread::Thread};
+use crate::{
+    boot::BootInfo,
+    memory::{self, pm::CommonPhysManager},
+    thread::thread::Thread,
+};
 use alloc::{sync::Arc, vec::Vec};
 use core::{arch::asm, ops::Deref, ptr::null_mut};
 use gdt::GDT_TABLE;
@@ -18,7 +22,7 @@ impl CommonArch for Arch {
     unsafe fn early_init(info: &BootInfo) {
         GDT_TABLE.load();
         IDT_TABLE.load();
-        pm::init(info);
+        pm::PhysManager::init(info);
         //memory::vm::init(info);
         memory::slab::init();
     }

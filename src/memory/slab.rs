@@ -1,7 +1,7 @@
 // Slab allocator
 
 use super::pm::CommonPhysManager;
-use crate::{arch::pm, thread::spin::SpinLock};
+use crate::{arch::PhysManager, thread::spin::SpinLock};
 use core::{
     alloc::{GlobalAlloc, Layout},
     ptr::null_mut,
@@ -28,7 +28,8 @@ impl Slab {
 
     unsafe fn new(size: usize) -> Self {
         let mut slab = Self::empty();
-        slab.head = pm::get_phys_base().byte_add(pm::alloc(1) as usize) as *mut *mut u8;
+        slab.head =
+            PhysManager::get_phys_base().byte_add(PhysManager::alloc(1) as usize) as *mut *mut u8;
 
         return slab;
     }

@@ -1,6 +1,6 @@
 use super::BootInfo;
 use crate::{
-    arch::{pm, Arch, CommonArch, VirtAddr},
+    arch::{Arch, CommonArch, VirtAddr},
     memory::pm::{PhysMemory, PhysMemoryUsage::Unknown},
 };
 use core::str;

@@ -15,9 +15,9 @@ pub use internal::Arch;
 pub use internal::Context;
 pub use internal::Cpu;
 pub use internal::PhysAddr;
-pub use internal::PhysManager as pm;
+pub use internal::PhysManager;
 pub use internal::VirtAddr;
-pub use internal::VirtManager as vm;
+pub use internal::VirtManager;
 
 /// Common functionality that an architecture must provide.
 /// Before all cores are properly initialized, every operation is unsafe.
