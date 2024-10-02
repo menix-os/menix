@@ -26,7 +26,7 @@ pub struct BootInfo<'a> {
     pub files: &'a [BootFile<'a>],
 
     // Physical memory map.
-    pub memory_map: Vec<PhysMemory>,
+    pub memory_map: &'a [PhysMemory],
 
     /// Physical and virtual address where the kernel was loaded.
     pub kernel_addr: (PhysAddr, VirtAddr),

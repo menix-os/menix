@@ -1,8 +1,11 @@
-use crate::arch::PhysAddr;
+use crate::{arch::PhysAddr, boot::BootInfo};
 
 /// Physical memory allocator.
 /// Implementations must be called `PhysManager`.
 pub trait CommonPhysManager {
+    /// Initializes the memory manager.
+    unsafe fn init(info: &BootInfo);
+
     /// Allocates a given amount of pages.
     unsafe fn alloc(num_pages: usize) -> PhysAddr;
 
@@ -13,7 +16,7 @@ pub trait CommonPhysManager {
     unsafe fn get_phys_base() -> *mut u8;
 }
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub enum PhysMemoryUsage {
     /// Free and usable memory.
     Free,
@@ -29,12 +32,22 @@ pub enum PhysMemoryUsage {
 }
 
 /// Describes a region of physical memory and what it's used for.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct PhysMemory {
     /// Start address of the memory region.
-    address: PhysAddr,
+    pub address: PhysAddr,
     /// Length of the memory region in bytes.
-    length: usize,
+    pub length: usize,
     /// How this memory region is used.
-    usage: PhysMemoryUsage,
+    pub usage: PhysMemoryUsage,
+}
+
+impl PhysMemory {
+    pub const fn new() -> Self {
+        Self {
+            address: 0,
+            length: 0,
+            usage: PhysMemoryUsage::Unknown,
+        }
+    }
 }

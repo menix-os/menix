@@ -1,6 +1,13 @@
-[workspace]
-resolver = "2"
-members = ["kernel", "drivers/*"]
+[package]
+name = "kernel"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+
+[dependencies]
+fixedstr = "0.5.7"
+limine = "0.3.1"
 
 [profile.dev]
 panic = "abort"
@@ -8,3 +15,17 @@ panic = "abort"
 [profile.release]
 panic = "abort"
 lto = true
+
+[features]
+default = ["smp", "boot_limine", "fw_acpi"]
+
+# Symmetric multi-processing.
+smp = []
+# Use Limine as the default bootloader.
+boot_limine = []
+# Use ACPI for hardware discovery. Available on x86_64, aarch64, riscv64 and loongarch64.
+fw_acpi = []
+# Use OpenFirmware (device trees) for hardware discovery. Available on aarch64 and riscv64.
+fw_of = []
+# Imitates Linux syscalls and calling convention.
+linux_abi = []
