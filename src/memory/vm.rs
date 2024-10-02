@@ -1,7 +1,9 @@
 // Virtual memory management
 
-use crate::arch::VirtAddr;
+use crate::boot::BootInfo;
 
 /// Virtual memory manager.
 /// Implementations must be called `VirtManager`.
-pub trait CommonVirtManager {}
+pub trait CommonVirtManager {
+    unsafe fn init(info: &BootInfo);
+}

@@ -2,26 +2,65 @@
 
 use super::gdt::GdtRegister;
 use super::idt::IdtRegister;
+use core::arch::asm;
 
 /// Wrapper for the `lgdt` instruction.
 /// Only changing the GDT on its own is technically unsafe.
 pub unsafe fn lgdt(gdt: &GdtRegister) {
-    core::arch::asm!("lgdt [{0}]", in(reg) gdt);
+    asm!("lgdt [{0}]", in(reg) gdt);
 }
 
 /// Wrapper for the `lidt` instruction.
 /// Only changing the IDT on its own is technically unsafe.
 pub unsafe fn lidt(idt: &IdtRegister) {
-    core::arch::asm!("lidt [{0}]", in(reg) idt);
+    asm!("lidt [{0}]", in(reg) idt);
 }
 
 /// Wrapper for the `cpuid` instruction.
-pub unsafe fn cpuid(a: &mut usize, b: &mut usize, c: &mut usize, d: &mut usize) {
-    let result = core::arch::x86_64::__cpuid_count(*c as u32, *a as u32);
-    *a = result.eax as usize;
-    *b = result.ebx as usize;
-    *c = result.ecx as usize;
-    *d = result.edx as usize;
+pub fn cpuid(a: &mut usize, b: &mut usize, c: &mut usize, d: &mut usize) {
+    unsafe {
+        let result = core::arch::x86_64::__cpuid_count(*c as u32, *a as u32);
+        *a = result.eax as usize;
+        *b = result.ebx as usize;
+        *c = result.ecx as usize;
+        *d = result.edx as usize;
+    }
+}
+
+/// Writes an unsigned 64-bit value to a model-specific register.
+pub unsafe fn wrmsr(msr: u32, value: u64) {
+    unsafe {
+        let eax = value as u32;
+        let edx = (value >> 32) as u32;
+        asm!("wrmsr", in("eax") eax, in("edx") edx, in("ecx") msr);
+    }
+}
+
+/// Writes an unsigned 64-bit value to the model-specific XCR register.
+pub unsafe fn wrxcr(msr: u32, value: u64) {
+    unsafe {
+        let eax = value as u32;
+        let edx = (value >> 32) as u32;
+        asm!("xsetbv", in("eax") eax, in("edx") edx, in("ecx") msr);
+    }
+}
+
+/// Reads an unsigned 64-bit value from a model-specific register.
+pub unsafe fn rdmsr(msr: u32) -> u64 {
+    unsafe {
+        let eax: u32;
+        let edx: u32;
+        asm!("wrmsr", out("eax") eax, out("edx") edx, in("ecx") msr);
+        return (eax as u64) | ((edx as u64) << 32);
+    }
+}
+
+/// Saves the FPU state to a 512-byte region of memory using FXSAVE.
+/// Pointer must be 16-byte aligned.
+pub unsafe fn fxsave(memory: *mut u8) {
+    unsafe {
+        asm! ("fxsave {0}", in(reg) memory);
+    }
 }
 
 // CPUID Leaf 1 ECX

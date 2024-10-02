@@ -11,7 +11,7 @@
 	"relocation-model": "pic",
 	"os": "none",
 	"code-model": "kernel",
-	"features": "-mmx,-sse,+soft-float",
+	"features": "-mmx,-sse,-sse2,+soft-float",
 	"panic-strategy": "abort",
 	"executables": true,
 	"disable-redzone": true,

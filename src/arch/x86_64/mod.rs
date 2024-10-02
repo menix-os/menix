@@ -1,21 +1,24 @@
+mod apic;
 mod asm;
 mod consts;
 mod elf;
 mod gdt;
 mod idt;
-pub mod pm;
-pub mod vm;
+mod pm;
+mod vm;
 
 use super::{CommonArch, CommonCpu};
 use crate::{
     boot::BootInfo,
-    memory::{self, pm::CommonPhysManager},
+    memory::{self, pm::CommonPhysManager, vm::CommonVirtManager},
     thread::thread::Thread,
 };
 use alloc::{sync::Arc, vec::Vec};
-use core::{arch::asm, ops::Deref, ptr::null_mut};
+use core::{arch::asm, ptr::null_mut};
 use gdt::GDT_TABLE;
 use idt::IDT_TABLE;
+pub use pm::PhysManager;
+pub use vm::VirtManager;
 
 pub struct Arch;
 impl CommonArch for Arch {
@@ -23,7 +26,7 @@ impl CommonArch for Arch {
         GDT_TABLE.load();
         IDT_TABLE.load();
         pm::PhysManager::init(info);
-        //memory::vm::init(info);
+        vm::VirtManager::init(info);
         memory::slab::init();
     }
 

@@ -2,16 +2,14 @@
 
 #![no_std]
 #![no_main]
-// TODO: remove
-#![allow(unused)]
 
 pub mod arch;
 pub mod boot;
 pub mod memory;
+pub mod misc;
 pub mod syscall;
 pub mod system;
 pub mod thread;
-pub mod util;
 pub mod video;
 
 extern crate alloc;

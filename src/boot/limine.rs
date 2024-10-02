@@ -27,7 +27,7 @@ pub static SMP_REQUEST: SmpRequest = SmpRequest::new();
 #[cfg(feature = "fw_acpi")]
 #[link_section = ".limine_requests"]
 pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
-#[cfg(feature = "fw_of")]
+#[cfg(feature = "fw_open_firmware")]
 #[link_section = ".limine_requests"]
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 #[link_section = ".requests_end_marker"]
@@ -43,7 +43,8 @@ unsafe extern "C" fn kernel_boot() -> ! {
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
         info.kernel_addr = (kernel_addr.physical_base(), kernel_addr.virtual_base());
 
-        // Get memory map. This buffer has to be fixed since at this point there is no memory allocator available yet.
+        // Convert the memory map. This buffer has to be fixed since at this point
+        // in the boot process there is no dynamic memory allocator available yet.
         let mut memmap_buf: [PhysMemory; 256] = [PhysMemory::new(); 256];
         for (i, entry) in MEMMAP_REQUEST
             .get_response()

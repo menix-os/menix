@@ -1,0 +1,1 @@
+// ACPI platform configuration.

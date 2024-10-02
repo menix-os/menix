@@ -3,10 +3,15 @@ name = "kernel"
 version = "0.1.0"
 edition = "2021"
 
+[[bin]]
+name = "menix"
+path = "src/main.rs"
+
 [build-dependencies]
 
 [dependencies]
-fixedstr = "0.5.7"
+bitflags = "2.6.0"
+cfg-if = "1.0.0"
 limine = "0.3.1"
 
 [profile.dev]
@@ -17,15 +22,16 @@ panic = "abort"
 lto = true
 
 [features]
-default = ["smp", "boot_limine", "fw_acpi"]
+default = ["smp", "boot_limine", "fw_acpi", "fw_pci"]
 
 # Symmetric multi-processing.
 smp = []
 # Use Limine as the default bootloader.
 boot_limine = []
+
 # Use ACPI for hardware discovery. Available on x86_64, aarch64, riscv64 and loongarch64.
 fw_acpi = []
 # Use OpenFirmware (device trees) for hardware discovery. Available on aarch64 and riscv64.
-fw_of = []
-# Imitates Linux syscalls and calling convention.
-linux_abi = []
+fw_open_firmware = []
+# PCI(e) device support.
+fw_pci = []

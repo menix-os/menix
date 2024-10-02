@@ -5,8 +5,6 @@ use alloc::sync::Arc;
 mod x86_64;
 #[cfg(target_arch = "x86_64")]
 mod internal {
-    pub use super::x86_64::pm::*;
-    pub use super::x86_64::vm::*;
     pub use super::x86_64::*;
 }
 

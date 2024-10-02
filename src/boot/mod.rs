@@ -1,5 +1,3 @@
-use alloc::vec::Vec;
-
 use crate::{
     arch::{Cpu, PhysAddr, VirtAddr},
     memory::pm::PhysMemory,
