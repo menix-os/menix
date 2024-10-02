@@ -29,7 +29,14 @@ static u8 acpi_checksum(void* ptr, usize size)
 void acpi_init(AcpiRsdp* rsdp)
 {
 	kassert(rsdp != NULL, "Failed to set RSDP: None given!");
-	rsdt = ACPI_ADDR(rsdp->xsdt_address);
+
+	// Check if we have ACPI 2.0+ available. If yes, use the XSDT instead of the RSDT.
+	if (rsdp->revision >= 2)
+		rsdt = ACPI_ADDR(rsdp->xsdt_address);
+	else
+		rsdt = ACPI_ADDR(rsdp->rsdt_address);
+
+	acpi_log("ACPI Revision %hhu\n", rsdp->revision);
 
 	// Initialize architecture dependent tables.
 #ifdef CONFIG_arch_x86_64
@@ -40,7 +47,7 @@ void acpi_init(AcpiRsdp* rsdp)
 	madt_init();
 	mcfg_init();
 
-	acpi_log("Initialized ACPI (Rev. %u)\n", rsdp->revision);
+	acpi_log("Initialized ACPI\n");
 }
 
 void* acpi_find_table(const char* signature, usize index)
