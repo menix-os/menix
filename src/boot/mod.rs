@@ -30,7 +30,7 @@ pub struct BootInfo<'a> {
     pub kernel_addr: (PhysAddr, VirtAddr),
 
     /// Base address of a 1:1 physical to virtual mapping.
-    pub hhdm_base: usize,
+    pub hhdm_base: VirtAddr,
 
     #[cfg(feature = "smp")]
     pub smp_info: BootSmpInfo<'a>,

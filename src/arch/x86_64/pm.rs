@@ -1,11 +1,14 @@
 // Physical memory management
 
-use crate::{arch::PhysAddr, boot::BootInfo, memory::pm::CommonPhysManager};
+use crate::{
+    arch::PhysAddr, boot::BootInfo, memory::pm::CommonPhysManager, thread::spin::SpinLock,
+};
 use core::ptr::null_mut;
 
 pub struct PhysManager;
 impl CommonPhysManager for PhysManager {
     unsafe fn init(info: &BootInfo) {
+        assert!(info.hhdm_base != 0, "HHDM base was NULL!");
         PHYS_BASE = info.hhdm_base as *mut u8;
         // TODO
     }
@@ -28,3 +31,5 @@ static mut PHYS_BASE: *mut u8 = null_mut();
 
 /// Global bitmap which stores if a page is used or not.
 static mut PM_BITMAP: *mut u8 = null_mut();
+
+static mut PM_LOCK: SpinLock = SpinLock::new();

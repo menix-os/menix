@@ -1,15 +1,11 @@
 # IDE Files
-.vscode/
-.idea/
-.cache/
-
-# Download dir for tools
-deps/
+.vscode/*
+.idea/*
+.cache/*
 
 # Rust files
 *target/
 *Cargo.lock
 
-# Generated config files
-kernel/src/config.rs
-.config
+# Debug config
+!.vscode/launch.json

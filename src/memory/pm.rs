@@ -1,3 +1,4 @@
+pub use crate::arch::PhysManager;
 use crate::{arch::PhysAddr, boot::BootInfo};
 
 /// Physical memory allocator.

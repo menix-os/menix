@@ -1,10 +1,13 @@
 use super::BootInfo;
 use crate::{
     arch::{Arch, CommonArch, VirtAddr},
-    memory::pm::{PhysMemory, PhysMemoryUsage::Unknown},
+    memory::pm::{
+        PhysMemory,
+        PhysMemoryUsage::{self, Unknown},
+    },
 };
 use core::str;
-use limine::{request::*, BaseRevision};
+use limine::{memory_map::EntryType, request::*, BaseRevision};
 
 #[link_section = ".requests_start_marker"]
 pub static START_MARKER: RequestsStartMarker = RequestsStartMarker::new();
@@ -42,10 +45,11 @@ unsafe extern "C" fn kernel_boot() -> ! {
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
         info.kernel_addr = (kernel_addr.physical_base(), kernel_addr.virtual_base());
+        info.hhdm_base = HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr;
 
         // Convert the memory map. This buffer has to be fixed since at this point
         // in the boot process there is no dynamic memory allocator available yet.
-        let mut memmap_buf: [PhysMemory; 256] = [PhysMemory::new(); 256];
+        let mut memmap_buf = [PhysMemory::new(); 128];
         for (i, entry) in MEMMAP_REQUEST
             .get_response()
             .unwrap()
@@ -57,6 +61,10 @@ unsafe extern "C" fn kernel_boot() -> ! {
                 address: entry.base as VirtAddr,
                 length: entry.length as usize,
                 usage: match entry.entry_type {
+                    EntryType::USABLE => PhysMemoryUsage::Free,
+                    EntryType::RESERVED => PhysMemoryUsage::Reserved,
+                    EntryType::FRAMEBUFFER => PhysMemoryUsage::Reserved,
+                    EntryType::KERNEL_AND_MODULES => PhysMemoryUsage::Kernel,
                     _ => Unknown,
                 },
             };

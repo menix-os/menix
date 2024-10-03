@@ -8,6 +8,7 @@ use crate::arch::*;
 /// A spinlock stops execution
 #[derive(Debug)]
 pub struct SpinLock {
+    /// Data protected by this lock.
     /// Address of the most recent owner.
     owner: usize,
     /// The CPU ID connected to the owner.

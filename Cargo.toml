@@ -1,11 +1,7 @@
 [package]
-name = "kernel"
+name = "menix"
 version = "0.1.0"
 edition = "2021"
-
-[[bin]]
-name = "menix"
-path = "src/main.rs"
 
 [build-dependencies]
 

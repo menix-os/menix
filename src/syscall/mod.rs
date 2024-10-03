@@ -1,5 +1,8 @@
 // System call interface
 
+mod drv;
+mod fs;
+
 /// Checks if the syscall is present and calls the kernel function with sanitized input.
 /// This assumes menix syscall ABI.
 pub fn invoke(

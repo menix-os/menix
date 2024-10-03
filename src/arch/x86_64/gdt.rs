@@ -83,6 +83,7 @@ impl GlobalDescriptorTable {
     }
 }
 
+#[repr(C, packed)]
 pub struct GdtRegister {
     limit: u16,
     base: *const GlobalDescriptorTable,
