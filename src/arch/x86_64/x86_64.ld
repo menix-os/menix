@@ -13,54 +13,41 @@ PHDRS
 SECTIONS
 {
 	. = 0xffffffff80000000 + SIZEOF_HEADERS;
-	__ld_kernel_start = .;
-
-	.boot ALIGN(4K):
-	{
-	__ld_seg_text_start = .;
-
-		__ld_sect_boot_start = .;
-		KEEP(*(.limine_start_marker))
-		KEEP(*(.limine_requests))
-		KEEP(*(.limine_end_marker))
-		__ld_sect_boot_end = .;
-	} :text
+	LD_KERNEL_START = .;
 
 	.text ALIGN(4K):
 	{
-		*(.*init)
-		__ld_sect_text_start = .;
-		*(.*text)
-		*(.*text.*)
-		__ld_sect_text_end = .;
-		*(.*fini)
-	__ld_seg_text_end = .;
+	LD_TEXT_START = .;
+		KEEP(*(.boot.init))
+		KEEP(*(.boot))
+		KEEP(*(.boot.fini))
+		*(.init)
+		*(.text)
+		*(.text.*)
+		*(.fini)
+	LD_TEXT_END = .;
 	} :text
 
 	.rodata ALIGN(4K):
 	{
-	__ld_seg_rodata_start = .;
-		__ld_sect_rodata_start = .;
-		*(.*rodata)
-		*(.*rodata.*)
-		__ld_sect_rodata_end = .;
-	__ld_seg_rodata_end = .;
+	LD_RODATA_START = .;
+		*(.rodata)
+		*(.rodata.*)
+	LD_RODATA_END = .;
 	} :rodata
 
 	.data ALIGN(4K):
 	{
-	__ld_seg_data_start = .;
-		__ld_sect_data_start = .;
-		*(.*data)
-		*(.*data.*)
-		__ld_sect_data_end = .;
+	LD_DATA_START = .;
+		*(.data)
+		*(.data.*)
 	} :data
 
 	.mod :
 	{
-		__ld_sect_mod_start = .;
+		LD_MOD_START = .;
 		KEEP(*(.mod))
-		__ld_sect_mod_end = .;
+		LD_MOD_END = .;
 	} :data
 
 	.bss ALIGN(4K):
@@ -68,10 +55,10 @@ SECTIONS
 		*(.*bss)
 		*(.*bss.*)
 		*(COMMON)
-	__ld_seg_data_end = .;
+	LD_DATA_END = .;
 	}
 
-	__ld_kernel_end = .;
+	LD_KERNEL_END = .;
 
 	/DISCARD/ :
 	{

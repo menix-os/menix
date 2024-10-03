@@ -9,31 +9,31 @@ use crate::{
 use core::str;
 use limine::{memory_map::EntryType, request::*, BaseRevision};
 
-#[link_section = ".requests_start_marker"]
+#[link_section = ".boot.init"]
 pub static START_MARKER: RequestsStartMarker = RequestsStartMarker::new();
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static BASE_REVISION: BaseRevision = BaseRevision::new();
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static MEMMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static KERNEL_ADDR_REQUEST: KernelAddressRequest = KernelAddressRequest::new();
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static KERNEL_FILE_REQUEST: KernelFileRequest = KernelFileRequest::new();
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static MODULE_REQUEST: ModuleRequest = ModuleRequest::new();
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static SMP_REQUEST: SmpRequest = SmpRequest::new();
 #[cfg(feature = "fw_acpi")]
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 #[cfg(feature = "fw_open_firmware")]
-#[link_section = ".limine_requests"]
+#[link_section = ".boot"]
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
-#[link_section = ".requests_end_marker"]
+#[link_section = ".boot.fini"]
 pub static END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
 
 /// This is the absolute entry point of menix.
