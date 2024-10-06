@@ -13,8 +13,8 @@ use crate::{
     memory::{self, pm::CommonPhysManager, vm::CommonVirtManager},
     thread::thread::Thread,
 };
-use alloc::{sync::Arc, vec::Vec};
-use core::{arch::asm, ptr::null_mut};
+use alloc::{boxed::Box, slice, sync::Arc, vec::Vec};
+use core::{alloc::Layout, arch::asm, ptr::null_mut};
 use gdt::GDT_TABLE;
 use idt::IDT_TABLE;
 pub use pm::PhysManager;
@@ -31,7 +31,6 @@ impl CommonArch for Arch {
 
             pm::PhysManager::init(info);
             vm::VirtManager::init(info);
-            memory::slab::init();
         }
     }
 
@@ -48,9 +47,11 @@ impl CommonArch for Arch {
             cpu_data.push(c);
         }
 
-        let mut slice = cpu_data.into_boxed_slice();
+        let mut buffer = cpu_data.into_boxed_slice();
         unsafe {
-            PER_CPU_DATA = slice.as_mut_ptr();
+            PER_CPU_DATA = buffer.as_mut_ptr();
+            // Intentionally leak memory so it doesn't ever get freed.
+            Box::leak(buffer);
         }
     }
 
@@ -86,6 +87,7 @@ impl CommonArch for Arch {
 
 /// Processor-local information.
 #[repr(C, align(4096))]
+#[derive(Clone, Debug)]
 pub struct Cpu {
     id: usize,
     thread: Option<Arc<Thread>>,

@@ -24,7 +24,7 @@ pub struct BootInfo<'a> {
     /// Files to mount into the VFS.
     pub files: &'a [BootFile<'a>],
 
-    // Physical memory map.
+    // Physical memory map. Mutable in case the architecture has to modify some entries.
     pub memory_map: &'a mut [PhysMemory],
 
     /// Physical and virtual address where the kernel was loaded.
@@ -49,7 +49,7 @@ pub struct BootFile<'a> {
 #[derive(Default)]
 pub struct BootSmpInfo<'a> {
     /// Array of available processors.
-    pub processors: &'a [Cpu],
+    pub processors: &'a [BootCpu],
 
     /// Total active processors.
     pub active_processors: usize,
@@ -57,3 +57,6 @@ pub struct BootSmpInfo<'a> {
     /// Index of the processor that is being used to boot.
     pub boot_cpu: usize,
 }
+
+#[derive(Default)]
+pub struct BootCpu {}

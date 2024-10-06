@@ -106,7 +106,9 @@ impl CommonPhysManager for PhysManager {
                 continue;
             }
 
-            for page in 0..(entry.length / PAGE_SIZE) {
+            for page in (entry.address as usize / PAGE_SIZE)
+                ..((entry.address as usize + entry.length) / PAGE_SIZE)
+            {
                 unsafe {
                     (*pmm).bit_map.set(page, false);
                     (*pmm).num_free_pages += 1;

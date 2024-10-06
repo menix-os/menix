@@ -1,3 +1,4 @@
+#[derive(Debug)]
 pub struct Thread {
     id: usize,
 }

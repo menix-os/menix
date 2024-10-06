@@ -1,9 +1,12 @@
 use super::BootInfo;
 use crate::{
     arch::{Arch, CommonArch, VirtAddr},
-    memory::pm::{
-        PhysMemory,
-        PhysMemoryUsage::{self, Unknown},
+    memory::{
+        self,
+        pm::{
+            PhysMemory,
+            PhysMemoryUsage::{self, Unknown},
+        },
     },
     misc::units,
 };
@@ -20,7 +23,7 @@ pub static BASE_REVISION: BaseRevision = BaseRevision::new();
 
 #[link_section = ".boot"]
 pub static STACK_SIZE: StackSizeRequest =
-    StackSizeRequest::with_size(StackSizeRequest::new(), 2 * units::MiB as u64);
+    StackSizeRequest::with_size(StackSizeRequest::new(), 512 * units::KiB as u64);
 
 #[link_section = ".boot"]
 pub static MEMMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
@@ -87,8 +90,11 @@ unsafe extern "C" fn kernel_boot() -> ! {
         }
         info.memory_map = &mut memmap_buf[0..entries.len()];
 
-        // Initialize the allocator and serial output.
+        // Initialize the physical allocator and serial output.
         Arch::early_init(&mut info);
+
+        // Initialize memory allocator.
+        memory::slab::init();
 
         // Get command line.
         info.command_line = {
