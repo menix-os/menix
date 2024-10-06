@@ -20,9 +20,11 @@ use idt::IDT_TABLE;
 pub use pm::PhysManager;
 pub use vm::VirtManager;
 
+pub const PAGE_SIZE: usize = 0x1000;
+
 pub struct Arch;
 impl CommonArch for Arch {
-    unsafe fn early_init(info: &BootInfo) {
+    unsafe fn early_init(info: &mut BootInfo) {
         unsafe {
             GDT_TABLE.load();
             IDT_TABLE.load();
@@ -33,7 +35,7 @@ impl CommonArch for Arch {
         }
     }
 
-    unsafe fn init(info: &BootInfo) {
+    unsafe fn init(info: &mut BootInfo) {
         // Allocate memory to hold the processor specific data.
         let mut cpu_data = Vec::with_capacity(info.smp_info.processors.len());
 

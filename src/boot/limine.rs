@@ -5,34 +5,53 @@ use crate::{
         PhysMemory,
         PhysMemoryUsage::{self, Unknown},
     },
+    misc::units,
 };
 use core::str;
 use limine::{memory_map::EntryType, request::*, BaseRevision};
 
+#[used]
 #[link_section = ".boot.init"]
 pub static START_MARKER: RequestsStartMarker = RequestsStartMarker::new();
+
+#[used]
 #[link_section = ".boot"]
 pub static BASE_REVISION: BaseRevision = BaseRevision::new();
+
+#[link_section = ".boot"]
+pub static STACK_SIZE: StackSizeRequest =
+    StackSizeRequest::with_size(StackSizeRequest::new(), 2 * units::MiB as u64);
+
 #[link_section = ".boot"]
 pub static MEMMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
+
 #[link_section = ".boot"]
 pub static HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
+
 #[link_section = ".boot"]
 pub static KERNEL_ADDR_REQUEST: KernelAddressRequest = KernelAddressRequest::new();
+
 #[link_section = ".boot"]
 pub static KERNEL_FILE_REQUEST: KernelFileRequest = KernelFileRequest::new();
+
 #[link_section = ".boot"]
 pub static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
+
 #[link_section = ".boot"]
 pub static MODULE_REQUEST: ModuleRequest = ModuleRequest::new();
+
 #[link_section = ".boot"]
 pub static SMP_REQUEST: SmpRequest = SmpRequest::new();
+
 #[cfg(feature = "fw_acpi")]
 #[link_section = ".boot"]
 pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
+
 #[cfg(feature = "fw_open_firmware")]
 #[link_section = ".boot"]
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
+
+#[used]
 #[link_section = ".boot.fini"]
 pub static END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
 
@@ -42,10 +61,13 @@ unsafe extern "C" fn kernel_boot() -> ! {
     unsafe {
         let mut info = BootInfo::default();
 
+        // Check if requested stack size was respected by the bootloader.
+        _ = STACK_SIZE.get_response().unwrap();
+
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
         info.kernel_addr = (kernel_addr.physical_base(), kernel_addr.virtual_base());
-        info.hhdm_base = HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr;
+        info.identity_base = HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr;
 
         // Convert the memory map. This buffer has to be fixed since at this point
         // in the boot process there is no dynamic memory allocator available yet.
@@ -57,22 +79,21 @@ unsafe extern "C" fn kernel_boot() -> ! {
             .iter()
             .enumerate()
         {
-            memmap_buf[i] = PhysMemory {
-                address: entry.base as VirtAddr,
-                length: entry.length as usize,
-                usage: match entry.entry_type {
-                    EntryType::USABLE => PhysMemoryUsage::Free,
-                    EntryType::RESERVED => PhysMemoryUsage::Reserved,
-                    EntryType::FRAMEBUFFER => PhysMemoryUsage::Reserved,
-                    EntryType::KERNEL_AND_MODULES => PhysMemoryUsage::Kernel,
-                    _ => Unknown,
-                },
+            let elem = memmap_buf.get_mut(i).unwrap();
+            elem.address = entry.base as VirtAddr;
+            elem.length = entry.length as usize;
+            elem.usage = match entry.entry_type {
+                EntryType::USABLE => PhysMemoryUsage::Free,
+                EntryType::RESERVED => PhysMemoryUsage::Reserved,
+                EntryType::FRAMEBUFFER => PhysMemoryUsage::Reserved,
+                EntryType::KERNEL_AND_MODULES => PhysMemoryUsage::Kernel,
+                _ => Unknown,
             };
         }
-        info.memory_map = &memmap_buf;
+        info.memory_map = &mut memmap_buf;
 
         // Initialize the allocator and serial output.
-        Arch::early_init(&info);
+        Arch::early_init(&mut info);
 
         // Get command line.
         info.command_line = {
@@ -86,7 +107,7 @@ unsafe extern "C" fn kernel_boot() -> ! {
         };
 
         // Finalize CPU initialization.
-        Arch::init(&info);
+        Arch::init(&mut info);
 
         #[cfg(feature = "fw_acpi")]
         {

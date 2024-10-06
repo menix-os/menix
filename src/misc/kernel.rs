@@ -1,5 +1,6 @@
 // Information about the kernel binary
 
+#![allow(unused)]
 extern "C" {
     static LD_KERNEL_START: usize;
     static LD_KERNEL_END: usize;

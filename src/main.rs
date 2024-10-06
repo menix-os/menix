@@ -1,8 +1,8 @@
-// Export of kernel functions for driver interface
-
 #![no_std]
 #![no_main]
 #![deny(unsafe_op_in_unsafe_fn)]
+// TODO
+#![allow(unused)]
 
 pub mod arch;
 pub mod boot;
@@ -15,7 +15,3 @@ pub mod video;
 
 extern crate alloc;
 extern crate core;
-
-pub fn kernel_main() -> ! {
-    todo!();
-}

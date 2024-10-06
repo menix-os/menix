@@ -63,6 +63,10 @@ impl SpinLock {
         }
     }
 
+    pub fn acquire_force(&mut self) -> Self {
+        todo!();
+    }
+
     /// Frees the lock if it was previously locked.
     pub fn free(&mut self) {}
 }

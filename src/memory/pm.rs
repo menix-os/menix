@@ -5,7 +5,7 @@ use crate::{arch::PhysAddr, boot::BootInfo};
 /// Implementations must be called `PhysManager`.
 pub trait CommonPhysManager {
     /// Initializes the memory manager.
-    unsafe fn init(info: &BootInfo);
+    unsafe fn init(info: &mut BootInfo);
 
     /// Allocates a given amount of pages.
     unsafe fn alloc(num_pages: usize) -> PhysAddr;
@@ -14,10 +14,10 @@ pub trait CommonPhysManager {
     unsafe fn free(addr: PhysAddr, num_pages: usize);
 
     /// Returns a base address which linearly maps a physical address.
-    unsafe fn get_phys_base() -> *mut u8;
+    unsafe fn phys_base() -> *mut u8;
 }
 
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 pub enum PhysMemoryUsage {
     /// Free and usable memory.
     Free,

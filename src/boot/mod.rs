@@ -3,6 +3,7 @@ use crate::{
     memory::pm::PhysMemory,
 };
 
+mod entry;
 #[cfg(all(
     feature = "boot_limine",
     any(
@@ -24,13 +25,13 @@ pub struct BootInfo<'a> {
     pub files: &'a [BootFile<'a>],
 
     // Physical memory map.
-    pub memory_map: &'a [PhysMemory],
+    pub memory_map: &'a mut [PhysMemory],
 
     /// Physical and virtual address where the kernel was loaded.
     pub kernel_addr: (PhysAddr, VirtAddr),
 
     /// Base address of a 1:1 physical to virtual mapping.
-    pub hhdm_base: VirtAddr,
+    pub identity_base: VirtAddr,
 
     #[cfg(feature = "smp")]
     pub smp_info: BootSmpInfo<'a>,
