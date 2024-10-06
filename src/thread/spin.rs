@@ -8,9 +8,6 @@ use crate::arch::*;
 /// A spinlock stops execution
 #[derive(Debug)]
 pub struct SpinLock {
-    /// Data protected by this lock.
-    /// Address of the most recent owner.
-    owner: usize,
     /// The CPU ID connected to the owner.
     cpu: usize,
     /// Whether it's locked or not.
@@ -30,7 +27,6 @@ impl SpinLock {
     /// Creates a new, unlocked spinlock.
     pub const fn new() -> Self {
         Self {
-            owner: 0,
             cpu: 0,
             locked: AtomicBool::new(false),
         }

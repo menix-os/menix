@@ -1,6 +1,8 @@
 # menix
-
 A minimal and expandable Unix-like operating system.
+
+This repository contains only the kernel itself. You can run it on its own in
+an emulator like QEMU, but it won't do much.
 
 Unlike microkernel or monolithic designs, menix chooses to only keep core subsystems in the kernel,
 while the drivers using these subsystems.

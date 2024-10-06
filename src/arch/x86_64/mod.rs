@@ -23,11 +23,14 @@ pub use vm::VirtManager;
 pub struct Arch;
 impl CommonArch for Arch {
     unsafe fn early_init(info: &BootInfo) {
-        GDT_TABLE.load();
-        IDT_TABLE.load();
-        pm::PhysManager::init(info);
-        vm::VirtManager::init(info);
-        memory::slab::init();
+        unsafe {
+            GDT_TABLE.load();
+            IDT_TABLE.load();
+
+            pm::PhysManager::init(info);
+            vm::VirtManager::init(info);
+            memory::slab::init();
+        }
     }
 
     unsafe fn init(info: &BootInfo) {
@@ -44,7 +47,9 @@ impl CommonArch for Arch {
         }
 
         let mut slice = cpu_data.into_boxed_slice();
-        PER_CPU_DATA = slice.as_mut_ptr();
+        unsafe {
+            PER_CPU_DATA = slice.as_mut_ptr();
+        }
     }
 
     unsafe fn init_cpu(cpu: &Cpu, boot_cpu: &Cpu) {

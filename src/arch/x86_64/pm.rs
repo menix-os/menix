@@ -9,7 +9,9 @@ pub struct PhysManager;
 impl CommonPhysManager for PhysManager {
     unsafe fn init(info: &BootInfo) {
         assert!(info.hhdm_base != 0, "HHDM base was NULL!");
-        PHYS_BASE = info.hhdm_base as *mut u8;
+        unsafe {
+            PHYS_BASE = info.hhdm_base as *mut u8;
+        }
         // TODO
     }
 
@@ -22,7 +24,9 @@ impl CommonPhysManager for PhysManager {
     }
 
     unsafe fn get_phys_base() -> *mut u8 {
-        return PHYS_BASE;
+        unsafe {
+            return PHYS_BASE;
+        }
     }
 }
 

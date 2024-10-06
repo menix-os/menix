@@ -2,6 +2,7 @@
 
 #![no_std]
 #![no_main]
+#![deny(unsafe_op_in_unsafe_fn)]
 
 pub mod arch;
 pub mod boot;
@@ -16,5 +17,5 @@ extern crate alloc;
 extern crate core;
 
 pub fn kernel_main() -> ! {
-    loop {}
+    todo!();
 }

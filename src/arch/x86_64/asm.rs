@@ -7,13 +7,17 @@ use core::arch::asm;
 /// Wrapper for the `lgdt` instruction.
 /// Only changing the GDT on its own is technically unsafe.
 pub unsafe fn lgdt(gdt: &GdtRegister) {
-    asm!("lgdt [{0}]", in(reg) gdt);
+    unsafe {
+        asm!("lgdt [{0}]", in(reg) gdt);
+    }
 }
 
 /// Wrapper for the `lidt` instruction.
 /// Only changing the IDT on its own is technically unsafe.
 pub unsafe fn lidt(idt: &IdtRegister) {
-    asm!("lidt [{0}]", in(reg) idt);
+    unsafe {
+        asm!("lidt [{0}]", in(reg) idt);
+    }
 }
 
 /// Wrapper for the `cpuid` instruction.

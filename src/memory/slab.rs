@@ -28,9 +28,10 @@ impl Slab {
 
     unsafe fn new(size: usize) -> Self {
         let mut slab = Self::empty();
-        slab.head =
-            PhysManager::get_phys_base().byte_add(PhysManager::alloc(1) as usize) as *mut *mut u8;
-
+        unsafe {
+            slab.head = PhysManager::get_phys_base().byte_add(PhysManager::alloc(1) as usize)
+                as *mut *mut u8;
+        }
         return slab;
     }
 }
