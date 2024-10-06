@@ -99,6 +99,7 @@ impl CommonPhysManager for PhysManager {
         }
 
         // Mark the actual free pages as unused.
+        // TODO: This is extremely slow! Fix me!
         for entry in info.memory_map.iter() {
             // Only care about memory that we are able to own.
             if entry.usage != PhysMemoryUsage::Free {

@@ -72,13 +72,8 @@ unsafe extern "C" fn kernel_boot() -> ! {
         // Convert the memory map. This buffer has to be fixed since at this point
         // in the boot process there is no dynamic memory allocator available yet.
         let mut memmap_buf = [PhysMemory::new(); 128];
-        for (i, entry) in MEMMAP_REQUEST
-            .get_response()
-            .unwrap()
-            .entries()
-            .iter()
-            .enumerate()
-        {
+        let entries = MEMMAP_REQUEST.get_response().unwrap().entries();
+        for (i, entry) in entries.iter().enumerate() {
             let elem = memmap_buf.get_mut(i).unwrap();
             elem.address = entry.base as VirtAddr;
             elem.length = entry.length as usize;
@@ -90,7 +85,7 @@ unsafe extern "C" fn kernel_boot() -> ! {
                 _ => Unknown,
             };
         }
-        info.memory_map = &mut memmap_buf;
+        info.memory_map = &mut memmap_buf[0..entries.len()];
 
         // Initialize the allocator and serial output.
         Arch::early_init(&mut info);

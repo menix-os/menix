@@ -63,7 +63,11 @@ impl SpinLock {
         }
     }
 
-    pub fn acquire_force(&mut self) -> Self {
+    pub fn acquire_force(&mut self) {
+        // If spinlocks are disabled, all accesses are succesful.
+        if !SPINLOCKS_ACTIVE.load(Acquire) {
+            return;
+        }
         todo!();
     }
 
