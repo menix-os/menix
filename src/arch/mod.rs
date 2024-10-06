@@ -1,6 +1,6 @@
 use crate::{boot::BootInfo, thread::thread::Thread};
 use alloc::sync::Arc;
-// jonkler fent OS ongongfrfr
+
 #[cfg(target_arch = "x86_64")]
 mod x86_64;
 #[cfg(target_arch = "x86_64")]
