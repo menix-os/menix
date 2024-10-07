@@ -1,8 +1,6 @@
 #![no_std]
 #![no_main]
 #![deny(unsafe_op_in_unsafe_fn)]
-// TODO
-#![allow(unused)]
 
 pub mod arch;
 pub mod boot;
