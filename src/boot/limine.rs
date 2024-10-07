@@ -3,15 +3,12 @@ use crate::{
     arch::{Arch, CommonArch, VirtAddr},
     memory::{
         self,
-        pm::{
-            PhysMemory,
-            PhysMemoryUsage::{self, Unknown},
-        },
+        pm::{PhysMemory, PhysMemoryUsage},
     },
     misc::units,
 };
 use core::str;
-use limine::{memory_map::EntryType, request::*, BaseRevision};
+use limine::{framebuffer, memory_map::EntryType, request::*, BaseRevision};
 
 #[used]
 #[link_section = ".boot.init"]
@@ -85,7 +82,7 @@ unsafe extern "C" fn kernel_boot() -> ! {
                 EntryType::RESERVED => PhysMemoryUsage::Reserved,
                 EntryType::FRAMEBUFFER => PhysMemoryUsage::Reserved,
                 EntryType::KERNEL_AND_MODULES => PhysMemoryUsage::Kernel,
-                _ => Unknown,
+                _ => PhysMemoryUsage::Unknown,
             };
         }
         info.memory_map = &mut memmap_buf[0..entries.len()];

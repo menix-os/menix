@@ -1,7 +1,5 @@
 // Physical memory management
 
-use alloc::{rc::Rc, sync::Arc};
-
 use crate::{
     arch::{PhysAddr, PAGE_SIZE},
     boot::BootInfo,
@@ -9,10 +7,7 @@ use crate::{
     misc::{align_up, bitmap::BitMap},
     thread::spin::SpinLock,
 };
-use core::{
-    cell::{Cell, RefCell},
-    ptr::null_mut,
-};
+use core::ptr::null_mut;
 
 pub struct PhysManager {
     /// Access lock for the manager.
@@ -27,9 +22,6 @@ pub struct PhysManager {
     num_free_pages: usize,
 }
 
-unsafe impl Sync for PhysManager {}
-unsafe impl Send for PhysManager {}
-
 static mut PMM: PhysManager = PhysManager {
     lock: SpinLock::new(),
     phys_base: null_mut(),
@@ -42,7 +34,7 @@ impl CommonPhysManager for PhysManager {
     unsafe fn init(info: &mut BootInfo) {
         assert!(info.identity_base != 0, "HHDM base was NULL!");
 
-        let pmm = unsafe { &raw mut PMM };
+        let pmm = &raw mut PMM;
 
         unsafe {
             (*pmm).phys_base = info.identity_base as *mut u8;

@@ -10,11 +10,12 @@ mod vm;
 use super::{CommonArch, CommonCpu};
 use crate::{
     boot::BootInfo,
-    memory::{self, pm::CommonPhysManager, vm::CommonVirtManager},
+    memory::{pm::CommonPhysManager, vm::CommonVirtManager},
     thread::thread::Thread,
 };
-use alloc::{boxed::Box, slice, sync::Arc, vec::Vec};
-use core::{alloc::Layout, arch::asm, ptr::null_mut};
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use consts::MSR_KERNEL_GS_BASE;
+use core::{arch::asm, ptr::null_mut};
 use gdt::GDT_TABLE;
 use idt::IDT_TABLE;
 pub use pm::PhysManager;
@@ -40,8 +41,10 @@ impl CommonArch for Arch {
 
         // Copy processor information.
         for (i, cpu) in info.smp_info.processors.iter().enumerate() {
+            // TODO
             let c = Cpu {
                 id: i,
+                lapic_id: cpu.lapic_id,
                 thread: None,
             };
             cpu_data.push(c);
@@ -56,7 +59,10 @@ impl CommonArch for Arch {
     }
 
     unsafe fn init_cpu(cpu: &Cpu, boot_cpu: &Cpu) {
-        // TODO: Set KERNEL_GSBASE to the raw address of the Vec
+        unsafe {
+            asm::wrmsr(MSR_KERNEL_GS_BASE, PER_CPU_DATA.add(cpu.id) as u64);
+        }
+        // TODO
         todo!()
     }
 
@@ -86,10 +92,11 @@ impl CommonArch for Arch {
 }
 
 /// Processor-local information.
-#[repr(C, align(4096))]
+#[repr(C, align(0x1000))]
 #[derive(Clone, Debug)]
 pub struct Cpu {
     id: usize,
+    lapic_id: usize,
     thread: Option<Arc<Thread>>,
 }
 

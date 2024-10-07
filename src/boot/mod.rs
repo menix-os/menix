@@ -49,7 +49,7 @@ pub struct BootFile<'a> {
 #[derive(Default)]
 pub struct BootSmpInfo<'a> {
     /// Array of available processors.
-    pub processors: &'a [BootCpu],
+    pub processors: &'a [Cpu],
 
     /// Total active processors.
     pub active_processors: usize,
@@ -57,6 +57,3 @@ pub struct BootSmpInfo<'a> {
     /// Index of the processor that is being used to boot.
     pub boot_cpu: usize,
 }
-
-#[derive(Default)]
-pub struct BootCpu {}

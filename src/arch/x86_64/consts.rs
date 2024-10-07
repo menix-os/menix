@@ -106,30 +106,30 @@ pub const CR4_CET: usize = 1 << 23;
 pub const CR4_PKS: usize = 1 << 24;
 
 // Model specific registers
-pub const MSR_EFER: usize = 0xC0000080;
+pub const MSR_EFER: u32 = 0xC0000080;
 /// System Call Extensions
-pub const MSR_EFER_SCE: usize = 1 << 0;
+pub const MSR_EFER_SCE: u32 = 1 << 0;
 /// Long Mode Enable
-pub const MSR_EFER_LME: usize = 1 << 8;
+pub const MSR_EFER_LME: u32 = 1 << 8;
 /// Long Mode Active
-pub const MSR_EFER_LMA: usize = 1 << 10;
+pub const MSR_EFER_LMA: u32 = 1 << 10;
 /// No-Execute Enable
-pub const MSR_EFER_NXE: usize = 1 << 11;
+pub const MSR_EFER_NXE: u32 = 1 << 11;
 /// Secure Virtual Machine Enable
-pub const MSR_EFER_SVME: usize = 1 << 12;
+pub const MSR_EFER_SVME: u32 = 1 << 12;
 /// Long Mode Segment Limit Enable
-pub const MSR_EFER_LMSLE: usize = 1 << 13;
+pub const MSR_EFER_LMSLE: u32 = 1 << 13;
 /// Fast FXSAVE/FXRSTOR
-pub const MSR_EFER_FFXSR: usize = 1 << 14;
+pub const MSR_EFER_FFXSR: u32 = 1 << 14;
 /// Translation Cache Extension
-pub const MSR_EFER_TCE: usize = 1 << 15;
-pub const MSR_STAR: usize = 0xC0000081;
-pub const MSR_LSTAR: usize = 0xC0000082;
-pub const MSR_CSTAR: usize = 0xC0000083;
-pub const MSR_SFMASK: usize = 0xC0000084;
-pub const MSR_FS_BASE: usize = 0xC0000100;
-pub const MSR_GS_BASE: usize = 0xC0000101;
-pub const MSR_KERNEL_GS_BASE: usize = 0xC0000102;
+pub const MSR_EFER_TCE: u32 = 1 << 15;
+pub const MSR_STAR: u32 = 0xC0000081;
+pub const MSR_LSTAR: u32 = 0xC0000082;
+pub const MSR_CSTAR: u32 = 0xC0000083;
+pub const MSR_SFMASK: u32 = 0xC0000084;
+pub const MSR_FS_BASE: u32 = 0xC0000100;
+pub const MSR_GS_BASE: u32 = 0xC0000101;
+pub const MSR_KERNEL_GS_BASE: u32 = 0xC0000102;
 
 pub const CPL_USER: u8 = 0b11;
 pub const CPL_KERNEL: u8 = 0b00;
