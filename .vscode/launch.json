@@ -11,6 +11,28 @@
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"
 			]
+		},
+		{
+			"type": "lldb",
+			"request": "custom",
+			"name": "Debug aarch64",
+			"targetCreateCommands": [
+				"target create ${workspaceFolder}/target/aarch64/debug/menix"
+			],
+			"processCreateCommands": [
+				"gdb-remote localhost:1234"
+			]
+		},
+		{
+			"type": "lldb",
+			"request": "custom",
+			"name": "Debug riscv64",
+			"targetCreateCommands": [
+				"target create ${workspaceFolder}/target/riscv64/debug/menix"
+			],
+			"processCreateCommands": [
+				"gdb-remote localhost:1234"
+			]
 		}
 	]
 }
