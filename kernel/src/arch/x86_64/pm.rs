@@ -108,10 +108,9 @@ impl CommonPhysManager for PhysManager {
             }
         }
 
+		// TODO:
         //println!("Initialized physical memory management, free memory = {} MiB\n",
         //		 (num_free_pages * PAGE_SIZE) / MIB);
-
-        todo!();
     }
 
     unsafe fn alloc(num_pages: usize) -> PhysAddr {

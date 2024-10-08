@@ -86,14 +86,14 @@ impl CommonArch for Arch {
     #[cfg(not(feature = "smp"))]
     fn current_cpu() -> &'static mut Cpu {
         unsafe {
-            return PER_CPU_DATA.get_mut(0).unwrap();
+            return PER_CPU_DATA.as_mut().unwrap();
         }
     }
 }
 
 /// Processor-local information.
-#[repr(C, align(0x1000))]
 #[derive(Clone, Debug)]
+#[repr(C, align(0x10))]
 pub struct Cpu {
     id: usize,
     lapic_id: usize,

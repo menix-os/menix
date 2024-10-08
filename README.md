@@ -1,28 +1,22 @@
 # menix
 A minimal and expandable Unix-like operating system.
 
-This repository contains only the kernel itself. You can run it on its own in
-an emulator like QEMU, but it won't do much.
+menix uses a microkernel architecture for many aspects, but chooses to keep
+its core subsystems (VFS, PCI, etc.) in the kernel.
+The drivers using these subsystems run in user mode.
 
-Unlike microkernel or monolithic designs, menix chooses to only keep core subsystems in the kernel,
-while the drivers using these subsystems.
-
-> [!Note]
-> The project is currently in a pre-alpha stage of development and neither stable nor ready to use.
+> [!Important]
+> This repository contains only the kernel and its driver daemons.
+> You could run them on their own in an emulator like QEMU,
+> but don't expect much to happen without a full system build and/or bootloader.
+> If you just want to build a bootable image, you might want to check out
+> https://github.com/menix-os/bootstrap instead.
 
 ## Getting started
-```sh
-git clone https://github.com/menix-os/kernel --recursive
-cargo build --release
-```
-
-For more info, see [Building](doc/building.md)
+Follow the **[build instructions](doc/building.md)** for building the kernel and drivers.
 
 ## Contributing
 Contributions are _always_ welcome!
-First, please read the [contributing guide](doc/contributing.md) to make sure
-your code fits to the rest of the project.
+First, please read the **[contributing guide](doc/contributing.md)** to make sure
+your changes fit the rest of the project.
 Open an issue or pull request with the appropriate template and submit your changes.
-
-## Documentation
-More in-depth documentation can be found in the [kernel-docs](https://github.com/menix-os/kernel-docs) repository.

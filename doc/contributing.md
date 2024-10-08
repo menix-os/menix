@@ -21,7 +21,7 @@ main license.
 
 <!-- REUSE-IgnoreStart -->
   **Example:**
-  ```c
+  ```rust
   // Implementation for a cool feature
   // SPDX-License-Identifier: BSD-3-Clause
   ```
