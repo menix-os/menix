@@ -38,6 +38,9 @@ pub trait CommonArch {
     fn current_cpu() -> &'static mut Cpu;
 }
 
+/// Common functionality for a processor state (aka context).
+pub trait CommonContext {}
+
 /// Common functionality of processor-local data.
 /// Implementations must be called `Cpu`.
 pub trait CommonCpu {
@@ -45,7 +48,7 @@ pub trait CommonCpu {
     fn id(&self) -> usize;
 
     /// Gets the currently running thread.
-    fn thread(&self) -> &Option<Arc<Thread>>;
+    fn thread(&self) -> Option<&Arc<Thread>>;
 
     /// Sets the currently running thread.
     fn set_thread(&mut self, thread: &Arc<Thread>);

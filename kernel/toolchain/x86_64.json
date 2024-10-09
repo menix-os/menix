@@ -7,14 +7,13 @@
 	"target-pointer-width": "64",
 	"target-c-int-width": "32",
 	"arch": "x86_64",
-	"dynamic-linking": true,
-	"relocation-model": "pic",
 	"os": "none",
+	"relocation-model": "static",
 	"code-model": "kernel",
 	"features": "-mmx,-sse,-sse2,+soft-float",
 	"panic-strategy": "abort",
 	"executables": true,
 	"disable-redzone": true,
-	"emit-debug-gdb-scripts": false,
+	"emit-debug-gdb-scripts": true,
 	"frame-pointer": "always"
 }

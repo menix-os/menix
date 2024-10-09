@@ -4,10 +4,13 @@ mod consts;
 mod elf;
 mod gdt;
 mod idt;
+mod interrupts;
 mod pm;
+mod sched;
+mod tss;
 mod vm;
 
-use super::{CommonArch, CommonCpu};
+use super::{CommonArch, CommonContext, CommonCpu};
 use crate::{
     boot::BootInfo,
     memory::{pm::CommonPhysManager, vm::CommonVirtManager},
@@ -16,8 +19,6 @@ use crate::{
 use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use consts::MSR_KERNEL_GS_BASE;
 use core::{arch::asm, ptr::null_mut};
-use gdt::GDT_TABLE;
-use idt::IDT_TABLE;
 pub use pm::PhysManager;
 pub use vm::VirtManager;
 
@@ -27,10 +28,11 @@ pub struct Arch;
 impl CommonArch for Arch {
     unsafe fn early_init(info: &mut BootInfo) {
         unsafe {
-            GDT_TABLE.load();
-            IDT_TABLE.load();
+            gdt::load();
+            idt::load();
 
             pm::PhysManager::init(info);
+            asm!("int 0x80");
             vm::VirtManager::init(info);
         }
     }
@@ -92,14 +94,16 @@ impl CommonArch for Arch {
 }
 
 /// Processor-local information.
-#[derive(Clone, Debug)]
 #[repr(C, align(0x10))]
+#[derive(Clone, Debug)]
 pub struct Cpu {
     id: usize,
     lapic_id: usize,
     thread: Option<Arc<Thread>>,
 }
 
+/// Fixed buffer for CPU-local storage. Stores important CPU state information.
+/// Never to be used directly! Always use Arch::current_cpu() instead.
 static mut PER_CPU_DATA: *mut Cpu = null_mut();
 
 impl CommonCpu for Cpu {
@@ -107,8 +111,11 @@ impl CommonCpu for Cpu {
         self.id
     }
 
-    fn thread(&self) -> &Option<Arc<Thread>> {
-        &self.thread
+    fn thread(&self) -> Option<&Arc<Thread>> {
+        match &self.thread {
+            Some(x) => Some(x),
+            None => None,
+        }
     }
 
     fn set_thread(&mut self, thread: &Arc<Thread>) {
@@ -117,8 +124,8 @@ impl CommonCpu for Cpu {
 }
 
 /// Registers which are saved and restored during a context switch or interrupt.
+#[repr(C, packed)]
 #[derive(Clone, Debug, Default)]
-#[allow(unused)]
 pub struct Context {
     r15: u64,
     r14: u64,
@@ -135,7 +142,7 @@ pub struct Context {
     rcx: u64,
     rbx: u64,
     rax: u64,
-    // Pushed onto the stack by the interrupt handler stub.
+    // Pushed onto the stack by the interrupt handler stubs.
     core: u64,
     isr: u64,
     // Pushed onto the stack by the CPU if the interrupt has an error code.
@@ -147,6 +154,8 @@ pub struct Context {
     rsp: u64,
     ss: u64,
 }
+
+impl CommonContext for Context {}
 
 /// Represents a physical address. It can't be directly read from or written to.
 pub type PhysAddr = u64;
