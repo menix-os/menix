@@ -4,4 +4,4 @@ build-std = ["core", "alloc"]
 build-std-features = ["compiler-builtins-mem"]
 
 [build]
-target = ["src/arch/x86_64/x86_64.json"]
+target = ["toolchain/x86_64.json"]
