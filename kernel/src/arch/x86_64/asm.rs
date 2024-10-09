@@ -1,5 +1,7 @@
 #![allow(unused)]
 
+use crate::arch::Cpu;
+
 use super::idt::{IdtRegister, IDT_SIZE};
 use super::VirtAddr;
 use super::{gdt::GdtRegister, Context};
@@ -130,20 +132,4 @@ pub unsafe extern "C" fn interrupt_disable() {
 
 pub unsafe extern "C" fn interrupt_enable() {
     unsafe { asm!("sti") };
-}
-
-/// Performs a context switch for an interrupt. This function may only be called by the scheduler.
-#[naked]
-unsafe extern "C" fn context_switch(context: *mut Context) {
-    unsafe {
-        asm!(
-            "mov rsp, rdi",  // First argument is a reference to the thread's CpuRegisters field.
-            pop_all_regs!(), // Pop all values stored in that struct into the actual registers.
-            "add rsp, 0x18", // Skip .error, .isr and .core fields.
-            swapgs_if_necessary!(), // Swap GSBASE to user mode.
-            // Instead of returning via interrupt_internal, return directly so we always land in user mode.
-            "iretq",
-            options(noreturn)
-        );
-    }
 }

@@ -1,5 +1,5 @@
 use super::{idt::IDT_SIZE, Context, VirtAddr};
-use crate::{arch::Cpu, pop_all_regs, push_all_regs, swapgs_if_necessary};
+use crate::{arch::Cpu, pop_all_regs, push_all_regs, swapgs_if_necessary, syscall};
 use core::{
     arch::{asm, global_asm},
     mem::offset_of,
@@ -7,7 +7,29 @@ use core::{
 
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
 unsafe extern "C" fn interrupt_handler(context: *mut Context) {
-    todo!()
+    unsafe {
+        match (*context).isr {
+            // Legacy syscall invocation.
+            0x80 => syscall_handler(context),
+            _ => todo!(),
+        }
+    }
+}
+
+/// Invoked by either the interrupt or syscall stub.
+unsafe extern "C" fn syscall_handler(context: *mut Context) {
+    unsafe {
+        // Arguments use the SYSV C ABI.
+        (*context).rax = syscall::invoke(
+            (*context).rax as usize,
+            (*context).rdi as usize,
+            (*context).rsi as usize,
+            (*context).rdx as usize,
+            (*context).r10 as usize,
+            (*context).r8 as usize,
+            (*context).r9 as usize,
+        ) as u64
+    }
 }
 
 /// Handles a syscall via AMD64 syscall/sysret instructions.
@@ -32,13 +54,15 @@ unsafe extern "C" fn amd64_syscall_stub() {
             "push 0x00", // Context::core field
             push_all_regs!(), // Push general purpose registers so they can be written to by syscalls.
             "mov rdi, rsp",   // Put `*mut Context` as first argument.
-            "call arch_syscall_handler", // Call syscall handler
+            "call {syscall_handler}", // Call syscall handler
             pop_all_regs!(),  // Pop stack values back to the general purpose registers.
             "add rsp, 0x18",  // Skip .error, .isr and .core fields
             "mov rsp, gs:16", // Load user stack from `Cpu.user_stack`.
             "swapgs",         // Change GS to user mode.
             "sti",            // Resume interrupts.
             "sysretq",        // Return to user mode.
+
+            syscall_handler = sym syscall_handler,
             options(noreturn)
         );
     }
@@ -111,14 +135,14 @@ unsafe extern "C" fn interrupt_stub_internal() {
     unsafe {
         asm!(
             "push gs:{cpu_id}",         // Push CPU ID.
-            push_all_regs!(),
+            push_all_regs!(),           // Push all general purpose registers.
             "mov rdi, rsp",             // Load the `*mut Context` as first argument.
             "xor rbp, rbp",             // Zero out the base pointer since we can't trust it.
             "call {interrupt_handler}", // Call interrupt handler.
-            pop_all_regs!(),
+            pop_all_regs!(),            // Pop all general purpose registers.
             "add rsp, 0x18",            // Skip .error, .isr, and .core fields.
             swapgs_if_necessary!(),     // Change GS back if we came from user mode.
-            "iretq",
+            "iretq",                    // Leave.
 
             cpu_id = const offset_of!(Cpu, id),
             interrupt_handler = sym interrupt_handler,

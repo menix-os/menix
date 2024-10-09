@@ -32,7 +32,6 @@ impl CommonArch for Arch {
             idt::load();
 
             pm::PhysManager::init(info);
-            asm!("int 0x80");
             vm::VirtManager::init(info);
         }
     }
@@ -127,32 +126,32 @@ impl CommonCpu for Cpu {
 #[repr(C, packed)]
 #[derive(Clone, Debug, Default)]
 pub struct Context {
-    r15: u64,
-    r14: u64,
-    r13: u64,
-    r12: u64,
-    r11: u64,
-    r10: u64,
-    r9: u64,
-    r8: u64,
-    rsi: u64,
-    rdi: u64,
-    rbp: u64,
-    rdx: u64,
-    rcx: u64,
-    rbx: u64,
-    rax: u64,
+    pub r15: u64,
+    pub r14: u64,
+    pub r13: u64,
+    pub r12: u64,
+    pub r11: u64,
+    pub r10: u64,
+    pub r9: u64,
+    pub r8: u64,
+    pub rsi: u64,
+    pub rdi: u64,
+    pub rbp: u64,
+    pub rdx: u64,
+    pub rcx: u64,
+    pub rbx: u64,
+    pub rax: u64,
     // Pushed onto the stack by the interrupt handler stubs.
-    core: u64,
-    isr: u64,
+    pub core: u64,
+    pub isr: u64,
     // Pushed onto the stack by the CPU if the interrupt has an error code.
-    error: u64,
+    pub error: u64,
     // Pushed onto the stack by the CPU during an interrupt.
-    rip: u64,
-    cs: u64,
-    rflags: u64,
-    rsp: u64,
-    ss: u64,
+    pub rip: u64,
+    pub cs: u64,
+    pub rflags: u64,
+    pub rsp: u64,
+    pub ss: u64,
 }
 
 impl CommonContext for Context {}
