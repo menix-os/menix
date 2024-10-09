@@ -20,7 +20,7 @@ $ cargo build --release
 
 > [!Note]
 > If no target is specified, cargo will select x86_64 as the default target.
-> To cross-compile, specify the target file by appending `--target src/arch/<arch>/<arch>.json`.
+> To cross-compile, specify the target file by appending `--target toolchain/<arch>.json`.
 
 4. Build the drivers.
 ```sh
