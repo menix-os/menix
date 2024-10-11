@@ -10,7 +10,6 @@ path = "src/main.rs"
 [build-dependencies]
 
 [dependencies]
-common = { path = "../subsystems/common" }
 bitflags = "2.6.0"
 cfg-if = "1.0.0"
 limine = "0.3.1"
