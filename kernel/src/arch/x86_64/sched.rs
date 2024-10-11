@@ -2,7 +2,7 @@
 
 use super::Context;
 use crate::{pop_all_regs, swapgs_if_necessary};
-use core::arch::asm;
+use core::arch::naked_asm;
 
 /// Finalizes a context switch for an interrupt. This function may only be called by the scheduler.
 #[naked]
@@ -14,14 +14,13 @@ unsafe extern "C" fn context_switch_finalize(context: *mut Context) {
     // RDI, we return directly to avoid any accidental register clobbering.
 
     unsafe {
-        asm!(
+        naked_asm!(
             "mov rsp, rdi",  // First argument is a reference to the thread's CpuRegisters field.
             pop_all_regs!(), // Pop all values stored in that struct into the actual registers.
             "add rsp, 0x18", // Skip .error, .isr and .core fields. (3 * 8 bytes) so we can check if we have to swapgs.
             swapgs_if_necessary!(), // Swap GSBASE to user mode.
             // Instead of returning via interrupt_internal, return directly so we always land in user mode.
-            "iretq",
-            options(noreturn)
+            "iretq"
         );
     }
 }

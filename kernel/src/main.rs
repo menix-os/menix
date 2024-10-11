@@ -11,7 +11,6 @@ pub mod misc;
 pub mod syscall;
 pub mod system;
 pub mod thread;
-pub mod video;
 
 extern crate alloc;
 extern crate core;

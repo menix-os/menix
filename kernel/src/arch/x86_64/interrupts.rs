@@ -1,7 +1,7 @@
 use super::{idt::IDT_SIZE, Context, VirtAddr};
 use crate::{arch::Cpu, pop_all_regs, push_all_regs, swapgs_if_necessary, syscall};
 use core::{
-    arch::{asm, global_asm},
+    arch::{asm, global_asm, naked_asm},
     mem::offset_of,
 };
 
@@ -36,7 +36,7 @@ unsafe extern "C" fn syscall_handler(context: *mut Context) {
 #[naked]
 unsafe extern "C" fn amd64_syscall_stub() {
     unsafe {
-        asm!(
+        naked_asm!(
             "cli",            // Disable interrupts.
             "swapgs",         // Change GS to kernel mode.
             "mov gs:16, rsp", // Save user stack to `Cpu.user_stack`.
@@ -44,14 +44,14 @@ unsafe extern "C" fn amd64_syscall_stub() {
             "cld",            // Clear direction bit from RFLAGS
             // We're pretending to be an interrupt, so fill the bottom fields of CpuRegisters.
             // For details see: https://www.felixcloutier.com/x86/syscall
-            "push 0x23", // SS and CS are not changed during SYSCALL. Use `gdt_table.user_data | CPL_USER`.
-            "push gs:16", // Get RSP from when we saved it
-            "push r11",  // RFLAGS is moved into r11 by the CPU.
-            "push 0x2b", // Same as SS. Use `gdt_table.user_code64 | CPL_USER`
-            "push rcx",  // RIP is moved into rcx by the CPU.
-            "push 0x00", // Context::error field
-            "push 0x00", // Context::isr field
-            "push 0x00", // Context::core field
+            "push 0x23",      // SS and CS are not changed during SYSCALL. Use `gdt_table.user_data | CPL_USER`.
+            "push gs:16",     // Get RSP from when we saved it
+            "push r11",       // RFLAGS is moved into r11 by the CPU.
+            "push 0x2b",      // Same as SS. Use `gdt_table.user_code64 | CPL_USER`
+            "push rcx",       // RIP is moved into rcx by the CPU.
+            "push 0x00",      // Context::error field
+            "push 0x00",      // Context::isr field
+            "push 0x00",      // Context::core field
             push_all_regs!(), // Push general purpose registers so they can be written to by syscalls.
             "mov rdi, rsp",   // Put `*mut Context` as first argument.
             "call {syscall_handler}", // Call syscall handler
@@ -62,8 +62,7 @@ unsafe extern "C" fn amd64_syscall_stub() {
             "sti",            // Resume interrupts.
             "sysretq",        // Return to user mode.
 
-            syscall_handler = sym syscall_handler,
-            options(noreturn)
+            syscall_handler = sym syscall_handler
         );
     }
 }
@@ -133,7 +132,7 @@ extern "C" {
 #[naked]
 unsafe extern "C" fn interrupt_stub_internal() {
     unsafe {
-        asm!(
+        naked_asm!(
             "push gs:{cpu_id}",         // Push CPU ID.
             push_all_regs!(),           // Push all general purpose registers.
             "mov rdi, rsp",             // Load the `*mut Context` as first argument.
@@ -145,8 +144,7 @@ unsafe extern "C" fn interrupt_stub_internal() {
             "iretq",                    // Leave.
 
             cpu_id = const offset_of!(Cpu, id),
-            interrupt_handler = sym interrupt_handler,
-            options(noreturn)
+            interrupt_handler = sym interrupt_handler
         );
     }
 }

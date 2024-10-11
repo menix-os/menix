@@ -36,7 +36,7 @@ pub struct BootInfo<'a> {
     #[cfg(feature = "smp")]
     pub smp_info: BootSmpInfo<'a>,
 
-    #[cfg(feature = "fw_acpi")]
+    #[cfg(feature = "sys_acpi")]
     pub rsdp_addr: VirtAddr,
 }
 

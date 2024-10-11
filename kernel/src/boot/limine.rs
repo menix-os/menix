@@ -43,11 +43,11 @@ pub static MODULE_REQUEST: ModuleRequest = ModuleRequest::new();
 #[link_section = ".boot"]
 pub static SMP_REQUEST: SmpRequest = SmpRequest::new();
 
-#[cfg(feature = "fw_acpi")]
+#[cfg(feature = "sys_acpi")]
 #[link_section = ".boot"]
 pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 
-#[cfg(feature = "fw_open_firmware")]
+#[cfg(feature = "sys_open_firmware")]
 #[link_section = ".boot"]
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 
@@ -107,7 +107,7 @@ unsafe extern "C" fn kernel_boot() -> ! {
         // Finalize CPU initialization.
         Arch::init(&mut info);
 
-        #[cfg(feature = "fw_acpi")]
+        #[cfg(feature = "sys_acpi")]
         {
             // Initialize ACPI.
             info.rsdp_addr = RSDP_REQUEST.get_response().unwrap().address() as VirtAddr;

@@ -1,3 +1,10 @@
 [toolchain]
 channel = "nightly"
-components = ["rustfmt", "rust-analyzer", "clippy", "llvm-tools-preview", "rust-src"]
+date = "2024-10-10"
+components = [
+	"rustfmt",
+	"rust-analyzer",
+	"clippy",
+	"llvm-tools-preview",
+	"rust-src",
+]

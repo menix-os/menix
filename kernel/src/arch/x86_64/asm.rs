@@ -75,10 +75,7 @@ pub unsafe fn fxsave(memory: *mut u8) {
 #[macro_export]
 macro_rules! swapgs_if_necessary {
     () => {
-        "cmp word ptr [rsp+0x8], 0x8;
-		je 2f;
-		swapgs;
-		2:"
+        concat!("cmp word ptr [rsp+0x8], 0x8;", "je 2f;", "swapgs;", "2:")
     };
 }
 
@@ -86,21 +83,23 @@ macro_rules! swapgs_if_necessary {
 #[macro_export]
 macro_rules! push_all_regs {
     () => {
-        "push rax;
-         push rbx;
-         push rcx;
-         push rdx;
-         push rbp;
-         push rdi;
-         push rsi;
-         push r8;
-         push r9;
-         push r10;
-         push r11;
-         push r12;
-         push r13;
-         push r14;
-         push r15;"
+        concat!(
+            "push rax;",
+            "push rbx;",
+            "push rcx;",
+            "push rdx;",
+            "push rbp;",
+            "push rdi;",
+            "push rsi;",
+            "push r8;",
+            "push r9;",
+            "push r10;",
+            "push r11;",
+            "push r12;",
+            "push r13;",
+            "push r14;",
+            "push r15;"
+        )
     };
 }
 
@@ -108,21 +107,11 @@ macro_rules! push_all_regs {
 #[macro_export]
 macro_rules! pop_all_regs {
     () => {
-        "pop rax;
-         pop rbx;
-         pop rcx;
-         pop rdx;
-         pop rbp;
-         pop rdi;
-         pop rsi;
-         pop r8;
-         pop r9;
-         pop r10;
-         pop r11;
-         pop r12;
-         pop r13;
-         pop r14;
-         pop r15;"
+        concat!(
+            "pop rax;", "pop rbx;", "pop rcx;", "pop rdx;", "pop rbp;", "pop rdi;", "pop rsi;",
+            "pop r8;", "pop r9;", "pop r10;", "pop r11;", "pop r12;", "pop r13;", "pop r14;",
+            "pop r15;"
+        )
     };
 }
 

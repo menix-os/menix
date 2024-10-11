@@ -1,9 +1,8 @@
 # menix
 A minimal and expandable Unix-like operating system.
 
-menix uses a microkernel architecture for many aspects, but chooses to keep
-its core subsystems (VFS, PCI, etc.) in the kernel.
-The drivers using these subsystems run in user mode.
+menix uses a monolithic architecture for many aspects, but can load drivers
+at runtime via dynamic linking.
 
 > [!Important]
 > This repository contains only the kernel and its driver daemons.

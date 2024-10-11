@@ -1,1 +1,0 @@
-// OpenFirmware platform configuration.

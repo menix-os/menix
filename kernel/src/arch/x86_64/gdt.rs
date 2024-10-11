@@ -225,7 +225,7 @@ pub fn load() {
             "mov ss, ax",
             code_seg = const offset_of!(GlobalDescriptorTable, kernel_code),
             data_seg = const offset_of!(GlobalDescriptorTable, kernel_data),
-            lateout("rax") _
+            lateout("rax") _ // (R)AX was modified.
         );
     }
 }

@@ -14,16 +14,9 @@ $ cd menix
 
 3. Build the kernel.
 ```sh
-$ cd kernel
 $ cargo build --release
 ```
 
 > [!Note]
 > If no target is specified, cargo will select x86_64 as the default target.
 > To cross-compile, specify the target file by appending `--target toolchain/<arch>.json`.
-
-4. Build the drivers.
-```sh
-$ cd drivers
-$ cargo build --release
-```
