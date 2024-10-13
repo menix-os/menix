@@ -6,6 +6,5 @@ fn main() -> Result<(), Box<dyn Error>> {
     // Set the linker script for the current target.
     println!("cargo::rustc-link-arg=-Ttoolchain/{arch}.ld");
     println!("cargo::rerun-if-changed=toolchain/{arch}.ld");
-
     Ok(())
 }

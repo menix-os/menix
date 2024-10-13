@@ -1,4 +1,6 @@
-use super::{idt::IDT_SIZE, Context, VirtAddr};
+use seq_macro::seq;
+
+use super::{idt::IDT_SIZE, sched::Context, VirtAddr};
 use crate::{arch::Cpu, pop_all_regs, push_all_regs, swapgs_if_necessary, syscall};
 use core::{
     arch::{asm, global_asm, naked_asm},
@@ -71,63 +73,27 @@ unsafe extern "C" fn amd64_syscall_stub() {
 // There are some interrupts which generate an error code on the stack, while others do not.
 // We streamline this difference by just pushing 0 for those that don't generate an error code.
 // That means that we need to have two small stubs that slightly differ, and invoke a common handler.
-global_asm!(
-    // Macro to create interrupt stubs that push 0 as the error code.
-    ".macro interrupt_stub num",
-    ".align 0x10",
-    "interrupt_\\num:",
-        swapgs_if_necessary!(), // Change GS to kernel mode if we're coming from user mode.
-        // The error code is
-        "push 0",
-        "push \\num",
-        "jmp {interrupt_stub_internal}",
-        ".endm",
+seq! { N in 0..256 {
+    #[naked]
+    pub unsafe extern "C" fn interrupt_stub~N() {
+        unsafe {
+            naked_asm!(
+                // These codes push an error on the stack.
+                ".if ({i} == 8 || ({i} >= 10 && {i} <= 14) || {i} == 17 || {i} == 21 || {i} == 29 || {i} == 30)",
+                // All other ones don't, so we need to push something ourselves.
+                ".else",
+                "push 0",
+                ".endif",
 
-    // Macro to create interrupt stubs with an actual error code.
-    ".macro interrupt_stub_err num",
-    ".align 0x10",
-    "interrupt_\\num:",
-        swapgs_if_necessary!(), // Change GS to kernel mode if we're coming from user mode.
-        // The error code has already been pushed for us by the CPU, now just push the ISR number.
-        "push \\num",
-        "jmp {interrupt_stub_internal}",
-        ".endm",
+                "push {i}",
+                "jmp {interrupt_stub_internal}",
 
-    // Define 256 interrupt stubs using the macros above.
-    ".extern interrupt_handler",
-    ".altmacro",
-    ".set i, 0",
-    ".rept 256",
-        ".if (i == 8 || (i >= 10 && i <= 14) || i == 17 || i == 21 || i == 29 || i == 30)",
-            "interrupt_stub_err %i",
-        ".else",
-            "interrupt_stub %i",
-        ".endif",
-        ".set i, i+1",
-    ".endr",
-
-    ".macro interrupt_num num",
-        ".8byte interrupt_\\num",
-    ".endm",
-
-    // Put all handlers in one array so we can call it from a Rust function.
-    ".global {interrupt_array}",
-    "{interrupt_array}:",
-    ".set i, 0",
-    ".rept 256",
-        "interrupt_num %i",
-        ".set i, i+1",
-    ".endr",
-
-    interrupt_array = sym INTERRUPT_ARRAY,
-    interrupt_stub_internal = sym interrupt_stub_internal
-);
-
-extern "C" {
-    /// An array of interrupt stubs. They should not be called directly from Rust,
-    /// hence the VirtAddr type instead of extern fn().
-    pub static INTERRUPT_ARRAY: [VirtAddr; IDT_SIZE];
-}
+                i = const N,
+                interrupt_stub_internal = sym interrupt_stub_internal
+            );
+        }
+    }
+}}
 
 #[naked]
 unsafe extern "C" fn interrupt_stub_internal() {

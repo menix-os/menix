@@ -1,13 +1,15 @@
 use super::BootInfo;
 use crate::{
     arch::{Arch, CommonArch, VirtAddr},
+    dbg, log,
     memory::{
         self,
         pm::{PhysMemory, PhysMemoryUsage},
     },
-    misc::units,
+    misc::{log::Writer, units},
 };
-use core::str;
+use alloc::string::String;
+use core::{fmt::Write, str};
 use limine::{framebuffer, memory_map::EntryType, request::*, BaseRevision};
 
 #[used]
@@ -90,15 +92,12 @@ unsafe extern "C" fn kernel_boot() -> ! {
         // Initialize the physical allocator and serial output.
         Arch::early_init(&mut info);
 
-        // Initialize memory allocator.
-        memory::slab::init();
-
         // Get command line.
         info.command_line = {
             // Convert the command line from bytes to UTF-8 if there is any.
             let line_buf = KERNEL_FILE_REQUEST.get_response().unwrap().file().cmdline();
             if line_buf.len() > 0 {
-                Some(str::from_utf8(line_buf).unwrap())
+                Some(str::from_utf8(line_buf).expect("Command line was not valid UTF-8!"))
             } else {
                 None
             }

@@ -2,6 +2,7 @@
 
 pub mod bitmap;
 pub mod kernel;
+pub mod log;
 pub mod panic;
 pub mod units;
 

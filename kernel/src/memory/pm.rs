@@ -1,5 +1,9 @@
 pub use crate::arch::PhysManager;
-use crate::{arch::PhysAddr, boot::BootInfo};
+use crate::{
+    arch::{PhysAddr, PAGE_SIZE},
+    boot::BootInfo,
+};
+use core::ptr::write_bytes;
 
 /// Physical memory allocator.
 /// Implementations must be called `PhysManager`.
@@ -8,13 +12,21 @@ pub trait CommonPhysManager {
     unsafe fn init(info: &mut BootInfo);
 
     /// Allocates a given amount of pages.
-    unsafe fn alloc(num_pages: usize) -> PhysAddr;
+    fn alloc(num_pages: usize) -> PhysAddr;
+
+    fn alloc_zeroed(num_pages: usize) -> PhysAddr {
+        unsafe {
+            let addr = Self::alloc(num_pages);
+            write_bytes(addr as *mut u8, 0, PAGE_SIZE);
+            return addr;
+        };
+    }
 
     /// Frees a region of pages allocated by `alloc()`.
-    unsafe fn free(addr: PhysAddr, num_pages: usize);
+    fn free(addr: PhysAddr, num_pages: usize);
 
     /// Returns a base address which linearly maps a physical address.
-    unsafe fn phys_base() -> *mut u8;
+    fn phys_base() -> *mut u8;
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]

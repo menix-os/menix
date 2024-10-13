@@ -16,7 +16,7 @@ mod entry;
 mod limine;
 
 /// Information passed from the bootloader. Memory is reclaimed after initialization.
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BootInfo<'a> {
     /// Kernel command line
     pub command_line: Option<&'a str>,
@@ -41,12 +41,13 @@ pub struct BootInfo<'a> {
 }
 
 /// A file loaded by the bootloader. Memory is reclaimed after initialization.
+#[derive(Debug)]
 pub struct BootFile<'a> {
     pub data: &'a [u8],
     pub path: &'a str,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct BootSmpInfo<'a> {
     /// Array of available processors.
     pub processors: &'a [Cpu],

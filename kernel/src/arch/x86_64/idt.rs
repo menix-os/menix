@@ -1,7 +1,10 @@
+use seq_macro::seq;
+use spin::Mutex;
+
 use super::{
     asm::{self, interrupt_disable, interrupt_enable},
     gdt::GlobalDescriptorTable,
-    interrupts::INTERRUPT_ARRAY,
+    interrupts::*,
     VirtAddr,
 };
 use core::mem::offset_of;
@@ -33,20 +36,17 @@ pub fn load() {
     unsafe {
         interrupt_disable();
         // Create a new table.
-        let mut idt = InterruptDescriptorTable::new();
+        let mut idt = IDT_TABLE.lock();
 
         // Set all gates to their respective handlers.
-        for (i, entry) in idt.routines.iter_mut().enumerate() {
-            *entry = IdtEntry::new(*INTERRUPT_ARRAY.get(i).unwrap(), 0, IdtIsrType::Interrupt);
-        }
-
-        // Save the table in the global space.
-        IDT_TABLE = idt;
+        seq!(N in 0..256 {
+            idt.routines[N] = IdtEntry::new(interrupt_stub~N as u64, 0, IdtIsrType::Interrupt);
+        });
 
         // Load the global table into the IDTR.
         let idtr = IdtRegister {
             limit: (size_of::<InterruptDescriptorTable>() - 1) as u16,
-            base: &raw const IDT_TABLE,
+            base: (&*idt),
         };
         asm::lidt(&idtr);
         interrupt_enable();
@@ -54,7 +54,7 @@ pub fn load() {
 }
 
 /// Global storage for the interrupt descriptor table.
-static mut IDT_TABLE: InterruptDescriptorTable = InterruptDescriptorTable::new();
+static IDT_TABLE: Mutex<InterruptDescriptorTable> = Mutex::new(InterruptDescriptorTable::new());
 
 /// Stores an interrupt service routines (ISR) handler which gets invoked during an interrupt.
 #[repr(C, packed)]

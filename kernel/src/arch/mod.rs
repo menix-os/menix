@@ -2,7 +2,7 @@ use crate::{boot::BootInfo, thread::thread::Thread};
 use alloc::sync::Arc;
 
 #[cfg(target_arch = "x86_64")]
-mod x86_64;
+pub mod x86_64;
 #[cfg(target_arch = "x86_64")]
 mod internal {
     pub use super::x86_64::*;
@@ -12,6 +12,7 @@ mod internal {
 pub use internal::Arch;
 pub use internal::Context;
 pub use internal::Cpu;
+pub use internal::PageMap;
 pub use internal::PhysAddr;
 pub use internal::PhysManager;
 pub use internal::VirtAddr;
@@ -40,6 +41,12 @@ pub trait CommonArch {
 
 /// Common functionality for a processor state (aka context).
 pub trait CommonContext {}
+
+/// Common functionality for a virtual page map.
+pub trait CommonPageMap {
+    fn new(copy_from: Option<&Self>) -> Self;
+    fn fork(source: &Self) -> Self;
+}
 
 /// Common functionality of processor-local data.
 /// Implementations must be called `Cpu`.

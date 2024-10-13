@@ -1,21 +1,31 @@
 [package]
-name = "menix"
+name = "kernel"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
 name = "menix"
-path = "src/main.rs"
+path = "src/menix.rs"
+
+[lib]
+name = "kernel"
+path = "src/menix.rs"
+crate-type = ["dylib"]
 
 [build-dependencies]
+bindgen = "0.70.1"
 
 [dependencies]
 bitflags = "2.6.0"
 cfg-if = "1.0.0"
 limine = "0.3.1"
+seq-macro = "0.3.5"
+spin = "0.9.8"
 
 [features]
 default = ["smp", "boot_limine", "sys_acpi", "sys_pci", "sys_video"]
+
+dynamic = []
 
 # Symmetric multi-processing.
 smp = []

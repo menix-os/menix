@@ -5,3 +5,4 @@ build-std-features = ["compiler-builtins-mem"]
 
 [build]
 target = ["toolchain/x86_64.json"]
+rustflags = ["-C", "prefer-dynamic=yes"]

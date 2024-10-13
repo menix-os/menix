@@ -4,13 +4,14 @@
 #![feature(naked_functions)]
 #![allow(unused)]
 
+extern crate alloc;
+extern crate core;
+
 pub mod arch;
 pub mod boot;
+pub mod fs;
 pub mod memory;
 pub mod misc;
 pub mod syscall;
 pub mod system;
 pub mod thread;
-
-extern crate alloc;
-extern crate core;

@@ -43,13 +43,6 @@ SECTIONS
 		*(.data.*)
 	} :data
 
-	.mod :
-	{
-		LD_MOD_START = .;
-		KEEP(*(.mod))
-		LD_MOD_END = .;
-	} :data
-
 	.bss ALIGN(4K):
 	{
 		*(.*bss)

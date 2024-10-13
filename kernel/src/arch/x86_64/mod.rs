@@ -1,25 +1,29 @@
-mod apic;
-mod asm;
-mod consts;
-mod elf;
-mod gdt;
-mod idt;
-mod interrupts;
-mod pm;
-mod sched;
-mod tss;
-mod vm;
+pub mod apic;
+pub mod asm;
+pub mod consts;
+pub mod elf;
+pub mod gdt;
+pub mod idt;
+pub mod interrupts;
+pub mod pm;
+pub mod sched;
+pub mod serial;
+pub mod tss;
+pub mod vm;
 
 use super::{CommonArch, CommonContext, CommonCpu};
 use crate::{
     boot::BootInfo,
+    dbg,
     memory::{pm::CommonPhysManager, vm::CommonVirtManager},
     thread::thread::Thread,
 };
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use consts::MSR_KERNEL_GS_BASE;
 use core::{arch::asm, ptr::null_mut};
 pub use pm::PhysManager;
+pub use sched::Context;
+pub use vm::PageMap;
 pub use vm::VirtManager;
 
 pub const PAGE_SIZE: usize = 0x1000;
@@ -28,6 +32,7 @@ pub struct Arch;
 impl CommonArch for Arch {
     unsafe fn early_init(info: &mut BootInfo) {
         unsafe {
+            serial::init();
             gdt::load();
             idt::load();
 
@@ -121,40 +126,6 @@ impl CommonCpu for Cpu {
         self.thread = Some(Arc::clone(thread));
     }
 }
-
-/// Registers which are saved and restored during a context switch or interrupt.
-#[repr(C, packed)]
-#[derive(Clone, Debug, Default)]
-pub struct Context {
-    pub r15: u64,
-    pub r14: u64,
-    pub r13: u64,
-    pub r12: u64,
-    pub r11: u64,
-    pub r10: u64,
-    pub r9: u64,
-    pub r8: u64,
-    pub rsi: u64,
-    pub rdi: u64,
-    pub rbp: u64,
-    pub rdx: u64,
-    pub rcx: u64,
-    pub rbx: u64,
-    pub rax: u64,
-    // Pushed onto the stack by the interrupt handler stubs.
-    pub core: u64,
-    pub isr: u64,
-    // Pushed onto the stack by the CPU if the interrupt has an error code.
-    pub error: u64,
-    // Pushed onto the stack by the CPU during an interrupt.
-    pub rip: u64,
-    pub cs: u64,
-    pub rflags: u64,
-    pub rsp: u64,
-    pub ss: u64,
-}
-
-impl CommonContext for Context {}
 
 /// Represents a physical address. It can't be directly read from or written to.
 pub type PhysAddr = u64;
