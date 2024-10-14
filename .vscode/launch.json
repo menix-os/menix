@@ -1,0 +1,38 @@
+{
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"type": "lldb",
+			"request": "custom",
+			"name": "Debug x86_64",
+			"targetCreateCommands": [
+				"target create ${workspaceFolder}/build/bin/menix"
+			],
+			"processCreateCommands": [
+				"gdb-remote localhost:1234"
+			]
+		},
+		{
+			"type": "lldb",
+			"request": "custom",
+			"name": "Debug aarch64",
+			"targetCreateCommands": [
+				"target create ${workspaceFolder}/build/bin/menix"
+			],
+			"processCreateCommands": [
+				"gdb-remote localhost:1234"
+			]
+		},
+		{
+			"type": "lldb",
+			"request": "custom",
+			"name": "Debug riscv64",
+			"targetCreateCommands": [
+				"target create ${workspaceFolder}/build/bin/menix"
+			],
+			"processCreateCommands": [
+				"gdb-remote localhost:1234"
+			]
+		}
+	]
+}

@@ -1,27 +1,21 @@
 # menix
-
 A minimal and expandable Unix-like operating system.
 
-> [!Note]
-> This is a hobby project to learn OS development.
-> The project is currently in a pre-alpha stage of development and neither stable nor ready to use.
+menix uses a monolithic architecture for many aspects, but can load drivers
+at runtime via dynamic linking.
 
-menix uses a modular kernel design. It handles:
-- Booting
-- Hardware Abstraction
-- Interprocess Communication
-- Scheduling
-- Virtual Memory
-- Virtual File System
+> [!Important]
+> This repository contains only the kernel and its driver daemons.
+> You could run them on their own in an emulator like QEMU,
+> but don't expect much to happen without a full system build and/or bootloader.
+> If you just want to build a bootable image, you might want to check out
+> https://github.com/menix-os/bootstrap instead.
 
-## Building from source
-See [Building](doc/building.md)
+## Getting started
+Follow the **[build instructions](doc/building.md)** for building the kernel and drivers.
 
 ## Contributing
 Contributions are _always_ welcome!
-First, please read the [contributing guide](doc/contributing.md) to make sure
-your code fits to the rest of the project.
+First, please read the **[contributing guide](doc/contributing.md)** to make sure
+your changes fit the rest of the project.
 Open an issue or pull request with the appropriate template and submit your changes.
-
-## Documentation
-More in-depth documentation can be found in the [kernel-docs](https://github.com/menix-os/kernel-docs) repository.

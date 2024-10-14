@@ -1,7 +1,10 @@
 # IDE Files
-.vscode/
-.idea/
-.cache/
+.vscode/*
+.idea/*
+.cache/*
+
+# Debug config
+!.vscode/launch.json
 
 # Output files
 cmake-build*/
