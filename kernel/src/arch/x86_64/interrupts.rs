@@ -75,7 +75,7 @@ unsafe extern "C" fn amd64_syscall_stub() {
 // That means that we need to have two small stubs that slightly differ, and invoke a common handler.
 seq! { N in 0..256 {
     #[naked]
-    pub unsafe extern "C" fn interrupt_stub~N() {
+    pub(crate) unsafe extern "C" fn interrupt_stub~N() {
         unsafe {
             naked_asm!(
                 // These codes push an error on the stack.
