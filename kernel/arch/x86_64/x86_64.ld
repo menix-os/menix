@@ -6,6 +6,7 @@ PHDRS
 	text	PT_LOAD		FILEHDR PHDRS FLAGS(5);
 	rodata	PT_LOAD		FLAGS(4);
 	data	PT_LOAD		FLAGS(6);
+	dynamic	PT_DYNAMIC	FLAGS(6);
 }
 
 SECTIONS
@@ -58,6 +59,10 @@ SECTIONS
 		KEEP(*(.mod))
 		__ld_sect_mod_end = .;
 	} :data
+
+    .dynamic : {
+        *(.dynamic)
+    } :data :dynamic
 
 	.bss ALIGN(4K):
 	{
