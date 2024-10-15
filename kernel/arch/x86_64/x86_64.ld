@@ -17,6 +17,7 @@ SECTIONS
 
 	.boot ALIGN(4K):
 	{
+	__ld_seg_text_start = .;
 		__ld_sect_boot_start = .;
 		INCLUDE boot.ld
 		__ld_sect_boot_end = .;
@@ -24,7 +25,6 @@ SECTIONS
 
 	.text ALIGN(4K):
 	{
-	__ld_seg_text_start = .;
 		*(.*init)
 		__ld_sect_text_start = .;
 		*(.*text)
