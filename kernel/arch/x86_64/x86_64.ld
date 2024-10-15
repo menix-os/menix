@@ -1,30 +1,30 @@
 /* Linker script for x86 builds */
 
+OUTPUT_FORMAT(elf64-x86-64)
+
 PHDRS
 {
-    headers PT_PHDR		PHDRS;
-	text	PT_LOAD		FILEHDR PHDRS FLAGS(5);
-	rodata	PT_LOAD		FLAGS(4);
-	data	PT_LOAD		FLAGS(6);
-	dynamic	PT_DYNAMIC	FLAGS(6);
+    boot		PT_LOAD;
+	text		PT_LOAD;
+	rodata		PT_LOAD;
+	data		PT_LOAD;
 }
 
 SECTIONS
 {
-	. = 0xffffffff80000000 + SIZEOF_HEADERS;
+	. = 0xffffffff80000000;
 	__ld_kernel_start = .;
 
 	.boot ALIGN(4K):
 	{
-	__ld_seg_text_start = .;
-
 		__ld_sect_boot_start = .;
 		INCLUDE boot.ld
 		__ld_sect_boot_end = .;
-	} :text
+	} :boot
 
 	.text ALIGN(4K):
 	{
+	__ld_seg_text_start = .;
 		*(.*init)
 		__ld_sect_text_start = .;
 		*(.*text)
@@ -59,10 +59,6 @@ SECTIONS
 		KEEP(*(.mod))
 		__ld_sect_mod_end = .;
 	} :data
-
-    .dynamic : {
-        *(.dynamic)
-    } :data :dynamic
 
 	.bss ALIGN(4K):
 	{
