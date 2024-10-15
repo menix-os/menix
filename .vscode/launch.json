@@ -6,7 +6,7 @@
 			"request": "custom",
 			"name": "Debug x86_64",
 			"targetCreateCommands": [
-				"target create ${workspaceFolder}/build/bin/menix"
+				"target create ${workspaceFolder}/../bootstrap/build/install/boot/menix"
 			],
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"
@@ -17,7 +17,7 @@
 			"request": "custom",
 			"name": "Debug aarch64",
 			"targetCreateCommands": [
-				"target create ${workspaceFolder}/build/bin/menix"
+				"target create ${workspaceFolder}/../bootstrap/build/install/boot/menix"
 			],
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"
@@ -28,7 +28,7 @@
 			"request": "custom",
 			"name": "Debug riscv64",
 			"targetCreateCommands": [
-				"target create ${workspaceFolder}/build/bin/menix"
+				"target create ${workspaceFolder}/../bootstrap/build/install/boot/menix"
 			],
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"

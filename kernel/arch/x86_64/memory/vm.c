@@ -464,8 +464,6 @@ void interrupt_pf_handler(CpuRegisters* regs)
 	usize cr2;
 	asm_get_register(cr2, cr2);
 
-	Process* proc = arch_current_cpu()->thread->parent;
-
 #if !defined(NDEBUG) && defined(CONFIG_x86_pf_debug)
 	kmesg("Page fault: \n");
 
@@ -517,8 +515,12 @@ void interrupt_pf_handler(CpuRegisters* regs)
 	}
 
 	// TODO: Handle user page fault.
+	if (arch_current_cpu())
+	{
+		Process* proc = arch_current_cpu()->thread->parent;
 
-	// If nothing can make the process recover, we have to put it out of its misery.
-	process_kill(proc, true);
-	kmesg("PID %zu terminated with SIGSEGV.\n", proc->id);
+		// If nothing can make the process recover, we have to put it out of its misery.
+		process_kill(proc, true);
+		kmesg("PID %zu terminated with SIGSEGV.\n", proc->id);
+	}
 }
