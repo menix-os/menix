@@ -1,14 +1,14 @@
 [workspace]
 resolver = "2"
-members = ["kernel", "drivers/*"]
+members = ["kernel"]
 
 [profile.dev]
 panic = "abort"
+debug = true
 
 [profile.release]
 panic = "abort"
-codegen-units = 1
 opt-level = "z"
 debug = false
 overflow-checks = false
-strip = "debuginfo"
+strip = "symbols"

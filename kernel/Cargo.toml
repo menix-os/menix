@@ -7,11 +7,6 @@ edition = "2021"
 name = "menix"
 path = "src/menix.rs"
 
-[lib]
-name = "kernel"
-path = "src/menix.rs"
-crate-type = ["dylib"]
-
 [build-dependencies]
 bindgen = "0.70.1"
 
@@ -24,8 +19,6 @@ spin = "0.9.8"
 
 [features]
 default = ["smp", "boot_limine", "sys_acpi", "sys_pci", "sys_video"]
-
-dynamic = []
 
 # Symmetric multi-processing.
 smp = []

@@ -13,7 +13,7 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
         match (*context).isr {
             // Legacy syscall invocation.
             0x80 => syscall_handler(context),
-            _ => todo!(),
+            _ => (),
         }
     }
 }

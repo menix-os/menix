@@ -14,12 +14,13 @@ pub trait CommonPhysManager {
     /// Allocates a given amount of pages.
     fn alloc(num_pages: usize) -> PhysAddr;
 
+    /// Allocates a given amount of zero-initialized pages.
     fn alloc_zeroed(num_pages: usize) -> PhysAddr {
+        let addr = Self::alloc(num_pages);
         unsafe {
-            let addr = Self::alloc(num_pages);
             write_bytes(addr as *mut u8, 0, PAGE_SIZE);
-            return addr;
         };
+        return addr;
     }
 
     /// Frees a region of pages allocated by `alloc()`.
@@ -29,6 +30,7 @@ pub trait CommonPhysManager {
     fn phys_base() -> *mut u8;
 }
 
+/// Describes how a memory region is used.
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 pub enum PhysMemoryUsage {
     /// Free and usable memory.
@@ -44,7 +46,7 @@ pub enum PhysMemoryUsage {
     Unknown,
 }
 
-/// Describes a region of physical memory and what it's used for.
+/// Describes a region of physical memory.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct PhysMemory {
     /// Start address of the memory region.

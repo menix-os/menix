@@ -1,9 +1,14 @@
 // Serial I/O
 
-use alloc::boxed::Box;
-
 use super::asm::write8;
-use crate::{fs::handle::Handle, log, misc::log::STDOUT};
+use crate::{
+    dbg,
+    fs::{fd::FileDescriptor, handle::Handle},
+    log,
+    misc::log::STDOUT,
+    system::error::Errno,
+};
+use alloc::boxed::Box;
 
 /// Serial port
 pub const COM1_BASE: u16 = 0x3F8;
@@ -28,19 +33,19 @@ struct SerialHandle;
 impl Handle for SerialHandle {
     fn read(
         &mut self,
-        fd: Option<&crate::fs::fd::FileDescriptor>,
+        fd: Option<&FileDescriptor>,
         output: &mut [u8],
         offset: usize,
-    ) -> Result<usize, crate::system::error::Errno> {
+    ) -> Result<usize, Errno> {
         todo!()
     }
 
     fn write(
         &mut self,
-        fd: Option<&crate::fs::fd::FileDescriptor>,
+        fd: Option<&FileDescriptor>,
         input: &[u8],
         offset: usize,
-    ) -> Result<usize, crate::system::error::Errno> {
+    ) -> Result<usize, Errno> {
         for ch in input {
             // TODO: This can be done better.
             unsafe { write8(COM1_BASE + DATA_REG, *ch) };
@@ -50,15 +55,15 @@ impl Handle for SerialHandle {
 
     fn ioctl(
         &mut self,
-        fd: Option<&crate::fs::fd::FileDescriptor>,
+        fd: Option<&FileDescriptor>,
         request: u32,
         argument: usize,
-    ) -> Result<usize, crate::system::error::Errno> {
-        unimplemented!()
+    ) -> Result<usize, Errno> {
+        Ok((0))
     }
 }
 
 pub fn init() {
-    let mut writer = STDOUT.lock();
-    writer.live = Some(Box::new(SerialHandle));
+    STDOUT.lock().live = Some(Box::new(SerialHandle));
+    log!("Initialized serial\n");
 }
