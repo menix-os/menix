@@ -7,5 +7,4 @@ target_sources(menix PUBLIC
 	stdlib.c
 	stdio.c
 	log.c
-	errno.c
 )

@@ -1,11 +1,10 @@
 // Module loading/unloading
 
+#include <menix/abi/errno.h>
 #include <menix/sys/syscall.h>
 #include <menix/system/arch.h>
 #include <menix/system/module.h>
 #include <menix/thread/process.h>
-
-#include <errno.h>
 
 SYSCALL_IMPL(modadd, const char* path)
 {

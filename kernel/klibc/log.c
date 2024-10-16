@@ -46,12 +46,12 @@ void ktrace()
 		if (module_find_symbol(fp->return_addr, &name, &sym))
 		{
 			// If we have found the corresponding symbol, print its name + offset.
-			kmesg("    [%zu] 0x%p <%s+0x%x>\n", i, fp->return_addr, name, sym->st_value);
+			kmesg("\t[%zu]\t0x%p < %s + 0x%zx >\n", i, fp->return_addr, name, fp->return_addr - sym->st_value);
 		}
 		// If the address is not NULL, but we don't have any matching symbol, just print the address.
 		else if (fp->return_addr)
 		{
-			kmesg("    [%zu] 0x%p < ??? >\n", i, fp->return_addr);
+			kmesg("\t[%zu]\t0x%p < ??? >\n", i, fp->return_addr);
 		}
 	}
 #endif

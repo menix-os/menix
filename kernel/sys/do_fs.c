@@ -1,5 +1,6 @@
 // File system syscalls
 
+#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/fs/fd.h>
 #include <menix/memory/vm.h>
@@ -8,8 +9,6 @@
 #include <menix/system/arch.h>
 #include <menix/thread/process.h>
 #include <menix/thread/spin.h>
-
-#include <errno.h>
 
 // Writes data from a buffer to a file descriptor.
 // `fd`: The file descriptor to write to.

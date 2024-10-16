@@ -1,9 +1,8 @@
 // Abstract syscall selector
 
+#include <menix/abi/errno.h>
 #include <menix/sys/syscall.h>
 #include <menix/util/log.h>
-
-#include <errno.h>
 
 usize syscall_invoke(usize num, usize a0, usize a1, usize a2, usize a3, usize a4, usize a5)
 {

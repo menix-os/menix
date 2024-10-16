@@ -1,5 +1,6 @@
 // Virtual memory management for x86.
 
+#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/pm.h>
@@ -9,7 +10,6 @@
 #include <menix/util/log.h>
 #include <menix/util/self.h>
 
-#include <errno.h>
 #include <string.h>
 
 #define vm_flush_tlb(addr) asm volatile("invlpg (%0)" ::"r"(addr) : "memory")

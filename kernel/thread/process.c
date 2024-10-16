@@ -1,5 +1,6 @@
 // Process creation
 
+#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/fs/vfs.h>
 #include <menix/memory/alloc.h>
@@ -10,7 +11,6 @@
 #include <menix/thread/spin.h>
 #include <menix/util/list.h>
 
-#include <errno.h>
 #include <string.h>
 
 #include "menix/fs/fd.h"
@@ -94,7 +94,7 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
 	if (node == NULL)
 	{
-		proc_log("Unable to read \"%s\": %s\n", path, strerror(thread_errno));
+		proc_log("Unable to read \"%s\": %zu\n", path, thread_errno);
 		spin_free(&process_lock);
 		return false;
 	}
@@ -103,7 +103,7 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 	ElfInfo info = {0};
 	if (elf_load(proc->page_map, node->handle, 0, &info) == false)
 	{
-		proc_log("Unable to load \"%s\": %s\n", path, strerror(thread_errno));
+		proc_log("Unable to load \"%s\": %zu\n", path, thread_errno);
 		return false;
 	}
 
@@ -113,14 +113,14 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 		VfsNode* interp = vfs_get_node(vfs_get_root(), info.ld_path, true);
 		if (interp == NULL)
 		{
-			proc_log("Unable to load interpreter \"%s\" for \"%s\": %s\n", info.ld_path, path, strerror(thread_errno));
+			proc_log("Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			return false;
 		}
 
 		ElfInfo interp_info = {0};
 		if (elf_load(proc->page_map, interp->handle, CONFIG_user_interp_base, &interp_info) == false)
 		{
-			proc_log("Unable to load interpreter \"%s\" for \"%s\": %s\n", info.ld_path, path, strerror(thread_errno));
+			proc_log("Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			return false;
 		}
 	}
@@ -159,7 +159,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
 	if (node == NULL)
 	{
-		proc_log("Unable to read \"%s\": %s\n", path, strerror(thread_errno));
+		proc_log("Unable to read \"%s\": %zu\n", path, thread_errno);
 		spin_free(&process_lock);
 		return false;
 	}
@@ -173,7 +173,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 	ElfInfo info = {0};
 	if (elf_load(map, node->handle, 0, &info) == false)
 	{
-		proc_log("Unable to load \"%s\": %s\n", path, strerror(thread_errno));
+		proc_log("Unable to load \"%s\": %zu\n", path, thread_errno);
 		vm_page_map_destroy(map);
 		spin_free(&process_lock);
 		return false;
@@ -185,7 +185,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 		VfsNode* interp = vfs_get_node(vfs_get_root(), info.ld_path, true);
 		if (interp == NULL)
 		{
-			proc_log("Unable to load interpreter \"%s\" for \"%s\": %s\n", info.ld_path, path, strerror(thread_errno));
+			proc_log("Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			vm_page_map_destroy(map);
 			spin_free(&process_lock);
 			return false;
@@ -194,7 +194,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 		ElfInfo interp_info = {0};
 		if (elf_load(map, interp->handle, CONFIG_user_interp_base, &interp_info) == false)
 		{
-			proc_log("Unable to load interpreter \"%s\" for \"%s\": %s\n", info.ld_path, path, strerror(thread_errno));
+			proc_log("Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			vm_page_map_destroy(map);
 			spin_free(&process_lock);
 			return false;

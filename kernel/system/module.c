@@ -1,5 +1,6 @@
 // Module and sub-system initialization.
 
+#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/fs/vfs.h>
 #include <menix/memory/vm.h>
@@ -10,7 +11,6 @@
 #include <menix/util/log.h>
 #include <menix/util/self.h>
 
-#include <errno.h>
 #include <string.h>
 
 // We need to see the location and size of the .mod section.
