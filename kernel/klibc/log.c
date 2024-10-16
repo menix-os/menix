@@ -1,8 +1,8 @@
 // Kernel error output
 
 #include <menix/common.h>
-#include <menix/drv/module.h>
 #include <menix/system/arch.h>
+#include <menix/system/module.h>
 #include <menix/thread/elf.h>
 #include <menix/thread/spin.h>
 #include <menix/util/log.h>

@@ -10,7 +10,7 @@
 #error This driver is only compatible with x86!
 #endif
 
-#include <menix/drv/module.h>
+#include <menix/system/module.h>
 #include <menix/util/log.h>
 
 #include <io.h>

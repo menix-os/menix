@@ -1,10 +1,10 @@
 // Module and sub-system initialization.
 
 #include <menix/common.h>
-#include <menix/drv/module.h>
-#include <menix/drv/pci/pci.h>
 #include <menix/fs/vfs.h>
 #include <menix/memory/vm.h>
+#include <menix/system/module.h>
+#include <menix/system/pci/pci.h>
 #include <menix/thread/elf.h>
 #include <menix/util/hash_map.h>
 #include <menix/util/log.h>

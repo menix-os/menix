@@ -1,13 +1,13 @@
 // Limine bootloader entry point.
 
 #include <menix/common.h>
-#include <menix/drv/module.h>
 #include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/boot.h>
+#include <menix/system/module.h>
 #include <menix/thread/elf.h>
 #include <menix/thread/scheduler.h>
 #include <menix/util/log.h>

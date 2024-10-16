@@ -1,8 +1,8 @@
 // PCI management
 
 #include <menix/common.h>
-#include <menix/drv/pci/pci.h>
 #include <menix/memory/alloc.h>
+#include <menix/system/pci/pci.h>
 #include <menix/util/list.h>
 #include <menix/util/log.h>
 
@@ -15,8 +15,8 @@ static List(PciDevice*) pci_devices;
 
 void pci_init()
 {
-	list_new(pci_drivers, 128);
-	list_new(pci_devices, 128);
+	list_new(pci_drivers, 32);
+	list_new(pci_devices, 32);
 	pci_scan_devices();
 }
 

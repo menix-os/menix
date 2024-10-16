@@ -2,7 +2,7 @@
 
 #pragma once
 #include <menix/common.h>
-#include <menix/drv/device.h>
+#include <menix/system/device.h>
 #include <menix/util/list.h>
 
 #define pci_log(fmt, ...) kmesg("[PCI]\t" fmt, ##__VA_ARGS__)

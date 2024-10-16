@@ -28,7 +28,8 @@ target modules load --file <file name> --slide <loaded address>
 
 ## Debugging with VSCode
 If you're debugging with VSCode and CodeLLDB, you can use the following example
-for your `.vscode/launch.json`:
+for your `.vscode/launch.json` (Note that you will still have to run the command
+above manually before resuming execution):
 ```json
 {
 	"version": "0.2.0",

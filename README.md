@@ -1,5 +1,5 @@
 # menix
-A minimal and expandable Unix-like operating system.
+A minimal and expandable Unix-like kernel.
 
 menix uses a monolithic architecture for many aspects, but can load drivers
 at runtime via dynamic linking.
@@ -8,8 +8,8 @@ at runtime via dynamic linking.
 > This repository contains only the kernel and its driver daemons.
 > You could run them on their own in an emulator like QEMU,
 > but don't expect much to happen without a full system build and/or bootloader.
-> If you just want to build a bootable image, you might want to check out
-> https://github.com/menix-os/bootstrap instead.
+> If you just want to get a bootable image, you might want to check out
+> **https://github.com/menix-os/bootstrap** instead.
 
 ## Getting started
 Follow the **[build instructions](doc/building.md)** for building the kernel and drivers.

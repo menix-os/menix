@@ -382,6 +382,21 @@ typedef struct
 	u32 n_type;
 } Elf32_Nhdr;
 
+// Auxiliary Vector
+#if CONFIG_bits == 64
+typedef struct
+{
+	u32 atype;
+	u32 avalue;
+} Elf64_Auxv;
+#else
+typedef struct
+{
+	u32 atype;
+	u32 avalue;
+} Elf32_Auxv;
+#endif
+
 typedef struct
 {
 	Elf_Addr entry_point;

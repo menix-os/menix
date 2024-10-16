@@ -5,12 +5,12 @@
 
 // Driver instance.
 typedef struct Device Device;
-typedef struct Device
+struct Device
 {
 	const char* name;	  // The name of the device.
 	Device* parent;		  // Parent of this device, e.g. a bus or controller.
 	void* driver_data;	  // Driver data. Use `dev_{s,g}et_driver_data` to modify.
-} Device;
+};
 
 // Returns the driver_data field.
 void* dev_get_data(Device* dev);

@@ -1,12 +1,12 @@
 // Kernel entry point
 
 #include <menix/common.h>
-#include <menix/drv/module.h>
 #include <menix/fs/ustar.h>
 #include <menix/fs/vfs.h>
 #include <menix/io/terminal.h>
 #include <menix/system/arch.h>
 #include <menix/system/fw.h>
+#include <menix/system/module.h>
 #include <menix/thread/process.h>
 #include <menix/thread/scheduler.h>
 #include <menix/util/log.h>

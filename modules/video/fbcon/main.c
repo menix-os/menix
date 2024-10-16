@@ -1,11 +1,11 @@
 // Terminal Output
 
 #include <menix/common.h>
-#include <menix/drv/module.h>
 #include <menix/fs/devtmpfs.h>
 #include <menix/fs/handle.h>
 #include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
+#include <menix/system/module.h>
 #include <menix/util/builtin_font.h>
 #include <menix/video/fb.h>
 
