@@ -12,6 +12,8 @@
 #include <interrupts.h>
 #include <serial.h>
 
+#include "menix/memory/vm.h"
+
 static BootInfo* boot_info;
 static SpinLock cpu_lock = spin_new();
 
@@ -137,6 +139,10 @@ void arch_early_init(BootInfo* info)
 	gdt_init();
 	idt_init();
 	serial_init();
+
+	// Initialize physical and virtual memory managers.
+	pm_init(info->phys_map, info->memory_map, info->mm_num);
+	vm_init(info->phys_map, info->kernel_phys, info->memory_map, info->mm_num);
 
 	boot_info = info;
 }

@@ -54,8 +54,6 @@ static void limine_init_cpu(struct limine_smp_info* smp_info)
 
 void kernel_boot()
 {
-	arch_early_init(&info);
-
 	// Get the memory map.
 	kassert(memmap_request.response, "Unable to get memory map!");
 	struct limine_memmap_response* const mm_res = memmap_request.response;
@@ -92,9 +90,8 @@ void kernel_boot()
 	info.kernel_virt = (void*)kernel_address_request.response->virtual_base;
 	info.phys_map = (void*)hhdm_request.response->offset;
 
-	// Initialize physical and virtual memory managers.
-	pm_init(info.phys_map, info.memory_map, info.mm_num);
-	vm_init(info.phys_map, info.kernel_phys, info.memory_map, info.mm_num);
+	arch_early_init(&info);
+
 	// Initialize memory allocator.
 	alloc_init();
 
@@ -194,7 +191,7 @@ void kernel_boot()
 
 	// Get modules.
 	if (module_request.response == NULL)
-		boot_log("Unable to get modules, or none were provided!");
+		boot_log("Unable to get modules, or none were provided!\n");
 	else
 	{
 		boot_log("Got modules:\n");
