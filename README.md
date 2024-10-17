@@ -1,8 +1,8 @@
 # menix
 A minimal and expandable Unix-like kernel.
 
-menix uses a monolithic architecture for many aspects, but can load drivers
-at runtime via dynamic linking.
+menix uses a monolithic architecture for many parts of the system, but can
+load drivers as processes at runtime via dynamic linking, similar to an exokernel design.
 
 > [!Important]
 > This repository contains only the kernel and its driver daemons.
