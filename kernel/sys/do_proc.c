@@ -1,6 +1,6 @@
 // Syscalls for process management
 
-#include <menix/sys/syscall.h>
+#include <menix/syscall/syscall.h>
 #include <menix/system/arch.h>
 #include <menix/thread/process.h>
 #include <menix/thread/scheduler.h>

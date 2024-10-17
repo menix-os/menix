@@ -1,7 +1,7 @@
 // uname syscall
 
 #include <menix/common.h>
-#include <menix/sys/syscall.h>
+#include <menix/syscall/syscall.h>
 #include <menix/system/abi.h>
 
 #include <string.h>

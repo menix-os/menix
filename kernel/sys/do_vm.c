@@ -1,7 +1,7 @@
 // Syscalls for virtual memory management.
 
 #include <menix/memory/vm.h>
-#include <menix/sys/syscall.h>
+#include <menix/syscall/syscall.h>
 #include <menix/system/arch.h>
 #include <menix/thread/process.h>
 

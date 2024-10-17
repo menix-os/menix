@@ -1,16 +1,16 @@
 // System call lookup table.
 
 #include <menix/common.h>
-#include <menix/sys/syscall.h>
+#include <menix/syscall/syscall.h>
 
 // Include the syscalls once.
-#include <menix/sys/syscall_list.h>
+#include <menix/syscall/syscall_list.h>
 
 const SyscallFn syscall_table[] = {
 // Include them again, but now as table entry.
 #undef SYSCALL
 #define SYSCALL_TABLE_INSERT
-#include <menix/sys/syscall_list.h>
+#include <menix/syscall/syscall_list.h>
 #undef SYSCALL_TABLE_INSERT
 };
 

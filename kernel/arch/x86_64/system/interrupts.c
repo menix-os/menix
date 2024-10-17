@@ -2,7 +2,7 @@
 
 #include <menix/common.h>
 #include <menix/memory/vm.h>
-#include <menix/sys/syscall.h>
+#include <menix/syscall/syscall.h>
 #include <menix/thread/process.h>
 #include <menix/util/log.h>
 
