@@ -42,7 +42,7 @@ void vm_page_map_destroy(PageMap* map);
 
 // Creates a new mapping for a region of memory.
 // If `page_map` is equal to vm_get_kernel_map(), the returned value may be interpreted as a `void*`.
-VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, int flags, Handle* fd, usize off);
+VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, usize flags, Handle* fd, usize off);
 
 // Changes the protection of an existing virtual address. Returns true if successful.
 bool vm_protect(PageMap* page_map, VirtAddr virt_addr, usize length, usize prot);
@@ -65,6 +65,9 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages);
 // `kernel_addr`: Address returned by vm_map_foreign.
 // `num_pages`: Amount of pages in the original mapping.
 bool vm_unmap_foreign(void* kernel_addr, usize num_pages);
+
+// Checks if an address is mapped with the given flags.
+bool vm_is_mapped(PageMap* page_map, VirtAddr address, usize flags);
 
 // Make user memory inaccessible to the kernel.
 void vm_hide_user();

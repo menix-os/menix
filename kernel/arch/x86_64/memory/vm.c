@@ -343,7 +343,7 @@ static PageFlags vm_posix_prot_to_x86(PageMap* page_map, int prot)
 	return x86_flags;
 }
 
-VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, int flags, Handle* fd, usize off)
+VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, usize flags, Handle* fd, usize off)
 {
 	if (length == 0)
 	{

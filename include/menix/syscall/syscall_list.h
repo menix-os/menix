@@ -15,8 +15,6 @@ SYSCALL(4, close)
 SYSCALL(5, ioctl)
 SYSCALL(6, execve)
 SYSCALL(32, uname)
-SYSCALL(128, modadd)
-SYSCALL(129, modrem)
 
 #define MENIX_BITS_INCLUDE
 #include <bits/syscall_list.h>

@@ -1,17 +1,18 @@
 // uname syscall
 
 #include <menix/common.h>
+#include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
 #include <menix/system/abi.h>
+#include <menix/system/arch.h>
+#include <menix/thread/process.h>
 
 #include <string.h>
-
-#include "menix/memory/vm.h"
 
 SYSCALL_IMPL(uname, struct utsname* buffer)
 {
 	// If we have no buffer to write to, fail.
-	if (buffer == NULL)
+	if (!buffer)
 		return -1;
 
 	vm_user_access({
