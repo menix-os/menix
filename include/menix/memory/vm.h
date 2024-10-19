@@ -17,6 +17,16 @@
 	scope; \
 	vm_hide_user()
 
+typedef enum
+{
+	VMFlags_Read = 1 << 0,
+	VMFlags_Write = 1 << 1,
+	VMFlags_Execute = 1 << 2,
+
+	VMFlags_WriteCombine = 1 << 8,
+	VMFlags_MapFixed = 1 << 9
+} VMFlags;
+
 // Defined in <bits/vm.h> since page maps might require processor specific information.
 typedef struct PageMap PageMap;
 
@@ -42,10 +52,10 @@ void vm_page_map_destroy(PageMap* map);
 
 // Creates a new mapping for a region of memory.
 // If `page_map` is equal to vm_get_kernel_map(), the returned value may be interpreted as a `void*`.
-VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, usize flags, Handle* fd, usize off);
+VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, VMFlags flags, Handle* fd, usize off);
 
 // Changes the protection of an existing virtual address. Returns true if successful.
-bool vm_protect(PageMap* page_map, VirtAddr virt_addr, usize length, usize prot);
+bool vm_protect(PageMap* page_map, VirtAddr virt_addr, usize length, VMFlags flags);
 
 // Unmaps a virtual address. Does nothing if the address isn't mapped. Returns true if successful.
 bool vm_unmap(PageMap* page_map, VirtAddr virt_addr, usize length);
@@ -67,7 +77,7 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages);
 bool vm_unmap_foreign(void* kernel_addr, usize num_pages);
 
 // Checks if an address is mapped with the given flags.
-bool vm_is_mapped(PageMap* page_map, VirtAddr address, usize flags);
+bool vm_is_mapped(PageMap* page_map, VirtAddr address, VMFlags flags);
 
 // Make user memory inaccessible to the kernel.
 void vm_hide_user();

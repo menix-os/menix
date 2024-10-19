@@ -368,12 +368,12 @@ i32 module_load_elf(const char* path)
 			// Set the address of the first mapping.
 			if (base_virt == 0)
 			{
-				base_virt = (void*)vm_map(vm_get_kernel_map(), 0, seg->p_memsz, PROT_READ | PROT_WRITE, 0, NULL, 0);
+				base_virt = (void*)vm_map(vm_get_kernel_map(), 0, seg->p_memsz, VMFlags_Read | VMFlags_Write, NULL, 0);
 			}
 			else
 			{
-				vm_map(vm_get_kernel_map(), (VirtAddr)(base_virt + seg->p_vaddr), seg->p_memsz, PROT_READ | PROT_WRITE,
-					   MAP_FIXED, NULL, 0);
+				vm_map(vm_get_kernel_map(), (VirtAddr)(base_virt + seg->p_vaddr), seg->p_memsz,
+					   VMFlags_Read | VMFlags_Write | VMFlags_MapFixed, NULL, 0);
 			}
 
 			// Relocate the segment addresses.
@@ -499,13 +499,13 @@ i32 module_load_elf(const char* path)
 		if (segment->p_type != PT_LOAD)
 			continue;
 
-		usize prot = PROT_READ;
+		VMFlags flags = VMFlags_Read;
 		if (segment->p_flags & PF_W)
-			prot |= PROT_WRITE;
+			flags |= VMFlags_Write;
 		if (segment->p_flags & PF_X)
-			prot |= PROT_EXEC;
+			flags |= VMFlags_Execute;
 
-		vm_protect(vm_get_kernel_map(), segment->p_vaddr, segment->p_memsz, prot);
+		vm_protect(vm_get_kernel_map(), segment->p_vaddr, segment->p_memsz, flags);
 	}
 
 	// Register all global symbols.

@@ -9,6 +9,7 @@ target_compile_options(common INTERFACE
 	-fno-stack-protector
 	-fno-stack-check
 	-Wall
+	-Werror
 )
 target_link_options(common INTERFACE
 	-nostdlib

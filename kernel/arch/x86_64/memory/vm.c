@@ -12,6 +12,8 @@
 
 #include <string.h>
 
+#include "menix/util/types.h"
+
 #define vm_flush_tlb(addr) asm volatile("invlpg (%0)" ::"r"(addr) : "memory")
 
 SEGMENT_DECLARE_SYMBOLS(text)
@@ -329,21 +331,32 @@ PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 	return (*pte) & 0xFFFFFFFFFF000;
 }
 
+bool vm_is_mapped(PageMap* page_map, VirtAddr address, VMFlags flags)
+{
+	PhysAddr phys = vm_virt_to_phys(page_map, address);
+
+	// Address is not mapped at all.
+	if (phys == ~0UL)
+		return false;
+
+	return true;
+}
+
 // Converts POSIX protection flags to x86 page flags
-static PageFlags vm_posix_prot_to_x86(PageMap* page_map, int prot)
+static PageFlags vm_flags_to_x86(PageMap* page_map, VMFlags flags)
 {
 	PageFlags x86_flags = PAGE_PRESENT;
 	if (page_map != kernel_map)
 		x86_flags |= PAGE_USER_MODE;
-	if (prot & PROT_WRITE)
+	if (flags & VMFlags_Write)
 		x86_flags |= PAGE_READ_WRITE;
-	if ((prot & PROT_EXEC) == 0)
+	if ((flags & VMFlags_Execute) == 0)
 		x86_flags |= PAGE_EXECUTE_DISABLE;
 
 	return x86_flags;
 }
 
-VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, usize flags, Handle* fd, usize off)
+VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, VMFlags flags, Handle* fd, usize off)
 {
 	if (length == 0)
 	{
@@ -352,7 +365,7 @@ VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, usiz
 	}
 
 	// Convert flags to x86 page flags.
-	PageFlags x86_flags = vm_posix_prot_to_x86(page_map, prot);
+	PageFlags x86_flags = vm_flags_to_x86(page_map, flags);
 
 	VirtAddr addr = 0;
 	length = ALIGN_UP(length, CONFIG_page_size);
@@ -399,10 +412,10 @@ VirtAddr vm_map(PageMap* page_map, VirtAddr hint, usize length, usize prot, usiz
 	return addr;
 }
 
-bool vm_protect(PageMap* page_map, VirtAddr virt_addr, usize length, usize prot)
+bool vm_protect(PageMap* page_map, VirtAddr virt_addr, usize length, VMFlags prot)
 {
 	const usize page_count = ALIGN_UP(length, CONFIG_page_size) / CONFIG_page_size;
-	usize x86_flags = vm_posix_prot_to_x86(page_map, prot);
+	usize x86_flags = vm_flags_to_x86(page_map, prot);
 
 	for (usize i = 0; i < page_count; i++)
 		vm_x86_remap_page(page_map, virt_addr + (i * CONFIG_page_size), x86_flags);

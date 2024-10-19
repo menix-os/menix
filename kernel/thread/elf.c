@@ -109,20 +109,20 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 			case PT_LOAD:
 			{
 				// Calculate protetion
-				usize prot = 0;
+				VMFlags flags = VMFlags_MapFixed;
 				if (phdr.p_flags & PF_R)
-					prot |= PROT_READ;
+					flags |= PROT_READ;
 				else
 					elf_log("Potential bug: Program header %zu does not have read permission.\n");
 				if (phdr.p_flags & PF_W)
-					prot |= PROT_WRITE;
+					flags |= PROT_WRITE;
 				if (phdr.p_flags & PF_X)
-					prot |= PROT_EXEC;
+					flags |= PROT_EXEC;
 
 				usize page_count = ALIGN_UP(phdr.p_memsz, CONFIG_page_size) / CONFIG_page_size;
 
 				// Map memory into the page map.
-				if (vm_map(page_map, phdr.p_vaddr + base, page_count * CONFIG_page_size, prot, MAP_FIXED, NULL, 0) ==
+				if (vm_map(page_map, phdr.p_vaddr + base, page_count * CONFIG_page_size, flags, NULL, 0) ==
 					(VirtAddr)MAP_FAILED)
 				{
 					elf_log("Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count, phdr.p_vaddr + base);

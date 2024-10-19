@@ -2,7 +2,9 @@
 
 #include <menix/abi/errno.h>
 #include <menix/common.h>
+#include <menix/fs/fd.h>
 #include <menix/fs/vfs.h>
+#include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/vm.h>
 #include <menix/thread/elf.h>
@@ -12,9 +14,6 @@
 #include <menix/util/list.h>
 
 #include <string.h>
-
-#include "menix/fs/fd.h"
-#include "menix/io/terminal.h"
 
 static SpinLock process_lock = spin_new();
 static usize pid_counter = 0;
@@ -213,7 +212,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 
 	// Map the process stack. Subtract size from the start since stack grows down.
 	vm_map(map, CONFIG_user_stack_addr - CONFIG_user_stack_size, CONFIG_user_stack_size,
-		   PROT_READ | PROT_WRITE | PROT_EXEC, MAP_FIXED, NULL, 0);
+		   VMFlags_Write | VMFlags_Read | VMFlags_Execute | VMFlags_MapFixed, NULL, 0);
 
 	arch_current_cpu()->user_stack = CONFIG_user_stack_addr;
 

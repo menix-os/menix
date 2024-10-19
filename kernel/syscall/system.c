@@ -1,5 +1,3 @@
-// uname syscall
-
 #include <menix/common.h>
 #include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
@@ -26,3 +24,13 @@ SYSCALL_IMPL(uname, struct utsname* buffer)
 
 	return 0;
 }
+
+// Does architecture specific operations.
+SYSCALL_IMPL(archctl, usize operation, usize arg0, usize arg1)
+{
+	// TODO
+	return 0;
+}
+
+// Performs power control operations.
+SYSCALL_STUB(powerctl, usize operation, usize arg0, usize arg1)
