@@ -29,52 +29,41 @@ void scheduler_invoke()
 	asm_int(INT_TIMER);
 }
 
-static void kill_dying_threads()
-{
-	if (spin_acquire(&rope_lock))
-	{
-		Thread* this = hanging_thread_list;
-		while (this)
-		{
-			scheduler_remove_thread(&hanging_thread_list, this);
-			Thread* next = this->next;
-			thread_destroy(this);
-			kfree(this);
-			this = next;
-		}
-		spin_free(&rope_lock);
-	}
-}
-
-static void kill_dying_processes()
-{
-	if (spin_acquire(&rope_lock))
-	{
-		Process* this = hanging_process_list;
-		while (this)
-		{
-			scheduler_remove_process(&hanging_process_list, this);
-			Process* next = this->next;
-			process_destroy(this);
-			kfree(this);
-			this = next;
-		}
-		spin_free(&rope_lock);
-	}
-}
-
 void scheduler_reschedule(Context* regs)
 {
 	asm_interrupt_disable();
 
-	vm_set_page_map(vm_get_kernel_map());
+	vm_set_page_map(vm_kernel_map);
 
 	Cpu* cur = arch_current_cpu();
 	cur->ticks_active++;
 	// timer_stop_sched();
 
-	kill_dying_threads();
-	kill_dying_processes();
+	if (spin_acquire(&rope_lock))
+	{
+		// Kill dying threads.
+		Thread* thread = hanging_thread_list;
+		while (thread)
+		{
+			scheduler_remove_thread(&hanging_thread_list, thread);
+			Thread* next = thread->next;
+			thread_destroy(thread);
+			kfree(thread);
+			thread = next;
+		}
+
+		// Kill dying processes.
+		Process* proc = hanging_process_list;
+		while (proc)
+		{
+			scheduler_remove_process(&hanging_process_list, proc);
+			Process* next = proc->next;
+			process_destroy(proc);
+			kfree(proc);
+			proc = next;
+		}
+		spin_free(&rope_lock);
+	}
 
 	Thread* running = arch_current_cpu()->thread;
 

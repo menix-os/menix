@@ -4,4 +4,5 @@ target_sources(menix PUBLIC
 	alloc.c
 	slab.c
 	pm.c
+	vm.c
 )

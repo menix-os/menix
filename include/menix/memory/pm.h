@@ -35,7 +35,3 @@ PhysAddr pm_alloc(usize amount);
 
 // Frees pages pointed to by `pm_arch_alloc`.
 void pm_free(PhysAddr addr, usize amount);
-
-#define MENIX_BITS_INCLUDE
-#include <bits/pm.h>
-#undef MENIX_BITS_INCLUDE

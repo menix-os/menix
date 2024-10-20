@@ -2,7 +2,7 @@
 
 #pragma once
 
-#define KiB (usize)(1024U)
-#define MiB (usize)(1024U * 1024U)
-#define GiB (usize)(1024U * 1024U * 1024U)
-#define TiB (usize)(1024U * 1024U * 1024U * 1024U)
+#define KiB (usize)(1024ULL)
+#define MiB (usize)(1024ULL * 1024ULL)
+#define GiB (usize)(1024ULL * 1024ULL * 1024ULL)
+#define TiB (usize)(1024ULL * 1024ULL * 1024ULL * 1024ULL)

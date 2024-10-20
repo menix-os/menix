@@ -3,4 +3,5 @@
 include(${MENIX_UTIL_PATH})
 add_architecture(riscv64
 	system/arch.c
+	system/vm.c
 )

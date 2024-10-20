@@ -4,6 +4,7 @@
 #include <menix/memory/alloc.h>
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
+#include <menix/system/module.h>
 #include <menix/thread/elf.h>
 
 #include <string.h>
@@ -112,18 +113,18 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				// Calculate protetion
 				VMProt prot = 0;
 				if (phdr.p_flags & PF_R)
-					prot |= PROT_READ;
+					prot |= VMProt_Read;
 				else
 					elf_log("Potential bug: Program header %zu does not have read permission.\n");
 				if (phdr.p_flags & PF_W)
-					prot |= PROT_WRITE;
+					prot |= VMProt_Write;
 				if (phdr.p_flags & PF_X)
-					prot |= PROT_EXEC;
+					prot |= VMProt_Execute;
 
 				usize page_count = ALIGN_UP(phdr.p_memsz, arch_page_size) / arch_page_size;
 
 				// Map memory into the page map.
-				if (vm_map(page_map, phdr.p_vaddr + base, page_count * arch_page_size, prot, 0) == (VirtAddr)MAP_FAILED)
+				if (vm_map(page_map, phdr.p_vaddr + base, page_count * arch_page_size, prot, 0, VMLevel_0) == false)
 				{
 					elf_log("Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count, phdr.p_vaddr + base);
 					return false;
@@ -131,7 +132,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 
 				// Create temporary mapping in the kernel page map so we can write to it.
 				void* foreign = vm_map_foreign(page_map, phdr.p_vaddr + base, page_count);
-				if (foreign == MAP_FAILED)
+				if (foreign == (void*)~0UL)
 				{
 					elf_log("Failed to load ELF: Could not map foreign memory region!\n");
 					return false;
@@ -163,4 +164,62 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 	info->entry_point = hdr.e_entry;
 
 	return true;
+}
+
+i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data, Elf_Shdr* section_headers,
+				 void* base_virt)
+{
+	Elf_Sym* symbol = symtab_data + ELF64_R_SYM(reloc->r_info);
+	const char* symbol_name = strtab_data + symbol->st_name;
+
+	void* location = base_virt + reloc->r_offset;
+
+	switch (ELF_R_TYPE(reloc->r_info))
+	{
+#if defined(CONFIG_arch_x86_64)
+		case R_X86_64_64:
+		case R_X86_64_GLOB_DAT:
+		case R_X86_64_JUMP_SLOT:
+#elif defined(CONFIG_arch_aarch64)
+#elif defined(CONFIG_arch_riscv64)
+		case R_RISCV_64:
+		case R_RISCV_JUMP_SLOT:
+#elif defined(CONFIG_arch_loongarch64)
+#endif
+		{
+			void* resolved;
+			if (symbol->st_shndx == 0)
+			{
+				Elf_Sym resolved_sym = module_get_symbol(symbol_name);
+				if (resolved_sym.st_value == 0)
+				{
+					kassert(false, "Failed to find symbol \"%s\"!\n", symbol_name);
+					return 1;
+				}
+				resolved = (void*)resolved_sym.st_value;
+			}
+			else
+				resolved = base_virt + symbol->st_value;
+
+			*(void**)location = resolved + reloc->r_addend;
+			break;
+		}
+#if defined(CONFIG_arch_x86_64)
+		case R_X86_64_RELATIVE:
+#elif defined(CONFIG_arch_aarch64)
+#elif defined(CONFIG_arch_riscv64)
+		case R_RISCV_RELATIVE:
+#elif defined(CONFIG_arch_loongarch64)
+#endif
+		{
+			*(void**)location = base_virt + reloc->r_addend;
+			break;
+		}
+		default:
+		{
+			kassert(false, "Unhandled relocation %zu!\n", ELF_R_TYPE(reloc->r_info));
+			return 1;
+		}
+	}
+	return 0;
 }

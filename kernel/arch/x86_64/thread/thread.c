@@ -36,10 +36,10 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 			target->stack = phys_stack;
 			for (usize i = 0; i < CONFIG_user_stack_size / arch_page_size; i++)
 			{
-				// Map all pages.
-				vm_x86_map(proc->page_map, phys_stack + (i * arch_page_size),
-						   (proc->stack_top - CONFIG_user_stack_size) + (i * arch_page_size),
-						   PAGE_READ_WRITE | PAGE_PRESENT | PAGE_USER_MODE);
+				// Map all stack pages.
+				vm_map(proc->page_map, phys_stack + (i * arch_page_size),
+					   (proc->stack_top - CONFIG_user_stack_size) + (i * arch_page_size), VMProt_Read | VMProt_Write,
+					   VMFlags_User, VMLevel_0);
 			}
 
 			target->registers.rsp = proc->stack_top;

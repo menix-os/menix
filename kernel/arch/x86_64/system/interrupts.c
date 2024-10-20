@@ -10,7 +10,7 @@
 #include <idt.h>
 #include <interrupts.h>
 
-#include "bits/asm.h"
+extern bool can_smap;
 
 static const char* exception_names[0x20] = {
 	[0x00] = "Division Error",
@@ -56,11 +56,15 @@ void syscall_handler(Context* regs)
 	thread->registers = *regs;
 	thread->stack = core->user_stack;
 
+	if (can_smap)
+		asm volatile("clac");
+
 	// Execute the system call. For x86, this uses the SysV ABI.
 	// The syscall selector also contains the return value.
-	vm_show_user();
 	regs->rax = syscall_invoke(regs->rax, regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
-	vm_hide_user();
+
+	if (can_smap)
+		asm volatile("stac");
 }
 
 typedef void (*InterruptFn)(Context* regs);

@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-static SpinLock lock;
+static SpinLock pm_lock;
 static BitMap bit_map = NULL;		// This bitmap stores whether a page is in use or not.
 static void* phys_addr = NULL;		// Memory mapped lower 4GiB physical memory. This is only used to store the bitmap.
 static usize num_pages = 0;			// Total amount of available pages.
@@ -18,7 +18,7 @@ static usize last_page = 0;			// The last page marked as used.
 
 void pm_init(void* phys_base, PhysMemory* mem_map, usize num_entries)
 {
-	lock = spin_new();
+	pm_lock = spin_new();
 	phys_addr = phys_base;
 
 	// Check for the highest usable physical memory address, so we know how much memory to allocate for the bitmap.
@@ -128,7 +128,7 @@ next_page:
 
 PhysAddr pm_alloc(usize amount)
 {
-	spin_acquire_force(&lock);
+	spin_acquire_force(&pm_lock);
 
 	PhysAddr mem = get_free_pages(amount, last_page);
 	// If we couldn't find a free region starting at our last page offset, do another check, but from the beginning.
@@ -145,13 +145,13 @@ PhysAddr pm_alloc(usize amount)
 	// Lastly, mark the pages as used now.
 	num_free_pages -= amount;
 
-	spin_free(&lock);
+	spin_free(&pm_lock);
 	return mem;
 }
 
 void pm_free(PhysAddr addr, usize amount)
 {
-	spin_acquire_force(&lock);
+	spin_acquire_force(&pm_lock);
 
 	// Mark the page(s) as free.
 	const usize page_idx = addr / arch_page_size;
@@ -161,5 +161,5 @@ void pm_free(PhysAddr addr, usize amount)
 	}
 	num_free_pages += 1;
 
-	spin_free(&lock);
+	spin_free(&pm_lock);
 }

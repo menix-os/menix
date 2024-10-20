@@ -59,7 +59,7 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 	for (usize i = 0; i < arch_page_size * page_count; i += arch_page_size)
 	{
 		PhysAddr page = pm_alloc(1);
-		if (vm_map(page_map, page, addr + i, vm_prot, 0) == false)
+		if (vm_map(page_map, page, addr + i, vm_prot, 0, VMLevel_0) == false)
 		{
 			pm_free(page, 1);
 			return (VirtAddr)MAP_FAILED;
@@ -85,7 +85,7 @@ SYSCALL_IMPL(mprotect, VirtAddr addr, usize length, int prot)
 
 	for (usize i = 0; i < length; i += arch_page_size)
 	{
-		if (vm_protect(proc->page_map, addr + i, vm_prot) == false)
+		if (vm_protect(proc->page_map, addr + i, vm_prot, VMFlags_User) == false)
 			return (usize)MAP_FAILED;
 	}
 

@@ -369,18 +369,18 @@ i32 module_load_elf(const char* path)
 		if (seg->p_type == PT_LOAD)
 		{
 			// Amount of pages to allocate for this segment.
-			const usize seg_size = ALIGN_UP(seg->p_memsz, arch_page_size);
-			PhysAddr pages = pm_alloc(seg_size / arch_page_size);
+			const usize seg_size = ALIGN_UP(seg->p_memsz, vm_get_page_size(VMLevel_0));
+			PhysAddr pages = pm_alloc(seg_size / vm_get_page_size(VMLevel_0));
 
 			// If not set previously, set the address of the first mapping as the load base.
 			if (base_virt == 0)
 				base_virt = pm_get_phys_base() + pages;
 
 			// Map the physical pages to the requested address.
-			for (usize page = 0; page < pages; page += arch_page_size)
+			for (usize page = 0; page < pages; page += vm_get_page_size(VMLevel_0))
 			{
-				vm_map(vm_get_kernel_map(), pages + page, (VirtAddr)(base_virt + seg->p_vaddr + page),
-					   VMProt_Read | VMProt_Write, 0);
+				vm_map(vm_kernel_map, pages + page, (VirtAddr)(base_virt + seg->p_vaddr + page),
+					   VMProt_Read | VMProt_Write, 0, VMLevel_0);
 			}
 
 			// Relocate the segment addresses.
@@ -513,7 +513,7 @@ i32 module_load_elf(const char* path)
 			prot |= VMProt_Execute;
 
 		for (usize page = 0; page < segment->p_memsz; page += arch_page_size)
-			vm_protect(vm_get_kernel_map(), segment->p_vaddr + page, prot);
+			vm_protect(vm_kernel_map, segment->p_vaddr + page, prot, 0);
 	}
 
 	// Register all global symbols.
@@ -550,7 +550,7 @@ reloc_fail:
 	for (usize i = 0; i < loaded->num_maps; i++)
 	{
 		for (usize page = 0; page < loaded->maps[i].size; page += arch_page_size)
-			vm_unmap(vm_get_kernel_map(), (VirtAddr)loaded->maps[i].address + page);
+			vm_unmap(vm_kernel_map, (VirtAddr)loaded->maps[i].address + page);
 	}
 
 leave:

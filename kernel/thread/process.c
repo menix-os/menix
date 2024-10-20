@@ -166,7 +166,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 	process_setup(proc, true);
 
 	// Create a new page map for the process.
-	PageMap* map = vm_page_map_new();
+	PageMap* map = vm_page_map_new(VMLevel_0);
 
 	// Load the executable into the new page map.
 	ElfInfo info = {0};
@@ -212,7 +212,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 
 	// Map the process stack. Subtract size from the start since stack grows down.
 	vm_map(map, CONFIG_user_stack_addr - CONFIG_user_stack_size, CONFIG_user_stack_size,
-		   VMProt_Write | VMProt_Read | VMProt_Execute, 0);
+		   VMProt_Write | VMProt_Read | VMProt_Execute, 0, VMLevel_0);
 
 	arch_current_cpu()->user_stack = CONFIG_user_stack_addr;
 
@@ -354,4 +354,24 @@ FileDescriptor* process_fd_to_ptr(Process* process, usize fd)
 		}
 	});
 	return file_desc;
+}
+
+void process_setup(Process* proc, bool is_user)
+{
+	if (is_user)
+		proc->page_map = vm_page_map_new(VMLevel_0);
+	else
+		proc->page_map = vm_kernel_map;
+}
+
+void process_fork_context(Process* fork, Process* source)
+{
+	fork->page_map = vm_page_map_fork(source->page_map);
+}
+
+void process_destroy(Process* proc)
+{
+	if (arch_current_cpu()->thread == NULL)
+		vm_set_page_map(vm_kernel_map);
+	vm_page_map_destroy(proc->page_map);
 }
