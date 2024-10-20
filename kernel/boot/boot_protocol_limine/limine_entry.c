@@ -177,8 +177,8 @@ void kernel_boot()
 #ifdef CONFIG_arch_x86_64
 		cpu->lapic_id = smp_cpu->lapic_id;
 		// Allocate stack.
-		cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / PAGE_SIZE) + (u64)pm_get_phys_base();
-		cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / PAGE_SIZE) + (u64)pm_get_phys_base();
+		cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / arch_page_size) + (u64)pm_get_phys_base();
+		cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / arch_page_size) + (u64)pm_get_phys_base();
 		cpu->tss.ist2 = cpu->tss.ist1;
 		if (cpu->lapic_id != info.boot_cpu)
 			smp_cpu->goto_address = limine_init_cpu;

@@ -28,9 +28,9 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 		vm_prot |= VMProt_Execute;
 
 	VirtAddr addr = 0;
-	length = ALIGN_UP(length, PAGE_SIZE);
-	usize page_count = length / PAGE_SIZE;
-	VirtAddr aligned_hint = ALIGN_DOWN(hint, PAGE_SIZE);
+	length = ALIGN_UP(length, arch_page_size);
+	usize page_count = length / arch_page_size;
+	VirtAddr aligned_hint = ALIGN_DOWN(hint, arch_page_size);
 
 	// Check the hint and make changes if necessary.
 	if (flags & MAP_FIXED)

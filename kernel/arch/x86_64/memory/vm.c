@@ -73,7 +73,7 @@ PageMap* vm_page_map_new()
 	result->lock = spin_new();
 	// Allocate the first page table.
 	usize* pt = pm_alloc(1) + pm_get_phys_base();
-	memset(pt, 0, PAGE_SIZE);
+	memset(pt, 0, arch_page_size);
 	result->head = pt;
 
 	// Copy over the upper half data which isn't accessible to user processes.
@@ -107,7 +107,7 @@ static u64* vm_x86_traverse(u64* top, usize idx, bool allocate)
 	if (!allocate)
 		return NULL;
 
-	// Allocate the next level (will contain `PAGE_SIZE/sizeof(u64) == 512` entries).
+	// Allocate the next level (will contain `arch_page_size/sizeof(u64) == 512` entries).
 	PhysAddr next_level = pm_alloc(1);
 	memset(pm_get_phys_base() + next_level, 0, arch_page_size);
 
@@ -382,14 +382,14 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
 
 	for (usize page = 0; page < num_pages; page++)
 	{
-		if (vm_x86_map(kernel_map, vm_virt_to_phys(page_map, foreign_addr + (page * PAGE_SIZE)),
-					   start + (page * PAGE_SIZE), PAGE_READ_WRITE | PAGE_PRESENT) == false)
+		if (vm_x86_map(kernel_map, vm_virt_to_phys(page_map, foreign_addr + (page * arch_page_size)),
+					   start + (page * arch_page_size), PAGE_READ_WRITE | PAGE_PRESENT) == false)
 		{
 			return MAP_FAILED;
 		}
 	}
 
-	kernel_foreign_base += num_pages * PAGE_SIZE;
+	kernel_foreign_base += num_pages * arch_page_size;
 
 	return (void*)start;
 }
@@ -398,7 +398,7 @@ bool vm_unmap_foreign(void* kernel_addr, usize num_pages)
 {
 	for (usize page = 0; page < num_pages; page++)
 	{
-		if (vm_x86_unmap(kernel_map, (VirtAddr)kernel_addr + (page * PAGE_SIZE)) == false)
+		if (vm_x86_unmap(kernel_map, (VirtAddr)kernel_addr + (page * arch_page_size)) == false)
 			return false;
 	}
 	return true;

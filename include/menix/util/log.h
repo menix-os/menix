@@ -6,14 +6,28 @@
 #include <menix/fs/handle.h>
 
 // Expression must be true, or else execution will stop.
+#if !defined(NDEBUG) || CONFIG_force_asserts
 #define kassert(expr, msg, ...) \
-	if (!(expr)) \
+	do \
 	{ \
-		kmesg("Assertion failed:\n\t" msg "\nExpression:\n\t" #expr "\n" __FILE__ ":" __PASTE_STR(__LINE__) "\n", \
-			  ##__VA_ARGS__); \
-		ktrace(); \
-		kabort(); \
-	}
+		if (!(expr)) \
+		{ \
+			kmesg("Assertion failed!\n" \
+				  "[Location]\t%s (%s:%zu)\n" \
+				  "[Expression]\t%s\n" \
+				  "[Message]\t" msg "\n", \
+				  __FUNCTION__, __FILE__, __LINE__, #expr, ##__VA_ARGS__); \
+			ktrace(); \
+			kabort(); \
+		} \
+	} while (0)
+#else
+#define kassert(expr, msg, ...) \
+	do \
+	{ \
+		(void)(expr); \
+	} while (0)
+#endif
 
 typedef struct ATTR(packed) StackFrame
 {
