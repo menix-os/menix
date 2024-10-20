@@ -72,7 +72,7 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 	process_setup(proc, true);
 
 	proc->working_dir = vfs_get_root();
-	proc->stack_top = CONFIG_user_stack_addr;
+	proc->stack_top = CONFIG_user_stack_base;
 
 	// If we have a parent, copy over the parent's attributes.
 	if (parent != NULL)
@@ -207,14 +207,14 @@ bool process_execve(const char* path, char** argv, char** envp)
 	thread->parent->working_dir = node->parent;
 
 	proc->map_base = CONFIG_vm_map_base;
-	proc->stack_top = CONFIG_user_stack_addr;
+	proc->stack_top = CONFIG_user_stack_base;
 	proc->state = ProcessState_Ready;
 
 	// Map the process stack. Subtract size from the start since stack grows down.
-	vm_map(map, CONFIG_user_stack_addr - CONFIG_user_stack_size, CONFIG_user_stack_size,
+	vm_map(map, proc->stack_top - CONFIG_user_stack_size, CONFIG_user_stack_size,
 		   VMProt_Write | VMProt_Read | VMProt_Execute, 0, VMLevel_0);
 
-	arch_current_cpu()->user_stack = CONFIG_user_stack_addr;
+	arch_current_cpu()->user_stack = proc->stack_top;
 
 	thread_execve(proc, thread, info.entry_point, argv, envp);
 
