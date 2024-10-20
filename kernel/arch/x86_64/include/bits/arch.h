@@ -3,6 +3,7 @@
 #pragma once
 
 #include <menix/common.h>
+
 #include <tss.h>
 
 #define MAX_PAGE_SIZE 0x1000
