@@ -7,4 +7,4 @@ services:
       - ../build/bin:/app/build/bin
     environment:
       CC: "clang"
-      ARCH: "x86"
+      ARCH: "x86_64"
