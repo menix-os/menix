@@ -13,6 +13,9 @@
 
 #include <string.h>
 
+#include "menix/memory/pm.h"
+#include "menix/system/arch.h"
+
 // We need to see the location and size of the .mod section.
 SECTION_DECLARE_SYMBOLS(mod)
 
@@ -365,15 +368,19 @@ i32 module_load_elf(const char* path)
 
 		if (seg->p_type == PT_LOAD)
 		{
-			// Set the address of the first mapping.
+			// Amount of pages to allocate for this segment.
+			const usize seg_size = ALIGN_UP(seg->p_memsz, arch_page_size);
+			PhysAddr pages = pm_alloc(seg_size / arch_page_size);
+
+			// If not set previously, set the address of the first mapping as the load base.
 			if (base_virt == 0)
+				base_virt = pm_get_phys_base() + pages;
+
+			// Map the physical pages to the requested address.
+			for (usize page = 0; page < pages; page += arch_page_size)
 			{
-				base_virt = (void*)vm_map(vm_get_kernel_map(), 0, seg->p_memsz, VMFlags_Read | VMFlags_Write, NULL, 0);
-			}
-			else
-			{
-				vm_map(vm_get_kernel_map(), (VirtAddr)(base_virt + seg->p_vaddr), seg->p_memsz,
-					   VMFlags_Read | VMFlags_Write | VMFlags_MapFixed, NULL, 0);
+				vm_map(vm_get_kernel_map(), pages + page, (VirtAddr)(base_virt + seg->p_vaddr + page),
+					   VMProt_Read | VMProt_Write, 0);
 			}
 
 			// Relocate the segment addresses.
@@ -499,13 +506,14 @@ i32 module_load_elf(const char* path)
 		if (segment->p_type != PT_LOAD)
 			continue;
 
-		VMFlags flags = VMFlags_Read;
+		VMProt prot = VMProt_Read;
 		if (segment->p_flags & PF_W)
-			flags |= VMFlags_Write;
+			prot |= VMProt_Write;
 		if (segment->p_flags & PF_X)
-			flags |= VMFlags_Execute;
+			prot |= VMProt_Execute;
 
-		vm_protect(vm_get_kernel_map(), segment->p_vaddr, segment->p_memsz, flags);
+		for (usize page = 0; page < segment->p_memsz; page += arch_page_size)
+			vm_protect(vm_get_kernel_map(), segment->p_vaddr + page, prot);
 	}
 
 	// Register all global symbols.
@@ -541,7 +549,8 @@ i32 module_load_elf(const char* path)
 reloc_fail:
 	for (usize i = 0; i < loaded->num_maps; i++)
 	{
-		vm_unmap(vm_get_kernel_map(), (VirtAddr)loaded->maps[i].address, loaded->maps[i].size);
+		for (usize page = 0; page < loaded->maps[i].size; page += arch_page_size)
+			vm_unmap(vm_get_kernel_map(), (VirtAddr)loaded->maps[i].address + page);
 	}
 
 leave:

@@ -5,6 +5,15 @@ on its own. You can build the kernel with different boot protocols.
 
 Each protocol has its own directory in `kernel/boot/<protocol>`.
 
+The kernel assumes an UEFI environment at all times. It supports being booted
+by real UEFI implementations (e.g. EDK2, coreboot) or pseudo-implementations
+(e.g. U-Boot). That way there is less burden on the kernel to support a wide
+range of hardware, especially for aarch64 and riscv64.
+
+Note that this doesn't automatically mean that the kernel has to rely on
+firmware features like ACPI. You could, for example, boot on a x86_64 machine
+with OpenFirmware and a provided device tree.
+
 Boot order:
 
 - Bootloader loads the kernel into memory.

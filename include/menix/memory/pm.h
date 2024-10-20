@@ -30,7 +30,7 @@ void pm_update_phys_base(void* phys_base);
 // Gets the base address that maps directly to lower memory.
 void* pm_get_phys_base();
 
-// Allocates a given `amount` of `CONFIG_page_size` sized pages.
+// Allocates a given `amount` of `PAGE_SIZE` sized pages.
 PhysAddr pm_alloc(usize amount);
 
 // Frees pages pointed to by `pm_arch_alloc`.

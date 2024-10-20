@@ -2,17 +2,10 @@
 
 #pragma once
 
-#ifndef MENIX_BITS_INCLUDE
-#error "Don't include bits headers directly!"
-#endif
-
 #include <menix/common.h>
-
 #include <tss.h>
 
-#if CONFIG_page_size != 4096
-#error "Page size must be exactly 4KiB!"
-#endif
+#define MAX_PAGE_SIZE 0x1000
 
 // CPUID Leaf 1 ECX
 #define CPUID_1C_SSE3		(1 << 0)
@@ -213,7 +206,7 @@
 // 0x20 - 0x2F Remapped PIC
 #define INT_TIMER 0x30
 
-struct CpuRegisters
+struct Context
 {
 	u64 r15;
 	u64 r14;

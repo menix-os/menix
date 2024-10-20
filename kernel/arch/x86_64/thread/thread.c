@@ -19,7 +19,7 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 	target->kernel_stack += CONFIG_kernel_stack_size;
 
 	// Allocate memory for the FPU state.
-	target->saved_fpu = pm_alloc(ROUND_UP(arch_current_cpu()->fpu_size, CONFIG_page_size)) + pm_get_phys_base();
+	target->saved_fpu = pm_alloc(ROUND_UP(arch_current_cpu()->fpu_size, arch_page_size)) + pm_get_phys_base();
 	memset(target->saved_fpu, 0, arch_current_cpu()->fpu_size);
 
 	Process* proc = target->parent;
@@ -32,14 +32,14 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 		// Check if we have to allocate a stack.
 		if (stack == 0)
 		{
-			PhysAddr phys_stack = pm_alloc(CONFIG_user_stack_size / CONFIG_page_size);
+			PhysAddr phys_stack = pm_alloc(CONFIG_user_stack_size / arch_page_size);
 			target->stack = phys_stack;
-			for (usize i = 0; i < CONFIG_user_stack_size / CONFIG_page_size; i++)
+			for (usize i = 0; i < CONFIG_user_stack_size / arch_page_size; i++)
 			{
 				// Map all pages.
-				vm_x86_map_page(proc->page_map, phys_stack + (i * CONFIG_page_size),
-								(proc->stack_top - CONFIG_user_stack_size) + (i * CONFIG_page_size),
-								PAGE_READ_WRITE | PAGE_PRESENT | PAGE_USER_MODE);
+				vm_x86_map(proc->page_map, phys_stack + (i * arch_page_size),
+						   (proc->stack_top - CONFIG_user_stack_size) + (i * arch_page_size),
+						   PAGE_READ_WRITE | PAGE_PRESENT | PAGE_USER_MODE);
 			}
 
 			target->registers.rsp = proc->stack_top;
@@ -164,5 +164,5 @@ void thread_setup_execve(Thread* target, VirtAddr start, char** argv, char** env
 void thread_destroy(Thread* thread)
 {
 	kfree((void*)(thread->kernel_stack - CONFIG_kernel_stack_size));
-	pm_free(thread->saved_fpu - pm_get_phys_base(), ROUND_UP(arch_current_cpu()->fpu_size, CONFIG_page_size));
+	pm_free(thread->saved_fpu - pm_get_phys_base(), ROUND_UP(arch_current_cpu()->fpu_size, arch_page_size));
 }

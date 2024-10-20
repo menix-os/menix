@@ -122,7 +122,7 @@ static TmpHandle* devtmpfs_handle_new(FileSystem* fs, mode_t mode)
 	// If the file is a regular file, allocate memory for it.
 	if (S_ISREG(mode))
 	{
-		result->buffer_cap = CONFIG_page_size;
+		result->buffer_cap = arch_page_size;
 		result->buffer = kmalloc(result->buffer_cap);
 	}
 
@@ -209,7 +209,7 @@ void devtmpfs_register_default()
 	null->write = null_write;
 	null->stat.st_size = 0;
 	null->stat.st_blocks = 0;
-	null->stat.st_blksize = CONFIG_page_size;
+	null->stat.st_blksize = arch_page_size;
 	null->stat.st_rdev = handle_new_device();
 	null->stat.st_mode = 0666 | S_IFCHR;
 	devtmpfs_add_device(null, "null");
@@ -219,7 +219,7 @@ void devtmpfs_register_default()
 	full->write = full_write;
 	full->stat.st_size = 0;
 	full->stat.st_blocks = 0;
-	full->stat.st_blksize = CONFIG_page_size;
+	full->stat.st_blksize = arch_page_size;
 	full->stat.st_rdev = handle_new_device();
 	full->stat.st_mode = 0666 | S_IFCHR;
 	devtmpfs_add_device(full, "full");
@@ -229,7 +229,7 @@ void devtmpfs_register_default()
 	zero->write = zero_write;
 	zero->stat.st_size = 0;
 	zero->stat.st_blocks = 0;
-	zero->stat.st_blksize = CONFIG_page_size;
+	zero->stat.st_blksize = arch_page_size;
 	zero->stat.st_rdev = handle_new_device();
 	zero->stat.st_mode = 0666 | S_IFCHR;
 	devtmpfs_add_device(zero, "zero");

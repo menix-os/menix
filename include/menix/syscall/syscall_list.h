@@ -48,7 +48,3 @@ SYSCALL(37, getsockname)
 SYSCALL(38, uname)
 SYSCALL(39, powerctl)
 SYSCALL(40, archctl)
-
-#define MENIX_BITS_INCLUDE
-#include <bits/syscall_list.h>
-#undef MENIX_BITS_INCLUDE

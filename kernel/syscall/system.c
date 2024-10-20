@@ -13,15 +13,12 @@ SYSCALL_IMPL(uname, struct utsname* buffer)
 	if (!buffer)
 		return -1;
 
-	vm_user_access({
-		fixed_strncpy(buffer->sysname, "menix");
-		// TODO: Get actual network node.
-		fixed_strncpy(buffer->nodename, "localhost");
-		fixed_strncpy(buffer->release, CONFIG_release);
-		fixed_strncpy(buffer->version, CONFIG_version);
-		fixed_strncpy(buffer->machine, CONFIG_arch);
-	});
-
+	fixed_strncpy(buffer->sysname, "menix");
+	// TODO: Get actual network node.
+	fixed_strncpy(buffer->nodename, "localhost");
+	fixed_strncpy(buffer->release, CONFIG_release);
+	fixed_strncpy(buffer->version, CONFIG_version);
+	fixed_strncpy(buffer->machine, CONFIG_arch);
 	return 0;
 }
 

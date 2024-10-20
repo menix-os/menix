@@ -13,7 +13,7 @@
 SpinLock rope_lock = spin_new();
 SpinLock wakeup_lock = spin_new();
 
-extern void scheduler_context_switch(CpuRegisters* registers);
+extern void scheduler_context_switch(Context* registers);
 
 void scheduler_pause()
 {
@@ -63,7 +63,7 @@ static void kill_dying_processes()
 	}
 }
 
-void scheduler_reschedule(CpuRegisters* regs)
+void scheduler_reschedule(Context* regs)
 {
 	asm_interrupt_disable();
 

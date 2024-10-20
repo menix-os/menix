@@ -10,4 +10,4 @@
 #define INT_HANDLER(num)	  interrupt_##num
 #define INT_HANDLER_DECL(num) extern void INT_HANDLER(num)(void)
 
-void interrupt_register(usize idx, void (*handler)(CpuRegisters*));
+void interrupt_register(usize idx, void (*handler)(Context*));

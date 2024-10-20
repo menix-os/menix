@@ -13,7 +13,7 @@ SYSCALL_IMPL(write, u32 fd, void* buf, usize size)
 		return 0;
 
 	Process* process = arch_current_cpu()->thread->parent;
-	if (!vm_is_mapped(process->page_map, (VirtAddr)buf, VMFlags_Write))
+	if (!vm_is_mapped(process->page_map, (VirtAddr)buf, VMProt_Write))
 		return -ENOMEM;
 
 	FileDescriptor* file_desc = process_fd_to_ptr(process, fd);
@@ -27,8 +27,7 @@ SYSCALL_IMPL(write, u32 fd, void* buf, usize size)
 		return 0;
 
 	// Write to the handle.
-	isize result = 0;
-	vm_user_access({ result = handle->write(handle, file_desc, buf, size, file_desc->offset); });
+	isize result = handle->write(handle, file_desc, buf, size, file_desc->offset);
 
 	return result;
 }
@@ -45,7 +44,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 	if (path == NULL)
 	{
 		thread_errno = ENOENT;
-		return -1;
+		return -ENOENT;
 	}
 
 	// Get parent descriptor.
@@ -68,7 +67,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 	if (parent != NULL)
 	{
 		VfsNode* node;
-		vm_user_access({ node = vfs_get_node(parent, path, true); });
+		node = vfs_get_node(parent, path, true);
 		if (node == NULL)
 			return -1;
 
@@ -124,8 +123,7 @@ SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
 		return 0;
 
 	// Read from the handle.
-	isize result = 0;
-	vm_user_access({ result = handle->read(handle, file_desc, buf, size, file_desc->offset); });
+	isize result = handle->read(handle, file_desc, buf, size, file_desc->offset);
 
 	return result;
 }

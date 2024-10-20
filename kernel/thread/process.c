@@ -212,7 +212,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 
 	// Map the process stack. Subtract size from the start since stack grows down.
 	vm_map(map, CONFIG_user_stack_addr - CONFIG_user_stack_size, CONFIG_user_stack_size,
-		   VMFlags_Write | VMFlags_Read | VMFlags_Execute | VMFlags_MapFixed, NULL, 0);
+		   VMProt_Write | VMProt_Read | VMProt_Execute, 0);
 
 	arch_current_cpu()->user_stack = CONFIG_user_stack_addr;
 

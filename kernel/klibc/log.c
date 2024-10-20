@@ -31,7 +31,7 @@ void ktrace()
 #ifdef CONFIG_ktrace_registers
 	// Write out registers.
 	kmesg("Registers:\n");
-	CpuRegisters regs;
+	Context regs;
 	arch_get_registers(&regs);
 	arch_dump_registers(&regs);
 #endif

@@ -1,6 +1,7 @@
 // x86 platform initialization
 
 #include <menix/memory/alloc.h>
+#include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/fw.h>
 #include <menix/thread/spin.h>
@@ -11,8 +12,6 @@
 #include <idt.h>
 #include <interrupts.h>
 #include <serial.h>
-
-#include "menix/memory/vm.h"
 
 static BootInfo* boot_info;
 static SpinLock cpu_lock = spin_new();
@@ -142,7 +141,7 @@ void arch_early_init(BootInfo* info)
 
 	// Initialize physical and virtual memory managers.
 	pm_init(info->phys_map, info->memory_map, info->mm_num);
-	vm_init(info->phys_map, info->kernel_phys, info->memory_map, info->mm_num);
+	vm_init(info->kernel_phys, info->memory_map, info->mm_num);
 
 	boot_info = info;
 }
@@ -180,7 +179,7 @@ Cpu* arch_current_cpu()
 #endif
 }
 
-void arch_get_registers(CpuRegisters* regs)
+void arch_get_registers(Context* regs)
 {
 	if (regs == NULL)
 		return;
@@ -205,7 +204,7 @@ void arch_get_registers(CpuRegisters* regs)
 	asm_get_register(regs->ss, ss);
 }
 
-void arch_dump_registers(CpuRegisters* regs)
+void arch_dump_registers(Context* regs)
 {
 	kmesg("rax: 0x%p rbx: 0x%p rcx: 0x%p rdx: 0x%p\n", regs->rax, regs->rbx, regs->rcx, regs->rdx);
 	kmesg("rsi: 0x%p rdi: 0x%p rbp: 0x%p rsp: 0x%p\n", regs->rsi, regs->rdi, regs->rbp, regs->rsp);

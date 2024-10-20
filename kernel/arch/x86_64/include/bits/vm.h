@@ -2,10 +2,6 @@
 
 #pragma once
 
-#ifndef MENIX_BITS_INCLUDE
-#error "Don't include bits headers directly!"
-#endif
-
 #include <menix/common.h>
 #include <menix/memory/pm.h>
 #include <menix/system/arch.h>
@@ -36,14 +32,15 @@ typedef struct PageMap
 	SpinLock lock;
 } PageMap;
 
-// Maps a virtual address to physical memory. Returns true if successful.
-bool vm_x86_map_page(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, usize flags);
+// Make user memory inaccessible to the kernel.
+void vm_hide_user();
 
-// Redefines an existing mapping. Returns true if successful.
-bool vm_x86_remap_page(PageMap* page_map, VirtAddr virt_addr, usize flags);
+// Unhide user memory so that it's accessible to the kernel.
+void vm_show_user();
 
-// Destroys an existing mapping. Returns true if successful.
-bool vm_x86_unmap_page(PageMap* page_map, VirtAddr virt_addr);
+bool vm_x86_map(PageMap* page_map, VirtAddr phys_addr, VirtAddr virt_addr, usize flags);
+bool vm_x86_remap(PageMap* page_map, VirtAddr virt_addr, usize flags);
+bool vm_x86_unmap(PageMap* page_map, VirtAddr virt_addr);
 
 // Page fault interrupt handler. Set by vm_init().
-void interrupt_pf_handler(CpuRegisters* regs);
+void interrupt_pf_handler(Context* regs);

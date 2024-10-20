@@ -3,6 +3,7 @@
 #include <menix/common.h>
 #include <menix/memory/pm.h>
 #include <menix/memory/slab.h>
+#include <menix/system/arch.h>
 
 #include <string.h>
 
@@ -16,7 +17,7 @@ static void slab_new(Slab* slab, usize size)
 	slab->ent_size = size;
 
 	const usize offset = ALIGN_UP(sizeof(SlabHeader), size);
-	const usize available_size = CONFIG_page_size - offset;
+	const usize available_size = arch_page_size - offset;
 
 	SlabHeader* ptr = (SlabHeader*)slab->head;
 	ptr->slab = slab;
@@ -97,7 +98,7 @@ void* slab_alloc(usize size)
 		return slab_do_alloc(slab);
 
 	// Get how many pages have to be allocated in order to fit `size`.
-	usize num_pages = ROUND_UP(size, CONFIG_page_size);
+	usize num_pages = ROUND_UP(size, arch_page_size);
 	// Allocate the pages plus an additional page for metadata.
 	PhysAddr ret = pm_alloc(num_pages + 1);
 	// If the allocation failed, return NULL.
@@ -110,7 +111,7 @@ void* slab_alloc(usize size)
 	info->num_pages = num_pages;
 	info->size = size;
 	// Skip the first page and return the next one.
-	return (void*)(ret + CONFIG_page_size);
+	return (void*)(ret + arch_page_size);
 }
 
 void* slab_realloc(void* old, usize new_bytes)
@@ -120,10 +121,10 @@ void* slab_realloc(void* old, usize new_bytes)
 		return slab_alloc(new_bytes);
 
 	// If the address is page aligned.
-	if ((usize)old == ALIGN_DOWN((usize)old, CONFIG_page_size))
+	if ((usize)old == ALIGN_DOWN((usize)old, arch_page_size))
 	{
-		SlabInfo* info = (SlabInfo*)(old - CONFIG_page_size);
-		if (ROUND_UP(info->size, CONFIG_page_size) == ROUND_UP(new_bytes, CONFIG_page_size))
+		SlabInfo* info = (SlabInfo*)(old - arch_page_size);
+		if (ROUND_UP(info->size, arch_page_size) == ROUND_UP(new_bytes, arch_page_size))
 		{
 			info->size = new_bytes;
 			return old;
@@ -166,13 +167,13 @@ void slab_free(void* addr)
 		return;
 
 	// If the address is page aligned.
-	if ((usize)addr == ALIGN_DOWN((usize)addr, CONFIG_page_size))
+	if ((usize)addr == ALIGN_DOWN((usize)addr, arch_page_size))
 	{
-		SlabInfo* info = (SlabInfo*)(addr - CONFIG_page_size);
+		SlabInfo* info = (SlabInfo*)(addr - arch_page_size);
 		pm_free(((PhysAddr)info - (PhysAddr)pm_get_phys_base()), info->num_pages + 1);
 		return;
 	}
 
-	SlabHeader* header = (SlabHeader*)(ALIGN_DOWN((usize)addr, CONFIG_page_size));
+	SlabHeader* header = (SlabHeader*)(ALIGN_DOWN((usize)addr, arch_page_size));
 	slab_do_free(header->slab, addr);
 }

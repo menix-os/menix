@@ -27,11 +27,13 @@ typedef struct Cpu
 	usize fpu_size;					   // Size of the FPU in bytes.
 	void (*fpu_save)(void* dst);	   // Function to call when saving the FPU state.
 	void (*fpu_restore)(void* dst);	   // Function to call when restoring the FPU state.
+#elif defined(CONFIG_arch_riscv64)
+	u32 hart_id;	// Hart CPU ID.
 #endif
 } Cpu;
 
 // Code-visible CPU registers.
-typedef struct CpuRegisters CpuRegisters;
+typedef struct Context Context;
 
 // Initializes the platform for use by the kernel and boot routines.
 void arch_early_init(BootInfo* info);
@@ -51,10 +53,17 @@ void arch_shutdown(BootInfo* info);
 void arch_stop(BootInfo* info);
 
 // Writes the contents of all registers to regs.
-void arch_get_registers(CpuRegisters* regs);
+void arch_get_registers(Context* regs);
 
 // Writes all registers to the current output stream.
-void arch_dump_registers(CpuRegisters* regs);
+void arch_dump_registers(Context* regs);
 
 // Gets processor metadata.
 Cpu* arch_current_cpu();
+
+// The size of a single page.
+#ifdef CONFIG_dynamic_page_size
+extern usize arch_page_size;
+#else
+#define arch_page_size ((usize)(0x1000))
+#endif

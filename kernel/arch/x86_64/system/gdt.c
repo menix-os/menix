@@ -7,7 +7,7 @@
 #include <gdt.h>
 #include <tss.h>
 
-ATTR(aligned(CONFIG_page_size)) Gdt gdt_table;
+ATTR(aligned(0x1000)) Gdt gdt_table;
 ATTR(aligned(0x10)) TaskStateSegment tss;
 ATTR(aligned(0x10)) GdtRegister gdtr = {
 	.limit = sizeof(gdt_table) - 1,

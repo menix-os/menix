@@ -48,7 +48,7 @@ static isize tmpfs_handle_write(struct Handle* self, FileDescriptor* fd, const v
 	{
 		usize new_capacity = handle->buffer_cap;
 		if (new_capacity == 0)
-			new_capacity = CONFIG_page_size;
+			new_capacity = arch_page_size;
 		while (offset + amount >= new_capacity)
 			new_capacity *= 2;
 
@@ -88,7 +88,7 @@ static TmpHandle* tmpfs_handle_new(FileSystem* fs, mode_t mode)
 	// If the file is a regular file, allocate memory for it.
 	if (S_ISREG(mode))
 	{
-		result->buffer_cap = CONFIG_page_size;
+		result->buffer_cap = arch_page_size;
 		result->buffer = kmalloc(result->buffer_cap);
 	}
 

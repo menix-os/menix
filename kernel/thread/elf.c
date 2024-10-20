@@ -3,6 +3,7 @@
 #include <menix/common.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/vm.h>
+#include <menix/system/arch.h>
 #include <menix/thread/elf.h>
 
 #include <string.h>
@@ -109,21 +110,20 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 			case PT_LOAD:
 			{
 				// Calculate protetion
-				VMFlags flags = VMFlags_MapFixed;
+				VMProt prot = 0;
 				if (phdr.p_flags & PF_R)
-					flags |= PROT_READ;
+					prot |= PROT_READ;
 				else
 					elf_log("Potential bug: Program header %zu does not have read permission.\n");
 				if (phdr.p_flags & PF_W)
-					flags |= PROT_WRITE;
+					prot |= PROT_WRITE;
 				if (phdr.p_flags & PF_X)
-					flags |= PROT_EXEC;
+					prot |= PROT_EXEC;
 
-				usize page_count = ALIGN_UP(phdr.p_memsz, CONFIG_page_size) / CONFIG_page_size;
+				usize page_count = ALIGN_UP(phdr.p_memsz, arch_page_size) / arch_page_size;
 
 				// Map memory into the page map.
-				if (vm_map(page_map, phdr.p_vaddr + base, page_count * CONFIG_page_size, flags, NULL, 0) ==
-					(VirtAddr)MAP_FAILED)
+				if (vm_map(page_map, phdr.p_vaddr + base, page_count * arch_page_size, prot, 0) == (VirtAddr)MAP_FAILED)
 				{
 					elf_log("Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count, phdr.p_vaddr + base);
 					return false;

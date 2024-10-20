@@ -13,8 +13,7 @@ target_compile_options(common INTERFACE
 )
 target_link_options(common INTERFACE
 	-nostdlib
-	-nostartfiles
-	"SHELL:-z max-page-size=${page_size}"
+	"SHELL:-z max-page-size=${max_page_size}"
 	"SHELL:-z noexecstack"
 	-Wl,--build-id=none
 )

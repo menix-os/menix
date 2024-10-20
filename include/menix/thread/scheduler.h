@@ -26,7 +26,7 @@ void scheduler_invoke();
 
 // Implementation of the scheduler. Not meant to be called directly.
 // ? Defined per architecture.
-void scheduler_reschedule(CpuRegisters* regs);
+void scheduler_reschedule(Context* regs);
 
 // Returns the next thread that's ready to get execution time.
 // `list`: The head of the list to check.

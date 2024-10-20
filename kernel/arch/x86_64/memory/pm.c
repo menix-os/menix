@@ -35,8 +35,8 @@ void pm_init(void* phys_base, PhysMemory* mem_map, usize num_entries)
 			highest = region_end;
 	}
 
-	num_pages = highest / CONFIG_page_size;
-	const usize map_size = ALIGN_UP(num_pages / 8, CONFIG_page_size);
+	num_pages = highest / arch_page_size;
+	const usize map_size = ALIGN_UP(num_pages / 8, arch_page_size);
 
 	// Get a memory region large enough to contain the bitmap.
 	for (usize i = 0; i < num_entries; i++)
@@ -65,16 +65,15 @@ void pm_init(void* phys_base, PhysMemory* mem_map, usize num_entries)
 		if (mem_map[i].usage != PhysMemoryUsage_Free)
 			continue;
 
-		for (usize j = 0; j < mem_map[i].length; j += CONFIG_page_size)
+		for (usize j = 0; j < mem_map[i].length; j += arch_page_size)
 		{
 			// Mark the actual free pages as unused.
-			bitmap_clear(bit_map, (mem_map[i].address + j) / CONFIG_page_size);
+			bitmap_clear(bit_map, (mem_map[i].address + j) / arch_page_size);
 			num_free_pages++;
 		}
 	}
 
-	arch_log("Initialized physical memory management, free memory = %u MiB\n",
-			 (num_free_pages * CONFIG_page_size) / MiB);
+	arch_log("Initialized physical memory management, free memory = %u MiB\n", (num_free_pages * arch_page_size) / MiB);
 }
 
 void pm_update_phys_base(void* phys_base)
@@ -118,7 +117,7 @@ static PhysAddr get_free_pages(usize amount, usize start)
 		}
 
 		last_page = i + amount;
-		return (PhysAddr)(i * CONFIG_page_size);
+		return (PhysAddr)(i * arch_page_size);
 
 next_page:
 		i++;
@@ -155,7 +154,7 @@ void pm_free(PhysAddr addr, usize amount)
 	spin_acquire_force(&lock);
 
 	// Mark the page(s) as free.
-	const usize page_idx = addr / CONFIG_page_size;
+	const usize page_idx = addr / arch_page_size;
 	for (usize i = page_idx; i < page_idx + amount; i++)
 	{
 		bitmap_clear(bit_map, i);

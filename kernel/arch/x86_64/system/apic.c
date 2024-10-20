@@ -210,7 +210,7 @@ void apic_send_eoi()
 	lapic_write(0xB0, 0);
 }
 
-void timer_handler(CpuRegisters* regs)
+void timer_handler(Context* regs)
 {
 	asm_interrupt_disable();
 

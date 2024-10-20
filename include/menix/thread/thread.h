@@ -26,15 +26,15 @@ typedef struct Thread Thread;
 // Thread information.
 typedef struct Thread
 {
-	usize id;				   // Thread ID.
-	SpinLock lock;			   // Access lock.
-	bool can_exec;			   // If the thread is ready for execution.
-	ThreadState state;		   // Current state of the thread.
-	CpuRegisters registers;	   // The register state at the time of context switch.
-	VirtAddr stack;			   // The stack pointer.
-	VirtAddr kernel_stack;	   // The kernel stack pointer.
-	usize errno;			   // `errno` value.
-	usize runtime;			   // Amount of ticks the thread has been alive.
+	usize id;				  // Thread ID.
+	SpinLock lock;			  // Access lock.
+	bool can_exec;			  // If the thread is ready for execution.
+	ThreadState state;		  // Current state of the thread.
+	Context registers;		  // The register state at the time of context switch.
+	VirtAddr stack;			  // The stack pointer.
+	VirtAddr kernel_stack;	  // The kernel stack pointer.
+	usize errno;			  // `errno` value.
+	usize runtime;			  // Amount of ticks the thread has been alive.
 
 	Process* parent;	// The parent process of this thread.
 	Thread* next;		// Linked list entry for the next thread.

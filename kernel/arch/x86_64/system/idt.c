@@ -10,7 +10,7 @@
 #include <io.h>
 #include <pic.h>
 
-ATTR(aligned(CONFIG_page_size)) static IdtDesc idt_table[IDT_MAX_SIZE];
+ATTR(aligned(0x1000)) static IdtDesc idt_table[IDT_MAX_SIZE];
 ATTR(aligned(0x10)) static IdtRegister idtr;
 
 void idt_set(u8 idx, void* handler, u8 type_attr)

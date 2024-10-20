@@ -42,13 +42,13 @@ static const char* exception_names[0x20] = {
 	[0x1F] = NULL,	  // Reserved
 };
 
-static void interrupt_ud_handler(CpuRegisters* regs)
+static void interrupt_ud_handler(Context* regs)
 {
 	// Make sure we're in user mode, otherwise we have to crash.
 	kassert(regs->cs & CPL_USER, "Invalid opcode at 0x%zx on core %zu!", regs->rip, arch_current_cpu()->id);
 }
 
-void syscall_handler(CpuRegisters* regs)
+void syscall_handler(Context* regs)
 {
 	// Save the registers.
 	Cpu* const core = arch_current_cpu();
@@ -58,10 +58,12 @@ void syscall_handler(CpuRegisters* regs)
 
 	// Execute the system call. For x86, this uses the SysV ABI.
 	// The syscall selector also contains the return value.
+	vm_show_user();
 	regs->rax = syscall_invoke(regs->rax, regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
+	vm_hide_user();
 }
 
-typedef void (*InterruptFn)(CpuRegisters* regs);
+typedef void (*InterruptFn)(Context* regs);
 
 static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
 	[0x06] = interrupt_ud_handler,
@@ -70,7 +72,7 @@ static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
 	[0x80] = syscall_handler,
 };
 
-void interrupt_register(usize idx, void (*handler)(CpuRegisters*))
+void interrupt_register(usize idx, void (*handler)(Context*))
 {
 	asm_interrupt_disable();
 	if (idx > IDT_MAX_SIZE)
@@ -84,7 +86,7 @@ void interrupt_register(usize idx, void (*handler)(CpuRegisters*))
 	asm_interrupt_enable();
 }
 
-void interrupt_handler(CpuRegisters* regs)
+void interrupt_handler(Context* regs)
 {
 	// If we have a handler for this interrupt, call it.
 	if (regs->isr < ARRAY_SIZE(exception_handlers) && exception_handlers[regs->isr])
