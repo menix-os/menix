@@ -46,7 +46,7 @@ void arch_init(BootInfo* info);
 // `boot`: Information about the boot CPU.
 void arch_init_cpu(Cpu* info, Cpu* boot);
 
-// Safely powers off the machine.
+// Safely powers off the machine. This is usually called after fw_shutdown.
 void arch_shutdown(BootInfo* info);
 
 // Halts all CPUs.

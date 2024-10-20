@@ -156,8 +156,18 @@ void kernel_boot()
 	info.cpu_num = smp_res->cpu_count;
 	boot_log("Initializing %zu cores.\n", info.cpu_num);
 	info.cpu_active = 0;
-	info.boot_cpu = smp_res->bsp_lapic_id;	  // Mark the boot CPU.
+
+	// Mark the boot CPU.
+#ifdef CONFIG_arch_x86_64
+	info.boot_cpu = smp_res->bsp_lapic_id;
+#elif defined(CONFIG_arch_riscv64)
+	info.boot_cpu = smp_res->bsp_hartid;
+#endif
+
+	// Allocate CPU info.
 	info.cpus = kzalloc(sizeof(Cpu) * info.cpu_num);
+
+	// Start all cores.
 	for (usize i = 0; i < info.cpu_num; i++)
 	{
 		struct limine_smp_info* smp_cpu = smp_res->cpus[i];
@@ -167,14 +177,20 @@ void kernel_boot()
 #ifdef CONFIG_arch_x86_64
 		cpu->lapic_id = smp_cpu->lapic_id;
 		// Allocate stack.
-		cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / CONFIG_page_size) + (u64)pm_get_phys_base();
-		cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / CONFIG_page_size) + (u64)pm_get_phys_base();
+		cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / PAGE_SIZE) + (u64)pm_get_phys_base();
+		cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / PAGE_SIZE) + (u64)pm_get_phys_base();
 		cpu->tss.ist2 = cpu->tss.ist1;
-#endif
 		if (cpu->lapic_id != info.boot_cpu)
 			smp_cpu->goto_address = limine_init_cpu;
 		else
 			limine_init_cpu(smp_cpu);
+#elif defined(CONFIG_arch_riscv64)
+		cpu->hart_id = smp_cpu->hartid;
+		if (cpu->hart_id != info.boot_cpu)
+			smp_cpu->goto_address = limine_init_cpu;
+		else
+			limine_init_cpu(smp_cpu);
+#endif
 	}
 	while (info.cpu_active != info.cpu_num)
 	{
