@@ -19,7 +19,6 @@ cmake -D CMAKE_BUILD_TYPE=Release -B build -D MENIX_ARCH="<arch>" -D CMAKE_C_COM
 This will generate `config.cmake` for you with default values. That file is
 used to generate the C headers used by the kernel and components.
 
-> [!Note]
 > If you already have a `config.cmake` file, CMake won't overwrite it.
 > If you have made changes to the build system, you need to manually delete it.
 

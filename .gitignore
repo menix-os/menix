@@ -34,3 +34,6 @@ deps/
 # Rust files
 *target/
 *Cargo.lock
+
+# mdbook
+doc/book
