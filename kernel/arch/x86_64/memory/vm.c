@@ -349,13 +349,7 @@ void interrupt_pf_handler(Context* regs)
 	// Present
 	if (BIT(regs->error, 0))
 	{
-		kmesg("\t- Fault was a protection violation, permissions are: PAGE_READ ");
-		usize flags = *vm_x86_get_pte(proc->page_map, cr2, false) & ~PAGE_ADDR;
-		if (flags & PAGE_READ_WRITE)
-			kmesg("| PAGE_WRITE");
-		if (flags & PAGE_EXECUTE_DISABLE)
-			kmesg("| PAGE_EXECUTE_DISABLE");
-		kmesg("\n");
+		kmesg("\t- Fault was a protection violation\n");
 	}
 	else
 		kmesg("\t- Page was not present\n");
@@ -378,7 +372,7 @@ void interrupt_pf_handler(Context* regs)
 
 	// Check if SMAP is blocking this access
 	if (can_smap & !BIT(regs->rflags, 18) & !(regs->cs & CPL_USER))
-		kmesg("\t- Fault was caused by SMAP (missing vm_show_user()?)\n");
+		kmesg("\t- SMAP is enabled\n");
 
 	kmesg("Attempted to access 0x%p!\n", cr2);
 	ktrace();
