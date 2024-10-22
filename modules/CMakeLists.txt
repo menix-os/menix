@@ -12,6 +12,9 @@ if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/arch/${MENIX_ARCH})
 	add_subdirectory(arch/${MENIX_ARCH})
 endif()
 
+# Shared headers
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
+
 # Generic drivers
 add_subdirectory(drv)
 

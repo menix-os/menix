@@ -1,6 +1,6 @@
 // BMP file format utilities.
 
-#include <menix/video/bmp.h>
+#include <menix/system/video/bmp.h>
 
 void bmp_unpack24_to_32(u8* rgba, const BmpHeader* bmp)
 {

@@ -7,3 +7,5 @@ target_sources(menix PUBLIC
 
 add_subdirectory(acpi)
 add_subdirectory(pci)
+add_subdirectory(net)
+add_subdirectory(video)

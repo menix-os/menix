@@ -8,11 +8,11 @@
 #include <menix/system/arch.h>
 #include <menix/system/boot.h>
 #include <menix/system/module.h>
+#include <menix/system/video/fb.h>
+#include <menix/system/video/fb_default.h>
 #include <menix/thread/elf.h>
 #include <menix/thread/scheduler.h>
 #include <menix/util/log.h>
-#include <menix/video/fb.h>
-#include <menix/video/fb_default.h>
 
 #include <string.h>
 

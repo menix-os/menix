@@ -1,6 +1,7 @@
 // x86 advanced programmable interrupt controller
 
 #include <menix/common.h>
+#include <menix/io/mmio.h>
 #include <menix/memory/pm.h>
 #include <menix/system/acpi/madt.h>
 #include <menix/system/arch.h>

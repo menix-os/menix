@@ -6,8 +6,8 @@
 #include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
 #include <menix/system/module.h>
+#include <menix/system/video/fb.h>
 #include <menix/util/builtin_font.h>
-#include <menix/video/fb.h>
 
 #include <string.h>
 

@@ -8,6 +8,7 @@ typedef volatile u32 mmio32;
 #if CONFIG_bits >= 64
 typedef volatile u64 mmio64;
 #endif
+typedef volatile usize mmiosize;
 
 // Macros for reading and writing data from and to memory mapped addresses.
 
@@ -21,3 +22,6 @@ typedef volatile u64 mmio64;
 #define mmio_read64(addr)		  (*((mmio64*)(addr)))
 #define mmio_write64(addr, value) (*((mmio64*)(addr)) = (u64)(value))
 #endif
+
+#define mmio_readsize(addr)			(*((mmiosize*)(addr)))
+#define mmio_writesize(addr, value) (*((mmiosize*)(addr)) = (usize)(value))

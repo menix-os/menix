@@ -1,10 +1,10 @@
 // Frame buffer operations
 
 #include <menix/memory/alloc.h>
+#include <menix/system/video/fb.h>
 #include <menix/thread/spin.h>
 #include <menix/util/list.h>
 #include <menix/util/log.h>
-#include <menix/video/fb.h>
 
 static FrameBuffer* fb_active = NULL;
 static SpinLock fb_lock = spin_new();
