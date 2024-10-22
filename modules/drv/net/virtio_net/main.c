@@ -1,4 +1,4 @@
-// Terminal Output
+// VirtIO Network Card
 
 #include <menix/common.h>
 #include <menix/system/module.h>
