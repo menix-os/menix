@@ -16,7 +16,7 @@ SYSCALL_IMPL(write, u32 fd, void* buf, usize size)
 	if (!vm_is_mapped(process->page_map, (VirtAddr)buf, VMProt_Write))
 		return -ENOMEM;
 
-	FileDescriptor* file_desc = process_fd_to_ptr(process, fd);
+	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
 	if (file_desc == NULL)
 		return 0;
 
@@ -55,7 +55,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 	}
 	else
 	{
-		FileDescriptor* file_desc = process_fd_to_ptr(process, fd);
+		FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
 		if (file_desc == NULL)
 		{
 			return -1;
@@ -112,7 +112,7 @@ SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
 
 	Process* process = arch_current_cpu()->thread->parent;
 
-	FileDescriptor* file_desc = process_fd_to_ptr(process, fd);
+	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
 	if (file_desc == NULL)
 		return 0;
 

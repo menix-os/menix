@@ -5,8 +5,8 @@
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/thread.h>
 
-extern Process* process_list;
-extern Process* hanging_process_list;
+extern Process* proc_list;
+extern Process* hanging_proc_list;
 
 extern Thread* thread_list;
 extern Thread* hanging_thread_list;

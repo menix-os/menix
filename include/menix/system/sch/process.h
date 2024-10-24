@@ -59,43 +59,43 @@ typedef struct Process
 // `ip`: The instruction pointer address to initialize the process with.
 // `is_user`: True if this process belongs to the user, otherwise it's a kernel process.
 // `parent`: (Optional) The parent process of the to be created process.
-Process* process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent);
+Process* proc_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent);
 
-// Same as `process_create`, but also loads an ELF executable into memory without taking over the current process.
-bool process_create_elf(char* name, ProcessState state, Process* parent, const char* path);
+// Same as `proc_create`, but also loads an ELF executable into memory without taking over the current process.
+bool proc_create_elf(char* name, ProcessState state, Process* parent, const char* path);
 
 // Starts a new process from an ELF executable.
 // `path`: File path pointing to the executable to run.
 // `argv`: A NULL-terminated list of program arguments to be passed to the new process.
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
-bool process_execve(const char* path, char** argv, char** envp);
+bool proc_execve(const char* path, char** argv, char** envp);
 
 // Sets up a process context.
 // `proc`: The process to set up.
 // `is_user`: True if this process belongs to the user, otherwise it's a kernel process.
 // ? Defined per architecture.
-void process_setup(Process* proc, bool is_user);
+void proc_setup(Process* proc, bool is_user);
 
 // Destroys a process context.
 // `proc`: The process to destroy.
 // ? Defined per architecture.
-void process_destroy(Process* proc);
+void proc_destroy(Process* proc);
 
 // Forks an exisiting process and returns its process ID.
 // `proc`: The process to fork.
 // `thread`: The executing thread.
-usize process_fork(Process* proc, Thread* thread);
+usize proc_fork(Process* proc, Thread* thread);
 
 // Sets up the context for a forked process.
 // `fork`: Target process.
 // `source`: The process being forked from.
 // ? Defined per architecture.
-void process_fork_context(Process* fork, Process* source);
+void proc_fork_context(Process* fork, Process* source);
 
 // Terminates a process.
 // `proc`: The process to kill.
 // `is_crash`: The reason for termination is a program crash.
-void process_kill(Process* proc, bool is_crash);
+void proc_kill(Process* proc, bool is_crash);
 
 // Converts a file descriptor ID for the active process to a reference.
-FileDescriptor* process_fd_to_ptr(Process* process, usize fd);
+FileDescriptor* proc_fd_to_ptr(Process* process, usize fd);

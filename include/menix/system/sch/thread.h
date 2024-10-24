@@ -55,7 +55,7 @@ typedef List(Thread*) ThreadList;
 // `is_user`: If true, the thread is a user thread, otherwise it's a kernel thread.
 void thread_create(Process* parent, VirtAddr start, bool is_user);
 
-// Prepares a thread for `process_execve`.
+// Prepares a thread for `proc_execve`.
 // `parent`: The parent process of the new thread.
 // `target`: The thread to prepare.
 // `start`: The start address of the new thread.
@@ -76,7 +76,6 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack);
 // `start`: The virtual address where this thread will start executing from.
 // `argv`: A NULL-terminated list of program arguments to be passed to the new process.
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
-// ? Defined per architecture.
 void thread_setup_execve(Thread* target, VirtAddr start, char** argv, char** envp);
 
 // Destroys the context of a thread.

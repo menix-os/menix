@@ -12,6 +12,5 @@ add_architecture(x86_64
 	system/interrupts.c
 	system/acpi/hpet.c
 	memory/vm.c
-	thread/scheduler.c
-	thread/thread.c
+	sch/thread.c
 )

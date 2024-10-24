@@ -31,7 +31,7 @@ ATTR(noreturn) void kernel_main()
 	module_init(boot_info);
 
 	// Call init program.
-	kassert(process_create_elf("init", ProcessState_Ready, arch_current_cpu()->thread->parent, "/sbin/init"),
+	kassert(proc_create_elf("init", ProcessState_Ready, arch_current_cpu()->thread->parent, "/sbin/init"),
 			"Failed to run init binary!");
 
 	// Should be unreachable.

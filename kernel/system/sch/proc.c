@@ -15,14 +15,14 @@
 
 #include <string.h>
 
-static SpinLock process_lock = spin_new();
+static SpinLock proc_lock = spin_new();
 static usize pid_counter = 0;
 
 ProcessList dead_processes;
 
-Process* process_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent)
+Process* proc_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent)
 {
-	spin_acquire_force(&process_lock);
+	spin_acquire_force(&proc_lock);
 
 	Process* proc = kzalloc(sizeof(Process));
 	strncpy(proc->name, name, sizeof(proc->name));
@@ -30,7 +30,7 @@ Process* process_create(char* name, ProcessState state, VirtAddr ip, bool is_use
 	proc->state = state;
 	proc->id = pid_counter++;
 
-	process_setup(proc, is_user);
+	proc_setup(proc, is_user);
 
 	proc->working_dir = vfs_get_root();
 
@@ -52,16 +52,16 @@ Process* process_create(char* name, ProcessState state, VirtAddr ip, bool is_use
 	list_new(proc->threads, 0);
 	list_new(proc->children, 0);
 
-	sch_add_process(&process_list, proc);
+	sch_add_process(&proc_list, proc);
 	thread_create(proc, ip, is_user);
 
-	spin_free(&process_lock);
+	spin_free(&proc_lock);
 	return proc;
 }
 
-bool process_create_elf(char* name, ProcessState state, Process* parent, const char* path)
+bool proc_create_elf(char* name, ProcessState state, Process* parent, const char* path)
 {
-	spin_acquire_force(&process_lock);
+	spin_acquire_force(&proc_lock);
 
 	Process* proc = kzalloc(sizeof(Process));
 	strncpy(proc->name, name, sizeof(proc->name));
@@ -69,7 +69,7 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 	proc->state = state;
 	proc->id = pid_counter++;
 
-	process_setup(proc, true);
+	proc_setup(proc, true);
 
 	proc->working_dir = vfs_get_root();
 	proc->stack_top = CONFIG_user_stack_base;
@@ -94,7 +94,7 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 	if (node == NULL)
 	{
 		proc_log("Unable to read \"%s\": %zu\n", path, thread_errno);
-		spin_free(&process_lock);
+		spin_free(&proc_lock);
 		return false;
 	}
 
@@ -138,16 +138,16 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 		proc->file_descs[2] = desc;
 	}
 
-	sch_add_process(&process_list, proc);
+	sch_add_process(&proc_list, proc);
 	thread_create(proc, info.entry_point, true);
 
-	spin_free(&process_lock);
+	spin_free(&proc_lock);
 	return proc;
 }
 
-bool process_execve(const char* path, char** argv, char** envp)
+bool proc_execve(const char* path, char** argv, char** envp)
 {
-	spin_acquire_force(&process_lock);
+	spin_acquire_force(&proc_lock);
 	sch_pause();
 
 	// Use the current thread's structures.
@@ -159,11 +159,11 @@ bool process_execve(const char* path, char** argv, char** envp)
 	if (node == NULL)
 	{
 		proc_log("Unable to read \"%s\": %zu\n", path, thread_errno);
-		spin_free(&process_lock);
+		spin_free(&proc_lock);
 		return false;
 	}
 
-	process_setup(proc, true);
+	proc_setup(proc, true);
 
 	// Create a new page map for the process.
 	PageMap* map = vm_page_map_new(VMLevel_0);
@@ -174,7 +174,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 	{
 		proc_log("Unable to load \"%s\": %zu\n", path, thread_errno);
 		vm_page_map_destroy(map);
-		spin_free(&process_lock);
+		spin_free(&proc_lock);
 		return false;
 	}
 
@@ -186,7 +186,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 		{
 			proc_log("Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			vm_page_map_destroy(map);
-			spin_free(&process_lock);
+			spin_free(&proc_lock);
 			return false;
 		}
 
@@ -195,7 +195,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 		{
 			proc_log("Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			vm_page_map_destroy(map);
-			spin_free(&process_lock);
+			spin_free(&proc_lock);
 			return false;
 		}
 	}
@@ -219,7 +219,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 	thread_execve(proc, thread, info.entry_point, argv, envp);
 
 	vm_set_page_map(map);
-	spin_free(&process_lock);
+	spin_free(&proc_lock);
 
 	// Run the scheduler.
 	sch_invoke();
@@ -227,9 +227,9 @@ bool process_execve(const char* path, char** argv, char** envp)
 	return false;
 }
 
-usize process_fork(Process* proc, Thread* thread)
+usize proc_fork(Process* proc, Thread* thread)
 {
-	spin_acquire_force(&process_lock);
+	spin_acquire_force(&proc_lock);
 
 	Process* fork = kzalloc(sizeof(Process));
 	strncpy(fork->name, proc->name, sizeof(proc->name));
@@ -257,16 +257,16 @@ usize process_fork(Process* proc, Thread* thread)
 		// TODO: Duplicate FDs.
 	}
 
-	sch_add_process(&process_list, fork);
+	sch_add_process(&proc_list, fork);
 	thread_fork(fork, thread);
 
 	fork->state = ProcessState_Ready;
-	spin_free(&process_lock);
+	spin_free(&proc_lock);
 
 	return fork->id;
 }
 
-void process_kill(Process* proc, bool is_crash)
+void proc_kill(Process* proc, bool is_crash)
 {
 	sch_pause();
 	if (proc->id <= 1)
@@ -278,7 +278,7 @@ void process_kill(Process* proc, bool is_crash)
 		is_suicide = true;
 
 	// Hand the threads over to the hangman.
-	spin_lock(&process_lock, {
+	spin_lock(&proc_lock, {
 		for (usize i = 0; i < proc->threads.length; i++)
 		{
 			sch_remove_thread(&thread_list, proc->threads.items[i]);
@@ -294,7 +294,7 @@ void process_kill(Process* proc, bool is_crash)
 			list_pop(&proc->parent->children, idx);
 	}
 
-	Process* init = process_list->next;
+	Process* init = proc_list->next;
 
 	list_iter(&proc->children, iter)
 	{
@@ -323,9 +323,9 @@ void process_kill(Process* proc, bool is_crash)
 	list_free(&proc->children);
 	list_free(&proc->threads);
 
-	spin_lock(&process_lock, {
-		sch_remove_process(&process_list, proc);
-		sch_add_process(&hanging_process_list, proc);
+	spin_lock(&proc_lock, {
+		sch_remove_process(&proc_list, proc);
+		sch_add_process(&hanging_proc_list, proc);
 	});
 
 	if (is_suicide)
@@ -334,7 +334,7 @@ void process_kill(Process* proc, bool is_crash)
 	sch_invoke();
 }
 
-FileDescriptor* process_fd_to_ptr(Process* process, usize fd)
+FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
 {
 	kassert(process != NULL, "No process specified! This is a kernel bug.");
 
@@ -356,7 +356,7 @@ FileDescriptor* process_fd_to_ptr(Process* process, usize fd)
 	return file_desc;
 }
 
-void process_setup(Process* proc, bool is_user)
+void proc_setup(Process* proc, bool is_user)
 {
 	if (is_user)
 		proc->page_map = vm_page_map_new(VMLevel_0);
@@ -364,12 +364,13 @@ void process_setup(Process* proc, bool is_user)
 		proc->page_map = vm_kernel_map;
 }
 
-void process_fork_context(Process* fork, Process* source)
+void proc_fork_context(Process* fork, Process* source)
 {
 	fork->page_map = vm_page_map_fork(source->page_map);
+	// TODO
 }
 
-void process_destroy(Process* proc)
+void proc_destroy(Process* proc)
 {
 	if (arch_current_cpu()->thread == NULL)
 		vm_set_page_map(vm_kernel_map);

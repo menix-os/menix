@@ -2,6 +2,6 @@
 
 target_sources(menix PUBLIC
 	core.c
-	process.c
+	proc.c
 	thread.c
 )

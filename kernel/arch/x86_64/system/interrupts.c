@@ -106,7 +106,7 @@ void interrupt_handler(Context* regs)
 		kmesg("Unhandled interrupt %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
 		arch_dump_registers(regs);
 
-		process_kill(proc, true);
+		proc_kill(proc, true);
 		return;
 	}
 

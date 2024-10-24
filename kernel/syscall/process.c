@@ -9,7 +9,7 @@
 SYSCALL_IMPL(fork)
 {
 	Thread* thread = arch_current_cpu()->thread;
-	return process_fork(thread->parent, thread);
+	return proc_fork(thread->parent, thread);
 }
 
 // Terminates the current process.
@@ -18,7 +18,7 @@ SYSCALL_IMPL(exit, u8 status)
 {
 	Process* process = arch_current_cpu()->thread->parent;
 	process->return_code = status;
-	process_kill(process, false);
+	proc_kill(process, false);
 	return 0;
 }
 
@@ -31,7 +31,7 @@ SYSCALL_IMPL(kill, usize pid)
 		return -1;
 
 	// TODO: process->return_code = SIGKILL;
-	process_kill(process, false);
+	proc_kill(process, false);
 	return 0;
 }
 
@@ -41,7 +41,7 @@ SYSCALL_IMPL(kill, usize pid)
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
 SYSCALL_IMPL(execve, const char* path, char** argv, char** envp)
 {
-	if (process_execve(path, argv, envp) == true)
+	if (proc_execve(path, argv, envp) == true)
 		return 0;
 	else
 		return -1;

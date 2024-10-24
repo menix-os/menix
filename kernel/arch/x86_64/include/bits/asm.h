@@ -14,8 +14,9 @@
 #define asm_nop()					  asm volatile("nop")
 #define asm_swapgs()				  asm volatile("swapgs" ::: "memory")
 #define asm_int(int_num)			  asm volatile("int %0" ::"i"(int_num))
+#define asm_halt()					  asm volatile("hlt")
 
-// A purposefully invalid instruction for debugging #UD faults. This should never be used in release builds
+// A purposefully invalid instruction for debugging #UD faults. This should never be used in release builds.
 #ifdef NDEBUG
 #define asm_ill() static_assert(false, "Remove this asm_ill()!")
 #else
