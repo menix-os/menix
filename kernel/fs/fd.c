@@ -4,8 +4,8 @@
 #include <menix/fs/fd.h>
 #include <menix/system/abi.h>
 #include <menix/system/arch.h>
-#include <menix/thread/process.h>
-#include <menix/thread/spin.h>
+#include <menix/system/sch/process.h>
+#include <menix/util/spin.h>
 
 FileDescriptor* fd_from_num(Process* proc, int fd)
 {

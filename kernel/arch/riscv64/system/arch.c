@@ -4,8 +4,8 @@
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/fw.h>
-#include <menix/thread/spin.h>
 #include <menix/util/log.h>
+#include <menix/util/spin.h>
 
 static BootInfo* boot_info;
 static SpinLock cpu_lock = spin_new();

@@ -7,11 +7,11 @@
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/boot.h>
+#include <menix/system/elf.h>
 #include <menix/system/module.h>
+#include <menix/system/sch/scheduler.h>
 #include <menix/system/video/fb.h>
 #include <menix/system/video/fb_default.h>
-#include <menix/thread/elf.h>
-#include <menix/thread/scheduler.h>
 #include <menix/util/log.h>
 
 #include <string.h>
@@ -226,7 +226,7 @@ void kernel_boot()
 	}
 
 	boot_log("Initialization complete, handing over to scheduler.\n");
-	scheduler_init(&info);
+	sch_init(&info);
 
 	while (true)
 	{

@@ -2,8 +2,8 @@
 
 #include <menix/syscall/syscall.h>
 #include <menix/system/arch.h>
-#include <menix/thread/process.h>
-#include <menix/thread/scheduler.h>
+#include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
 
 // Forks a thread by cloning its attributes.
 SYSCALL_IMPL(fork)
@@ -26,7 +26,7 @@ SYSCALL_IMPL(exit, u8 status)
 // `pid`: The ID of the process to kill.
 SYSCALL_IMPL(kill, usize pid)
 {
-	Process* process = scheduler_id_to_process(pid);
+	Process* process = sch_id_to_process(pid);
 	if (process == NULL)
 		return -1;
 

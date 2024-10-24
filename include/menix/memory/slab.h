@@ -3,7 +3,7 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/thread/spin.h>
+#include <menix/util/spin.h>
 
 typedef struct
 {

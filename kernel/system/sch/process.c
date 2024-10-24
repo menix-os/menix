@@ -7,11 +7,11 @@
 #include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/vm.h>
-#include <menix/thread/elf.h>
-#include <menix/thread/process.h>
-#include <menix/thread/scheduler.h>
-#include <menix/thread/spin.h>
+#include <menix/system/elf.h>
+#include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
 #include <menix/util/list.h>
+#include <menix/util/spin.h>
 
 #include <string.h>
 
@@ -52,7 +52,7 @@ Process* process_create(char* name, ProcessState state, VirtAddr ip, bool is_use
 	list_new(proc->threads, 0);
 	list_new(proc->children, 0);
 
-	scheduler_add_process(&process_list, proc);
+	sch_add_process(&process_list, proc);
 	thread_create(proc, ip, is_user);
 
 	spin_free(&process_lock);
@@ -138,7 +138,7 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 		proc->file_descs[2] = desc;
 	}
 
-	scheduler_add_process(&process_list, proc);
+	sch_add_process(&process_list, proc);
 	thread_create(proc, info.entry_point, true);
 
 	spin_free(&process_lock);
@@ -148,7 +148,7 @@ bool process_create_elf(char* name, ProcessState state, Process* parent, const c
 bool process_execve(const char* path, char** argv, char** envp)
 {
 	spin_acquire_force(&process_lock);
-	scheduler_pause();
+	sch_pause();
 
 	// Use the current thread's structures.
 	Thread* thread = arch_current_cpu()->thread;
@@ -222,7 +222,7 @@ bool process_execve(const char* path, char** argv, char** envp)
 	spin_free(&process_lock);
 
 	// Run the scheduler.
-	scheduler_invoke();
+	sch_invoke();
 
 	return false;
 }
@@ -257,7 +257,7 @@ usize process_fork(Process* proc, Thread* thread)
 		// TODO: Duplicate FDs.
 	}
 
-	scheduler_add_process(&process_list, fork);
+	sch_add_process(&process_list, fork);
 	thread_fork(fork, thread);
 
 	fork->state = ProcessState_Ready;
@@ -268,7 +268,7 @@ usize process_fork(Process* proc, Thread* thread)
 
 void process_kill(Process* proc, bool is_crash)
 {
-	scheduler_pause();
+	sch_pause();
 	if (proc->id <= 1)
 		kmesg("[WARNING]\tKilling init or kernel process!\n");
 
@@ -281,8 +281,8 @@ void process_kill(Process* proc, bool is_crash)
 	spin_lock(&process_lock, {
 		for (usize i = 0; i < proc->threads.length; i++)
 		{
-			scheduler_remove_thread(&thread_list, proc->threads.items[i]);
-			scheduler_add_thread(&hanging_thread_list, proc->threads.items[i]);
+			sch_remove_thread(&thread_list, proc->threads.items[i]);
+			sch_add_thread(&hanging_thread_list, proc->threads.items[i]);
 		}
 	});
 
@@ -324,14 +324,14 @@ void process_kill(Process* proc, bool is_crash)
 	list_free(&proc->threads);
 
 	spin_lock(&process_lock, {
-		scheduler_remove_process(&process_list, proc);
-		scheduler_add_process(&hanging_process_list, proc);
+		sch_remove_process(&process_list, proc);
+		sch_add_process(&hanging_process_list, proc);
 	});
 
 	if (is_suicide)
 		arch_current_cpu()->thread = NULL;
 
-	scheduler_invoke();
+	sch_invoke();
 }
 
 FileDescriptor* process_fd_to_ptr(Process* process, usize fd)

@@ -7,8 +7,8 @@
 #include <menix/system/arch.h>
 #include <menix/system/fw.h>
 #include <menix/system/module.h>
-#include <menix/thread/process.h>
-#include <menix/thread/scheduler.h>
+#include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
 #include <menix/util/log.h>
 
 static BootInfo* boot_info;
@@ -38,7 +38,7 @@ ATTR(noreturn) void kernel_main()
 	while (true)
 	{
 		asm_pause();
-		scheduler_invoke();
+		sch_invoke();
 	}
 }
 

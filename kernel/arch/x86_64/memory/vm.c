@@ -6,10 +6,10 @@
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
-#include <menix/thread/process.h>
-#include <menix/thread/spin.h>
+#include <menix/system/sch/process.h>
 #include <menix/util/log.h>
 #include <menix/util/self.h>
+#include <menix/util/spin.h>
 
 #include <string.h>
 

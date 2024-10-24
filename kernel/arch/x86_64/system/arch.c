@@ -4,8 +4,8 @@
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/fw.h>
-#include <menix/thread/spin.h>
 #include <menix/util/log.h>
+#include <menix/util/spin.h>
 
 #include <apic.h>
 #include <gdt.h>

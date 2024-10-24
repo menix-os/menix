@@ -1,7 +1,7 @@
 // Default implementations for framebuffer functions that assume linear memory.
 
 #include <menix/system/video/fb.h>
-#include <menix/thread/spin.h>
+#include <menix/util/spin.h>
 
 #include <string.h>
 

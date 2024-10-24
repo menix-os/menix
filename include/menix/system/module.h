@@ -4,7 +4,7 @@
 
 #include <menix/common.h>
 #include <menix/system/boot.h>
-#include <menix/thread/elf.h>
+#include <menix/system/elf.h>
 #include <menix/util/log.h>
 
 #if defined(MODULE_TYPE) && defined(MODULE_NAME)

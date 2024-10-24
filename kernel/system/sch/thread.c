@@ -1,10 +1,10 @@
 // Thread creation and deletion functions
 
 #include <menix/common.h>
-#include <menix/thread/process.h>
-#include <menix/thread/scheduler.h>
-#include <menix/thread/spin.h>
-#include <menix/thread/thread.h>
+#include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
+#include <menix/system/sch/thread.h>
+#include <menix/util/spin.h>
 
 SpinLock thread_lock = spin_new();
 static usize tid_counter = 0;
@@ -27,7 +27,7 @@ void thread_create(Process* parent, VirtAddr start, bool is_user)
 
 	// Register thread.
 	list_push(&parent->threads, thread);
-	scheduler_add_thread(&thread_list, thread);
+	sch_add_thread(&thread_list, thread);
 
 	spin_free(&thread_lock);
 }

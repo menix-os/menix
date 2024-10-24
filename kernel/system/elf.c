@@ -4,8 +4,8 @@
 #include <menix/memory/alloc.h>
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
+#include <menix/system/elf.h>
 #include <menix/system/module.h>
-#include <menix/thread/elf.h>
 
 #include <string.h>
 

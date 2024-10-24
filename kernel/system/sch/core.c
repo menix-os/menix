@@ -2,10 +2,10 @@
 
 #include <menix/common.h>
 #include <menix/system/boot.h>
-#include <menix/thread/process.h>
-#include <menix/thread/scheduler.h>
-#include <menix/thread/spin.h>
-#include <menix/thread/thread.h>
+#include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
+#include <menix/system/sch/thread.h>
+#include <menix/util/spin.h>
 
 Process* process_list = NULL;
 Process* hanging_process_list = NULL;
@@ -14,14 +14,14 @@ Thread* thread_list = NULL;
 Thread* hanging_thread_list = NULL;
 Thread* sleeping_thread_list = NULL;
 
-void scheduler_init(BootInfo* info)
+void sch_init(BootInfo* info)
 {
 	// Create the first process for kernel tasks (PID 0).
 	process_create("kernel", ProcessState_Ready, (VirtAddr)kernel_main, false, NULL);
-	scheduler_invoke();
+	sch_invoke();
 }
 
-Thread* scheduler_next(Thread* list)
+Thread* sch_next(Thread* list)
 {
 	Thread* cur = NULL;
 
@@ -52,7 +52,7 @@ Thread* scheduler_next(Thread* list)
 	return NULL;
 }
 
-void scheduler_add_thread(Thread** list, Thread* target)
+void sch_add_thread(Thread** list, Thread* target)
 {
 	if (target == NULL)
 		return;
@@ -74,7 +74,7 @@ void scheduler_add_thread(Thread** list, Thread* target)
 	cur->next = target;
 }
 
-void scheduler_remove_thread(Thread** list, Thread* target)
+void sch_remove_thread(Thread** list, Thread* target)
 {
 	if (list == NULL && target == NULL)
 		return;
@@ -100,7 +100,7 @@ void scheduler_remove_thread(Thread** list, Thread* target)
 	}
 }
 
-void scheduler_add_process(Process** list, Process* target)
+void sch_add_process(Process** list, Process* target)
 {
 	if (target == NULL)
 		return;
@@ -122,7 +122,7 @@ void scheduler_add_process(Process** list, Process* target)
 	cur->next = target;
 }
 
-void scheduler_remove_process(Process** list, Process* target)
+void sch_remove_process(Process** list, Process* target)
 {
 	if (list == NULL && target == NULL)
 		return;
@@ -148,7 +148,7 @@ void scheduler_remove_process(Process** list, Process* target)
 	}
 }
 
-Thread* scheduler_id_to_thread(usize tid)
+Thread* sch_id_to_thread(usize tid)
 {
 	Thread* cur = thread_list;
 	while (cur)
@@ -160,7 +160,7 @@ Thread* scheduler_id_to_thread(usize tid)
 	return NULL;
 }
 
-Process* scheduler_id_to_process(usize pid)
+Process* sch_id_to_process(usize pid)
 {
 	Process* cur = process_list;
 	while (cur)

@@ -4,8 +4,8 @@
 #include <menix/common.h>
 #include <menix/fs/fs.h>
 #include <menix/fs/handle.h>
-#include <menix/thread/spin.h>
 #include <menix/util/hash_map.h>
+#include <menix/util/spin.h>
 
 #define vfs_log(fmt, ...) kmesg("[VFS]\t" fmt, ##__VA_ARGS__)
 

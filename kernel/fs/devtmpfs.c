@@ -9,9 +9,9 @@
 #include <menix/memory/alloc.h>
 #include <menix/system/arch.h>
 #include <menix/system/module.h>
-#include <menix/thread/process.h>
-#include <menix/thread/spin.h>
+#include <menix/system/sch/process.h>
 #include <menix/util/hash_map.h>
+#include <menix/util/spin.h>
 
 #include <string.h>
 

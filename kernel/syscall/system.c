@@ -3,7 +3,7 @@
 #include <menix/syscall/syscall.h>
 #include <menix/system/abi.h>
 #include <menix/system/arch.h>
-#include <menix/thread/process.h>
+#include <menix/system/sch/process.h>
 
 #include <string.h>
 

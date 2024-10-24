@@ -3,25 +3,25 @@
 #include <menix/common.h>
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
-#include <menix/thread/process.h>
-#include <menix/thread/scheduler.h>
-#include <menix/thread/spin.h>
-#include <menix/thread/thread.h>
+#include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
+#include <menix/system/sch/thread.h>
+#include <menix/util/spin.h>
 
 #include <apic.h>
 
 SpinLock rope_lock = spin_new();
 SpinLock wakeup_lock = spin_new();
 
-extern void scheduler_context_switch(Context* registers);
+extern void sch_context_switch(Context* registers);
 
-void scheduler_pause()
+void sch_pause()
 {
 	// Disable interrupts so the scheduler doesn't get triggered by the timer interrupt.
 	asm_interrupt_disable();
 }
 
-void scheduler_invoke()
+void sch_invoke()
 {
 	asm_interrupt_enable();
 
@@ -29,7 +29,7 @@ void scheduler_invoke()
 	asm_int(INT_TIMER);
 }
 
-void scheduler_reschedule(Context* regs)
+void sch_reschedule(Context* regs)
 {
 	asm_interrupt_disable();
 
@@ -45,7 +45,7 @@ void scheduler_reschedule(Context* regs)
 		Thread* thread = hanging_thread_list;
 		while (thread)
 		{
-			scheduler_remove_thread(&hanging_thread_list, thread);
+			sch_remove_thread(&hanging_thread_list, thread);
 			Thread* next = thread->next;
 			thread_destroy(thread);
 			kfree(thread);
@@ -56,7 +56,7 @@ void scheduler_reschedule(Context* regs)
 		Process* proc = hanging_process_list;
 		while (proc)
 		{
-			scheduler_remove_process(&hanging_process_list, proc);
+			sch_remove_process(&hanging_process_list, proc);
 			Process* next = proc->next;
 			process_destroy(proc);
 			kfree(proc);
@@ -95,7 +95,7 @@ void scheduler_reschedule(Context* regs)
 	}
 
 	// Grab the next thread.
-	running = scheduler_next(running);
+	running = sch_next(running);
 
 	// If there are no more threads to run, something went wrong.
 	if (running == NULL)
@@ -124,5 +124,5 @@ void scheduler_reschedule(Context* regs)
 
 	apic_send_eoi();
 
-	scheduler_context_switch(&running->registers);
+	sch_context_switch(&running->registers);
 }

@@ -5,7 +5,7 @@
 #include <menix/memory/pm.h>
 #include <menix/system/acpi/madt.h>
 #include <menix/system/arch.h>
-#include <menix/thread/scheduler.h>
+#include <menix/system/sch/scheduler.h>
 
 #include <apic.h>
 #include <io.h>
@@ -216,7 +216,7 @@ void timer_handler(Context* regs)
 	asm_interrupt_disable();
 
 	// TODO
-	scheduler_reschedule(regs);
+	sch_reschedule(regs);
 
 	apic_send_eoi();
 	asm_interrupt_enable();

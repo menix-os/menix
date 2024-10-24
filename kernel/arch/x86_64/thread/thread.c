@@ -4,8 +4,8 @@
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
-#include <menix/thread/process.h>
-#include <menix/thread/thread.h>
+#include <menix/system/sch/process.h>
+#include <menix/system/sch/thread.h>
 
 #include <gdt.h>
 

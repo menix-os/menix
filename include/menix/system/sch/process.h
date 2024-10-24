@@ -7,9 +7,9 @@
 #include <menix/fs/vfs.h>
 #include <menix/memory/vm.h>
 #include <menix/system/abi.h>
-#include <menix/thread/spin.h>
-#include <menix/thread/thread.h>
+#include <menix/system/sch/thread.h>
 #include <menix/util/list.h>
+#include <menix/util/spin.h>
 
 #define proc_log(fmt, ...) kmesg("[Process]\t" fmt, ##__VA_ARGS__)
 

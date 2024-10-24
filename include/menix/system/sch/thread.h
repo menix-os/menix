@@ -3,8 +3,8 @@
 #pragma once
 #include <menix/common.h>
 #include <menix/system/arch.h>
-#include <menix/thread/spin.h>
 #include <menix/util/list.h>
+#include <menix/util/spin.h>
 
 // Direct access to the errno of the current thread
 #define thread_errno arch_current_cpu()->thread->errno

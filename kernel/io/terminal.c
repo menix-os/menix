@@ -3,7 +3,7 @@
 #include <menix/common.h>
 #include <menix/fs/devtmpfs.h>
 #include <menix/io/terminal.h>
-#include <menix/thread/spin.h>
+#include <menix/util/spin.h>
 
 #include <stdlib.h>
 #include <string.h>

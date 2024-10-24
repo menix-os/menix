@@ -3,7 +3,7 @@
 #pragma once
 #include <menix/fs/fd.h>
 #include <menix/system/abi.h>
-#include <menix/thread/spin.h>
+#include <menix/util/spin.h>
 
 typedef struct Handle
 {
