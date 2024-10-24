@@ -140,6 +140,14 @@ typedef struct
 	List(PciBus*) buses;
 } PciPlatform;
 
+#define PCI_READ8(seg, bus, slot, func, offset)	 pci_platform.pci_read8(seg, bus, slot, func, offset)
+#define PCI_READ16(seg, bus, slot, func, offset) pci_platform.pci_read16(seg, bus, slot, func, offset)
+#define PCI_READ32(seg, bus, slot, func, offset) pci_platform.pci_read32(seg, bus, slot, func, offset)
+
+#define PCI_WRITE8(seg, bus, slot, func, offset, value)	 pci_platform.pci_read8(seg, bus, slot, func, offset, value)
+#define PCI_WRITE16(seg, bus, slot, func, offset, value) pci_platform.pci_read16(seg, bus, slot, func, offset, value)
+#define PCI_WRITE32(seg, bus, slot, func, offset, value) pci_platform.pci_read32(seg, bus, slot, func, offset, value)
+
 extern PciPlatform pci_platform;
 
 // Initializes the PCI subsystem.

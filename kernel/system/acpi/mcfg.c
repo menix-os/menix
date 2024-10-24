@@ -49,6 +49,8 @@ void mcfg_init()
 	}
 
 	pci_log("Configured PCI using ACPI.\n");
+
+	pci_init();
 }
 
 #define implement_read(type, name, fn) \

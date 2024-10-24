@@ -45,7 +45,10 @@ void acpi_init(AcpiRsdp* rsdp)
 
 	// Initialize independent tables.
 	madt_init();
+
+#ifdef CONFIG_pci
 	mcfg_init();
+#endif
 
 	acpi_log("Initialized ACPI\n");
 }

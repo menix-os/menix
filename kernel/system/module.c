@@ -31,15 +31,10 @@ static List(ModulePostFn) module_post_fns;
 void module_init(BootInfo* info)
 {
 	// Initialize subsystems.
-	// TODO: Move to fw_init().
-#ifdef CONFIG_pci
-	pci_init();
-#endif
 
 	// Initialize the module map.
 	hashmap_init(module_map, 128);
 
-	// Calculate the module count.
 	u8* module_ptr = (u8*)SECTION_START(mod);
 
 	// Register all built-in modules.
@@ -159,10 +154,6 @@ void module_fini()
 				loaded->module->exit();
 		}
 	}
-
-#ifdef CONFIG_pci
-	pci_fini();
-#endif
 }
 
 LoadedModule* module_get(const char* name)
