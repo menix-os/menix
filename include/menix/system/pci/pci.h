@@ -170,6 +170,3 @@ i32 pci_register_device(PciDevice* device);
 
 // Unregisters a device. Calls the `remove` callback if set.
 void pci_unregister_device(PciDevice* device);
-
-// Prints all registered devices.
-void pci_print_devices();

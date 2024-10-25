@@ -197,15 +197,6 @@ static const char* pci_get_class_name(u8 class)
 	return "Unclassified";
 }
 
-void pci_print_devices()
-{
-	list_iter(&pci_devices, dev_iter)
-	{
-		PciDevice* const dev = *dev_iter;
-		pci_log_dev(dev, "%s\n", pci_get_class_name(dev->class));
-	}
-}
-
 i32 pci_register_driver(PciDriver* driver)
 {
 	if (!driver)
