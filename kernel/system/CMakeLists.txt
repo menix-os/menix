@@ -1,6 +1,7 @@
-# Firmware management and initialization
+# System hardware management
 
 target_sources(menix PUBLIC
+	device.c
 	elf.c
 	fw.c
 	module.c

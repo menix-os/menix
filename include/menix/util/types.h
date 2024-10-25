@@ -7,7 +7,11 @@
 #define NULL				   ((void*)0)
 #define offsetof(type, member) ((usize)(&((type*)0)->member))
 
-#define atomic _Atomic
+#ifdef __cplusplus
+#define atomic(x) x
+#else
+#define atomic(x) _Atomic(x)
+#endif
 
 // Signed 8-bit integer.
 typedef signed char i8;

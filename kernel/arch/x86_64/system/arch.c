@@ -1,16 +1,12 @@
 // x86 platform initialization
 
-#include <menix/memory/alloc.h>
-#include <menix/memory/vm.h>
 #include <menix/system/arch.h>
-#include <menix/system/fw.h>
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
 
 #include <apic.h>
 #include <gdt.h>
 #include <idt.h>
-#include <interrupts.h>
 #include <serial.h>
 #include <stdatomic.h>
 
@@ -119,19 +115,21 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 	asm_set_register(cr0, cr0);
 	asm_set_register(cr4, cr4);
 
+	// We are present!
+	cpu->is_present = true;
+	atomic_fetch_add(&boot_info->cpu_active, 1);
+
 	if (cpu->id != boot->id)
 	{
 		// TODO: Init local APIC.
-		atomic_fetch_add(&boot_info->cpu_active, 1);
 		spin_free(&cpu_lock);
 
 		// Stop all other cores.
 		asm_interrupt_disable();
 		while (1)
-			asm volatile("hlt");
+			asm_halt();
 	}
 
-	atomic_fetch_add(&boot_info->cpu_active, 1);
 	spin_free(&cpu_lock);
 }
 
@@ -162,7 +160,7 @@ ATTR(noreturn) void arch_stop(BootInfo* info)
 {
 	asm_interrupt_disable();
 	while (true)
-		asm volatile("hlt");
+		asm_halt();
 }
 
 Cpu* arch_current_cpu()

@@ -128,6 +128,8 @@ static void pci_scan_device(PciSlot* slot, u8 fn)
 		pci_log_dev(device, "Failed to register PCI device!\n");
 
 	slot->devices[fn] = device;
+
+	device->dev = kzalloc(sizeof(Device));
 }
 
 void pci_scan_devices()

@@ -79,6 +79,8 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
 			return (void*)~0UL;
 	}
 
+	// TODO: This is really bad and might cause a crash if left running for a really long time.
+	// It's a better idea to keep track of these maps, just like the PM.
 	vm_kernel_foreign_base += num_pages * arch_page_size;
 
 	return (void*)start;

@@ -18,9 +18,9 @@ typedef struct Cpu
 	usize kernel_stack;		  // Stack pointer for the kernel.
 	usize user_stack;		  // Stack pointer for the user space.
 	struct Thread* thread;	  // Current thread running on this CPU.
-	usize ticks_active;		  // The amount of ticks this thread has been active.
+	usize ticks_active;		  // The amount of ticks the running thread has been active.
+	bool is_present;		  // If the CPU is present.
 
-	// Architecture dependent information.
 #ifdef CONFIG_arch_x86_64
 	TaskStateSegment tss;
 	u32 lapic_id;					   // Local APIC ID.
@@ -45,6 +45,9 @@ void arch_init(BootInfo* info);
 // `info`: Information about the CPU that has to be enabled.
 // `boot`: Information about the boot CPU.
 void arch_init_cpu(Cpu* info, Cpu* boot);
+
+// Disables a single processor.
+bool arch_stop_cpu(usize id);
 
 // Safely powers off the machine. This is usually called after fw_shutdown.
 void arch_shutdown(BootInfo* info);

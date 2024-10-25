@@ -12,6 +12,7 @@
 #include <menix/util/hash_map.h>
 #include <menix/util/log.h>
 #include <menix/util/self.h>
+#include <menix/util/spin.h>
 
 #include <string.h>
 
@@ -26,6 +27,10 @@ static HashMap(Elf_Sym) module_symbol_map;
 
 // Callbacks to run after all modules have been initialized.
 static List(ModulePostFn) module_post_fns;
+
+// Virtual memory which is used to map modules into memory.
+static VirtAddr module_map_region = CONFIG_vm_map_base;
+static SpinLock module_map_lock = spin_new();
 
 void module_init(BootInfo* info)
 {
@@ -204,7 +209,7 @@ i32 module_load(const char* name)
 		return -ENOENT;
 	}
 
-	i32 ret = mod->init();
+	const i32 ret = mod->init();
 	loaded->loaded = true;
 	return ret;
 }
@@ -298,9 +303,7 @@ i32 module_load_elf(const char* path)
 		return 1;
 	}
 	if (loaded->module != NULL)
-	{
 		return 0;
-	}
 
 	// Read ELF header.
 	Elf_Hdr* const hdr = kmalloc(sizeof(Elf_Hdr));
@@ -313,7 +316,7 @@ i32 module_load_elf(const char* path)
 		goto leave;
 	}
 
-	// Check rest of the identification fields. x86_64 is 64-bit, little endian.
+	// Check rest of the identification fields. All of these need to match to be usable for us.
 	if (hdr->e_ident[EI_CLASS] != EI_ARCH_CLASS || hdr->e_ident[EI_DATA] != EI_ARCH_DATA ||
 		hdr->e_ident[EI_VERSION] != EV_CURRENT || hdr->e_ident[EI_OSABI] != ELFOSABI_SYSV ||
 		hdr->e_machine != EI_ARCH_MACHINE)
@@ -358,19 +361,31 @@ i32 module_load_elf(const char* path)
 
 		if (seg->p_type == PT_LOAD)
 		{
+			spin_acquire_force(&module_map_lock);
+
 			// Amount of pages to allocate for this segment.
-			const usize seg_size = ALIGN_UP(seg->p_memsz, vm_get_page_size(VMLevel_0));
-			PhysAddr pages = pm_alloc(seg_size / vm_get_page_size(VMLevel_0));
+			const usize page_size = vm_get_page_size(VMLevel_0);
 
 			// If not set previously, set the address of the first mapping as the load base.
 			if (base_virt == 0)
-				base_virt = pm_get_phys_base() + pages;
+				base_virt = (void*)module_map_region;
+
+			// Align the virtual address for mapping.
+			VirtAddr aligned_virt = ALIGN_DOWN(seg->p_vaddr, page_size);
+			// If the aligned address was unaligned, that means the original addr is inbetween two pages.
+			// Allocate one more.
+			if (aligned_virt < seg->p_vaddr)
+				seg->p_memsz += page_size - seg->p_memsz;
+
+			PhysAddr pages = pm_alloc((seg->p_memsz / page_size) + 1);
 
 			// Map the physical pages to the requested address.
-			for (usize page = 0; page < pages; page += vm_get_page_size(VMLevel_0))
+			for (usize page = 0; page <= seg->p_memsz; page += page_size)
 			{
-				vm_map(vm_kernel_map, pages + page, (VirtAddr)(base_virt + seg->p_vaddr + page),
+				vm_map(vm_kernel_map, pages + page, (VirtAddr)(base_virt + aligned_virt + page),
 					   VMProt_Read | VMProt_Write, 0, VMLevel_0);
+
+				module_map_region += page_size;
 			}
 
 			// Relocate the segment addresses.
@@ -385,6 +400,8 @@ i32 module_load_elf(const char* path)
 			handle->read(handle, NULL, (void*)seg->p_vaddr, seg->p_filesz, seg->p_offset);
 			// Zero out unloaded data.
 			memset((void*)seg->p_vaddr + seg->p_filesz, 0, seg->p_memsz - seg->p_filesz);
+
+			spin_free(&module_map_lock);
 		}
 		else if (seg->p_type == PT_DYNAMIC)
 		{
@@ -502,7 +519,8 @@ i32 module_load_elf(const char* path)
 		if (segment->p_flags & PF_X)
 			prot |= VMProt_Execute;
 
-		for (usize page = 0; page < segment->p_memsz; page += arch_page_size)
+		const usize seg_size = ALIGN_UP(segment->p_memsz, vm_get_page_size(VMLevel_0));
+		for (usize page = 0; page <= seg_size; page += vm_get_page_size(VMLevel_0))
 			vm_protect(vm_kernel_map, segment->p_vaddr + page, prot, 0);
 	}
 

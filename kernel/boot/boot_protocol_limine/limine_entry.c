@@ -182,7 +182,7 @@ void kernel_boot()
 	boot_log("Initializing %zu cores.\n", info.cpu_num);
 	info.cpu_active = 0;
 
-	// Mark the boot CPU.
+	// Mark the boot CPU ID.
 #ifdef CONFIG_arch_x86_64
 	info.boot_cpu = smp_res->bsp_lapic_id;
 #elif defined(CONFIG_arch_riscv64)
@@ -217,11 +217,11 @@ void kernel_boot()
 			limine_init_cpu(smp_cpu);
 #endif
 	}
+
 	while (info.cpu_active != info.cpu_num)
-	{
 		asm_pause();
-	}
-	// From now on we have to use the spin lock mechanism to keep track of the current CPU.
+
+	// From now on we have to use the spin lock mechanism as there's more than one active core.
 	spin_use(true);
 #endif
 	boot_log("Total processors active: %zu\n", info.cpu_active);
