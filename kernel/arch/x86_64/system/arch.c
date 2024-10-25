@@ -12,6 +12,7 @@
 #include <idt.h>
 #include <interrupts.h>
 #include <serial.h>
+#include <stdatomic.h>
 
 static BootInfo* boot_info;
 static SpinLock cpu_lock = spin_new();
@@ -121,13 +122,16 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 	if (cpu->id != boot->id)
 	{
 		// TODO: Init local APIC.
-		boot_info->cpu_active += 1;
+		atomic_fetch_add(&boot_info->cpu_active, 1);
 		spin_free(&cpu_lock);
+
+		// Stop all other cores.
 		asm_interrupt_disable();
 		while (1)
 			asm volatile("hlt");
 	}
-	boot_info->cpu_active += 1;
+
+	atomic_fetch_add(&boot_info->cpu_active, 1);
 	spin_free(&cpu_lock);
 }
 
