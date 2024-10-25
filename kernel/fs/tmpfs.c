@@ -55,7 +55,7 @@ static isize tmpfs_handle_write(struct Handle* self, FileDescriptor* fd, const v
 		void* new_data = krealloc(handle->buffer, new_capacity);
 		if (new_data == NULL)
 		{
-			thread_errno = ENOMEM;
+			thread_set_errno(ENOMEM);
 			goto fail;
 		}
 

@@ -50,7 +50,7 @@ void arch_init_cpu(Cpu* info, Cpu* boot);
 void arch_shutdown(BootInfo* info);
 
 // Halts all CPUs.
-void arch_stop(BootInfo* info);
+ATTR(noreturn) void arch_stop(BootInfo* info);
 
 // Writes the contents of all registers to regs.
 void arch_get_registers(Context* regs);

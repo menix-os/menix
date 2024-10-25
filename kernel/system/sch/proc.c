@@ -340,7 +340,7 @@ FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
 
 	if (fd >= OPEN_MAX)
 	{
-		thread_errno = EBADF;
+		thread_set_errno(EBADF);
 		return NULL;
 	}
 
@@ -349,7 +349,7 @@ FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
 		file_desc = process->file_descs[fd];
 		if (file_desc == NULL)
 		{
-			thread_errno = EBADF;
+			thread_set_errno(EBADF);
 			break;
 		}
 	});

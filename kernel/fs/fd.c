@@ -18,7 +18,7 @@ FileDescriptor* fd_from_num(Process* proc, int fd)
 	// Check if fd is inside bounds.
 	if (fd < 0 || fd >= OPEN_MAX)
 	{
-		thread_errno = EBADF;
+		thread_set_errno(EBADF);
 		goto leave;
 	}
 
@@ -26,7 +26,7 @@ FileDescriptor* fd_from_num(Process* proc, int fd)
 	// If the fd number doesn't correspond to a file descriptor, set errno.
 	if (result == NULL)
 	{
-		thread_errno = EBADF;
+		thread_set_errno(EBADF);
 		goto leave;
 	}
 

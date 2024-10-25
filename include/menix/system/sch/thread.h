@@ -49,6 +49,9 @@ typedef struct Thread
 
 typedef List(Thread*) ThreadList;
 
+// Attempts to set errno of the currently running thread.
+void thread_set_errno(usize errno);
+
 // Creates a new thread in a process.
 // `parent`: The parent process of the new thread.
 // `start`: The start address of the new thread.

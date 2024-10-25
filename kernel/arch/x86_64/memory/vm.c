@@ -201,7 +201,7 @@ bool vm_x86_remap(PageMap* page_map, VirtAddr virt_addr, usize flags)
 	return true;
 }
 
-bool vm_x86_unmap(PageMap* page_map, VirtAddr virt_addr)
+bool vm_unmap(PageMap* page_map, VirtAddr virt_addr)
 {
 	kassert(page_map != NULL, "No page map was provided! Unable to remap page 0x%p to 0x%p!", pm_get_phys_base(),
 			virt_addr);
@@ -335,13 +335,6 @@ bool vm_protect(PageMap* page_map, VirtAddr virt_addr, VMProt prot, VMFlags flag
 	return result;
 }
 
-bool vm_unmap(PageMap* page_map, VirtAddr virt_addr)
-{
-	// TODO
-	vm_flush_tlb(virt_addr);
-	return true;
-}
-
 void interrupt_pf_handler(Context* regs)
 {
 	// CR2 holds the address that was accessed.
@@ -388,7 +381,8 @@ void interrupt_pf_handler(Context* regs)
 	if (!(regs->cs & CPL_USER))
 	{
 		// If we can't recover, abort.
-		kmesg("Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx)\n", cr2, regs->error);
+		kmesg("Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx, RIP: 0x%p)\n", cr2,
+			  regs->error, regs->rip);
 		kabort();
 	}
 

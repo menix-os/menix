@@ -9,6 +9,13 @@
 SpinLock thread_lock = spin_new();
 static usize tid_counter = 0;
 
+void thread_set_errno(usize errno)
+{
+	Thread* t = arch_current_cpu()->thread;
+	if (t)
+		t->errno = errno;
+}
+
 void thread_create(Process* parent, VirtAddr start, bool is_user)
 {
 	spin_acquire_force(&thread_lock);

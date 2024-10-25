@@ -5,50 +5,53 @@
 #include <menix/fs/vfs.h>
 #include <menix/io/terminal.h>
 #include <menix/system/arch.h>
+#include <menix/system/boot.h>
 #include <menix/system/fw.h>
 #include <menix/system/module.h>
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
 #include <menix/util/log.h>
 
-static BootInfo* boot_info;
-
-ATTR(noreturn) void kernel_main()
+void kernel_early_init()
 {
-	boot_info = fw_get_boot_info();
-
 	// Initialize virtual file system.
 	vfs_init();
+
+	// Register all terminal devices.
+	terminal_init();
+}
+
+void kernel_init()
+{
+	BootInfo* boot_info = fw_get_boot_info();
 
 	// Load initrd(s).
 	for (usize i = 0; i < boot_info->file_num; i++)
 		ustarfs_init(vfs_get_root(), boot_info->files[i].address, boot_info->files[i].size);
 
-	// Register all terminal devices.
-	terminal_init();
-
 	// Initialize all modules and subsystems.
 	module_init(boot_info);
+}
 
+ATTR(noreturn) void kernel_main()
+{
 	// Call init program.
 	kassert(proc_create_elf("init", ProcessState_Ready, arch_current_cpu()->thread->parent, "/sbin/init"),
 			"Failed to run init binary!");
 
-	// Should be unreachable.
 	while (true)
-	{
-		asm_pause();
 		sch_invoke();
-	}
 }
 
-void kernel_shutdown(i32 reason)
+ATTR(noreturn) void kernel_shutdown(ShutdownReason reason)
 {
 	// Say goodbye.
 	kmesg("System is shutting down...\n");
 
 	// Clean up all modules and subsystems.
 	module_fini();
+
+	BootInfo* const boot_info = fw_get_boot_info();
 
 	// Shut the system down safely.
 	arch_shutdown(boot_info);

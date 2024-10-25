@@ -1,13 +1,11 @@
 // Limine bootloader entry point.
 
 #include <menix/common.h>
-#include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/pm.h>
-#include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/boot.h>
-#include <menix/system/elf.h>
+#include <menix/system/fw.h>
 #include <menix/system/module.h>
 #include <menix/system/sch/scheduler.h>
 #include <menix/system/video/fb.h>
@@ -91,9 +89,35 @@ void kernel_boot()
 	info.phys_map = (void*)hhdm_request.response->offset;
 
 	arch_early_init(&info);
-
-	// Initialize memory allocator.
+	// Initialize physical and virtual memory managers.
+	pm_init(info.phys_map, info.memory_map, info.mm_num);
+	vm_init(info.kernel_phys, info.memory_map, info.mm_num);
 	alloc_init();
+	kernel_early_init();
+
+	boot_log("HHDM offset: 0x%p\n", hhdm_request.response->offset);
+	boot_log("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
+			 kernel_address_request.response->physical_base);
+
+	// Get modules.
+	if (module_request.response == NULL)
+		boot_log("Unable to get modules, or none were provided!\n");
+	else
+	{
+		boot_log("Got modules:\n");
+		const struct limine_module_response* module_res = module_request.response;
+		BootFile* files = kmalloc(sizeof(BootFile) * module_res->module_count);
+		for (usize i = 0; i < module_res->module_count; i++)
+		{
+			files[i].address = module_res->modules[i]->address;
+			files[i].size = module_res->modules[i]->size;
+			files[i].path = module_res->modules[i]->path;
+			boot_log("\t[%i] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
+					 files[i].path);
+		}
+		info.file_num = module_res->module_count;
+		info.files = files;
+	}
 
 	// Get early framebuffer.
 	FrameBuffer buffer = {0};
@@ -147,6 +171,7 @@ void kernel_boot()
 	info.fdt_blob = dtb_request.response->dtb_ptr;
 #endif
 
+	fw_init(&info);
 	arch_init(&info);
 
 #ifdef CONFIG_smp
@@ -201,35 +226,15 @@ void kernel_boot()
 #endif
 	boot_log("Total processors active: %zu\n", info.cpu_active);
 
-	boot_log("HHDM offset: 0x%p\n", hhdm_request.response->offset);
-	boot_log("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
-			 kernel_address_request.response->physical_base);
-
-	// Get modules.
-	if (module_request.response == NULL)
-		boot_log("Unable to get modules, or none were provided!\n");
-	else
-	{
-		boot_log("Got modules:\n");
-		const struct limine_module_response* module_res = module_request.response;
-		BootFile* files = kmalloc(sizeof(BootFile) * module_res->module_count);
-		for (usize i = 0; i < module_res->module_count; i++)
-		{
-			files[i].address = module_res->modules[i]->address;
-			files[i].size = module_res->modules[i]->size;
-			files[i].path = module_res->modules[i]->path;
-			boot_log("    [%i] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
-					 files[i].path);
-		}
-		info.file_num = module_res->module_count;
-		info.files = files;
-	}
+	kernel_init();
 
 	boot_log("Initialization complete, handing over to scheduler.\n");
 	sch_init(&info);
 
+	// Should be unreachable.
 	while (true)
 	{
 		asm_pause();
+		sch_invoke();
 	}
 }

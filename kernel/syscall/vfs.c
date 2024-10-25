@@ -43,7 +43,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 
 	if (path == NULL)
 	{
-		thread_errno = ENOENT;
+		thread_set_errno(ENOENT);
 		return -ENOENT;
 	}
 
@@ -86,7 +86,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 		// We can't open any more files.
 		if (last_fd == -1)
 		{
-			thread_errno = ENFILE;
+			thread_set_errno(ENFILE);
 			return -1;
 		}
 

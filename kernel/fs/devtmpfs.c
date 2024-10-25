@@ -89,7 +89,7 @@ static isize devtmpfs_handle_write(struct Handle* self, FileDescriptor* fd, cons
 		void* new_data = krealloc(handle->buffer, new_capacity);
 		if (new_data == NULL)
 		{
-			thread_errno = ENOMEM;
+			thread_set_errno(ENOMEM);
 			goto fail;
 		}
 
@@ -250,7 +250,7 @@ bool devtmpfs_add_device(Handle* device, const char* name)
 	// Already have a node with this name, so fail.
 	if (node != NULL)
 	{
-		thread_errno = EEXIST;
+		thread_set_errno(EEXIST);
 
 		// TODO: Free old handle.
 

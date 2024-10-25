@@ -143,16 +143,11 @@ void arch_early_init(BootInfo* info)
 	idt_init();
 	serial_init();
 
-	// Initialize physical and virtual memory managers.
-	pm_init(info->phys_map, info->memory_map, info->mm_num);
-	vm_init(info->kernel_phys, info->memory_map, info->mm_num);
-
 	boot_info = info;
 }
 
 void arch_init(BootInfo* info)
 {
-	fw_init(info);
 	apic_init();
 
 	asm_interrupt_enable();
@@ -163,10 +158,11 @@ void arch_shutdown(BootInfo* info)
 	arch_stop(info);
 }
 
-void arch_stop(BootInfo* info)
+ATTR(noreturn) void arch_stop(BootInfo* info)
 {
 	asm_interrupt_disable();
-	asm volatile("hlt");
+	while (true)
+		asm volatile("hlt");
 }
 
 Cpu* arch_current_cpu()

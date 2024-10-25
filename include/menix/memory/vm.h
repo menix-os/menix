@@ -7,6 +7,8 @@
 #include <menix/memory/pm.h>
 #include <menix/util/self.h>
 
+#define vm_log(fmt, ...) kmesg("[VM]\t" fmt, ##__VA_ARGS__)
+
 typedef enum
 {
 	VMProt_Read = 1 << 0,

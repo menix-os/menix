@@ -192,8 +192,10 @@ void sch_invoke()
 {
 	asm_interrupt_enable();
 
+#if defined(CONFIG_arch_x86_64)
 	// Force a software interrupt.
 	asm_int(INT_TIMER);
+#endif
 }
 
 void sch_reschedule(Context* regs)

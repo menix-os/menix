@@ -135,7 +135,7 @@ static VfsPathToNode vfs_parse_path(VfsNode* parent, const char* path)
 {
 	if (path == NULL || strlen(path) == 0)
 	{
-		thread_errno = ENOENT;
+		thread_set_errno(ENOENT);
 		return (VfsPathToNode) {NULL, NULL, NULL};
 	}
 
@@ -190,7 +190,7 @@ static VfsPathToNode vfs_parse_path(VfsNode* parent, const char* path)
 		{
 			if (last)
 				return (VfsPathToNode) {NULL, current_node, elem_str};
-			thread_errno = ENOENT;
+			thread_set_errno(ENOENT);
 			return (VfsPathToNode) {NULL, NULL, NULL};
 		}
 
@@ -202,7 +202,7 @@ static VfsPathToNode vfs_parse_path(VfsNode* parent, const char* path)
 		{
 			if (path_is_dir && !S_ISDIR(new_node->handle->stat.st_mode))
 			{
-				thread_errno = ENOTDIR;
+				thread_set_errno(ENOTDIR);
 				return (VfsPathToNode) {NULL, current_node, elem_str};
 			}
 			return (VfsPathToNode) {new_node, current_node, elem_str};
@@ -220,12 +220,12 @@ static VfsPathToNode vfs_parse_path(VfsNode* parent, const char* path)
 
 		if (!S_ISDIR(current_node->handle->stat.st_mode))
 		{
-			thread_errno = ENOTDIR;
+			thread_set_errno(ENOTDIR);
 			return (VfsPathToNode) {NULL, NULL, NULL};
 		}
 	}
 
-	thread_errno = ENOENT;
+	thread_set_errno(ENOENT);
 	return (VfsPathToNode) {NULL, NULL, NULL};
 }
 
@@ -269,7 +269,7 @@ VfsNode* vfs_node_add(VfsNode* parent, const char* name, mode_t mode)
 
 	if (parsed.target != NULL)
 	{
-		thread_errno = EEXIST;
+		thread_set_errno(EEXIST);
 		goto leave;
 	}
 
@@ -307,7 +307,7 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 	if (!hashmap_get(&fs_map, fs, fs_name, strlen(fs_name)))
 	{
 		vfs_log("Unable to mount file system \"%s\": Not previously registered!\n", fs_name);
-		thread_errno = ENODEV;
+		thread_set_errno(ENODEV);
 		goto leave;
 	}
 
@@ -319,7 +319,7 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 			goto leave;
 		if (S_ISDIR(source_node->handle->stat.st_mode))
 		{
-			thread_errno = EISDIR;
+			thread_set_errno(EISDIR);
 			goto leave;
 		}
 	}
@@ -331,7 +331,7 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 
 	if (parsed.target != vfs_root && !S_ISDIR(parsed.target->handle->stat.st_mode))
 	{
-		thread_errno = EISDIR;
+		thread_set_errno(EISDIR);
 		goto leave;
 	}
 
@@ -375,7 +375,7 @@ VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target)
 	// Target already exists!
 	if (parsed.target != NULL)
 	{
-		thread_errno = EEXIST;
+		thread_set_errno(EEXIST);
 		goto leave;
 	}
 

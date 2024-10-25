@@ -52,9 +52,26 @@ typedef struct
 
 } BootInfo;
 
+typedef enum
+{
+	ShutdownReason_Normal = 0,
+	ShutdownReason_Unknown = 1,
+	ShutdownReason_Abort = 2,
+} ShutdownReason;
+
+// Initializes common kernel systems.
+// This function can be called as soon as the following functions have been called (in order):
+// `arch_early_init`, `pm_init`, `vm_init`, `alloc_init`.
+void kernel_early_init();
+
+// Initializes the rest of the system after booting has finished.
+// This function can be called as soon as the following functions have been called (in order):
+// `kernel_early_init`, `fw_init`, `arch_init`.
+void kernel_init();
+
 // Gets called after platform initialization has finished.
 // This is the main kernel function.
 ATTR(noreturn) void kernel_main();
 
 // Gets called if a shutdown was requested by the firmware, a syscall or if the init program terminated.
-void kernel_shutdown(i32 reason);
+ATTR(noreturn) void kernel_shutdown(ShutdownReason reason);

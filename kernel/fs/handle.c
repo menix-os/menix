@@ -10,13 +10,13 @@
 
 static isize handle_default_read(Handle* self, FileDescriptor* fd, void* buf, usize amount, off_t offset)
 {
-	thread_errno = ENOSYS;
+	thread_set_errno(ENOSYS);
 	return -1;
 }
 
 static isize handle_default_write(Handle* self, FileDescriptor* fd, const void* buf, usize amount, off_t offset)
 {
-	thread_errno = ENOSYS;
+	thread_set_errno(ENOSYS);
 	return -1;
 }
 
@@ -27,10 +27,10 @@ static isize handle_default_ioctl(Handle* self, FileDescriptor* fd, u32 request,
 		case TCGETS:
 		case TCSETS:
 		case TIOCSCTTY:
-		case TIOCGWINSZ: thread_errno = ENOTTY; return -1;
+		case TIOCGWINSZ: thread_set_errno(ENOTTY); return -1;
 	}
 
-	thread_errno = EINVAL;
+	thread_set_errno(EINVAL);
 	return -1;
 }
 

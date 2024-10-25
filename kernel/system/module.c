@@ -3,7 +3,9 @@
 #include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/fs/vfs.h>
+#include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
+#include <menix/system/arch.h>
 #include <menix/system/elf.h>
 #include <menix/system/module.h>
 #include <menix/system/pci/pci.h>
@@ -12,9 +14,6 @@
 #include <menix/util/self.h>
 
 #include <string.h>
-
-#include "menix/memory/pm.h"
-#include "menix/system/arch.h"
 
 // We need to see the location and size of the .mod section.
 SECTION_DECLARE_SYMBOLS(mod)
