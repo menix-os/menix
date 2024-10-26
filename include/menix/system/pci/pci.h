@@ -4,6 +4,7 @@
 #include <menix/common.h>
 #include <menix/system/device.h>
 #include <menix/util/list.h>
+#include <menix/util/log.h>
 
 #define pci_log(fmt, ...) kmesg("[PCI]\t" fmt, ##__VA_ARGS__)
 #define pci_log_dev(dev, fmt, ...) \
@@ -150,6 +151,12 @@ typedef struct
 
 extern PciPlatform pci_platform;
 
+typedef List(PciDriver*) PciDriverList;
+typedef List(PciDevice*) PciDeviceList;
+
+extern PciDriverList pci_drivers;
+extern PciDeviceList pci_devices;
+
 // Initializes the PCI subsystem.
 void pci_init();
 
@@ -170,3 +177,6 @@ i32 pci_register_device(PciDevice* device);
 
 // Unregisters a device. Calls the `remove` callback if set.
 void pci_unregister_device(PciDevice* device);
+
+// Gets a string representation of the PCI class number.
+const char* pci_get_class_name(u8 class);

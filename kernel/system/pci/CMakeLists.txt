@@ -1,5 +1,7 @@
 # PCI(e) driver subsystem
 
 target_sources(menix PUBLIC
-	pci.c
+	common.c
+	device.c
+	driver.c
 )

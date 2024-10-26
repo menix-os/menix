@@ -61,3 +61,10 @@ typedef usize PhysAddr;
 
 // Represents a virtual address not ready for access.
 typedef usize VirtAddr;
+
+// A fixed length buffer.
+typedef struct
+{
+	usize length;
+	void* data;
+} Buffer;
