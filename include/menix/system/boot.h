@@ -29,10 +29,10 @@ typedef struct
 	usize file_num;		// Amount of files loaded.
 
 #ifdef CONFIG_smp
-	usize cpu_num;				 // Amount of processors detected.
-	atomic(usize) cpu_active;	 // Amount of processors active.
-	usize boot_cpu;				 // Index of the processor that was used to boot.
-	Cpu* cpus;					 // CPU information.
+	usize cpu_num;				// Amount of processors detected.
+	atomic usize cpu_active;	// Amount of processors active.
+	usize boot_cpu;				// Index of the processor that was used to boot.
+	Cpu* cpus;					// CPU information.
 #endif
 #ifdef CONFIG_acpi
 	AcpiRsdp* acpi_rsdp;	// ACPI RSDP table.
