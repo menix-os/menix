@@ -88,7 +88,7 @@ static isize ps2_keyboard_read(Handle* handle, FileDescriptor* fd, void* data, u
 	return size;
 }
 
-MODULE_FN i32 init_fn()
+MODULE_FN i32 nvme_init()
 {
 	// Add this keyboard as a new input method.
 
@@ -114,4 +114,4 @@ MODULE_FN i32 init_fn()
 	return 0;
 }
 
-MODULE_DEFAULT(init_fn, NULL);
+MODULE_DEFAULT(nvme_init, NULL);

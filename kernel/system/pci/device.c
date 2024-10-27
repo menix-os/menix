@@ -8,10 +8,8 @@ i32 pci_register_device(PciDevice* device)
 {
 	if (device == NULL)
 		return -ENOENT;
-
 	list_push(&pci_devices, device);
-
-	pci_log_dev(device, "Registered new %s!\n", pci_get_class_name(device->class));
+	pci_log_dev(device, "%s\n", pci_get_class_name(device->class));
 
 	return 0;
 }
