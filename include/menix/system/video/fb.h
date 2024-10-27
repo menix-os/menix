@@ -5,7 +5,7 @@
 #include <menix/common.h>
 #include <menix/io/mmio.h>
 #include <menix/system/abi.h>
-#include <menix/system/driver.h>
+#include <menix/system/device.h>
 #include <menix/util/spin.h>
 
 // Fixed framebuffer information that cannot change after it has been initialized.
