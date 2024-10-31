@@ -1,6 +1,7 @@
 // Thread creation and deletion functions
 
 #include <menix/common.h>
+#include <menix/system/arch.h>
 #include <menix/system/elf.h>
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
@@ -12,7 +13,11 @@ static usize tid_counter = 0;
 
 void thread_set_errno(usize errno)
 {
-	Thread* t = arch_current_cpu()->thread;
+	Cpu* cur = arch_current_cpu();
+	if (cur == NULL)
+		return;
+
+	Thread* t = cur->thread;
 	if (t)
 		t->errno = errno;
 }

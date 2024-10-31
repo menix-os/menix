@@ -64,6 +64,9 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 {
 	kassert(path != NULL, "Path can't be null!");
 
+	proc_log("Creating new process \"%s\" (Path = %s, argv = 0x%p, envp = 0x%p, %s)\n", name, path, argv, envp,
+			 is_user ? "User" : "Kernel");
+
 	sch_pause();
 
 	// Open the file and ensure it's there.
@@ -119,7 +122,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 	spin_acquire_force(&proc_lock);
 	proc->page_map = map;
 	proc->working_dir = node->parent;
-	proc->map_base = CONFIG_vm_map_base;	// TODO: This needs CONFIG_user_map_base!
+	proc->map_base = CONFIG_user_map_base;	  // TODO: This needs CONFIG_user_map_base!
 	proc->stack_top = CONFIG_user_stack_base;
 
 	// TODO: Make a proper IO interface

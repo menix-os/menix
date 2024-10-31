@@ -13,8 +13,6 @@
 
 #include <string.h>
 
-#include "menix/util/types.h"
-
 typedef struct
 {
 	VfsNode* target;
@@ -422,7 +420,7 @@ usize vfs_get_path(VfsNode* target, char* buffer, usize length)
 
 VfsNode* vfs_get_node(VfsNode* parent, const char* path, bool follow_links)
 {
-	spin_acquire_force(&vfs_lock);
+	// spin_acquire_force(&vfs_lock);
 
 	VfsNode* ret = NULL;
 
@@ -441,6 +439,6 @@ VfsNode* vfs_get_node(VfsNode* parent, const char* path, bool follow_links)
 leave:
 	if (r.name != NULL)
 		kfree(r.name);
-	spin_free(&vfs_lock);
+	// spin_free(&vfs_lock);
 	return ret;
 }

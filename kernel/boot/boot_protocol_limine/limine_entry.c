@@ -93,7 +93,6 @@ void kernel_boot()
 	pm_init(info.phys_map, info.memory_map, info.mm_num);
 	vm_init(info.kernel_phys, info.memory_map, info.mm_num);
 	alloc_init();
-	kernel_early_init();
 
 	boot_log("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 	boot_log("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
@@ -224,6 +223,9 @@ void kernel_boot()
 	// From now on we have to use the spin lock mechanism as there's more than one active core.
 	spin_use(true);
 #endif
+
+	kernel_early_init();
+
 	boot_log("Total processors active: %zu\n", info.cpu_active);
 
 	kernel_init();
