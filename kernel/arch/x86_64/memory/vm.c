@@ -78,7 +78,8 @@ static u64* vm_x86_traverse(u64* top, usize idx, bool allocate)
 	memset(pm_get_phys_base() + next_level, 0, arch_page_size);
 
 	// Mark the next level as present so we don't allocate again.
-	top[idx] = (u64)next_level | PT_PRESENT | PT_READ_WRITE;
+	usize flags = top[idx] | PT_PRESENT | PT_READ_WRITE;
+	top[idx] = (u64)(next_level & PT_ADDR_MASK) | (flags & ~(PT_ADDR_MASK));
 
 	return (u64*)(pm_get_phys_base() + next_level);
 }
@@ -308,9 +309,6 @@ bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt pr
 		if (x86_flags & PT_USER_MODE)
 			cur_head[index] |= PT_USER_MODE;
 
-		// If we allocate a 2MiB page, there is one less level in that page map branch.
-		// In either case, don't traverse further after setting the index for writing.
-		// TODO: This might be wrong.
 		if (lvl == level)
 		{
 			if (lvl > VMLevel_1)
@@ -320,6 +318,7 @@ bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt pr
 
 		// Update the head.
 		cur_head = vm_x86_traverse(cur_head, index, true);
+
 		if (cur_head == NULL)
 		{
 			spin_free(&page_map->lock);

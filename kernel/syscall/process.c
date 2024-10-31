@@ -41,7 +41,7 @@ SYSCALL_IMPL(kill, usize pid)
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
 SYSCALL_IMPL(execve, const char* path, char** argv, char** envp)
 {
-	if (proc_execve(path, argv, envp) == true)
+	if (proc_execve(NULL, path, argv, envp, true) == true)
 		return 0;
 	else
 		return -1;

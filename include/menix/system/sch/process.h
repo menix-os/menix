@@ -58,19 +58,17 @@ typedef struct Process
 // Creates a new process. Returns a reference to the newly created process.
 // `name`: Name of the process.
 // `state`: Which state the process should be initialized with.
-// `ip`: The instruction pointer address to initialize the process with.
 // `is_user`: True if this process belongs to the user, otherwise it's a kernel process.
 // `parent`: (Optional) The parent process of the to be created process.
-Process* proc_create(char* name, ProcessState state, VirtAddr ip, bool is_user, Process* parent);
-
-// Same as `proc_create`, but also loads an ELF executable into memory without taking over the current process.
-bool proc_create_elf(char* name, ProcessState state, Process* parent, const char* path);
+Process* proc_create(const char* name, ProcessState state, bool is_user, Process* parent);
 
 // Starts a new process from an ELF executable.
+// `name`: Name of the process.
 // `path`: File path pointing to the executable to run.
 // `argv`: A NULL-terminated list of program arguments to be passed to the new process.
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
-bool proc_execve(const char* path, char** argv, char** envp);
+// `is_user`: True if this process belongs to the user, otherwise it's a kernel process.
+bool proc_execve(const char* name, const char* path, char** argv, char** envp, bool is_user);
 
 // Sets up a process context.
 // `proc`: The process to set up.

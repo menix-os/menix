@@ -54,17 +54,14 @@ void thread_set_errno(usize errno);
 
 // Creates a new thread in a process.
 // `parent`: The parent process of the new thread.
-// `start`: The start address of the new thread.
-// `is_user`: If true, the thread is a user thread, otherwise it's a kernel thread.
-void thread_create(Process* parent, VirtAddr start, bool is_user);
+Thread* thread_create(Process* parent);
 
-// Prepares a thread for `proc_execve`.
-// `parent`: The parent process of the new thread.
-// `target`: The thread to prepare.
-// `start`: The start address of the new thread.
-// `argv`: A NULL-terminated list of program arguments to be passed to the thread.
-// `envp`: A NULL-terminated list of environment variables to be passed to the thread.
-void thread_execve(Process* parent, Thread* target, VirtAddr start, char** argv, char** envp);
+// Sets up the context of a user thread using execve.
+// `target`: The thread to set up.
+// `start`: The virtual address where this thread will start executing from.
+// `argv`: A NULL-terminated list of program arguments to be passed to the new process.
+// `envp`: A NULL-terminated list of environment variables to be passed to the new process.
+void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, bool is_user);
 
 // Sets up the context of a thread.
 // `target`: The thread to set up.
@@ -73,13 +70,6 @@ void thread_execve(Process* parent, Thread* target, VirtAddr start, char** argv,
 // `stack`: (Optional) If nonzero, sets the user stack to this address instead of allocating a new stack.
 // ? Defined per architecture.
 void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack);
-
-// Sets up the context of a user thread using execve.
-// `target`: The thread to set up.
-// `start`: The virtual address where this thread will start executing from.
-// `argv`: A NULL-terminated list of program arguments to be passed to the new process.
-// `envp`: A NULL-terminated list of environment variables to be passed to the new process.
-void thread_setup_execve(Thread* target, VirtAddr start, char** argv, char** envp);
 
 // Destroys the context of a thread.
 // `target`: The thread to destroy.

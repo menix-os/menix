@@ -17,7 +17,7 @@ void thread_set_errno(usize errno)
 		t->errno = errno;
 }
 
-void thread_create(Process* parent, VirtAddr start, bool is_user)
+Thread* thread_create(Process* parent)
 {
 	spin_acquire_force(&thread_lock);
 
@@ -26,8 +26,6 @@ void thread_create(Process* parent, VirtAddr start, bool is_user)
 	thread->id = tid_counter++;
 	thread->runtime = parent->runtime;
 	thread->parent = parent;
-
-	thread_setup(thread, start, is_user, 0);
 
 	thread->next = NULL;
 	thread->lock = spin_new();
@@ -38,15 +36,14 @@ void thread_create(Process* parent, VirtAddr start, bool is_user)
 	sch_add_thread(&thread_list, thread);
 
 	spin_free(&thread_lock);
+	return thread;
 }
 
-void thread_execve(Process* parent, Thread* target, VirtAddr start, char** argv, char** envp)
+void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, bool is_user)
 {
-}
-
-void thread_setup_execve(Thread* target, VirtAddr start, char** argv, char** envp)
-{
-	thread_setup(target, start, true, 0);
+	kassert(argv != NULL, "argv can't be null!");
+	kassert(envp != NULL, "envp can't be null!");
+	thread_setup(target, start, is_user, 0);
 
 	Process* proc = target->parent;
 
