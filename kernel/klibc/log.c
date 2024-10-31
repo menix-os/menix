@@ -19,15 +19,16 @@ void kmesg(const char* fmt, ...)
 	va_end(args);
 }
 
-void ktrace()
+void ktrace(Context* regs)
 {
 #ifdef CONFIG_ktrace
 	// Write out registers.
 	kmesg("Registers:\n");
-	Context regs;
-	arch_get_registers(&regs);
-	arch_dump_registers(&regs);
-	StackFrame* fp = __builtin_frame_address(0);
+
+	if (regs == NULL)
+		arch_get_registers(regs);
+	arch_dump_registers(regs);
+	StackFrame* fp = (void*)regs->rbp;
 	// Print stack trace.
 	kmesg("--- Stack trace (Most recent call first) ---\n");
 	for (usize i = 0; i < CONFIG_ktrace_max && fp != NULL; fp = fp->prev, i++)

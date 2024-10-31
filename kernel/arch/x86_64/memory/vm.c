@@ -378,7 +378,7 @@ void interrupt_pf_handler(Context* regs)
 		kmesg("\t- SMAP is enabled\n");
 
 	kmesg("Attempted to access 0x%p!\n", cr2);
-	ktrace();
+	ktrace(regs);
 #endif
 
 	// If the current protection level wasn't 3, that means the page fault was
