@@ -310,6 +310,7 @@ bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt pr
 
 		// If we allocate a 2MiB page, there is one less level in that page map branch.
 		// In either case, don't traverse further after setting the index for writing.
+		// TODO: This might be wrong.
 		if (lvl == level)
 		{
 			if (lvl > VMLevel_1)
