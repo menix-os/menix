@@ -121,17 +121,33 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				if (phdr.p_flags & PF_X)
 					prot |= VMProt_Execute;
 
-				usize page_count = ALIGN_UP(phdr.p_memsz, arch_page_size) / arch_page_size;
+				const usize page_count =
+					ALIGN_UP(phdr.p_memsz, vm_get_page_size(VMLevel_0)) / vm_get_page_size(VMLevel_0);
 
-				// Map memory into the page map.
-				if (vm_map(page_map, phdr.p_vaddr + base, page_count * arch_page_size, prot, 0, VMLevel_0) == false)
+				// Amount of pages to allocate for this segment.
+				const usize page_size = vm_get_page_size(VMLevel_0);
+
+				// Align the virtual address for mapping.
+				VirtAddr aligned_virt = ALIGN_DOWN(phdr.p_vaddr + base, page_size);
+				// If the aligned address was unaligned, that means the original addr is inbetween two pages.
+				// Allocate one more.
+				if (aligned_virt < phdr.p_vaddr + base)
+					phdr.p_memsz += page_size - phdr.p_memsz;
+
+				PhysAddr pages = pm_alloc((phdr.p_memsz / page_size) + 1);
+				// Map the physical pages to the requested address.
+				for (usize page = 0; page <= phdr.p_memsz; page += page_size)
 				{
-					elf_log("Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count, phdr.p_vaddr + base);
-					return false;
+					if (vm_map(page_map, pages + page, (VirtAddr)(aligned_virt + page), prot, VMFlags_User,
+							   VMLevel_0) == false)
+					{
+						elf_log("Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count, aligned_virt);
+						return false;
+					}
 				}
 
 				// Create temporary mapping in the kernel page map so we can write to it.
-				void* foreign = vm_map_foreign(page_map, phdr.p_vaddr + base, page_count);
+				void* foreign = vm_map_foreign(page_map, aligned_virt, page_count);
 				if (foreign == (void*)~0UL)
 				{
 					elf_log("Failed to load ELF: Could not map foreign memory region!\n");
@@ -153,15 +169,23 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 
 				break;
 			}
+			case PT_PHDR:
+			{
+				info->at_phdr = base + phdr.p_vaddr;
+				break;
+			}
 			case PT_INTERP:
 			{
-				// TODO: Load interpreter at CONFIG_user_interp_base
+				info->ld_path = kzalloc(phdr.p_filesz + 1);
+				handle->read(handle, NULL, info->ld_path, phdr.p_filesz, phdr.p_offset);
 				break;
 			}
 		}
 	}
 
-	info->entry_point = hdr.e_entry;
+	info->at_entry = base + hdr.e_entry;
+	info->at_phnum = hdr.e_phnum;
+	info->at_phent = hdr.e_phentsize;
 
 	return true;
 }

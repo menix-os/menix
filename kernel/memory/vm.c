@@ -72,16 +72,22 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
 
 	for (usize page = 0; page < num_pages; page++)
 	{
+		// Physical page where the data lives.
 		const PhysAddr foreign_phys = vm_virt_to_phys(page_map, foreign_addr + (page * vm_get_page_size(VMLevel_0)));
+		// Virtual address in the kernel page map.
 		const VirtAddr domestic_virt = start + (page * vm_get_page_size(VMLevel_0));
 
+		kassert(foreign_phys != ~0, "Unable to map to an address that isn't mapped in the target process!");
+
 		if (vm_map(vm_kernel_map, foreign_phys, domestic_virt, VMProt_Read | VMProt_Write, 0, VMLevel_0) == false)
+		{
 			return (void*)~0UL;
+		}
 	}
 
 	// TODO: This is really bad and might cause a crash if left running for a really long time.
 	// It's a better idea to keep track of these maps, just like the PM.
-	vm_kernel_foreign_base += num_pages * arch_page_size;
+	vm_kernel_foreign_base += num_pages * vm_get_page_size(VMLevel_0);
 
 	return (void*)start;
 }

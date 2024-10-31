@@ -157,8 +157,13 @@ SYSCALL_IMPL(ioctl, u32 fd, u32 request, void* argument)
 	return 0;
 }
 
+SYSCALL_IMPL(seek)
+{
+	// TODO
+	return 0;
+}
+
 SYSCALL_STUB(access)
-SYSCALL_STUB(seek)
 SYSCALL_STUB(chmod)
 SYSCALL_STUB(chown)
 SYSCALL_STUB(unmount)

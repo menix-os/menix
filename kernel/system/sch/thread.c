@@ -1,6 +1,7 @@
 // Thread creation and deletion functions
 
 #include <menix/common.h>
+#include <menix/system/elf.h>
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
 #include <menix/system/sch/thread.h>
@@ -89,11 +90,26 @@ void thread_setup_execve(Thread* target, VirtAddr start, char** argv, char** env
 	// Align the stack to a multiple of 16 so it can properly hold pointer data.
 	usize* sized_stack = (usize*)ALIGN_DOWN((VirtAddr)stack, 16);
 
-	// auxval terminator
+	// Auxiliary vector.
+	ElfInfo* elf_info = &proc->elf_info;
+	// Terminator
 	*(--sized_stack) = 0;
 	*(--sized_stack) = 0;
-
-	// TODO: auxvals
+	// AT_SECURE
+	*(--sized_stack) = 0;
+	*(--sized_stack) = 23;
+	// AT_PHDR
+	*(--sized_stack) = elf_info->at_phdr;
+	*(--sized_stack) = AT_PHDR;
+	// AT_PHNUM
+	*(--sized_stack) = elf_info->at_phnum;
+	*(--sized_stack) = AT_PHNUM;
+	// AT_PHENT
+	*(--sized_stack) = elf_info->at_phent;
+	*(--sized_stack) = AT_PHENT;
+	// AT_ENTRY
+	*(--sized_stack) = elf_info->at_entry;
+	*(--sized_stack) = AT_ENTRY;
 
 	// Set each envp pointer.
 	*(--sized_stack) = 0;		// End of envp (== NULL).

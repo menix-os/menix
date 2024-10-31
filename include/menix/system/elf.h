@@ -159,6 +159,25 @@
 #define STT_LOPROC	13	  // Processor-specific use
 #define STT_HIPROC	15	  //
 
+// Auxvals
+#define AT_NULL	  0
+#define AT_IGNORE 1
+#define AT_EXECFD 2
+#define AT_PHDR	  3
+#define AT_PHENT  4
+#define AT_PHNUM  5
+#define AT_PAGESZ 6
+#define AT_BASE	  7
+#define AT_FLAGS  8
+#define AT_ENTRY  9
+#define AT_NOTELF 10
+#define AT_UID	  11
+#define AT_EUID	  12
+#define AT_GID	  13
+#define AT_EGID	  14
+#define AT_L4_AUX 0xf0
+#define AT_L4_ENV 0xf1
+
 // Architecture specific ELF definitions
 #if defined(CONFIG_arch_x86_64)
 #define EM_X86_64		   62
@@ -266,6 +285,7 @@
 #define Elf_Rel	 Elf64_Rel
 #define Elf_Rela Elf64_Rela
 #define Elf_Nhdr Elf64_Nhdr
+#define Elf_Auxv Elf64_Auxv
 #else
 #define Elf_Hdr	 Elf32_Hdr
 #define Elf_Phdr Elf32_Phdr
@@ -278,6 +298,7 @@
 #define Elf_Rel	 Elf32_Rel
 #define Elf_Rela Elf32_Rela
 #define Elf_Nhdr Elf32_Nhdr
+#define Elf_Auxv Elf32_Auxv
 #endif
 
 #if CONFIG_bits == 64
@@ -488,7 +509,10 @@ typedef struct
 
 typedef struct
 {
-	Elf_Addr entry_point;
+	Elf_Addr at_entry;
+	Elf_Addr at_phdr;
+	usize at_phent;
+	usize at_phnum;
 	char* ld_path;
 } ElfInfo;
 

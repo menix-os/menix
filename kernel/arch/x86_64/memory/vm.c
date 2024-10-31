@@ -99,7 +99,7 @@ static usize* vm_x86_get_pte(PageMap* page_map, VirtAddr virt_addr, bool allocat
 		// Index into the current level map.
 		index = (virt_val >> shift) & 0x1FF;
 
-		if (do_break)
+		if (do_break || lvl == 1)
 			break;
 
 		// If we allocate a 2MiB page, there is one less level in that page map branch.
@@ -120,7 +120,7 @@ static usize* vm_x86_get_pte(PageMap* page_map, VirtAddr virt_addr, bool allocat
 
 static void destroy_level(u64* pml, usize start, usize end, u8 level)
 {
-	if (level == 0)
+	if (level == 0 || pml == NULL)
 		return;
 
 	for (usize i = start; i < end; i++)
@@ -238,6 +238,7 @@ bool vm_unmap(PageMap* page_map, VirtAddr virt_addr)
 
 	// Clear everything.
 	cur_head[index] = 0;
+	vm_flush_tlb(virt_addr);
 	spin_free(&page_map->lock);
 
 	return true;
@@ -251,9 +252,12 @@ PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 
 	// If the page is not present or the entry doesn't exist, we can't return a physical address.
 	if (pte == NULL || (*pte & PT_PRESENT) == false)
+	{
+		vm_log("0x%p was not mapped!\n", address);
 		return ~0UL;
+	}
 
-	return (*pte) & 0xFFFFFFFFFF000;
+	return (*pte) & PT_ADDR_MASK;
 }
 
 bool vm_is_mapped(PageMap* page_map, VirtAddr address, VMProt prot)
@@ -285,7 +289,7 @@ static usize vm_flags_to_x86(VMProt prot, VMFlags flags)
 bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt prot, VMFlags flags, VMLevel level)
 {
 	kassert(page_map != NULL, "No page map was provided! Unable to map page 0x%p to 0x%p!", phys_addr, virt_addr);
-	kassert(phys_addr % arch_page_size == 0, "Physical address is not page aligned! Value: %zu", phys_addr);
+	kassert(phys_addr % arch_page_size == 0, "Physical address is not page aligned! Value: 0x%p", phys_addr);
 
 	spin_acquire_force(&page_map->lock);
 
@@ -308,7 +312,8 @@ bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt pr
 		// In either case, don't traverse further after setting the index for writing.
 		if (lvl == level)
 		{
-			x86_flags |= PT_SIZE;
+			if (lvl > VMLevel_1)
+				x86_flags |= PT_SIZE;
 			break;
 		}
 

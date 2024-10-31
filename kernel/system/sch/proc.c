@@ -15,6 +15,8 @@
 
 #include <string.h>
 
+#include "generated/config.h"
+
 static SpinLock proc_lock = spin_new();
 static usize pid_counter = 0;
 
@@ -122,6 +124,9 @@ bool proc_create_elf(char* name, ProcessState state, Process* parent, const char
 			proc_log("Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			return false;
 		}
+
+		// If loading the interpreter was succesful, overwrite the entry point.
+		info.at_entry = interp_info.at_entry;
 	}
 
 	list_new(proc->threads, 0);
@@ -139,7 +144,7 @@ bool proc_create_elf(char* name, ProcessState state, Process* parent, const char
 	}
 
 	sch_add_process(&proc_list, proc);
-	thread_create(proc, info.entry_point, true);
+	thread_create(proc, info.at_entry, true);
 
 	spin_free(&proc_lock);
 	return proc;
@@ -198,6 +203,9 @@ bool proc_execve(const char* path, char** argv, char** envp)
 			spin_free(&proc_lock);
 			return false;
 		}
+
+		// If loading the interpreter was succesful, overwrite the entry point.
+		info.at_entry = interp_info.at_entry;
 	}
 
 	// If loading was successful, set the new map.
@@ -216,7 +224,7 @@ bool proc_execve(const char* path, char** argv, char** envp)
 
 	arch_current_cpu()->user_stack = proc->stack_top;
 
-	thread_execve(proc, thread, info.entry_point, argv, envp);
+	thread_execve(proc, thread, info.at_entry, argv, envp);
 
 	vm_set_page_map(map);
 	spin_free(&proc_lock);
@@ -374,5 +382,6 @@ void proc_destroy(Process* proc)
 {
 	if (arch_current_cpu()->thread == NULL)
 		vm_set_page_map(vm_kernel_map);
+	// TODO: Crashes
 	vm_page_map_destroy(proc->page_map);
 }

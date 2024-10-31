@@ -13,6 +13,8 @@
 
 #include <string.h>
 
+#include "menix/util/types.h"
+
 typedef struct
 {
 	VfsNode* target;
@@ -367,6 +369,9 @@ VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target)
 	VfsNode* result = NULL;
 	// Parse the path.
 	VfsPathToNode parsed = vfs_parse_path(parent, target);
+
+	if (parsed.target == NULL)
+		goto leave;
 
 	// Node doesn't exist in the tree.
 	if (parsed.target->parent == NULL)

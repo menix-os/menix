@@ -57,14 +57,14 @@ void syscall_handler(Context* regs)
 	thread->stack = core->user_stack;
 
 	if (can_smap)
-		asm volatile("clac");
+		asm volatile("stac");
 
 	// Execute the system call. For x86, this uses the SysV ABI.
 	// The syscall selector also contains the return value.
 	regs->rax = syscall_invoke(regs->rax, regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
 
 	if (can_smap)
-		asm volatile("stac");
+		asm volatile("clac");
 }
 
 typedef void (*InterruptFn)(Context* regs);

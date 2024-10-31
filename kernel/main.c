@@ -36,7 +36,7 @@ void kernel_init()
 ATTR(noreturn) void kernel_main()
 {
 	// Call init program.
-	kassert(proc_create_elf("init", ProcessState_Ready, arch_current_cpu()->thread->parent, "/sbin/init"),
+	kassert(proc_create_elf("init", ProcessState_Ready, arch_current_cpu()->thread->parent, "/usr/sbin/init"),
 			"Failed to run init binary!");
 
 	while (true)

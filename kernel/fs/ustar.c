@@ -86,7 +86,7 @@ i32 ustarfs_init(VfsNode* mount, void* data, usize size)
 			}
 			case UStarFileType_SymLink:
 			{
-				vfs_sym_link(mount, current_file->linkname, name);
+				vfs_sym_link(mount, name, current_file->linkname);
 				files_loaded++;
 				break;
 			}

@@ -7,6 +7,7 @@
 #include <menix/fs/vfs.h>
 #include <menix/memory/vm.h>
 #include <menix/system/abi.h>
+#include <menix/system/elf.h>
 #include <menix/system/sch/thread.h>
 #include <menix/util/list.h>
 #include <menix/util/spin.h>
@@ -39,6 +40,7 @@ typedef struct Process
 	usize runtime;			 // Amount of ticks the process has been alive.
 	VirtAddr stack_top;		 // Top of the stack.
 	usize permissions;		 // Process access bits.
+	ElfInfo elf_info;		 // ELF information to pass to auxv.
 
 	Process* parent;	// The owner of this process.
 	Process* next;		// Linked list entry for the next process.
