@@ -16,6 +16,8 @@
 
 #include <string.h>
 
+#include "menix/util/cmd.h"
+
 // We need to see the location and size of the .mod section.
 SECTION_DECLARE_SYMBOLS(mod)
 
@@ -54,8 +56,7 @@ void module_init(BootInfo* info)
 	}
 
 	// Load modules from VFS.
-	// Check if /boot/modules exists.
-	const char* dyn_modules_path = "/boot/modules/";	// TODO: cmdline override of this value.
+	const char* dyn_modules_path = cmd_get_str("modules", "/boot/modules");
 	VfsNode* module_path = vfs_get_node(vfs_get_root(), dyn_modules_path, true);
 	if (module_path == NULL)
 	{

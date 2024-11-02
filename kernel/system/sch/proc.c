@@ -122,7 +122,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 	spin_acquire_force(&proc_lock);
 	proc->page_map = map;
 	proc->working_dir = node->parent;
-	proc->map_base = CONFIG_user_map_base;	  // TODO: This needs CONFIG_user_map_base!
+	proc->map_base = CONFIG_user_map_base;
 	proc->stack_top = CONFIG_user_stack_base;
 
 	// TODO: Make a proper IO interface

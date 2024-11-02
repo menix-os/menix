@@ -68,7 +68,7 @@ static int pow(int x, unsigned int y)
 	}
 
 #define implement_atoi(name, type) \
-	type name(char* str, u32 base) \
+	type name(const char* str, u32 base) \
 	{ \
 		usize len = strlen(str); \
 		type result = 0; \
@@ -82,8 +82,9 @@ static int pow(int x, unsigned int y)
 		return result; \
 	}
 
+// TODO: Hex is broken
 #define implement_atou(name, type) \
-	type name(char* str, u32 base) \
+	type name(const char* str, u32 base) \
 	{ \
 		usize len = strlen(str); \
 		type result = 0; \

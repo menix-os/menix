@@ -1,13 +1,19 @@
-// Command line options and parsing
+// Command line options
 
 #pragma once
 #include <menix/common.h>
 
-typedef struct
-{
-	usize terminal;		// Output redirection. Possible values are: serial, fb, all
-	char* icon_path;	// The file path to the splash boot icon displayed after boot.
-} CmdOptions;
+#define CMDLINE_MAX_LENGTH 1024
 
-// Parses a semicolon-seperated list of command line arguments and writes the parsed result to the provided structure.
-void cmd_parse(CmdOptions* target, const char* cmd_line);
+// Returns a string from the command line matching the given key.
+// If not present, returns `fallback`.
+// Causes a string allocation.
+const char* cmd_get_str(const char* key, const char* fallback);
+
+// Returns a number from the command line matching the given key.
+// If not present, returns `fallback`.
+isize cmd_get_isize(const char* key, isize fallback);
+
+// Returns a number from the command line matching the given key.
+// If not present, returns `fallback`.
+usize cmd_get_usize(const char* key, usize fallback);

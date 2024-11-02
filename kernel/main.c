@@ -10,6 +10,7 @@
 #include <menix/system/module.h>
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
+#include <menix/util/cmd.h>
 #include <menix/util/log.h>
 
 void kernel_early_init()
@@ -36,9 +37,10 @@ void kernel_init()
 ATTR(noreturn) void kernel_main()
 {
 	// Call init program.
-	char* argv[] = {"/usr/bin/init", NULL};
+	const char* init_name = cmd_get_str("init", "/usr/sbin/init");
+	char* argv[] = {"init", NULL};
 	char* envp[] = {NULL};
-	kassert(proc_execve("init", "/usr/sbin/init", argv, envp, true), "Failed to run init binary!");
+	kassert(proc_execve("init", init_name, argv, envp, true), "Failed to run init binary!");
 
 	while (true)
 		sch_invoke();
