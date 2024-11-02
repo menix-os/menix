@@ -45,7 +45,23 @@ static const char* exception_names[0x20] = {
 static void interrupt_ud_handler(Context* regs)
 {
 	// Make sure we're in user mode, otherwise we have to crash.
-	kassert(regs->cs & CPL_USER, "Invalid opcode at 0x%zx on core %zu!", regs->rip, arch_current_cpu()->id);
+	kmesg("Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
+	kmesg("Faulty data:");
+
+	if (can_smap)
+		asm volatile("stac");
+
+	for (usize i = 0; i < 16; i++)
+	{
+		u8 instr = *(u8*)regs->rip;
+		kmesg(" %hhx", instr);
+	}
+
+	if (can_smap)
+		asm volatile("clac");
+
+	ktrace(regs);
+	kabort();
 }
 
 void syscall_handler(Context* regs)

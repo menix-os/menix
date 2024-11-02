@@ -347,37 +347,35 @@ void interrupt_pf_handler(Context* regs)
 	asm_get_register(cr2, cr2);
 
 #if !defined(NDEBUG) && defined(CONFIG_x86_pf_debug)
-	kmesg("Page fault: \n");
+	vm_log("Page fault: \n");
 
 	// Present
 	if (BIT(regs->error, 0))
-	{
-		kmesg("\t- Fault was a protection violation\n");
-	}
+		vm_log("\t- Fault was a protection violation\n");
 	else
-		kmesg("\t- Page was not present\n");
+		vm_log("\t- Page was not present\n");
 
 	// Write
 	if (BIT(regs->error, 1))
-		kmesg("\t- Fault was caused by a write access\n");
+		vm_log("\t- Fault was caused by a write access\n");
 	else
-		kmesg("\t- Fault was caused by a read access\n");
+		vm_log("\t- Fault was caused by a read access\n");
 
 	// User
 	if (BIT(regs->error, 2))
-		kmesg("\t- Fault was caused by the user\n");
+		vm_log("\t- Fault was caused by the user\n");
 	else
-		kmesg("\t- Fault was caused by the kernel\n");
+		vm_log("\t- Fault was caused by the kernel\n");
 
 	// Instruction fetch
 	if (BIT(regs->error, 4))
-		kmesg("\t- Fault was caused by an instruction fetch\n");
+		vm_log("\t- Fault was caused by an instruction fetch\n");
 
 	// Check if SMAP is blocking this access
 	if (can_smap & !BIT(regs->rflags, 18) & !(regs->cs & CPL_USER))
-		kmesg("\t- SMAP is enabled\n");
+		vm_log("\t- SMAP is enabled\n");
 
-	kmesg("Attempted to access 0x%p!\n", cr2);
+	vm_log("Attempted to access 0x%p!\n", cr2);
 	ktrace(regs);
 #endif
 
@@ -386,8 +384,8 @@ void interrupt_pf_handler(Context* regs)
 	if (!(regs->cs & CPL_USER))
 	{
 		// If we can't recover, abort.
-		kmesg("Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx, RIP: 0x%p)\n", cr2,
-			  regs->error, regs->rip);
+		vm_log("Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx, RIP: 0x%p)\n", cr2,
+			   regs->error, regs->rip);
 		kabort();
 	}
 
@@ -398,7 +396,7 @@ void interrupt_pf_handler(Context* regs)
 
 		// If nothing can make the process recover, we have to put it out of its misery.
 		proc_kill(proc, true);
-		kmesg("PID %zu terminated with SIGSEGV.\n", proc->id);
+		vm_log("PID %zu terminated with SIGSEGV.\n", proc->id);
 	}
 }
 

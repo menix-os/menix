@@ -11,6 +11,12 @@
 #include <stdarg.h>
 #include <stdio.h>
 
+typedef struct ATTR(packed) StackFrame
+{
+	struct StackFrame* prev;	// The inner frame.
+	void* return_addr;			// The address this frame returns to.
+} StackFrame;
+
 void kmesg(const char* fmt, ...)
 {
 	va_list args;

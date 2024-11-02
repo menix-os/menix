@@ -169,9 +169,18 @@ LoadedModule* module_get(const char* name)
 
 void module_register(const char* name, LoadedModule* module)
 {
-	// If the module is already loaded, override the information.
-	hashmap_insert(&module_map, name, strlen(name), module);
-	module_log("Registered new module \"%s\"\n", name);
+	LoadedModule* old;
+	if (hashmap_get(&module_map, old, name, strlen(name)))
+	{
+		// If the module is already loaded, ignore it.
+		module_log("Ignoring already loaded module \"%s\" (%s)\n", name,
+				   old->file_path[0] != '\0' ? old->file_path : "built-in");
+	}
+	else
+	{
+		hashmap_insert(&module_map, name, strlen(name), module);
+		module_log("Registered new module \"%s\"\n", name);
+	}
 }
 
 // Loads a previously registered module.
@@ -289,7 +298,7 @@ i32 module_load_elf(const char* path)
 	VfsNode* const node = vfs_get_node(vfs_get_root(), path, true);
 	if (node == NULL)
 	{
-		kmesg("No module at \"%s\"!\n", path);
+		module_log("No module at \"%s\"!\n", path);
 		return -ENOENT;
 	}
 
@@ -303,7 +312,10 @@ i32 module_load_elf(const char* path)
 		return 1;
 	}
 	if (loaded->module != NULL)
-		return 0;
+	{
+		module_log("Module \"%s\" was already loaded!\n", path);
+		return 1;
+	}
 
 	// Read ELF header.
 	Elf_Hdr* const hdr = kmalloc(sizeof(Elf_Hdr));

@@ -190,9 +190,9 @@ usize proc_fork(Process* proc, Thread* thread)
 
 void proc_kill(Process* proc, bool is_crash)
 {
+	kassert(proc != NULL, "No process given to kill!");
+	proc_log("Killing PID %zu\n", proc->id);
 	sch_pause();
-	if (proc->id <= 1)
-		kmesg("[WARNING]\tKilling init or kernel process!\n");
 
 	// If the process being killed is the currently running process.
 	bool is_suicide = false;
@@ -252,8 +252,6 @@ void proc_kill(Process* proc, bool is_crash)
 
 	if (is_suicide)
 		arch_current_cpu()->thread = NULL;
-
-	sch_invoke();
 }
 
 FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
