@@ -90,7 +90,6 @@ typedef struct
 // Stores information about a framebuffer.
 struct FrameBuffer
 {
-	SpinLock lock;		  // Access lock.
 	Device* parent;		  // The device owning this framebuffer.
 	FbFuncs funcs;		  // Functions for modifying the framebuffer, set by a driver.
 	FbBufferInfo info;	  // Fixed information about how to access the frame buffer.

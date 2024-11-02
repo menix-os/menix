@@ -4,6 +4,8 @@
 #include <menix/system/arch.h>
 #include <menix/system/elf.h>
 #include <menix/system/module.h>
+#include <menix/system/sch/process.h>
+#include <menix/system/sch/thread.h>
 #include <menix/util/log.h>
 #include <menix/util/self.h>
 #include <menix/util/spin.h>
@@ -31,8 +33,12 @@ void ktrace(Context* regs)
 	// Write out registers.
 	kmesg("Registers:\n");
 
+	Context c;
 	if (regs == NULL)
-		arch_get_registers(regs);
+	{
+		arch_get_registers(&c);
+		regs = &c;
+	}
 	arch_dump_registers(regs);
 	StackFrame* fp = (void*)regs->rbp;
 	// Print stack trace.
