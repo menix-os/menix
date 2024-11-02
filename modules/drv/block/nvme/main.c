@@ -116,4 +116,9 @@ MODULE_FN i32 nvme_init()
 	return 0;
 }
 
-MODULE_DEFAULT(nvme_init, NULL);
+MODULE_FN void nvme_exit()
+{
+	pci_unregister_driver(&nvme_driver);
+}
+
+MODULE_DEFAULT(nvme_init, nvme_exit);
