@@ -3,6 +3,7 @@
 #include <menix/syscall/syscall.h>
 #include <menix/system/abi.h>
 #include <menix/system/arch.h>
+#include <menix/system/archctl.h>
 #include <menix/system/sch/process.h>
 
 #include <string.h>
@@ -25,8 +26,7 @@ SYSCALL_IMPL(uname, struct utsname* buffer)
 // Does architecture specific operations.
 SYSCALL_IMPL(archctl, usize operation, usize arg0, usize arg1)
 {
-	// TODO
-	return 0;
+	return archctl(operation, arg0, arg1);
 }
 
 // Performs power control operations.

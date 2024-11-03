@@ -121,24 +121,20 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				if (phdr.p_flags & PF_X)
 					prot |= VMProt_Execute;
 
-				const usize page_count =
-					ALIGN_UP(phdr.p_memsz, vm_get_page_size(VMLevel_0)) / vm_get_page_size(VMLevel_0);
-
-				// Amount of pages to allocate for this segment.
 				const usize page_size = vm_get_page_size(VMLevel_0);
 
 				// Align the virtual address for mapping.
 				VirtAddr aligned_virt = ALIGN_DOWN(phdr.p_vaddr + base, page_size);
-				// If the aligned address was unaligned, that means the original addr is inbetween two pages.
-				// Allocate one more.
-				if (aligned_virt < phdr.p_vaddr + base)
-					phdr.p_memsz += page_size - phdr.p_memsz;
+				usize align_difference = phdr.p_vaddr + base - aligned_virt;
 
-				PhysAddr pages = pm_alloc((phdr.p_memsz / page_size) + 1);
+				// Amount of pages to allocate for this segment.
+				const usize page_count = ALIGN_UP(phdr.p_memsz + align_difference, page_size) / page_size;
+
 				// Map the physical pages to the requested address.
-				for (usize page = 0; page <= phdr.p_memsz; page += page_size)
+				for (usize p = 0; p < page_count; p++)
 				{
-					if (vm_map(page_map, pages + page, (VirtAddr)(aligned_virt + page), prot, VMFlags_User,
+					PhysAddr page = pm_alloc(1);
+					if (vm_map(page_map, page, (VirtAddr)(aligned_virt + (p * page_size)), prot, VMFlags_User,
 							   VMLevel_0) == false)
 					{
 						elf_log("Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count, aligned_virt);
@@ -155,10 +151,10 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				}
 
 				// Load data from file.
-				handle->read(handle, NULL, foreign, phdr.p_filesz, phdr.p_offset);
+				handle->read(handle, NULL, foreign + align_difference, phdr.p_filesz, phdr.p_offset);
 
 				// Zero out the remaining data.
-				memset(foreign + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
+				memset(foreign + align_difference + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
 
 				// Destroy temporary mapping.
 				if (vm_unmap_foreign(foreign, page_count) == false)

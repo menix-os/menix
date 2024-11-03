@@ -261,8 +261,7 @@ void sch_reschedule(Context* regs)
 			running->fs_base = asm_rdmsr(MSR_FS_BASE);
 			running->gs_base = asm_rdmsr(MSR_GS_BASE);
 
-			// TODO: Causes a GPF
-			// cur->fpu_save(running->saved_fpu);
+			cur->fpu_save(running->saved_fpu);
 #endif
 
 			if (running->state == ThreadState_Running)
@@ -289,8 +288,7 @@ void sch_reschedule(Context* regs)
 	cur->user_stack = running->stack;
 	cur->kernel_stack = running->kernel_stack;
 	cur->thread->state = ThreadState_Running;
-	// TODO: Causes a GPF
-	// cur->fpu_restore(running->saved_fpu);
+	cur->fpu_restore(running->saved_fpu);
 
 	// Reload page map.
 	vm_set_page_map(running->parent->page_map);

@@ -136,6 +136,6 @@ void interrupt_handler(Context* regs)
 	else
 		kmesg("Unhandled interrupt %zu in kernel mode!\n", regs->isr);
 
-	arch_dump_registers(regs);
+	ktrace(regs);
 	kabort();
 }

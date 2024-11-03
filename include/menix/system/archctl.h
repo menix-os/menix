@@ -14,4 +14,4 @@ typedef enum : usize
 
 } ArchCtl;
 
-void archctl(ArchCtl ctl, usize arg1, usize arg2);
+usize archctl(ArchCtl ctl, usize arg1, usize arg2);

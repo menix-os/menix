@@ -64,9 +64,6 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 {
 	kassert(path != NULL, "Path can't be null!");
 
-	proc_log("Creating new process \"%s\" (Path = %s, argv = 0x%p, envp = 0x%p, %s)\n", name, path, argv, envp,
-			 is_user ? "User" : "Kernel");
-
 	sch_pause();
 
 	// Open the file and ensure it's there.
@@ -89,6 +86,8 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 		return false;
 	}
 
+	VirtAddr entry_point = info.at_entry;
+
 	// If an interpreter was requested, load it at the configured base address.
 	if (info.ld_path != NULL)
 	{
@@ -109,7 +108,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 		}
 
 		// If loading the interpreter was succesful, overwrite the entry point.
-		info.at_entry = interp_info.at_entry;
+		entry_point = interp_info.at_entry;
 	}
 
 	// If no name is given, use the name of the executable.
@@ -117,13 +116,15 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 		name = node->name;
 
 	// Use the current thread as parent.
+	proc_log("Creating new process \"%s\" (Path = %s, argv = 0x%p, envp = 0x%p, %s)\n", name, path, argv, envp,
+			 is_user ? "User" : "Kernel");
+
 	Process* proc = proc_create(name, ProcessState_Ready, is_user, arch_current_cpu()->thread->parent);
 
 	spin_acquire_force(&proc_lock);
 	proc->page_map = map;
 	proc->working_dir = node->parent;
 	proc->map_base = CONFIG_user_map_base;
-	proc->stack_top = CONFIG_user_stack_base;
 
 	// TODO: Make a proper IO interface
 	FileDescriptor* desc = kzalloc(sizeof(FileDescriptor));
@@ -136,9 +137,10 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 		proc->file_descs[2] = desc;
 	}
 
-	arch_current_cpu()->user_stack = proc->stack_top;
 	Thread* thread = thread_create(proc);
-	thread_execve(thread, info.at_entry, argv, envp, is_user);
+	proc->elf_info = info;
+	thread_execve(thread, entry_point, argv, envp, is_user);
+	// TODO: arch_current_cpu()->user_stack = proc->stack_top;
 
 	vm_set_page_map(map);
 	spin_free(&proc_lock);
@@ -158,7 +160,6 @@ usize proc_fork(Process* proc, Thread* thread)
 
 	// Copy relevant process info.
 	fork->map_base = proc->map_base;
-	fork->stack_top = proc->stack_top;
 	fork->id = pid_counter++;
 	fork->permissions = proc->permissions;
 	fork->parent = proc;

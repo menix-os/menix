@@ -19,6 +19,8 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 
 	// TODO: Get fd and offset.
 
+	const usize page_size = vm_get_page_size(VMLevel_0);
+
 	VMProt vm_prot = 0;
 	if (prot & PROT_READ)
 		vm_prot |= VMProt_Read;
@@ -28,18 +30,13 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 		vm_prot |= VMProt_Execute;
 
 	VirtAddr addr = 0;
-	length = ALIGN_UP(length, arch_page_size);
-	usize page_count = length / arch_page_size;
-	VirtAddr aligned_hint = ALIGN_DOWN(hint, arch_page_size);
+	length = ALIGN_UP(length, page_size);
+	usize page_count = length / page_size;
+	VirtAddr aligned_hint = ALIGN_DOWN(hint, page_size);
 
 	// Check the hint and make changes if necessary.
 	if (flags & MAP_FIXED)
 	{
-		// Check if there already is a mapping at the hinted address.
-		// If there is, we can't take the hint as is.
-		if (!vm_unmap(page_map, aligned_hint) && (flags & MAP_FIXED))
-			return (VirtAddr)MAP_FAILED;
-
 		// Check if we're mapping between pages. If yes, we need one more page.
 		if (aligned_hint < hint)
 			page_count += 1;
@@ -54,16 +51,17 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 
 	// TODO: The map_base should only be relevant when not doing a MAP_FIXED.
 	// TODO: This might waste a ton of available virtual address space!
-	proc->map_base += arch_page_size * page_count;
+	proc->map_base += page_size * page_count;
 
-	for (usize i = 0; i < arch_page_size * page_count; i += arch_page_size)
+	for (usize i = 0; i < page_size * page_count; i += page_size)
 	{
 		PhysAddr page = pm_alloc(1);
-		if (vm_map(page_map, page, addr + i, vm_prot, 0, VMLevel_0) == false)
+		if (vm_map(page_map, page, addr + i, vm_prot, VMFlags_User, VMLevel_0) == false)
 		{
 			pm_free(page, 1);
 			return (VirtAddr)MAP_FAILED;
 		}
+		memset((void*)addr + i, 0, page_size);
 	}
 
 	return addr;

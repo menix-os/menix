@@ -64,7 +64,9 @@ void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, boo
 	// argv[0..n]
 	// argc
 
-	void* stack = (void*)(target->stack + CONFIG_user_stack_size + pm_get_phys_base());
+	const usize foreign_pages = CONFIG_user_stack_size / vm_get_page_size(VMLevel_0);
+	void* foreign = vm_map_foreign(proc->page_map, target->stack, foreign_pages);
+	void* stack = foreign + CONFIG_user_stack_size;
 
 	// Copy envp onto the stack.
 	usize num_envp;
@@ -74,8 +76,7 @@ void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, boo
 		stack -= envp_strlen;
 		memcpy(stack, envp[num_envp], envp_strlen);
 	}
-	VirtAddr envp_addr =
-		proc->stack_top + (target->stack + CONFIG_user_stack_size) - ((PhysAddr)(stack - pm_get_phys_base()));
+	VirtAddr envp_addr = stack - foreign + target->stack;
 
 	// Copy argv onto the stack.
 	usize num_argv;
@@ -85,12 +86,15 @@ void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, boo
 		stack -= argv_strlen;
 		memcpy(stack, argv[num_argv], argv_strlen);
 	}
-	VirtAddr argv_addr =
-		proc->stack_top + (target->stack + CONFIG_user_stack_size) - ((PhysAddr)(stack - pm_get_phys_base()));
+	VirtAddr argv_addr = stack - foreign + target->stack;
 
 	// We are now working with pointer-width granularity.
 	// Align the stack to a multiple of 16 so it can properly hold pointer data.
 	usize* sized_stack = (usize*)ALIGN_DOWN((VirtAddr)stack, 16);
+
+	// Align the stack if argc + argv + envp does not add up to 16 byte alignment.
+	if ((1 + num_argv + num_envp) % 2 == 1)
+		*(--sized_stack) = 0;
 
 	// Auxiliary vector.
 	ElfInfo* elf_info = &proc->elf_info;
@@ -139,9 +143,11 @@ void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, boo
 	*(--sized_stack) = num_argv;
 
 	// Update stack start.
-	target->registers.rsp -=
-		(target->stack + CONFIG_user_stack_size) - (((PhysAddr)sized_stack) - (PhysAddr)pm_get_phys_base());
-	proc->stack_top -= CONFIG_user_stack_size;
+	target->registers.rsp = (void*)sized_stack - foreign + target->stack;
+
+	vm_unmap_foreign(foreign, foreign_pages);
+
+	kassert(target->registers.rsp % 16 == 0, "Stack is misaligned: 0x%p!", target->registers.rsp);
 }
 
 void thread_sleep(Thread* target, usize nanoseconds)

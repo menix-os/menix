@@ -74,26 +74,26 @@ static inline void asm_wrxcr(u32 reg, u64 val)
 // Pointer must be 16-byte aligned.
 static inline void asm_fpu_fxsave(void* mem)
 {
-	asm volatile("fxsave %0\n" : "+m"(mem)::"memory");
+	asm volatile("fxsave %0" : "+m"(*(u8*)mem)::"memory");
 }
 
 // Restores the FPU state from a 512-byte region of memory using FXRSTOR.
 // Pointer must be 16-byte aligned.
 static inline void asm_fpu_fxrstor(void* mem)
 {
-	asm volatile("fxrstor %0\n" ::"m"(mem) : "memory");
+	asm volatile("fxrstor %0" ::"m"(*(u8*)mem) : "memory");
 }
 
 // Saves the FPU state to a region of memory using XSAVE.
 // Pointer must be 16-byte aligned.
 static inline void asm_fpu_xsave(void* mem)
 {
-	asm volatile("xsave %0\n" : "+m"(mem)::"memory");
+	asm volatile("xsave %0" : "+m"(*(u8*)mem)::"memory");
 }
 
 // Restores the FPU state from a region of memory using XRSTOR.
 // Pointer must be 16-byte aligned.
 static inline void asm_fpu_xrstor(void* mem)
 {
-	asm volatile("xrstor %0\n" ::"m"(mem) : "memory");
+	asm volatile("xrstor %0" ::"m"(*(u8*)mem) : "memory");
 }

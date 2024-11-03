@@ -7,6 +7,7 @@ add_architecture(x86_64
 	system/tss.c
 	system/serial.c
 	system/arch.s
+	system/archctl.c
 	system/arch.c
 	system/apic.c
 	system/interrupts.c

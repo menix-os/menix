@@ -157,10 +157,24 @@ SYSCALL_IMPL(ioctl, u32 fd, u32 request, void* argument)
 	return 0;
 }
 
-SYSCALL_IMPL(seek)
+SYSCALL_IMPL(seek, int fd, isize offset, int whence)
 {
-	// TODO
-	return 0;
+	Process* process = arch_current_cpu()->thread->parent;
+
+	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+	if (file_desc == NULL)
+		return -EBADF;
+
+	switch (whence)
+	{
+		case SEEK_SET:
+		{
+			// TODO: Check offset bounds.
+			file_desc->offset = offset;
+			break;
+		}
+	}
+	return file_desc->offset;
 }
 
 SYSCALL_STUB(access)

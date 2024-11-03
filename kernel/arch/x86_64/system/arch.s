@@ -80,6 +80,7 @@ sc_syscall:
 	pushq	$0x00				/* CpuRegisters.core field */
 	push_all_regs				/* Push general purpose registers so they can be written to by syscalls */
 	mov		%rsp,	%rdi		/* Put CpuRegisters* as first argument */
+	xor		%rbp,	%rbp		/* Zero out the base pointer so we don't backtrace into the user program */
 	call	syscall_handler		/* Call syscall handler */
 	pop_all_regs				/* Pop stack values back to the general purpose registers. */
 	add		$0x18,	%rsp		/* Skip .error, .isr and .core fields */
@@ -94,7 +95,7 @@ interrupt_internal:
 	pushq	%gs					/* Push CPU ID. */
 	push_all_regs
 	mov		%rsp,	%rdi		/* Load the CpuRegisters* as first argument */
-	xor		%rbp,	%rbp		/* Zero out the base pointer since we can't trust it */
+	xor		%rbp,	%rbp		/* Zero out the base pointer so we don't backtrace into the user program */
 	call	interrupt_handler	/* Call interrupt handler */
 	pop_all_regs
 	add		$0x18,	%rsp		/* Skip .error, .isr, and .core fields */
