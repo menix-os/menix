@@ -69,7 +69,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 		VfsNode* node;
 		node = vfs_get_node(parent, path, true);
 		if (node == NULL)
-			return -1;
+			return -ENOENT;
 
 		// The node was found, allocate a new file descriptor.
 		int last_fd = -1;
@@ -85,10 +85,7 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 
 		// We can't open any more files.
 		if (last_fd == -1)
-		{
-			thread_set_errno(ENFILE);
-			return -1;
-		}
+			return -ENFILE;
 
 		FileDescriptor* new_fd = kzalloc(sizeof(FileDescriptor));
 		new_fd->num_refs++;
@@ -114,16 +111,17 @@ SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
 
 	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
 	if (file_desc == NULL)
-		return 0;
+		return -EBADF;
 
 	Handle* const handle = file_desc->handle;
 	if (handle == NULL)
-		return 0;
+		return -ENOENT;
 	if (handle->read == NULL)
-		return 0;
+		return -ENOSYS;
 
 	// Read from the handle.
 	isize result = handle->read(handle, file_desc, buf, size, file_desc->offset);
+	file_desc->offset += result;
 
 	return result;
 }

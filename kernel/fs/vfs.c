@@ -365,14 +365,12 @@ VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target)
 	spin_acquire_force(&vfs_lock);
 
 	VfsNode* result = NULL;
-	// Parse the path.
-	VfsPathToNode parsed = vfs_parse_path(parent, target);
 
-	if (parsed.target == NULL)
-		goto leave;
+	// Parse the path.
+	VfsPathToNode parsed = vfs_parse_path(parent, path);
 
 	// Node doesn't exist in the tree.
-	if (parsed.target->parent == NULL)
+	if (parsed.parent == NULL)
 		goto leave;
 
 	// Target already exists!
@@ -382,10 +380,10 @@ VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target)
 		goto leave;
 	}
 
-	FileSystem* const target_fs = parsed.target->parent->fs;
-	VfsNode* source_node = target_fs->sym_link(target_fs, parsed.target->parent, parsed.target->name, target);
+	FileSystem* const target_fs = parsed.parent->fs;
+	VfsNode* source_node = target_fs->sym_link(target_fs, parsed.parent, parsed.name, target);
 	// Add the symbolic link to the parent's children list.
-	hashmap_insert(&parsed.target->parent->children, parsed.target->name, strlen(parsed.target->name), source_node);
+	hashmap_insert(&parsed.parent->children, parsed.name, strlen(parsed.name), source_node);
 
 	result = source_node;
 leave:
