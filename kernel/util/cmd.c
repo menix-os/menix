@@ -31,7 +31,7 @@ static const char* cmd_parse(const char* key)
 	return NULL;
 }
 
-const char* cmd_get_str(const char* key, const char* fallback)
+char* cmd_get_str(const char* key, const char* fallback)
 {
 	const char* val = cmd_parse(key);
 	if (val != NULL)
@@ -52,7 +52,9 @@ const char* cmd_get_str(const char* key, const char* fallback)
 		return result;
 	}
 
-	return fallback;
+	char* result = kzalloc(strlen(fallback) + 1);
+	memcpy(result, fallback, strlen(fallback));
+	return result;
 }
 
 usize cmd_get_usize(const char* key, usize fallback)

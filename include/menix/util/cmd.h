@@ -8,7 +8,7 @@
 // Returns a string from the command line matching the given key.
 // If not present, returns `fallback`.
 // Causes a string allocation.
-const char* cmd_get_str(const char* key, const char* fallback);
+char* cmd_get_str(const char* key, const char* fallback);
 
 // Returns a number from the command line matching the given key.
 // If not present, returns `fallback`.
