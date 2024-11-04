@@ -259,20 +259,15 @@ FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
 {
 	kassert(process != NULL, "No process specified! This is a kernel bug.");
 
+	// Check if fd is within bounds.
 	if (fd >= OPEN_MAX)
-	{
-		thread_set_errno(EBADF);
 		return NULL;
-	}
 
 	FileDescriptor* file_desc = NULL;
 	spin_lock(&process->fd_lock, {
 		file_desc = process->file_descs[fd];
 		if (file_desc == NULL)
-		{
-			thread_set_errno(EBADF);
 			break;
-		}
 	});
 	return file_desc;
 }

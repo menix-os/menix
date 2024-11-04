@@ -48,17 +48,13 @@ static void interrupt_ud_handler(Context* regs)
 	kmesg("Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
 	kmesg("Faulty data:");
 
-	if (can_smap)
-		asm volatile("stac");
-
-	for (usize i = 0; i < 16; i++)
-	{
-		u8 instr = *(u8*)regs->rip;
-		kmesg(" %hhx", instr);
-	}
-
-	if (can_smap)
-		asm volatile("clac");
+	vm_user_access({
+		for (usize i = 0; i < 16; i++)
+		{
+			u8 instr = *(u8*)regs->rip;
+			kmesg(" %hhx", instr);
+		}
+	});
 
 	ktrace(regs);
 	kabort();
@@ -72,15 +68,11 @@ void syscall_handler(Context* regs)
 	thread->registers = *regs;
 	thread->stack = core->user_stack;
 
-	if (can_smap)
-		asm volatile("stac");
-
 	// Execute the system call. For x86, this uses the SysV ABI.
 	// The syscall selector also contains the return value.
-	regs->rax = syscall_invoke(regs->rax, regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
-
-	if (can_smap)
-		asm volatile("clac");
+	SyscallResult result = syscall_invoke(regs->rax, regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
+	regs->rax = result.value;
+	regs->rdx = result.error;
 }
 
 typedef void (*InterruptFn)(Context* regs);

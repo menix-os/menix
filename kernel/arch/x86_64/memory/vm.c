@@ -32,6 +32,18 @@
 // If we can use the Supervisor Mode Access Prevention.
 bool can_smap = false;
 
+void vm_user_show()
+{
+	if (can_smap)
+		asm volatile("stac");
+}
+
+void vm_user_hide()
+{
+	if (can_smap)
+		asm volatile("clac");
+}
+
 PageMap* vm_page_map_new(VMLevel size)
 {
 	PageMap* result = kmalloc(sizeof(PageMap));
@@ -254,7 +266,6 @@ PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 	// If the page is not present or the entry doesn't exist, we can't return a physical address.
 	if (pte == NULL || (*pte & PT_PRESENT) == false)
 	{
-		vm_log("0x%p was not mapped!\n", address);
 		return ~0UL;
 	}
 
@@ -376,16 +387,16 @@ void interrupt_pf_handler(Context* regs)
 		vm_log("\t- SMAP is enabled\n");
 
 	vm_log("Attempted to access 0x%p!\n", cr2);
-	ktrace(regs);
 #endif
 
 	// If the current protection level wasn't 3, that means the page fault was
 	// caused by the supervisor! If this happens, we messed up big time!
-	if (!(regs->cs & CPL_USER))
+	if (regs->cs == offsetof(Gdt, kernel_code))
 	{
 		// If we can't recover, abort.
 		vm_log("Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx, RIP: 0x%p)\n", cr2,
 			   regs->error, regs->rip);
+		ktrace(regs);
 		kabort();
 	}
 

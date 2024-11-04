@@ -100,3 +100,17 @@ PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address);
 
 // Returns the size of a page entry at a given level.
 usize vm_get_page_size(VMLevel level);
+
+// Makes user memory accessible to the kernel.
+void vm_user_show();
+
+// Make user memory inaccessible to the kernel.
+void vm_user_hide();
+
+#define vm_user_access(scope) \
+	{ \
+		vm_user_show(); \
+		do \
+			scope while (0); \
+		vm_user_hide(); \
+	}

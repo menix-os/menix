@@ -7,11 +7,13 @@
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
 
+#include "menix/system/abi.h"
+
 // Forks a thread by cloning its attributes.
 SYSCALL_IMPL(fork)
 {
 	Thread* thread = arch_current_cpu()->thread;
-	return proc_fork(thread->parent, thread);
+	return SYSCALL_OK(proc_fork(thread->parent, thread));
 }
 
 // Terminates the current process.
@@ -21,20 +23,21 @@ SYSCALL_IMPL(exit, u8 status)
 	Process* process = arch_current_cpu()->thread->parent;
 	process->return_code = status;
 	proc_kill(process, false);
-	return 0;
+	return SYSCALL_OK(0);
 }
 
 // Forcefully terminates a process.
 // `pid`: The ID of the process to kill.
-SYSCALL_IMPL(kill, usize pid)
+// `sig`: The signal to send to the process.
+SYSCALL_IMPL(kill, usize pid, usize sig)
 {
 	Process* process = sch_id_to_process(pid);
 	if (process == NULL)
-		return -1;
+		return SYSCALL_ERR(EINVAL);
 
 	// TODO: process->return_code = SIGKILL;
 	proc_kill(process, false);
-	return 0;
+	return SYSCALL_OK(0);
 }
 
 // Starts a new process from an ELF executable. Returns 0 upon success, otherwise -1.
@@ -44,18 +47,20 @@ SYSCALL_IMPL(kill, usize pid)
 SYSCALL_IMPL(execve, const char* path, char** argv, char** envp)
 {
 	if (path == NULL)
-		return ENOENT;
+		return SYSCALL_ERR(ENOENT);
 
-	if (proc_execve(NULL, path, argv, envp, true) == true)
-		return 0;
-	else
-		return arch_current_cpu()->thread->errno;
+	vm_user_access({
+		if (proc_execve(NULL, path, argv, envp, true) == true)
+			return SYSCALL_OK(0);
+		else
+			return SYSCALL_ERR(arch_current_cpu()->thread->errno);
+	});
 }
 
 // Returns the ID of the calling process.
 SYSCALL_IMPL(getpid)
 {
-	return arch_current_cpu()->thread->parent->id;
+	return SYSCALL_OK(arch_current_cpu()->thread->parent->id);
 }
 
 // Returns the ID of the parent of the calling process.
@@ -65,23 +70,24 @@ SYSCALL_IMPL(getparentpid)
 	Process* parent_process = arch_current_cpu()->thread->parent->parent;
 
 	if (parent_process != NULL)
-		return parent_process->id;
+		return SYSCALL_OK(parent_process->id);
 
-	return 0;
+	return SYSCALL_OK(0);
 }
 
 SYSCALL_IMPL(getcwd, char* buf, usize size)
 {
-	if (buf == NULL || size == 0)
-		return ERANGE;
+	if (buf == NULL || size == 0 || size > PATH_MAX)
+		return SYSCALL_ERR(ERANGE);
 
 	Process* proc = arch_current_cpu()->thread->parent;
-	usize written = vfs_get_path(proc->working_dir, buf, size);
+	usize written;
+	vm_user_access({ written = vfs_get_path(proc->working_dir, buf, size); });
 
 	if (written != size)
-		return ERANGE;
+		return SYSCALL_ERR(ERANGE);
 
-	return 0;
+	return SYSCALL_OK(0);
 }
 
 SYSCALL_STUB(setuid)
