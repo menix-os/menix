@@ -1,5 +1,7 @@
 // Syscalls for process management
 
+#include <menix/abi/errno.h>
+#include <menix/fs/vfs.h>
 #include <menix/syscall/syscall.h>
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
@@ -41,10 +43,13 @@ SYSCALL_IMPL(kill, usize pid)
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
 SYSCALL_IMPL(execve, const char* path, char** argv, char** envp)
 {
+	if (path == NULL)
+		return ENOENT;
+
 	if (proc_execve(NULL, path, argv, envp, true) == true)
 		return 0;
 	else
-		return -1;
+		return arch_current_cpu()->thread->errno;
 }
 
 // Returns the ID of the calling process.
@@ -61,6 +66,20 @@ SYSCALL_IMPL(getparentpid)
 
 	if (parent_process != NULL)
 		return parent_process->id;
+
+	return 0;
+}
+
+SYSCALL_IMPL(getcwd, char* buf, usize size)
+{
+	if (buf == NULL || size == 0)
+		return ERANGE;
+
+	Process* proc = arch_current_cpu()->thread->parent;
+	usize written = vfs_get_path(proc->working_dir, buf, size);
+
+	if (written != size)
+		return ERANGE;
 
 	return 0;
 }
