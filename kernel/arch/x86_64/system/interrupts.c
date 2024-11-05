@@ -68,8 +68,7 @@ void syscall_handler(Context* regs)
 	thread->registers = *regs;
 	thread->stack = core->user_stack;
 
-	// Execute the system call. For x86, this uses the SysV ABI.
-	// The syscall selector also contains the return value.
+	// Execute the system call. For x86_64, use the SysV kernel ABI.
 	SyscallResult result = syscall_invoke(regs->rax, regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
 	regs->rax = result.value;
 	regs->rdx = result.error;

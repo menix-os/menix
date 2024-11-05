@@ -167,6 +167,11 @@ SYSCALL_IMPL(seek, int fd, isize offset, int whence)
 			file_desc->offset = offset;
 			break;
 		}
+		case SEEK_CUR:
+		{
+			file_desc->offset += offset;
+			break;
+		}
 		case SEEK_END:
 		{
 			file_desc->offset = file_desc->handle->stat.st_size + offset;
