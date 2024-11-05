@@ -24,9 +24,14 @@ typedef struct Cpu Cpu;
 // Information provided to the kernel by the boot protocol.
 typedef struct
 {
-	const char* cmd;	// Command line.
-	BootFile* files;	// Array of files.
-	usize file_num;		// Amount of files loaded.
+	const char* cmd;		   // Command line.
+	usize file_num;			   // Amount of files loaded.
+	BootFile* files;		   // Array of files.
+	usize mm_num;			   // Amount of memory map entries.
+	PhysMemory* memory_map;	   // Physical memory mapping.
+	void* kernel_virt;		   // Virtual address of the kernel.
+	PhysAddr kernel_phys;	   // Physical address of the kernel.
+	void* phys_map;			   // Memory mapped lower memory address.
 
 #ifdef CONFIG_smp
 	usize cpu_num;				// Amount of processors detected.
@@ -40,16 +45,6 @@ typedef struct
 #ifdef CONFIG_open_firmware
 	void* fdt_blob;	   // Device tree blob.
 #endif
-
-// The following is architecture dependent, but almost every architecture should have it.
-#if defined(CONFIG_arch_x86_64) || defined(CONFIG_arch_aarch64) || defined(CONFIG_arch_riscv64)
-	usize mm_num;			   // Amount of memory map entries.
-	PhysMemory* memory_map;	   // Physical memory mapping.
-	void* kernel_virt;		   // Virtual address of the kernel.
-	PhysAddr kernel_phys;	   // Physical address of the kernel.
-	void* phys_map;			   // Memory mapped lower memory address.
-#endif
-
 } BootInfo;
 
 typedef enum
