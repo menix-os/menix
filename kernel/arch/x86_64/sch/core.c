@@ -40,10 +40,10 @@ void sch_arch_update(Cpu* core, Thread* next)
 }
 
 // Defined in system/arch.s
-extern void sch_x86_finalize();
+extern void sch_x86_finalize(Context* regs);
 
 void sch_arch_finalize(Context* regs)
 {
 	apic_send_eoi();
-	sch_x86_finalize();
+	sch_x86_finalize(regs);
 }
