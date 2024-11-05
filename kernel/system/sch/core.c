@@ -7,10 +7,6 @@
 #include <menix/system/sch/thread.h>
 #include <menix/util/spin.h>
 
-#ifdef CONFIG_arch_x86_64
-#include <apic.h>
-#endif
-
 Process* proc_list = NULL;
 Process* hanging_proc_list = NULL;
 
@@ -181,28 +177,9 @@ Process* sch_id_to_process(usize pid)
 SpinLock rope_lock = spin_new();
 SpinLock wakeup_lock = spin_new();
 
-// Assembly stub to return back.
-extern void sch_finalize(Context* registers);
-
-void sch_pause()
+ATTR(noreturn) void sch_reschedule(Context* regs)
 {
-	// Disable interrupts so the scheduler doesn't get triggered by the timer interrupt.
-	asm_interrupt_disable();
-}
-
-void sch_invoke()
-{
-	asm_interrupt_enable();
-
-#if defined(CONFIG_arch_x86_64)
-	// Force a software interrupt.
-	asm_int(INT_TIMER);
-#endif
-}
-
-void sch_reschedule(Context* regs)
-{
-	asm_interrupt_disable();
+	sch_pause();
 
 	vm_set_page_map(vm_kernel_map);
 
@@ -257,12 +234,7 @@ void sch_reschedule(Context* regs)
 			running->stack = cur->user_stack;
 			running->kernel_stack = cur->kernel_stack;
 
-#if defined(CONFIG_arch_x86_64)
-			running->fs_base = asm_rdmsr(MSR_FS_BASE);
-			running->gs_base = asm_rdmsr(MSR_GS_BASE);
-
-			cur->fpu_save(running->saved_fpu);
-#endif
+			sch_arch_save(cur, running);
 
 			if (running->state == ThreadState_Running)
 				running->state = ThreadState_Ready;
@@ -275,27 +247,21 @@ void sch_reschedule(Context* regs)
 	// If there are no more threads to run, something went wrong.
 	if (running == NULL)
 	{
-		apic_send_eoi();
-		cur->thread = NULL;
 		kmesg("[Scheduler]\tNo more threads to run, halting!\n");
+
+		cur->thread = NULL;
 		asm_interrupt_enable();
 		while (true)
 			asm_halt();
 	}
 
-	cur->thread = running;
-	cur->tss.rsp0 = running->kernel_stack;
-	cur->user_stack = running->stack;
-	cur->kernel_stack = running->kernel_stack;
-	cur->thread->state = ThreadState_Running;
-	cur->fpu_restore(running->saved_fpu);
+	sch_arch_update(cur, running);
 
 	// Reload page map.
 	vm_set_page_map(running->parent->page_map);
 
-#if defined(CONFIG_arch_x86_64)
-	apic_send_eoi();
-#endif
+	sch_arch_finalize(&running->registers);
 
-	sch_finalize(&running->registers);
+	// We shouldn't be able to reach this point as sch_arch_finalize will take us back to the next thread.
+	__builtin_unreachable();
 }

@@ -49,8 +49,8 @@ popq %rax
 .endm
 
 /* Finalizes a context switch. */
-.global sch_finalize
-sch_finalize:
+.global sch_x86_finalize
+sch_x86_finalize:
 	mov		%rdi,	%rsp		/* First argument is a reference to the thread's CpuRegisters field. */
 	pop_all_regs				/* Pop all values stored in that struct into the actual registers. */
 	add		$0x18,	%rsp		/* Skip .error, .isr and .core fields */

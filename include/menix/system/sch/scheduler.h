@@ -22,11 +22,23 @@ void sch_pause();
 
 // Makes the scheduler act immediately instead of waiting for a timer.
 // ? Defined per architecture.
-void sch_invoke();
+ATTR(noreturn) void sch_invoke();
+
+// Returns from the context switch.
+// ? Defined per architecture.
+void sch_arch_finalize(Context* regs);
+
+// Saves the architecture dependent data of the `thread`.
+// ? Defined per architecture.
+void sch_arch_save(Cpu* core, Thread* thread);
+
+// Updates the `core` thread with the relevant information from the `next` thread.
+// ? Defined per architecture.
+void sch_arch_update(Cpu* core, Thread* next);
 
 // Implementation of the scheduler. Not meant to be called directly.
 // ? Defined per architecture.
-void sch_reschedule(Context* regs);
+ATTR(noreturn) void sch_reschedule(Context* regs);
 
 // Returns the next thread that's ready to get execution time.
 // `list`: The head of the list to check.

@@ -67,11 +67,6 @@ PageMap* vm_page_map_new(VMLevel size)
 void vm_set_page_map(PageMap* page_map)
 {
 	asm_set_register(((VirtAddr)page_map->head - (VirtAddr)pm_get_phys_base()), cr3);
-
-	// TODO: ???? why is this here? Probably not necessary.
-	usize cr3;
-	asm_get_register(cr3, cr3);
-	asm_set_register(cr3, cr3);
 }
 
 // Returns the next level of the current page map level. Optionally allocates a page.
