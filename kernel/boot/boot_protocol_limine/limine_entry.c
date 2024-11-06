@@ -161,7 +161,6 @@ void kernel_boot()
 	kassert(rsdp_request.response, "Unable to get ACPI RSDP!");
 	boot_log("ACPI RSDP at 0x%p\n", rsdp_request.response->address);
 	info.acpi_rsdp = rsdp_request.response->address;
-	kassert(memcmp(info.acpi_rsdp->signature, "RSD PTR", 7) == 0, "Invalid signature, expected \"RSD PTR\"!");
 #endif
 
 #ifdef CONFIG_open_firmware
@@ -225,11 +224,9 @@ void kernel_boot()
 #endif
 
 	kernel_early_init();
-
-	boot_log("Total processors active: %zu\n", info.cpu_active);
-
 	kernel_init();
 
+	boot_log("Total processors active: %zu\n", info.cpu_active);
 	boot_log("Initialization complete, handing over to scheduler.\n");
 	sch_init(&info);
 

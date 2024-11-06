@@ -6,10 +6,6 @@
 #include <menix/memory/pm.h>
 #include <menix/util/log.h>
 
-#ifdef CONFIG_acpi
-#include <menix/system/acpi/types.h>
-#endif
-
 #define boot_log(fmt, ...) kmesg("[Boot]\t" fmt, ##__VA_ARGS__)
 
 typedef struct
@@ -40,7 +36,7 @@ typedef struct
 	Cpu* cpus;					// CPU information.
 #endif
 #ifdef CONFIG_acpi
-	AcpiRsdp* acpi_rsdp;	// ACPI RSDP table.
+	void* acpi_rsdp;	// ACPI RSDP table.
 #endif
 #ifdef CONFIG_open_firmware
 	void* fdt_blob;	   // Device tree blob.

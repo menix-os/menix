@@ -42,25 +42,26 @@ static const char* exception_names[0x20] = {
 	[0x1F] = NULL,	  // Reserved
 };
 
-static void interrupt_ud_handler(Context* regs)
+static Context* interrupt_ud_handler(Context* regs)
 {
 	// Make sure we're in user mode, otherwise we have to crash.
 	kmesg("Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
 	kmesg("Faulty data:");
 
-	vm_user_access({
-		for (usize i = 0; i < 16; i++)
-		{
-			u8 instr = *(u8*)regs->rip;
-			kmesg(" %hhx", instr);
-		}
-	});
+	for (usize i = 0; i < 16; i++)
+	{
+		u8 instr = *(u8*)regs->rip;
+		kmesg(" %hhx", instr);
+	}
 
 	ktrace(regs);
 	kabort();
+
+	return regs;
 }
 
-void syscall_handler(Context* regs)
+// Handles the syscall interrupt. Also referenced by system/arch.s
+Context* syscall_handler(Context* regs)
 {
 	// Save the registers.
 	Cpu* const core = arch_current_cpu();
@@ -72,9 +73,12 @@ void syscall_handler(Context* regs)
 	SyscallResult result = syscall_invoke(regs->rax, regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
 	regs->rax = result.value;
 	regs->rdx = result.error;
+
+	return regs;
 }
 
-typedef void (*InterruptFn)(Context* regs);
+// Page fault interrupt handler.
+Context* interrupt_pf_handler(Context* regs);
 
 static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
 	[0x06] = interrupt_ud_handler,
@@ -83,7 +87,7 @@ static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
 	[0x80] = syscall_handler,
 };
 
-void interrupt_register(usize idx, void (*handler)(Context*))
+void interrupt_register(usize idx, InterruptFn handler)
 {
 	asm_interrupt_disable();
 	if (idx > IDT_MAX_SIZE)

@@ -152,7 +152,7 @@ MODULE_FN isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf,
 	return len;
 }
 
-MODULE_FN void fbcon_post()
+void fbcon_post()
 {
 	FrameBuffer* fb = fb_get_active();
 
@@ -185,7 +185,7 @@ MODULE_FN void fbcon_post()
 			   internal_fb->mode.v_height);
 }
 
-MODULE_FN i32 fbcon_init()
+i32 fbcon_init()
 {
 	// Register device.
 	handle = handle_new(sizeof(Handle));

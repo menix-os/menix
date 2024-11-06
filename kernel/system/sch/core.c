@@ -177,10 +177,8 @@ Process* sch_id_to_process(usize pid)
 SpinLock rope_lock = spin_new();
 SpinLock wakeup_lock = spin_new();
 
-ATTR(noreturn) void sch_reschedule(Context* regs)
+Context* sch_reschedule(Context* context)
 {
-	sch_pause();
-
 	vm_set_page_map(vm_kernel_map);
 
 	Cpu* cur = arch_current_cpu();
@@ -230,7 +228,7 @@ ATTR(noreturn) void sch_reschedule(Context* regs)
 		else
 		{
 			// Save the current context.
-			running->registers = *regs;
+			running->registers = *context;
 			running->stack = cur->user_stack;
 			running->kernel_stack = cur->kernel_stack;
 
@@ -255,13 +253,14 @@ ATTR(noreturn) void sch_reschedule(Context* regs)
 			asm_halt();
 	}
 
+	// Update CPU information.
+	cur->user_stack = running->stack;
+	cur->kernel_stack = running->kernel_stack;
+	running->state = ThreadState_Running;
+	cur->thread = running;
 	sch_arch_update(cur, running);
 
-	// Reload page map.
+	// Load new page map.
 	vm_set_page_map(running->parent->page_map);
-
-	sch_arch_finalize(&running->registers);
-
-	// We shouldn't be able to reach this point as sch_arch_finalize will take us back to the next thread.
-	__builtin_unreachable();
+	return &running->registers;
 }

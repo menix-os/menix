@@ -64,8 +64,6 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 {
 	kassert(path != NULL, "Path can't be null!");
 
-	sch_pause();
-
 	// Open the file and ensure it's there.
 	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
 	if (node == NULL)
@@ -116,8 +114,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 		name = node->name;
 
 	// Use the current thread as parent.
-	proc_log("Creating new process \"%s\" (Path = %s, argv = 0x%p, envp = 0x%p, %s)\n", name, path, argv, envp,
-			 is_user ? "User" : "Kernel");
+	proc_log("Creating new process \"%s\" (%s, %s)\n", name, path, is_user ? "User" : "Kernel");
 
 	Process* proc = proc_create(name, ProcessState_Ready, is_user, arch_current_cpu()->thread->parent);
 
@@ -193,7 +190,6 @@ void proc_kill(Process* proc, bool is_crash)
 {
 	kassert(proc != NULL, "No process given to kill!");
 	proc_log("Killing PID %zu\n", proc->id);
-	sch_pause();
 
 	// If the process being killed is the currently running process.
 	bool is_suicide = false;

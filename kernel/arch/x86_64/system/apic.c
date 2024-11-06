@@ -211,13 +211,14 @@ void apic_send_eoi()
 	lapic_write(0xB0, 0);
 }
 
-void timer_handler(Context* regs)
+Context* timer_handler(Context* regs)
 {
 	asm_interrupt_disable();
 
-	// TODO
-	sch_reschedule(regs);
+	Context* new = sch_reschedule(regs);
 
 	apic_send_eoi();
 	asm_interrupt_enable();
+
+	return new;
 }

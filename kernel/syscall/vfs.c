@@ -1,5 +1,6 @@
 #include <menix/abi/errno.h>
 #include <menix/common.h>
+#include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
 #include <menix/system/sch/process.h>
 
@@ -7,14 +8,12 @@
 // `fd`: The file descriptor to write to.
 // `buf`: The data to write.
 // `size`: The amount of data to write.
-SYSCALL_IMPL(write, u32 fd, void* buf, usize size)
+SYSCALL_IMPL(write, u32 fd, VirtAddr buf, usize size)
 {
-	if (size == 0 || buf == NULL)
+	if (size == 0 || buf == 0)
 		return SYSCALL_ERR(EINVAL);
 
 	Process* process = arch_current_cpu()->thread->parent;
-	if (!vm_is_mapped(process->page_map, (VirtAddr)buf, VMProt_Write))
-		return SYSCALL_ERR(ENOMEM);
 
 	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
 	if (file_desc == NULL)
@@ -26,9 +25,15 @@ SYSCALL_IMPL(write, u32 fd, void* buf, usize size)
 	if (handle->write == NULL)
 		return SYSCALL_ERR(ENOMEM);
 
+	// Copy data from user.
+	void* kernel_buf = kmalloc(size);
+	vm_user_read(process, kernel_buf, buf, size);
+
 	// Write to the handle.
-	isize result;
-	vm_user_access({ result = handle->write(handle, file_desc, buf, size, file_desc->offset); });
+	isize result = handle->write(handle, file_desc, kernel_buf, size, file_desc->offset);
+	file_desc->offset += result;
+
+	kfree(kernel_buf);
 
 	return SYSCALL_OK(result);
 }
@@ -37,9 +42,9 @@ SYSCALL_IMPL(write, u32 fd, void* buf, usize size)
 // `fd`: The file descriptor to read from.
 // `buf`: A buffer to write to.
 // `size`: The amount of data to read.
-SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
+SYSCALL_IMPL(read, u32 fd, VirtAddr buf, usize size)
 {
-	if (size == 0 || buf == NULL)
+	if (size == 0 || buf == 0)
 		return SYSCALL_ERR(EINVAL);
 
 	Process* process = arch_current_cpu()->thread->parent;
@@ -54,10 +59,16 @@ SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
 	if (handle->read == NULL)
 		return SYSCALL_ERR(ENOSYS);
 
+	void* kernel_buf = kmalloc(size);
+
 	// Read from the handle.
-	isize result = 0;
-	vm_user_access({ result = handle->read(handle, file_desc, buf, size, file_desc->offset); });
+	isize result = handle->read(handle, file_desc, kernel_buf, size, file_desc->offset);
 	file_desc->offset += result;
+
+	// Copy data to user.
+	vm_user_write(process, buf, kernel_buf, size);
+	kfree(kernel_buf);
+
 	return SYSCALL_OK(result);
 }
 
@@ -66,11 +77,11 @@ SYSCALL_IMPL(read, u32 fd, void* buf, usize size)
 // `path`: The path to the file to be opened, relative to fd.
 // `buf`: A buffer to write to.
 // `size`: The amount of data to read.
-SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
+SYSCALL_IMPL(openat, int fd, VirtAddr path, int oflag, mode_t mode)
 {
 	Process* process = arch_current_cpu()->thread->parent;
 
-	if (path == NULL)
+	if (path == 0)
 		return SYSCALL_ERR(EINVAL);
 
 	// Get parent descriptor.
@@ -91,7 +102,10 @@ SYSCALL_IMPL(openat, int fd, const char* path, int oflag, mode_t mode)
 
 	// If there is a parent, find the requested node relative to it.
 	VfsNode* node;
-	vm_user_access({ node = vfs_get_node(parent, path, true); });
+	char* kernel_path = kmalloc(PATH_MAX);
+	vm_user_read(process, kernel_path, path, PATH_MAX);
+
+	node = vfs_get_node(parent, kernel_path, true);
 	if (node == NULL)
 		return SYSCALL_ERR(ENOENT);
 
@@ -125,7 +139,7 @@ SYSCALL_STUB(stat)
 // `path`: The path to the file to be opened.
 // `oflag`: Flags for opening the file.
 // `mode`:
-SYSCALL_IMPL(open, const char* path, int oflag, mode_t mode)
+SYSCALL_IMPL(open, VirtAddr path, int oflag, mode_t mode)
 {
 	return syscall_openat(AT_FDCWD, path, oflag, mode);
 }

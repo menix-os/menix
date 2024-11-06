@@ -254,6 +254,7 @@ bool vm_unmap(PageMap* page_map, VirtAddr virt_addr)
 
 PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 {
+	kassert(page_map != NULL, "page_map may not be null!");
 	spin_acquire_force(&page_map->lock);
 	usize* pte = vm_x86_get_pte(page_map, address, false);
 	spin_free(&page_map->lock);
@@ -264,11 +265,12 @@ PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 		return ~0UL;
 	}
 
-	return (*pte) & PT_ADDR_MASK;
+	return ((*pte) & PT_ADDR_MASK) + (address & 0xFFF);
 }
 
 bool vm_is_mapped(PageMap* page_map, VirtAddr address, VMProt prot)
 {
+	kassert(page_map != NULL, "page_map may not be null!");
 	PhysAddr phys = vm_virt_to_phys(page_map, address);
 
 	// Address is not mapped at all.
@@ -346,7 +348,7 @@ bool vm_protect(PageMap* page_map, VirtAddr virt_addr, VMProt prot, VMFlags flag
 	return result;
 }
 
-void interrupt_pf_handler(Context* regs)
+Context* interrupt_pf_handler(Context* regs)
 {
 	// CR2 holds the address that was accessed.
 	usize cr2;
@@ -404,6 +406,8 @@ void interrupt_pf_handler(Context* regs)
 		proc_kill(proc, true);
 		vm_log("PID %zu terminated with SIGSEGV.\n", proc->id);
 	}
+
+	return regs;
 }
 
 usize vm_get_page_size(VMLevel level)

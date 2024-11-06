@@ -16,17 +16,9 @@ extern Thread* sleeping_thread_list;
 // Initializes the scheduler.
 void sch_init(BootInfo* info);
 
-// Temporarily stops volatile rescheduling until a call to `sch_invoke` happens.
-// ? Defined per architecture.
-void sch_pause();
-
 // Makes the scheduler act immediately instead of waiting for a timer.
 // ? Defined per architecture.
 ATTR(noreturn) void sch_invoke();
-
-// Returns from the context switch.
-// ? Defined per architecture.
-void sch_arch_finalize(Context* regs);
 
 // Saves the architecture dependent data of the `thread`.
 // ? Defined per architecture.
@@ -36,9 +28,10 @@ void sch_arch_save(Cpu* core, Thread* thread);
 // ? Defined per architecture.
 void sch_arch_update(Cpu* core, Thread* next);
 
-// Implementation of the scheduler. Not meant to be called directly.
+// Implementation of the scheduler. Not meant to be called directly, use `sch_invoke` instead.
+// Returns a pointer to the new context.
 // ? Defined per architecture.
-ATTR(noreturn) void sch_reschedule(Context* regs);
+Context* sch_reschedule(Context* regs);
 
 // Returns the next thread that's ready to get execution time.
 // `list`: The head of the list to check.

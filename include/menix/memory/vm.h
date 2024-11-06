@@ -95,7 +95,7 @@ void vm_page_map_destroy(PageMap* map);
 
 // Translates a virtual address to a physical address. Returns 0 if not mapped.
 // `page_map`: The page map of the process to look at.
-// `address`: The virtual address to translate.
+// `address`: The virtual address to translate. Does not have to be page-aligned.
 PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address);
 
 // Returns the size of a page entry at a given level.
@@ -107,10 +107,8 @@ void vm_user_show();
 // Make user memory inaccessible to the kernel.
 void vm_user_hide();
 
-#define vm_user_access(scope) \
-	{ \
-		vm_user_show(); \
-		do \
-			scope while (0); \
-		vm_user_hide(); \
-	}
+// Reads `num` bytes from user address `src` to kernel address `dst`. Returns actual bytes read.
+usize vm_user_read(Process* proc, void* dst, VirtAddr src, usize num);
+
+// Writes `num` bytes from kernel address `src` to user address `dst`. Returns actual bytes written.
+usize vm_user_write(Process* proc, VirtAddr dst, void* src, usize num);

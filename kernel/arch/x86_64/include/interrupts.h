@@ -10,7 +10,6 @@
 #define INT_HANDLER(num)	  interrupt_##num
 #define INT_HANDLER_DECL(num) extern void INT_HANDLER(num)(void)
 
-void interrupt_register(usize idx, void (*handler)(Context*));
+typedef Context* (*InterruptFn)(Context* regs);
 
-// Page fault interrupt handler. Set by vm_init().
-void interrupt_pf_handler(Context* regs);
+void interrupt_register(usize idx, InterruptFn handler);

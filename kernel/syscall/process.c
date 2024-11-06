@@ -7,6 +7,7 @@
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
 
+#include "menix/memory/vm.h"
 #include "menix/system/abi.h"
 
 // Forks a thread by cloning its attributes.
@@ -49,12 +50,10 @@ SYSCALL_IMPL(execve, const char* path, char** argv, char** envp)
 	if (path == NULL)
 		return SYSCALL_ERR(ENOENT);
 
-	vm_user_access({
-		if (proc_execve(NULL, path, argv, envp, true) == true)
-			return SYSCALL_OK(0);
-		else
-			return SYSCALL_ERR(arch_current_cpu()->thread->errno);
-	});
+	if (proc_execve(NULL, path, argv, envp, true) == true)
+		return SYSCALL_OK(0);
+	else
+		return SYSCALL_ERR(arch_current_cpu()->thread->errno);
 }
 
 // Returns the ID of the calling process.
@@ -75,17 +74,22 @@ SYSCALL_IMPL(getparentpid)
 	return SYSCALL_OK(0);
 }
 
-SYSCALL_IMPL(getcwd, char* buf, usize size)
+SYSCALL_IMPL(getcwd, VirtAddr buf, usize size)
 {
-	if (buf == NULL || size == 0 || size > PATH_MAX)
+	if (buf == 0 || size == 0)
+		return SYSCALL_ERR(EINVAL);
+	if (size > PATH_MAX)
 		return SYSCALL_ERR(ERANGE);
 
 	Process* proc = arch_current_cpu()->thread->parent;
-	usize written;
-	vm_user_access({ written = vfs_get_path(proc->working_dir, buf, size); });
 
-	if (written != size)
-		return SYSCALL_ERR(ERANGE);
+	// Get the path.
+	char* kernel_buf = kmalloc(PATH_MAX);
+	usize written = vfs_get_path(proc->working_dir, kernel_buf, size);
+
+	// Copy the result to the user.
+	vm_user_write(proc, buf, kernel_buf, written);
+	kfree(kernel_buf);
 
 	return SYSCALL_OK(0);
 }

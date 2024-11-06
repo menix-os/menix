@@ -31,4 +31,5 @@ void lapic_write(u32 register, u32 value);
 // Returns the ID of the processor-local APIC.
 usize lapic_get_id();
 
-void timer_handler(Context* regs);
+// Handles an interrupt triggered by the timer.
+Context* timer_handler(Context* regs);

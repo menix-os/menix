@@ -37,10 +37,13 @@ void kernel_init()
 ATTR(noreturn) void kernel_main()
 {
 	// Call init program.
-	const char* init_name = cmd_get_str("init", "/usr/sbin/init");
-	char* argv[] = {"init", NULL};
+	char* init_path = cmd_get_str("init", "/usr/sbin/init");
+	char* init_name = cmd_get_str("init_name", "init");
+
+	char* argv[] = {init_name, NULL};
 	char* envp[] = {NULL};
-	kassert(proc_execve("init", init_name, argv, envp, true), "Failed to run init binary!");
+
+	kassert(proc_execve(init_name, init_path, argv, envp, true), "Failed to run init binary!");
 
 	while (true)
 		sch_invoke();

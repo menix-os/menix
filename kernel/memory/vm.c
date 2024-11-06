@@ -1,5 +1,7 @@
+#include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
+#include <menix/system/sch/process.h>
 
 #include <string.h>
 
@@ -64,6 +66,38 @@ void vm_init(PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 #endif
 		   "\n",
 		   vm_get_page_size(VMLevel_0));
+}
+
+usize vm_user_read(Process* proc, void* dst, VirtAddr src, usize num)
+{
+	if (proc == NULL || dst == NULL || num == 0)
+		return 0;
+
+	usize written = 0;
+
+	// TODO: Check if the memory is mapped and copy the buffer page wise.
+	vm_user_show();
+	memcpy(dst, (void*)src, num);
+	written += num;
+	vm_user_hide();
+
+	return written;
+}
+
+usize vm_user_write(Process* proc, VirtAddr dst, void* src, usize num)
+{
+	if (proc == NULL || src == NULL || num == 0)
+		return 0;
+
+	usize written = 0;
+
+	// TODO: Check if the memory is mapped and copy the buffer page wise.
+	vm_user_show();
+	memcpy((void*)dst, src, num);
+	written += num;
+	vm_user_hide();
+
+	return written;
 }
 
 void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)

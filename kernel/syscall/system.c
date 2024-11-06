@@ -8,20 +8,23 @@
 
 #include <string.h>
 
-SYSCALL_IMPL(uname, struct utsname* buffer)
+SYSCALL_IMPL(uname, VirtAddr buffer)
 {
 	// If we have no buffer to write to, fail.
 	if (buffer == 0)
 		return SYSCALL_ERR(EINVAL);
 
-	vm_user_access({
-		fixed_strncpy(buffer->sysname, "menix");
-		// TODO: Get actual network node.
-		fixed_strncpy(buffer->nodename, "localhost");
-		fixed_strncpy(buffer->release, CONFIG_release);
-		fixed_strncpy(buffer->version, CONFIG_version);
-		fixed_strncpy(buffer->machine, CONFIG_arch);
-	});
+	struct utsname uname_result;
+
+	fixed_strncpy(uname_result.sysname, "menix");
+	// TODO: Get actual network node.
+	fixed_strncpy(uname_result.nodename, "localhost");
+	fixed_strncpy(uname_result.release, CONFIG_release);
+	fixed_strncpy(uname_result.version, CONFIG_version);
+	fixed_strncpy(uname_result.machine, CONFIG_arch);
+
+	vm_user_write(arch_current_cpu()->thread->parent, buffer, &uname_result, sizeof(uname_result));
+
 	return SYSCALL_OK(0);
 }
 

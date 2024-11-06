@@ -75,15 +75,15 @@ sc_syscall:
 	pushq	%r11				/* RFLAGS is moved into r11 by the CPU. */
 	pushq	$0x2b				/* Same as SS. Use `gdt_table.user_code64 | CPL_USER` */
 	pushq	%rcx				/* RIP is moved into rcx by the CPU. */
-	pushq	$0x00				/* CpuRegisters.error field */
-	pushq	$0x00				/* CpuRegisters.isr field */
-	pushq	$0x00				/* CpuRegisters.core field */
+	pushq	$0x00				/* Context.error field */
+	pushq	$0x00				/* Context.isr field */
+	pushq	$0x00				/* Context.core field */
 	push_all_regs				/* Push general purpose registers so they can be written to by syscalls */
-	mov		%rsp,	%rdi		/* Put CpuRegisters* as first argument */
-	xor		%rbp,	%rbp		/* Zero out the base pointer so we don't backtrace into the user program */
+	mov		%rsp,	%rdi		/* Load the Context* as first argument. */
+	xor		%rbp,	%rbp		/* Zero out the base pointer. */
 	call	syscall_handler		/* Call syscall handler */
 	pop_all_regs				/* Pop stack values back to the general purpose registers. */
-	add		$0x18,	%rsp		/* Skip .error, .isr and .core fields */
+	add		$0x18,	%rsp		/* Skip Context.error, Context.isr and Context.core fields. */
 	movq	%gs:16,	%rsp		/* Load user stack from `Cpu.user_stack`. */
 	swapgs						/* Change GS to user mode. */
 	sti							/* Resume interrupts. */
@@ -94,11 +94,12 @@ sc_syscall:
 interrupt_internal:
 	pushq	%gs					/* Push CPU ID. */
 	push_all_regs
-	mov		%rsp,	%rdi		/* Load the CpuRegisters* as first argument */
+	mov		%rsp,	%rdi		/* Load the Context* as first argument. */
 	xor		%rbp,	%rbp		/* Zero out the base pointer so we don't backtrace into the user program */
 	call	interrupt_handler	/* Call interrupt handler */
+	mov		%rax,	%rsp		/* interrupt_handler returns a pointer to the new context. */
 	pop_all_regs
-	add		$0x18,	%rsp		/* Skip .error, .isr, and .core fields */
+	add		$0x18,	%rsp		/* Skip Context.error, Context.isr, and Context.core fields. */
 	swapgs_if_necessary			/* Change GS back to user mode if we came from user mode. */
 	iretq
 
