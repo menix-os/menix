@@ -45,10 +45,12 @@ LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);	   // Get device tree blob i
 
 static BootInfo info = {0};
 
+#ifdef CONFIG_smp
 static void limine_init_cpu(struct limine_smp_info* smp_info)
 {
 	arch_init_cpu((Cpu*)smp_info->extra_argument, &info.cpus[info.boot_cpu]);
 }
+#endif
 
 void kernel_boot()
 {
@@ -178,7 +180,6 @@ void kernel_boot()
 	const struct limine_smp_response* smp_res = smp_request.response;
 	info.cpu_num = smp_res->cpu_count;
 	boot_log("Initializing %zu cores.\n", info.cpu_num);
-	info.cpu_active = 0;
 
 	// Mark the boot CPU ID.
 #ifdef CONFIG_arch_x86_64
@@ -186,11 +187,16 @@ void kernel_boot()
 #elif defined(CONFIG_arch_riscv64)
 	info.boot_cpu = smp_res->bsp_hartid;
 #endif
+#else
+	info.cpu_num = 1;
+	info.boot_cpu = 0;
+#endif
 
 	// Allocate CPU info.
 	info.cpus = kzalloc(sizeof(Cpu) * info.cpu_num);
 
 	// Start all cores.
+#ifdef CONFIG_smp
 	for (usize i = 0; i < info.cpu_num; i++)
 	{
 		struct limine_smp_info* smp_cpu = smp_res->cpus[i];
@@ -199,10 +205,6 @@ void kernel_boot()
 		cpu->id = i;
 #ifdef CONFIG_arch_x86_64
 		cpu->lapic_id = smp_cpu->lapic_id;
-		// Allocate stack.
-		cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / arch_page_size) + (u64)pm_get_phys_base();
-		cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / arch_page_size) + (u64)pm_get_phys_base();
-		cpu->tss.ist2 = cpu->tss.ist1;
 		if (cpu->lapic_id != info.boot_cpu)
 			smp_cpu->goto_address = limine_init_cpu;
 		else
@@ -214,14 +216,15 @@ void kernel_boot()
 		else
 			limine_init_cpu(smp_cpu);
 #endif
+		while (info.cpu_active != info.cpu_num)
+			asm_pause();
 	}
-
-	while (info.cpu_active != info.cpu_num)
-		asm_pause();
+#else
+	arch_init_cpu(&info.cpus[0], &info.cpus[0]);
+#endif
 
 	// From now on we have to use the spin lock mechanism as there's more than one active core.
 	spin_use(true);
-#endif
 
 	kernel_early_init();
 	kernel_init();

@@ -1,5 +1,6 @@
 // x86 platform initialization
 
+#include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
@@ -24,8 +25,13 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 	// Make sure no other memory accesses happen before the CPUs are initialized.
 	spin_acquire_force(&cpu_lock);
 
-	gdt_reload();
+	// Allocate stack.
+	cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_0)) + (u64)pm_get_phys_base();
+	cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_0)) + (u64)pm_get_phys_base();
+	cpu->tss.ist2 = cpu->tss.ist1;
 
+	gdt_reload();
+	idt_reload();
 	gdt_load_tss((usize)&cpu->tss);
 
 	// Enable syscall extension (EFER.SCE).
@@ -126,7 +132,7 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 
 		// Stop all other cores.
 		asm_interrupt_disable();
-		while (1)
+		while (true)
 			asm_halt();
 	}
 

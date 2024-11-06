@@ -20,21 +20,19 @@ typedef struct Cpu Cpu;
 // Information provided to the kernel by the boot protocol.
 typedef struct
 {
-	const char* cmd;		   // Command line.
-	usize file_num;			   // Amount of files loaded.
-	BootFile* files;		   // Array of files.
-	usize mm_num;			   // Amount of memory map entries.
-	PhysMemory* memory_map;	   // Physical memory mapping.
-	void* kernel_virt;		   // Virtual address of the kernel.
-	PhysAddr kernel_phys;	   // Physical address of the kernel.
-	void* phys_map;			   // Memory mapped lower memory address.
-
-#ifdef CONFIG_smp
+	const char* cmd;			// Command line.
+	usize file_num;				// Amount of files loaded.
+	BootFile* files;			// Array of files.
+	usize mm_num;				// Amount of memory map entries.
+	PhysMemory* memory_map;		// Physical memory mapping.
+	void* kernel_virt;			// Virtual address of the kernel.
+	PhysAddr kernel_phys;		// Physical address of the kernel.
+	void* phys_map;				// Memory mapped lower memory address.
 	usize cpu_num;				// Amount of processors detected.
 	atomic usize cpu_active;	// Amount of processors active.
 	usize boot_cpu;				// Index of the processor that was used to boot.
 	Cpu* cpus;					// CPU information.
-#endif
+
 #ifdef CONFIG_acpi
 	void* acpi_rsdp;	// ACPI RSDP table.
 #endif
