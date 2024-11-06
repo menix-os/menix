@@ -12,10 +12,10 @@ load drivers as processes at runtime via dynamic linking, similar to an exokerne
 > **https://github.com/menix-os/bootstrap** instead.
 
 ## Getting started
-Follow the **[build instructions](doc/building.md)** for building the kernel and drivers.
+Follow the **[build instructions](doc/src/building.md)** for building the kernel and drivers.
 
 ## Contributing
 Contributions are _always_ welcome!
-First, please read the **[contributing guide](doc/contributing.md)** to make sure
+First, please read the **[contributing guide](doc/src/contributing.md)** to make sure
 your changes fit the rest of the project.
 Open an issue or pull request with the appropriate template and submit your changes.
