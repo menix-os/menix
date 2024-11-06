@@ -10,6 +10,7 @@
 #include <menix/system/sch/scheduler.h>
 #include <menix/system/video/fb.h>
 #include <menix/system/video/fb_default.h>
+#include <menix/util/cmd.h>
 #include <menix/util/log.h>
 
 #include <string.h>
@@ -178,7 +179,10 @@ void kernel_boot()
 	// Get SMP info
 	kassert(smp_request.response, "Unable to get kernel SMP info!");
 	const struct limine_smp_response* smp_res = smp_request.response;
-	info.cpu_num = smp_res->cpu_count;
+
+	usize smp_cmdline = cmd_get_usize("smp", smp_res->cpu_count);
+	// Only initialize a given amount of cores, or if none/invalid the maximum cpu count.
+	info.cpu_num = smp_cmdline > smp_res->cpu_count ? smp_res->cpu_count : smp_cmdline;
 	boot_log("Initializing %zu cores.\n", info.cpu_num);
 
 	// Mark the boot CPU ID.
@@ -216,9 +220,9 @@ void kernel_boot()
 		else
 			limine_init_cpu(smp_cpu);
 #endif
-		while (info.cpu_active != info.cpu_num)
-			asm_pause();
 	}
+	while (info.cpu_active != info.cpu_num)
+		asm_pause();
 #else
 	arch_init_cpu(&info.cpus[0], &info.cpus[0]);
 #endif
