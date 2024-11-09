@@ -1,12 +1,11 @@
 // Virtual memory management
 
-use super::{PhysAddr, PhysManager, VirtAddr};
+use super::{PhysAddr, VirtAddr};
 use crate::{
     arch::CommonPageMap,
-    boot::BootInfo,
     memory::{
-        pm::CommonPhysManager,
-        vm::{CommonVirtManager, ProtFlags},
+        pm::PhysManager,
+        vm::{CommonVirtManager, VmFlags, VmLevel, VmProt},
     },
     system::error::Errno,
 };
@@ -17,13 +16,13 @@ use spin::Mutex;
 
 pub struct VirtManager {
     /// Memory mapped lower physical memory.
-    pub(crate) phys_base: VirtAddr,
+    pub phys_base: VirtAddr,
     /// Page map used for the kernel.
-    pub(crate) kernel_map: Option<Box<PageMap>>,
+    pub kernel_map: Option<Box<PageMap>>,
     /// Start of foreign mappings.
-    pub(crate) foreign_base: VirtAddr,
+    pub foreign_base: VirtAddr,
     /// If we can use the Supervisor Mode Access Prevention to run vm_hide_user() and vm_show_user()
-    pub(crate) can_smap: bool,
+    pub can_smap: bool,
 }
 
 static VMM: Mutex<VirtManager> = Mutex::new(VirtManager {
@@ -34,20 +33,23 @@ static VMM: Mutex<VirtManager> = Mutex::new(VirtManager {
 });
 
 impl CommonVirtManager for VirtManager {
-    unsafe fn init(info: &BootInfo) {
-        todo!()
-    }
-
     fn map_page(
         page_map: &PageMap,
         phys_addr: PhysAddr,
         virt_addr: VirtAddr,
-        flags: ProtFlags,
+        prot: VmProt,
+        flags: VmFlags,
+        level: VmLevel,
     ) -> Result<(), Errno> {
         todo!()
     }
 
-    fn remap_page(page_map: &PageMap, virt_addr: VirtAddr, flags: ProtFlags) -> Result<(), Errno> {
+    fn remap_page(
+        page_map: &PageMap,
+        virt_addr: VirtAddr,
+        prot: VmProt,
+        flags: VmFlags,
+    ) -> Result<(), Errno> {
         todo!()
     }
 
@@ -55,11 +57,19 @@ impl CommonVirtManager for VirtManager {
         todo!()
     }
 
-    fn virt_to_phys(addr: VirtAddr) -> Result<PhysAddr, Errno> {
+    fn virt_to_phys(page_map: &PageMap, addr: VirtAddr) -> Result<PhysAddr, Errno> {
         todo!()
     }
 
-    unsafe fn set_page_map(page_map: &PageMap) {
+    fn get_page_size(level: VmLevel) -> usize {
+        match level {
+            VmLevel::Small => 0x1000,     // 4 KiB
+            VmLevel::Medium => 0x200000,  // 2 MiB
+            VmLevel::Large => 0x40000000, // 1 GiB
+        }
+    }
+
+    fn set_page_map(page_map: &PageMap) {
         unsafe {
             let buf = page_map.head.lock();
             asm!("mov cr3, {address}", address = in(reg) buf.as_ptr());
@@ -89,21 +99,16 @@ bitflags! {
 const ADDR_MASK: VirtAddr = 0x0000FFFFFFFFF000;
 
 impl PageFlags {
-    fn from_posix(page_map: &PageMap, prot: ProtFlags) -> Self {
+    fn to_x86_flags(page_map: &PageMap, prot: VmProt, flags: VmFlags) -> Self {
         let mut result = PageFlags::None;
 
-        match &VMM.lock().kernel_map {
-            Some(x) => {
-                if *page_map != **x {
-                    result |= PageFlags::UserMode
-                }
-            }
-            None => result |= PageFlags::UserMode,
+        if flags.contains(VmFlags::User) {
+            result |= PageFlags::UserMode;
         }
-        if prot.contains(ProtFlags::Write) {
+        if prot.contains(VmProt::Write) {
             result |= PageFlags::ReadWrite;
         }
-        if prot.contains(ProtFlags::Exec) {
+        if !prot.contains(VmProt::Exec) {
             result |= PageFlags::ExecuteDisable;
         }
 
@@ -113,12 +118,6 @@ impl PageFlags {
 
 pub struct PageMap {
     head: Mutex<&'static mut [usize; 512]>,
-}
-
-impl PartialEq for PageMap {
-    fn eq(&self, other: &Self) -> bool {
-        self.head.lock().as_ptr() == other.head.lock().as_ptr()
-    }
 }
 
 /// Returns the next level of the current page map level. Optionally allocates a page.

@@ -65,5 +65,5 @@ impl Handle for SerialHandle {
 
 pub fn init() {
     STDOUT.lock().live = Some(Box::new(SerialHandle));
-    log!("Initialized serial\n");
+    log!("serial: Initialized early serial output.\n");
 }

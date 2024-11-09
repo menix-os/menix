@@ -1,11 +1,10 @@
 // Slab allocator
 
-use super::pm::CommonPhysManager;
-use crate::{
-    arch::{x86_64::pm, PhysManager, PAGE_SIZE},
-    log,
-    misc::align_up,
+use super::{
+    pm::PhysManager,
+    vm::{CommonVirtManager, VmLevel::Small},
 };
+use crate::{arch::x86_64::vm, misc::align_up};
 use core::{
     alloc::{GlobalAlloc, Layout},
     mem::size_of,
@@ -34,6 +33,7 @@ struct SlabInfo {
 }
 
 impl Slab {
+    /// Creates a new, uninitialized slab.
     const fn new(size: usize) -> Self {
         Self {
             ent_size: size,
@@ -41,6 +41,7 @@ impl Slab {
         }
     }
 
+    /// Initializes a slab.
     fn init(&self) {
         unsafe {
             // Allocate memory for this slab.
@@ -49,7 +50,7 @@ impl Slab {
             // Calculate the amount of bytes we need to skip in order to be able to store a reference to the slab.
             let offset = align_up(size_of::<SlabHeader>(), self.ent_size);
             // That also means we need to deduct that amount here.
-            let available_size = PAGE_SIZE - offset;
+            let available_size = vm::VirtManager::get_page_size(Small) - offset;
 
             // Get a reference to the start of the buffer.
             let ptr = head as *mut SlabHeader;
@@ -120,7 +121,8 @@ unsafe impl GlobalAlloc for SlabAllocator {
 
         // The allocation won't fit within our defined slabs.
         // Get how many pages have to be allocated in order to fit `size`.
-        let num_pages = align_up(layout.size(), PAGE_SIZE) / PAGE_SIZE;
+        let page_size = vm::VirtManager::get_page_size(Small);
+        let num_pages = align_up(layout.size(), page_size) / page_size;
 
         // Allocate the pages plus an additional page for metadata.
         let mem = PhysManager::alloc(num_pages + 1);
@@ -138,7 +140,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
             (*info).size = layout.size();
 
             // Skip the metadata and return the next one.
-            return ret.byte_add(PAGE_SIZE);
+            return ret.byte_add(page_size);
         }
     }
 

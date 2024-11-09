@@ -3,7 +3,7 @@ use spin::Mutex;
 
 use super::{
     asm::{self, interrupt_disable, interrupt_enable},
-    gdt::GlobalDescriptorTable,
+    gdt::Gdt,
     interrupts::*,
     VirtAddr,
 };
@@ -104,7 +104,7 @@ impl IdtEntry {
         Self {
             base0: base as u16,
             // Only allow handlers to be part of the kernel.
-            selector: offset_of!(GlobalDescriptorTable, kernel_code) as u16,
+            selector: offset_of!(Gdt, kernel_code) as u16,
             ist: interrupt_stack,
             attributes: 1 << 7 // = Present
                 | match isr_type {

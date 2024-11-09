@@ -5,32 +5,24 @@ pub mod elf;
 pub mod gdt;
 pub mod idt;
 pub mod interrupts;
-pub mod pm;
 pub mod sched;
 pub mod serial;
 pub mod tss;
 pub mod vm;
 
 use super::{CommonArch, CommonContext, CommonCpu};
-use crate::{
-    boot::BootInfo,
-    dbg,
-    memory::{pm::CommonPhysManager, vm::CommonVirtManager},
-    thread::thread::Thread,
-};
+use crate::memory::pm;
+use crate::{boot::BootInfo, dbg, memory::vm::CommonVirtManager, thread::thread::Thread};
 use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use consts::MSR_KERNEL_GS_BASE;
 use core::{arch::asm, ptr::null_mut};
-pub use pm::PhysManager;
 pub use sched::Context;
 pub use vm::PageMap;
 pub use vm::VirtManager;
 
-pub const PAGE_SIZE: usize = 0x1000;
-
 pub struct Arch;
 impl CommonArch for Arch {
-    unsafe fn early_init(info: &mut BootInfo) {
+    fn early_init(info: &mut BootInfo) {
         unsafe {
             serial::init();
             gdt::load();
@@ -41,7 +33,7 @@ impl CommonArch for Arch {
         }
     }
 
-    unsafe fn init(info: &mut BootInfo) {
+    fn init(info: &mut BootInfo) {
         // Allocate memory to hold the processor specific data.
         let mut cpu_data = Vec::with_capacity(info.smp_info.processors.len());
 
@@ -50,8 +42,11 @@ impl CommonArch for Arch {
             // TODO
             let c = Cpu {
                 id: i,
-                lapic_id: cpu.lapic_id,
                 thread: None,
+                kernel_stack: todo!(),
+                user_stack: todo!(),
+                ticks_active: todo!(),
+                is_present: todo!(),
             };
             cpu_data.push(c);
         }
@@ -59,12 +54,12 @@ impl CommonArch for Arch {
         let mut buffer = cpu_data.into_boxed_slice();
         unsafe {
             PER_CPU_DATA = buffer.as_mut_ptr();
-            // Intentionally leak memory so it doesn't ever get freed.
-            Box::leak(buffer);
         }
+        // Intentionally leak memory so it doesn't ever get freed.
+        Box::leak(buffer);
     }
 
-    unsafe fn init_cpu(cpu: &Cpu, boot_cpu: &Cpu) {
+    fn init_cpu(cpu: &Cpu, boot_cpu: &Cpu) {
         unsafe {
             asm::wrmsr(MSR_KERNEL_GS_BASE, PER_CPU_DATA.add(cpu.id) as u64);
         }
@@ -102,12 +97,15 @@ impl CommonArch for Arch {
 #[derive(Clone, Debug)]
 pub struct Cpu {
     id: usize,
-    lapic_id: usize,
+    kernel_stack: VirtAddr,
+    user_stack: VirtAddr,
     thread: Option<Arc<Thread>>,
+    ticks_active: usize,
+    is_present: bool,
 }
 
 /// Fixed buffer for CPU-local storage. Stores important CPU state information.
-/// Never to be used directly! Always use Arch::current_cpu() instead.
+/// Never to be used directly! Always use `Arch::current_cpu()` instead.
 static mut PER_CPU_DATA: *mut Cpu = null_mut();
 
 impl CommonCpu for Cpu {

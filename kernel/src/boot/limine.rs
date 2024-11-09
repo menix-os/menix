@@ -92,14 +92,12 @@ unsafe extern "C" fn kernel_boot() -> ! {
         // Initialize the physical allocator and serial output.
         Arch::early_init(&mut info);
 
-        // Get command line.
+        // Convert the command line from bytes to UTF-8 if there is any.
         info.command_line = {
-            // Convert the command line from bytes to UTF-8 if there is any.
             let line_buf = KERNEL_FILE_REQUEST.get_response().unwrap().file().cmdline();
-            if line_buf.len() > 0 {
-                Some(str::from_utf8(line_buf).expect("Command line was not valid UTF-8!"))
-            } else {
-                None
+            match line_buf.len() {
+                0 => None,
+                1.. => Some(str::from_utf8(line_buf).expect("Command line was not valid UTF-8!")),
             }
         };
 
@@ -108,7 +106,6 @@ unsafe extern "C" fn kernel_boot() -> ! {
 
         #[cfg(feature = "sys_acpi")]
         {
-            // Initialize ACPI.
             info.rsdp_addr = RSDP_REQUEST.get_response().unwrap().address() as VirtAddr;
         }
     }

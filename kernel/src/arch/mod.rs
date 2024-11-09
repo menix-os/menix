@@ -14,25 +14,22 @@ pub use internal::Context;
 pub use internal::Cpu;
 pub use internal::PageMap;
 pub use internal::PhysAddr;
-pub use internal::PhysManager;
 pub use internal::VirtAddr;
 pub use internal::VirtManager;
-pub use internal::PAGE_SIZE;
 
 /// Common functionality that an architecture must provide.
-/// Before all cores are properly initialized, every operation is unsafe.
 /// Implementations must be called `Arch`.
 pub trait CommonArch {
     /// Initializes basic I/O and starts the memory allocator.
-    /// Called before anything else during boot.
-    unsafe fn early_init(info: &mut BootInfo);
+    /// This function must be called as soon as `info` contains the memory map.
+    fn early_init(info: &mut BootInfo);
 
     /// Prepares all available processors.
     /// Called before the scheduler is started.
-    unsafe fn init(info: &mut BootInfo);
+    fn init(info: &mut BootInfo);
 
     /// Initializes a single core.
-    unsafe fn init_cpu(cpu: &Cpu, boot_cpu: &Cpu);
+    fn init_cpu(cpu: &Cpu, boot_cpu: &Cpu);
 
     /// Gets the processor info of the executing processor.
     /// This information is processor-local and not shared with any other cores.

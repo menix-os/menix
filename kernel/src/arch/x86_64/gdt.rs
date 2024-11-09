@@ -3,21 +3,69 @@ use super::{
     consts::{CPL_KERNEL, CPL_USER},
     tss::{self, TaskStateSegment, TSS_STORAGE},
 };
-use crate::arch::x86_64::asm::{interrupt_disable, interrupt_enable};
+use crate::{
+    arch::{
+        x86_64::asm::{interrupt_disable, interrupt_enable},
+        VirtAddr,
+    },
+    log,
+};
+use bitflags::bitflags;
 use core::mem::offset_of;
 
-const GDTA_PRESENT: u8 = 1 << 7;
-const GDTA_KERNEL: u8 = CPL_KERNEL << 5;
-const GDTA_USER: u8 = CPL_USER << 5;
-const GDTA_SEGMENT: u8 = 1 << 4;
-const GDTA_EXECUTABLE: u8 = 1 << 3;
-// const GDTA_DIR_CONF: u8 = 1 << 2;
-const GDTA_READ_WRITE: u8 = 1 << 1;
-const GDTA_ACCESSED: u8 = 1 << 0;
+/// Global Descriptor Table.
+/// These entries are ordered exactly like this because the SYSRET instruction expects it.
+#[repr(C, packed)]
+pub struct Gdt {
+    /// Unused
+    pub null: GdtDesc,
+    /// Kernel CS
+    pub kernel_code: GdtDesc,
+    /// Kernel DS
+    pub kernel_data: GdtDesc,
+    /// 32-bit compatibility mode user CS (unused)
+    pub user_code: GdtDesc,
+    /// User DS
+    pub user_data: GdtDesc,
+    /// 64-bit user CS
+    pub user_code64: GdtDesc,
+    /// Task state segment
+    pub tss: GdtLongDesc,
+}
 
-const GDTF_GRANULARITY: u8 = 1 << 3;
-const GDTF_PROT_MODE: u8 = 1 << 2;
-const GDTF_LONG_MODE: u8 = 1 << 1;
+impl Gdt {
+    const fn new() -> Self {
+        Self {
+            null: GdtDesc::empty(),
+            kernel_code: GdtDesc::empty(),
+            kernel_data: GdtDesc::empty(),
+            user_code: GdtDesc::empty(),
+            user_data: GdtDesc::empty(),
+            user_code64: GdtDesc::empty(),
+            tss: GdtLongDesc::empty(),
+        }
+    }
+}
+
+bitflags! {
+    struct GdtAccess: u8 {
+        const None = 0;
+        const Present = 1 << 7;
+        const Kernel = CPL_KERNEL << 5;
+        const User = CPL_USER << 5;
+        const Segment = 1 << 4;
+        const Executable = 1 << 3;
+        const ReadWrite = 1 << 1;
+        const Accessed = 1 << 0;
+    }
+
+    struct GdtFlags: u8 {
+        const None = 0;
+        const Granularity = 1 << 3;
+        const ProtMode = 1 << 2;
+        const LongMode = 1 << 1;
+    }
+}
 
 /// GDT segment descriptor
 #[derive(Copy, Clone, Debug)]
@@ -50,13 +98,13 @@ impl GdtDesc {
     }
 
     /// Encode a new GDT descriptor
-    const fn new(limit: u32, base: u32, access: u8, flags: u8) -> Self {
+    const fn new(limit: u32, base: u32, access: GdtAccess, flags: GdtFlags) -> Self {
         Self {
             limit0: limit as u16,
             base0: base as u16,
             base1: (base >> 16) as u8,
-            access,
-            limit1_flags: ((flags << 4) & 0xF0) | (((limit >> 16) as u8) & 0x0F),
+            access: access.bits(),
+            limit1_flags: ((flags.bits() << 4) & 0xF0) | (((limit >> 16) as u8) & 0x0F),
             base2: (base >> 24) as u8,
         }
     }
@@ -99,13 +147,13 @@ impl GdtLongDesc {
     }
 
     /// Encode a new GDT descriptor
-    const fn new(limit: u32, base: u64, access: u8, flags: u8) -> Self {
+    const fn new(limit: u32, base: u64, access: GdtAccess, flags: GdtFlags) -> Self {
         Self {
             limit0: limit as u16,
             base0: base as u16,
             base1: (base >> 16) as u8,
-            access,
-            limit1_flags: ((flags << 4) & 0xF0) | (((limit >> 16) as u8) & 0x0F),
+            access: access.bits(),
+            limit1_flags: ((flags.bits() << 4) & 0xF0) | (((limit >> 16) as u8) & 0x0F),
             base2: (base >> 24) as u8,
             base3: (base >> 32) as u32,
             reserved: 0,
@@ -113,97 +161,75 @@ impl GdtLongDesc {
     }
 }
 
-/// Global Descriptor Table.
-/// These entries are ordered exactly like this because the SYSRET instruction expects it.
-#[repr(C, packed)]
-pub struct GlobalDescriptorTable {
-    /// Unused
-    pub null: GdtDesc,
-    /// Kernel CS
-    pub kernel_code: GdtDesc,
-    /// Kernel DS
-    pub kernel_data: GdtDesc,
-    /// 32-bit compatibility mode user CS (unused)
-    pub user_code: GdtDesc,
-    /// User DS
-    pub user_data: GdtDesc,
-    /// 64-bit user CS
-    pub user_code64: GdtDesc,
-    /// Task state segment
-    pub tss: GdtLongDesc,
-}
-
-impl GlobalDescriptorTable {
-    const fn new() -> Self {
-        Self {
-            null: GdtDesc::empty(),
-            kernel_code: GdtDesc::empty(),
-            kernel_data: GdtDesc::empty(),
-            user_code: GdtDesc::empty(),
-            user_data: GdtDesc::empty(),
-            user_code64: GdtDesc::empty(),
-            tss: GdtLongDesc::empty(),
-        }
-    }
-}
-
 pub fn load() {
     unsafe {
         // Allocate a new GDT.
-        let gdt = GlobalDescriptorTable {
-            null: GdtDesc::new(0, 0, 0, 0),
+        let gdt = Gdt {
+            null: GdtDesc::new(0, 0, GdtAccess::None, GdtFlags::None),
             kernel_code: GdtDesc::new(
                 0xFFFFF,
                 0,
-                GDTA_PRESENT
-                    | GDTA_KERNEL
-                    | GDTA_SEGMENT
-                    | GDTA_EXECUTABLE
-                    | GDTA_READ_WRITE
-                    | GDTA_ACCESSED,
-                GDTF_GRANULARITY | GDTF_LONG_MODE,
+                GdtAccess::Present
+                    | GdtAccess::Kernel
+                    | GdtAccess::Segment
+                    | GdtAccess::Executable
+                    | GdtAccess::ReadWrite
+                    | GdtAccess::Accessed,
+                GdtFlags::Granularity | GdtFlags::LongMode,
             ),
             kernel_data: GdtDesc::new(
                 0xFFFFF,
                 0,
-                GDTA_PRESENT | GDTA_KERNEL | GDTA_SEGMENT | GDTA_READ_WRITE | GDTA_ACCESSED,
-                GDTF_GRANULARITY | GDTF_LONG_MODE,
+                GdtAccess::Present
+                    | GdtAccess::Kernel
+                    | GdtAccess::Segment
+                    | GdtAccess::ReadWrite
+                    | GdtAccess::Accessed,
+                GdtFlags::Granularity | GdtFlags::LongMode,
             ),
             user_code: GdtDesc::new(
                 0xFFFFF,
                 0,
-                GDTA_PRESENT | GDTA_USER | GDTA_SEGMENT | GDTA_READ_WRITE,
-                GDTF_GRANULARITY | GDTF_PROT_MODE,
+                GdtAccess::Present | GdtAccess::User | GdtAccess::Segment | GdtAccess::ReadWrite,
+                GdtFlags::Granularity | GdtFlags::ProtMode,
             ),
             user_data: GdtDesc::new(
                 0xFFFFF,
                 0,
-                GDTA_PRESENT | GDTA_USER | GDTA_SEGMENT | GDTA_READ_WRITE,
-                GDTF_GRANULARITY | GDTF_LONG_MODE,
+                GdtAccess::Present | GdtAccess::User | GdtAccess::Segment | GdtAccess::ReadWrite,
+                GdtFlags::Granularity | GdtFlags::LongMode,
             ),
             user_code64: GdtDesc::new(
                 0xFFFFF,
                 0,
-                GDTA_PRESENT | GDTA_USER | GDTA_SEGMENT | GDTA_EXECUTABLE | GDTA_READ_WRITE,
-                GDTF_GRANULARITY | GDTF_LONG_MODE,
+                GdtAccess::Present
+                    | GdtAccess::User
+                    | GdtAccess::Segment
+                    | GdtAccess::Executable
+                    | GdtAccess::ReadWrite,
+                GdtFlags::Granularity | GdtFlags::LongMode,
             ),
             tss: GdtLongDesc::new(
                 0xFFFFF,
                 &raw const TSS_STORAGE as u64,
-                GDTA_PRESENT | GDTA_KERNEL | GDTA_EXECUTABLE | GDTA_ACCESSED,
-                0,
+                GdtAccess::Present
+                    | GdtAccess::Kernel
+                    | GdtAccess::Executable
+                    | GdtAccess::Accessed,
+                GdtFlags::None,
             ),
         };
 
         // Initialize the TSS.
         tss::init();
+        log!("gdt: Initialized the TSS.\n");
 
         // Save the GDT.
         GDT_TABLE = gdt;
 
         // Construct a register to hold the GDT base and limit.
         let gdtr = GdtRegister {
-            limit: (size_of::<GlobalDescriptorTable>() - 1) as u16,
+            limit: (size_of::<Gdt>() - 1) as u16,
             base: &raw const GDT_TABLE,
         };
 
@@ -223,17 +249,18 @@ pub fn load() {
             "mov fs, ax",
             "mov gs, ax",
             "mov ss, ax",
-            code_seg = const offset_of!(GlobalDescriptorTable, kernel_code),
-            data_seg = const offset_of!(GlobalDescriptorTable, kernel_data),
+            code_seg = const offset_of!(Gdt, kernel_code),
+            data_seg = const offset_of!(Gdt, kernel_data),
             lateout("rax") _ // (R)AX was modified.
         );
+        log!("gdt: Reloaded segment registers.\n");
     }
 }
 
 #[repr(C, packed)]
 pub struct GdtRegister {
     limit: u16,
-    base: *const GlobalDescriptorTable,
+    base: *const Gdt,
 }
 
-static mut GDT_TABLE: GlobalDescriptorTable = GlobalDescriptorTable::new();
+static mut GDT_TABLE: Gdt = Gdt::new();
