@@ -67,8 +67,8 @@ impl CommonArch for Arch {
         todo!()
     }
 
-    #[cfg(feature = "smp")]
     fn current_cpu() -> &'static mut Cpu {
+        #[cfg(feature = "smp")]
         unsafe {
             let idx: usize;
             // The Cpu struct starts at KERNEL_GSBASE:0
@@ -82,10 +82,7 @@ impl CommonArch for Arch {
             );
             return PER_CPU_DATA.add(idx).as_mut().unwrap();
         }
-    }
-
-    #[cfg(not(feature = "smp"))]
-    fn current_cpu() -> &'static mut Cpu {
+        #[cfg(not(feature = "smp"))]
         unsafe {
             return PER_CPU_DATA.as_mut().unwrap();
         }

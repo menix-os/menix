@@ -1,4 +1,4 @@
-/* Linker script for x86 builds */
+/* Linker script for kernel builds */
 
 ENTRY(kernel_boot)
 
@@ -8,6 +8,7 @@ PHDRS
 	text	PT_LOAD		FLAGS(5);
 	rodata	PT_LOAD		FLAGS(4);
 	data	PT_LOAD		FLAGS(6);
+	dynamic	PT_DYNAMIC	FLAGS(6);
 }
 
 SECTIONS
@@ -48,8 +49,13 @@ SECTIONS
 		*(.*bss)
 		*(.*bss.*)
 		*(COMMON)
+	} :data
+
+	.dynamic :
+	{
+		*(.dynamic)
 	LD_DATA_END = .;
-	}
+	} :data :dynamic
 
 	LD_KERNEL_END = .;
 
@@ -57,9 +63,9 @@ SECTIONS
 	{
 		*(.comment*)
 		*(.eh_frame*)
+		*(.rel.eh_frame*)
 		*(.gcc_except_table*)
 		*(.note*)
-		*(.rel.eh_frame*)
 		*(.interp)
 	}
 }

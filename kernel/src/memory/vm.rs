@@ -1,5 +1,5 @@
 // Virtual memory management
-
+use super::pm::PhysManager;
 pub use crate::arch::VirtManager;
 use crate::{
     arch::{CommonPageMap, PageMap, PhysAddr, VirtAddr},
@@ -8,9 +8,8 @@ use crate::{
     misc::kernel::{self, LD_KERNEL_START},
     system::error::Errno,
 };
+use alloc::boxed::Box;
 use bitflags::bitflags;
-
-use super::pm::PhysManager;
 
 bitflags! {
     /// Page protection flags.
@@ -48,6 +47,8 @@ pub trait CommonVirtManager {
     /// Sets a page map to be the current one.
     fn set_page_map(page_map: &PageMap);
 
+    fn get_kernel_map() -> &'static Option<PageMap>;
+
     /// Maps a virtual address to physical memory.
     fn map_page(
         page_map: &PageMap,
@@ -80,7 +81,7 @@ pub trait CommonVirtManager {
     /// This function must be called after the physical memory allocator has been initialized.
     fn init(info: &BootInfo) {
         // Allocate a page map for the kernel.
-        let kernel_map = PageMap::new(None);
+        let kernel_map = PageMap::new();
         log!("vm: Allocated a new page map for the kernel.\n");
 
         // Map all physical space.

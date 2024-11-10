@@ -10,7 +10,6 @@ use core::ptr::write_bytes;
 use spin::Mutex;
 
 /// Physical memory allocator.
-
 pub struct PhysManager<'a> {
     /// Base address of memory region where physical pages are mapped 1:1
     phys_base: VirtAddr,
@@ -33,6 +32,7 @@ static PMM: Mutex<PhysManager> = Mutex::new(PhysManager {
 });
 
 impl PhysManager<'_> {
+    /// Initializes the physical memory manager. Prior to this call, there may not be any heap allocations!
     pub fn init(info: &mut BootInfo) {
         debug_assert!(info.identity_base != 0, "HHDM identity base was NULL!");
 

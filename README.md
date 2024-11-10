@@ -1,5 +1,6 @@
 # menix
-A minimal and expandable Unix-like operating system.
+
+A **m**inimal and **e**xpandable U**nix**-like operating system.
 
 menix uses a monolithic architecture for many aspects, but can load drivers
 at runtime via dynamic linking.
@@ -12,9 +13,11 @@ at runtime via dynamic linking.
 > https://github.com/menix-os/bootstrap instead.
 
 ## Getting started
+
 Follow the **[build instructions](doc/building.md)** for building the kernel and drivers.
 
 ## Contributing
+
 Contributions are _always_ welcome!
 First, please read the **[contributing guide](doc/contributing.md)** to make sure
 your changes fit the rest of the project.

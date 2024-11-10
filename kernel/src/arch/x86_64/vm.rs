@@ -18,17 +18,14 @@ pub struct VirtManager {
     /// Memory mapped lower physical memory.
     pub phys_base: VirtAddr,
     /// Page map used for the kernel.
-    pub kernel_map: Option<Box<PageMap>>,
-    /// Start of foreign mappings.
-    pub foreign_base: VirtAddr,
-    /// If we can use the Supervisor Mode Access Prevention to run vm_hide_user() and vm_show_user()
+    pub kernel_map: Option<PageMap>,
+    /// If we can use the Supervisor Mode Access Prevention.
     pub can_smap: bool,
 }
 
 static VMM: Mutex<VirtManager> = Mutex::new(VirtManager {
     phys_base: 0,
     kernel_map: None,
-    foreign_base: 0,
     can_smap: false,
 });
 
@@ -140,26 +137,28 @@ unsafe fn traverse(top: *mut VirtAddr, idx: usize, allocate: bool) -> Option<*mu
         // Allocate the next level (will contain `PAGE_SIZE/sizeof(u64) == 512` entries).
         let next_level = PhysManager::alloc_zeroed(1);
         // Mark the next level as present so we don't allocate again.
-        *top.add(idx) = next_level | PageFlags::Present.bits() | PageFlags::ReadWrite.bits();
+        *top.add(idx) = next_level | (PageFlags::Present | PageFlags::ReadWrite).bits();
 
         return Some(PhysManager::phys_base().byte_add(next_level as usize) as *mut VirtAddr);
     }
 }
 
 impl CommonPageMap for PageMap {
-    fn new(copy_from: Option<&Self>) -> Self {
-        let result = unsafe {
-            let pt = PhysManager::phys_base().add(PhysManager::alloc(1) as usize) as *mut usize;
+    fn new() -> Self {
+        let mut result = unsafe {
+            let pt =
+                PhysManager::phys_base().byte_add(PhysManager::alloc(1) as usize) as *mut usize;
             Self {
                 head: Mutex::new(&mut *(pt as *mut [usize; 512])),
             }
         };
 
-        if let Some(x) = copy_from {
-            let mut page = result.head.lock();
-            let old_page = x.head.lock();
+        // If we already have a kernel map, copy the PDEs of the upper half into the new page map.
+        if let Some(kernel_map) = &VMM.lock().kernel_map {
+            let mut page = &mut result.head.lock();
+            let kernel_head = kernel_map.head.lock();
             for i in 256..512 {
-                page[i] = old_page[i]
+                page[i] = kernel_head[i];
             }
         }
 
@@ -172,7 +171,7 @@ impl CommonPageMap for PageMap {
 }
 
 /// Invalidates a TLB entry cache.
-unsafe extern "C" fn flush_tlb(addr: VirtAddr) {
+fn flush_tlb(addr: VirtAddr) {
     unsafe {
         asm!("invlpg [{addr}]", addr = in(reg) addr);
     }

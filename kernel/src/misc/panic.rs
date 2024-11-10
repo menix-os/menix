@@ -1,8 +1,7 @@
 // Panic handler.
 
-use core::panic::PanicInfo;
-
 use crate::{log, misc::log::STDOUT};
+use core::panic::PanicInfo;
 
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {

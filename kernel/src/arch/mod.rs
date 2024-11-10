@@ -8,6 +8,27 @@ mod internal {
     pub use super::x86_64::*;
 }
 
+#[cfg(target_arch = "aarch64")]
+pub mod aarch64;
+#[cfg(target_arch = "aarch64")]
+mod internal {
+    pub use super::aarch64::*;
+}
+
+#[cfg(target_arch = "riscv64")]
+pub mod riscv64;
+#[cfg(target_arch = "riscv64")]
+mod internal {
+    pub use super::riscv64::*;
+}
+
+#[cfg(target_arch = "loongarch64")]
+pub mod loongarch64;
+#[cfg(target_arch = "loongarch64")]
+mod internal {
+    pub use super::loongarch64::*;
+}
+
 // Re-export architecture specific types to make sure they exist in the implementation.
 pub use internal::Arch;
 pub use internal::Context;
@@ -41,7 +62,10 @@ pub trait CommonContext {}
 
 /// Common functionality for a virtual page map.
 pub trait CommonPageMap {
-    fn new(copy_from: Option<&Self>) -> Self;
+    /// Creates a new page map.
+    fn new() -> Self;
+
+    /// Forks a page map from an existing one.
     fn fork(source: &Self) -> Self;
 }
 

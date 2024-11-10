@@ -2,18 +2,21 @@ use crate::{
     arch::{Cpu, PhysAddr, VirtAddr},
     memory::pm::PhysMemory,
 };
+use core::sync::atomic::AtomicUsize;
 
-mod entry;
-#[cfg(all(
-    feature = "boot_limine",
-    any(
-        target_arch = "x86_64",
-        target_arch = "aarch64",
-        target_arch = "riscv64",
-        target_arch = "loongarch64"
-    )
+// Boot protocols
+
+// Limine supports x86_64, aarch64, riscv64 and loongarch64
+#[cfg(any(
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "riscv64",
+    target_arch = "loongarch64"
 ))]
 mod limine;
+
+// Kernel entry point.
+mod entry;
 
 /// Information passed from the bootloader. Memory is reclaimed after initialization.
 #[derive(Default, Debug)]
@@ -33,7 +36,7 @@ pub struct BootInfo<'a> {
     /// Base address of a 1:1 physical to virtual mapping.
     pub identity_base: VirtAddr,
 
-    #[cfg(feature = "smp")]
+    /// Processor information.
     pub smp_info: BootSmpInfo<'a>,
 
     #[cfg(feature = "sys_acpi")]
@@ -53,7 +56,7 @@ pub struct BootSmpInfo<'a> {
     pub processors: &'a [Cpu],
 
     /// Total active processors.
-    pub active_processors: usize,
+    pub active_processors: AtomicUsize,
 
     /// Index of the processor that is being used to boot.
     pub boot_cpu: usize,

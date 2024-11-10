@@ -36,7 +36,7 @@ pub fn cpuid(a: &mut usize, b: &mut usize, c: &mut usize, d: &mut usize) {
 }
 
 /// Writes an unsigned 64-bit value to a model-specific register.
-pub unsafe fn wrmsr(msr: u32, value: u64) {
+pub fn wrmsr(msr: u32, value: u64) {
     unsafe {
         let eax = value as u32;
         let edx = (value >> 32) as u32;
@@ -45,7 +45,7 @@ pub unsafe fn wrmsr(msr: u32, value: u64) {
 }
 
 /// Writes an unsigned 64-bit value to the model-specific XCR register.
-pub unsafe fn wrxcr(msr: u32, value: u64) {
+pub fn wrxcr(msr: u32, value: u64) {
     unsafe {
         let eax = value as u32;
         let edx = (value >> 32) as u32;
@@ -54,7 +54,7 @@ pub unsafe fn wrxcr(msr: u32, value: u64) {
 }
 
 /// Reads an unsigned 64-bit value from a model-specific register.
-pub unsafe fn rdmsr(msr: u32) -> u64 {
+pub fn rdmsr(msr: u32) -> u64 {
     unsafe {
         let eax: u32;
         let edx: u32;
@@ -65,14 +65,14 @@ pub unsafe fn rdmsr(msr: u32) -> u64 {
 
 /// Saves the FPU state to a 512-byte region of memory using FXSAVE.
 /// Pointer must be 16-byte aligned.
-pub unsafe fn fxsave(memory: *mut u8) {
+pub fn fxsave(memory: *mut u8) {
     unsafe {
         asm! ("fxsave [{0}]", in(reg) memory);
     }
 }
 
 #[inline]
-pub unsafe fn read8(port: u16) -> u8 {
+pub fn read8(port: u16) -> u8 {
     unsafe {
         let value: u8;
         asm!("in al, dx", out("al") value, in("dx") port, options(nomem, nostack, preserves_flags));
@@ -81,7 +81,7 @@ pub unsafe fn read8(port: u16) -> u8 {
 }
 
 #[inline]
-pub unsafe fn read16(port: u16) -> u16 {
+pub fn read16(port: u16) -> u16 {
     unsafe {
         let value: u16;
         asm!("in ax, dx", out("ax") value, in("dx") port, options(nomem, nostack, preserves_flags));
@@ -90,7 +90,7 @@ pub unsafe fn read16(port: u16) -> u16 {
 }
 
 #[inline]
-pub unsafe fn read32(port: u16) -> u32 {
+pub fn read32(port: u16) -> u32 {
     unsafe {
         let value: u32;
         asm!("in eax, dx", out("eax") value, in("dx") port, options(nomem, nostack, preserves_flags));
@@ -99,21 +99,21 @@ pub unsafe fn read32(port: u16) -> u32 {
 }
 
 #[inline]
-pub unsafe fn write8(port: u16, value: u8) {
+pub fn write8(port: u16, value: u8) {
     unsafe {
         asm!("out dx, al", in("dx") port, in("al") value, options(nomem, nostack, preserves_flags));
     }
 }
 
 #[inline]
-pub unsafe fn write16(port: u16, value: u16) {
+pub fn write16(port: u16, value: u16) {
     unsafe {
         asm!("out dx, ax", in("dx") port, in("ax") value, options(nomem, nostack, preserves_flags));
     }
 }
 
 #[inline]
-pub unsafe fn write32(port: u16, value: u32) {
+pub fn write32(port: u16, value: u32) {
     unsafe {
         asm!("out dx, eax", in("dx") port, in("eax") value, options(nomem, nostack, preserves_flags));
     }

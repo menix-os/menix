@@ -3,7 +3,8 @@ name = "kernel"
 version = "0.1.0"
 edition = "2021"
 
-[[bin]]
+[lib]
+crate-type = ["dylib"]
 name = "menix"
 path = "src/menix.rs"
 
@@ -18,13 +19,10 @@ seq-macro = "0.3.5"
 spin = "0.9.8"
 
 [features]
-default = ["smp", "boot_limine", "sys_acpi", "sys_pci", "sys_video"]
+default = ["smp", "sys_acpi", "sys_pci", "sys_video"]
 
 # Symmetric multi-processing.
 smp = []
-
-# Use Limine as the default bootloader.
-boot_limine = []
 
 # Use ACPI for hardware discovery. Available on x86_64, aarch64, riscv64 and loongarch64.
 sys_acpi = []
