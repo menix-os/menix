@@ -30,8 +30,8 @@ typedef enum : usize
 	VMLevel_2 = 3,
 #endif
 #if defined(CONFIG_arch_riscv64)
-	VMLevel_4 = 4,
-	VMLevel_5 = 5,
+	VMLevel_3 = 4,
+	VMLevel_4 = 5,
 #endif
 } VMLevel;
 
