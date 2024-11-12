@@ -1,6 +1,4 @@
-/* Linker script for x86 builds */
-
-OUTPUT_FORMAT(elf64-x86-64)
+/* Linker script for the kernel */
 
 PHDRS
 {

@@ -7,7 +7,7 @@ function(add_architecture name)
 	target_sources(menix PUBLIC ${ARGN})
 
 	# Set linker script and common search paths.
-	target_link_options(menix PUBLIC -T ${CMAKE_CURRENT_SOURCE_DIR}/${name}.ld)
+	target_link_options(menix PUBLIC -T ${MENIX_SRC}/toolchain/linker/kernel.ld)
 	target_link_options(menix PUBLIC "SHELL:-L ${MENIX_SRC}" "SHELL:-L ${MENIX_SRC}/toolchain/linker")
 
 	require_option(arch_${name})
