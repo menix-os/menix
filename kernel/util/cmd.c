@@ -3,9 +3,8 @@
 #include <menix/util/cmd.h>
 #include <menix/util/log.h>
 
+#include <stdlib.h>
 #include <string.h>
-
-#include "stdlib.h"
 
 // Returns the substring of the value part of the option specified by `key`.
 // If not found, returns `NULL`.

@@ -19,12 +19,18 @@ typedef struct ATTR(packed) StackFrame
 	void* return_addr;			// The address this frame returns to.
 } StackFrame;
 
+SpinLock kmesg_lock;
+
 void kmesg(const char* fmt, ...)
 {
+	spin_acquire_force(&kmesg_lock);
+
 	va_list args;
 	va_start(args, fmt);
 	vprintf(fmt, args);
 	va_end(args);
+
+	spin_free(&kmesg_lock);
 }
 
 void ktrace(Context* regs)

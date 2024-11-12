@@ -210,25 +210,19 @@ void kernel_boot()
 #ifdef CONFIG_arch_x86_64
 		cpu->lapic_id = smp_cpu->lapic_id;
 		if (cpu->lapic_id != info.boot_cpu)
-			smp_cpu->goto_address = limine_init_cpu;
-		else
-			limine_init_cpu(smp_cpu);
 #elif defined(CONFIG_arch_riscv64)
 		cpu->hart_id = smp_cpu->hartid;
 		if (cpu->hart_id != info.boot_cpu)
+#endif
 			smp_cpu->goto_address = limine_init_cpu;
 		else
 			limine_init_cpu(smp_cpu);
-#endif
 	}
 	while (info.cpu_active != info.cpu_num)
 		asm_pause();
 #else
 	arch_init_cpu(&info.cpus[0], &info.cpus[0]);
 #endif
-
-	// From now on we have to use the spin lock mechanism as there's more than one active core.
-	spin_use(true);
 
 	kernel_early_init();
 	kernel_init();

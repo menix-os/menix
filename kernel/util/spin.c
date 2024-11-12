@@ -4,7 +4,7 @@
 #include <menix/util/spin.h>
 
 static void* last_addr = NULL;
-static bool use_spin = false;
+static bool use_spin = true;
 
 void spin_use(bool on)
 {
@@ -25,7 +25,6 @@ bool spin_acquire(SpinLock* lock)
 	if (result)
 	{
 		lock->owner = __builtin_return_address(0);
-		lock->cpu = arch_current_cpu()->id;
 	}
 
 	return result;
@@ -33,9 +32,6 @@ bool spin_acquire(SpinLock* lock)
 
 void spin_acquire_force(SpinLock* lock)
 {
-	if (!use_spin)
-		return;
-
 	if (!lock)
 		return;
 
@@ -50,7 +46,6 @@ void spin_acquire_force(SpinLock* lock)
 	}
 
 	lock->owner = __builtin_return_address(0);
-	lock->cpu = arch_current_cpu()->id;
 }
 
 void spin_free(SpinLock* lock)
