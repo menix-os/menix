@@ -236,6 +236,8 @@ Context* sch_reschedule(Context* context)
 
 			if (running->state == ThreadState_Running)
 				running->state = ThreadState_Ready;
+
+			spin_free(&running->lock);
 		}
 	}
 
