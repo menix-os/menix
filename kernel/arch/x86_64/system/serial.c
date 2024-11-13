@@ -83,10 +83,9 @@ static char serial_getchar()
 
 static isize serial_read(Handle* handle, FileDescriptor* fd, void* data, usize size, off_t off)
 {
-	for (usize i = 0; i < size; i++)
-		((char*)data)[i] = serial_getchar();
+	((char*)data)[0] = serial_getchar();
 
-	return size;
+	return 1;
 }
 
 static Handle serial_driver = {
