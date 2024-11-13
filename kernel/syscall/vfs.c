@@ -106,6 +106,7 @@ SYSCALL_IMPL(openat, int fd, VirtAddr path, int oflag, mode_t mode)
 	vm_user_read(process, kernel_path, path, PATH_MAX);
 
 	node = vfs_get_node(parent, kernel_path, true);
+	kfree(kernel_path);
 	if (node == NULL)
 		return SYSCALL_ERR(ENOENT);
 
@@ -133,7 +134,39 @@ SYSCALL_IMPL(openat, int fd, VirtAddr path, int oflag, mode_t mode)
 	return SYSCALL_OK(last_fd);
 }
 
-SYSCALL_STUB(stat)
+SYSCALL_IMPL(stat, int fd, VirtAddr path, VirtAddr buf)
+{
+	Process* process = arch_current_cpu()->thread->parent;
+	VfsNode* node;
+
+	// If we want to stat a file descriptor.
+	if (fd != -1)
+	{
+		FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+		if (file_desc == NULL)
+			return SYSCALL_ERR(EBADF);
+
+		node = file_desc->node;
+	}
+	else
+	{
+		if (path == 0)
+			return SYSCALL_ERR(EINVAL);
+
+		char* kernel_path = kmalloc(PATH_MAX);
+		vm_user_read(process, kernel_path, path, PATH_MAX);
+
+		node = vfs_get_node(process->working_dir, kernel_path, true);
+		kfree(kernel_path);
+	}
+
+	if (node == NULL)
+		return SYSCALL_ERR(ENOENT);
+
+	vm_user_write(process, buf, &node->handle->stat, sizeof(struct stat));
+
+	return SYSCALL_OK(0);
+}
 
 // Opens a connection between a file and a file descriptor. Returns a new file descriptor.
 // `path`: The path to the file to be opened.
@@ -201,7 +234,6 @@ SYSCALL_STUB(chmod)
 SYSCALL_STUB(chown)
 SYSCALL_STUB(unmount)
 SYSCALL_STUB(mount)
-SYSCALL_STUB(chdir)
 SYSCALL_STUB(unlink)
 SYSCALL_STUB(symlink)
 SYSCALL_STUB(readlink)
