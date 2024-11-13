@@ -144,8 +144,6 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 
 	// Run the scheduler.
 	sch_invoke();
-
-	return false;
 }
 
 usize proc_fork(Process* proc, Thread* thread)
@@ -183,6 +181,7 @@ usize proc_fork(Process* proc, Thread* thread)
 	fork->state = ProcessState_Ready;
 	spin_free(&proc_lock);
 
+	proc_log("Forked process \"%s\", new pid %zu\n", proc->name, fork->id);
 	return fork->id;
 }
 
@@ -212,6 +211,9 @@ void proc_kill(Process* proc, bool is_crash)
 		if (list_find(&proc->parent->children, idx, proc))
 			list_pop(&proc->parent->children, idx);
 	}
+
+	// Remove the process from the scheduler.
+	spin_lock(&proc_lock, { sch_remove_process(&proc_list, proc); });
 
 	Process* init = proc_list->next;
 
