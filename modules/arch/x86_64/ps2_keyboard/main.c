@@ -74,18 +74,15 @@ static char read_keycode()
 
 static isize ps2_keyboard_read(Handle* handle, FileDescriptor* fd, void* data, usize size, off_t offset)
 {
-	for (usize i = 0; i < size; i++)
+	char ch;
+	do
 	{
-		char ch;
-		do
-		{
-			ch = read_keycode();
-			asm_pause();
-		} while (ch == -1);
-		((char*)data)[i] = ch;
-	}
+		ch = read_keycode();
+		asm_pause();
+	} while (ch == -1);
+	((char*)data)[0] = ch;
 
-	return size;
+	return 1;
 }
 
 MODULE_FN i32 nvme_init()
