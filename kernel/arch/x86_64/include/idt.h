@@ -20,7 +20,7 @@ typedef struct ATTR(packed)
 	Bits ist:2;
 	Bits reserved:6;
 #else
-	bits reserved:8;
+	Bits reserved:8;
 #endif
 	u8 type;
 	u16 base_16_31;
@@ -30,12 +30,16 @@ typedef struct ATTR(packed)
 #endif
 } IdtDesc;
 
+static_assert(sizeof(IdtDesc) == 16);
+
 // IDT Register emulation so it can be accessed from C.
 typedef struct ATTR(packed)
 {
 	u16 limit;
 	IdtDesc* base;
 } IdtRegister;
+
+static_assert(sizeof(IdtRegister) == 10);
 
 // Install the Interrupt Descriptor Table.
 void idt_init();
