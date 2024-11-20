@@ -6,18 +6,8 @@
 			"request": "custom",
 			"name": "Debug x86_64",
 			"targetCreateCommands": [
-				"target create ${workspaceFolder}/build/bin/menix"
-			],
-			"processCreateCommands": [
-				"gdb-remote localhost:1234"
-			]
-		},
-		{
-			"type": "lldb",
-			"request": "custom",
-			"name": "Debug aarch64",
-			"targetCreateCommands": [
-				"target create ${workspaceFolder}/build/bin/menix"
+				"settings set target.source-map ${workspaceFolder}/../bootstrap/build/source/kernel ${workspaceFolder}",
+				"target create ${workspaceFolder}/../bootstrap/build/build/kernel/bin/menix"
 			],
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"
@@ -28,7 +18,8 @@
 			"request": "custom",
 			"name": "Debug riscv64",
 			"targetCreateCommands": [
-				"target create ${workspaceFolder}/build/bin/menix"
+				"settings set target.source-map ${workspaceFolder}/../bootstrap/build/source/kernel ${workspaceFolder}",
+				"target create ${workspaceFolder}/../bootstrap/build/build/kernel/bin/menix"
 			],
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"
