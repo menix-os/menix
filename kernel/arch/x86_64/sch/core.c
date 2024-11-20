@@ -5,14 +5,12 @@
 
 #include <apic.h>
 
-ATTR(noreturn) void sch_invoke()
+void sch_invoke()
 {
 	asm_interrupt_enable();
 
 	// Force a software interrupt.
 	asm_int(INT_TIMER);
-
-	__builtin_unreachable();
 }
 
 void sch_arch_save(Cpu* core, Thread* thread)

@@ -142,8 +142,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 	vm_set_page_map(map);
 	spin_free(&proc_lock);
 
-	// Run the scheduler.
-	sch_invoke();
+	return true;
 }
 
 usize proc_fork(Process* proc, Thread* thread)

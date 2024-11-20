@@ -242,7 +242,7 @@ Context* sch_reschedule(Context* context)
 	}
 
 	// Grab the next thread.
-	running = sch_next(running);
+	running = sch_next(thread_list);
 
 	// If there are no more threads to run, something went wrong.
 	if (running == NULL)

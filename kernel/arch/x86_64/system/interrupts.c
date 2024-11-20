@@ -101,13 +101,12 @@ void interrupt_register(usize idx, InterruptFn handler)
 	asm_interrupt_enable();
 }
 
-void interrupt_handler(Context* regs)
+Context* interrupt_handler(Context* regs)
 {
 	// If we have a handler for this interrupt, call it.
 	if (regs->isr < ARRAY_SIZE(exception_handlers) && exception_handlers[regs->isr])
 	{
-		exception_handlers[regs->isr](regs);
-		return;
+		return exception_handlers[regs->isr](regs);
 	}
 
 	// If unhandled and caused by the user, terminate the process with SIGILL.
@@ -118,7 +117,7 @@ void interrupt_handler(Context* regs)
 		arch_dump_registers(regs);
 
 		proc_kill(proc, true);
-		return;
+		return regs;
 	}
 
 	// Disable spinlocks so we have a chance of displaying a message.

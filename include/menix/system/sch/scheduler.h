@@ -18,7 +18,7 @@ void sch_init(BootInfo* info);
 
 // Makes the scheduler act immediately instead of waiting for a timer.
 // ? Defined per architecture.
-ATTR(noreturn) void sch_invoke();
+void sch_invoke();
 
 // Saves the architecture dependent data of the `thread`.
 // ? Defined per architecture.
