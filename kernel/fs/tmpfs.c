@@ -19,7 +19,7 @@ static ino_t inode_counter = 0;
 
 static isize tmpfs_handle_read(struct Handle* self, FileDescriptor* fd, void* buffer, usize amount, off_t offset)
 {
-	spin_acquire_force(&self->lock);
+	spin_lock(&self->lock);
 
 	TmpHandle* const handle = (TmpHandle*)self;
 	isize total_read = amount;
@@ -32,13 +32,13 @@ static isize tmpfs_handle_read(struct Handle* self, FileDescriptor* fd, void* bu
 	// Copy all data to the buffer.
 	memcpy(buffer, handle->buffer + offset, total_read);
 
-	spin_free(&self->lock);
+	spin_unlock(&self->lock);
 	return total_read;
 }
 
 static isize tmpfs_handle_write(struct Handle* self, FileDescriptor* fd, const void* buffer, usize amount, off_t offset)
 {
-	spin_acquire_force(&self->lock);
+	spin_lock(&self->lock);
 
 	TmpHandle* const handle = (TmpHandle*)self;
 
@@ -74,7 +74,7 @@ static isize tmpfs_handle_write(struct Handle* self, FileDescriptor* fd, const v
 	written = amount;
 
 fail:
-	spin_free(&self->lock);
+	spin_unlock(&self->lock);
 	return written;
 }
 

@@ -43,7 +43,7 @@ Thread* sch_next(Thread* list)
 		}
 
 		// Check if it's currently not being worked on.
-		if (spin_acquire(&cur->lock))
+		if (spin_try_lock(&cur->lock))
 			return cur;
 
 		// Thread is being worked on.
@@ -185,7 +185,10 @@ Context* sch_reschedule(Context* context)
 	cur->ticks_active++;
 	// timer_stop_sched();
 
-	if (spin_acquire(&rope_lock))
+	if (cur->ticks_active % 10000 == 0)
+		kmesg("Alive for 0x%p ticks\n", cur->ticks_active);
+
+	if (spin_try_lock(&rope_lock))
 	{
 		// Kill dying threads.
 		Thread* thread = hanging_thread_list;
@@ -208,7 +211,7 @@ Context* sch_reschedule(Context* context)
 			kfree(proc);
 			proc = next;
 		}
-		spin_free(&rope_lock);
+		spin_unlock(&rope_lock);
 	}
 
 	Thread* running = cur->thread;
@@ -223,7 +226,7 @@ Context* sch_reschedule(Context* context)
 			if (list_find(&parent->threads, idx, running))
 				list_pop(&parent->threads, idx);
 
-			spin_acquire_force(&thread_lock);
+			spin_lock(&thread_lock);
 		}
 		else
 		{
@@ -237,7 +240,7 @@ Context* sch_reschedule(Context* context)
 			if (running->state == ThreadState_Running)
 				running->state = ThreadState_Ready;
 
-			spin_free(&running->lock);
+			spin_unlock(&running->lock);
 		}
 	}
 

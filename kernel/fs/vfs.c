@@ -60,9 +60,9 @@ VfsNode* vfs_get_root()
 
 i32 vfs_fs_register(FileSystem* fs)
 {
-	spin_acquire_force(&vfs_lock);
+	spin_lock(&vfs_lock);
 	hashmap_insert(&fs_map, fs->name, strlen(fs->name), fs);
-	spin_free(&vfs_lock);
+	spin_unlock(&vfs_lock);
 	vfs_log("Registered new file system \"%s\"!\n", fs->name);
 	return 0;
 }
@@ -88,11 +88,11 @@ VfsNode* vfs_node_new(FileSystem* fs, VfsNode* parent, const char* name, bool is
 
 bool vfs_node_delete(VfsNode* node)
 {
-	spin_acquire_force(&vfs_lock);
+	spin_lock(&vfs_lock);
 
 	// TODO: Traverse all child nodes.
 
-	spin_free(&vfs_lock);
+	spin_unlock(&vfs_lock);
 	return node;
 }
 
@@ -259,7 +259,7 @@ VfsNode* vfs_resolve_node(VfsNode* node, bool follow_links)
 
 VfsNode* vfs_node_add(VfsNode* parent, const char* name, mode_t mode)
 {
-	spin_acquire_force(&vfs_lock);
+	spin_lock(&vfs_lock);
 
 	VfsNode* node = NULL;
 	VfsPathToNode parsed = vfs_parse_path(parent, name);
@@ -290,7 +290,7 @@ VfsNode* vfs_node_add(VfsNode* parent, const char* name, mode_t mode)
 leave:
 	if (parsed.name != NULL)
 		kfree(parsed.name);
-	spin_free(&vfs_lock);
+	spin_unlock(&vfs_lock);
 	return node;
 }
 
@@ -300,7 +300,7 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 	VfsPathToNode parsed = {0};
 	VfsNode* source_node = NULL;
 
-	spin_acquire_force(&vfs_lock);
+	spin_lock(&vfs_lock);
 
 	// Check if the file system has been registered.
 	FileSystem* fs;
@@ -356,13 +356,13 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 leave:
 	if (parsed.name != NULL)
 		kfree(parsed.name);
-	spin_free(&vfs_lock);
+	spin_unlock(&vfs_lock);
 	return result;
 }
 
 VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target)
 {
-	spin_acquire_force(&vfs_lock);
+	spin_lock(&vfs_lock);
 
 	VfsNode* result = NULL;
 
@@ -387,7 +387,7 @@ VfsNode* vfs_sym_link(VfsNode* parent, const char* path, const char* target)
 
 	result = source_node;
 leave:
-	spin_free(&vfs_lock);
+	spin_unlock(&vfs_lock);
 	return result;
 }
 
@@ -418,7 +418,7 @@ usize vfs_get_path(VfsNode* target, char* buffer, usize length)
 
 VfsNode* vfs_get_node(VfsNode* parent, const char* path, bool follow_links)
 {
-	// spin_acquire_force(&vfs_lock);
+	// spin_lock(&vfs_lock);
 
 	VfsNode* ret = NULL;
 
@@ -437,6 +437,6 @@ VfsNode* vfs_get_node(VfsNode* parent, const char* path, bool follow_links)
 leave:
 	if (r.name != NULL)
 		kfree(r.name);
-	// spin_free(&vfs_lock);
+	// spin_unlock(&vfs_lock);
 	return ret;
 }

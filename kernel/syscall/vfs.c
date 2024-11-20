@@ -191,7 +191,7 @@ SYSCALL_IMPL(close, int fd)
 	process->file_descs[fd] = NULL;
 
 	// Decrement the counter.
-	spin_lock(&file_desc->lock, { file_desc->num_refs -= 1; });
+	spin_lock_scope(&file_desc->lock, { file_desc->num_refs -= 1; });
 
 	return SYSCALL_OK(0);
 }

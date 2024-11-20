@@ -17,22 +17,22 @@ typedef struct
 		0 \
 	}
 
-#define spin_lock(lock, scope) \
-	spin_acquire_force(lock); \
+#define spin_lock_scope(lock, scope) \
+	spin_lock(lock); \
 	do \
 		scope while (0); \
-	spin_free(lock);
+	spin_unlock(lock);
 
 // Toggles if spinlocks do anything or not. Used for single processor machines/during setup.
 void spin_use(bool on);
 
 // Attempt to acquire the lock.
 // Returns true if successful.
-bool spin_acquire(SpinLock* lock);
+bool spin_try_lock(SpinLock* lock);
 
 // Attempt to acquire the lock.
 // If unsuccessful, attempts again.
-void spin_acquire_force(SpinLock* lock);
+void spin_lock(SpinLock* lock);
 
 // Frees the lock if it was previously locked.
-void spin_free(SpinLock* lock);
+void spin_unlock(SpinLock* lock);

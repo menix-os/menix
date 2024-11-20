@@ -54,7 +54,7 @@ static isize zero_write(Handle* self, FileDescriptor* fd, const void* buffer, us
 
 static isize devtmpfs_handle_read(struct Handle* self, FileDescriptor* fd, void* buffer, usize amount, off_t offset)
 {
-	spin_acquire_force(&self->lock);
+	spin_lock(&self->lock);
 
 	TmpHandle* const handle = (TmpHandle*)self;
 	isize total_read = amount;
@@ -67,14 +67,14 @@ static isize devtmpfs_handle_read(struct Handle* self, FileDescriptor* fd, void*
 	// Copy all data to the buffer.
 	memcpy(buffer, handle->buffer, total_read);
 
-	spin_free(&self->lock);
+	spin_unlock(&self->lock);
 	return total_read;
 }
 
 static isize devtmpfs_handle_write(struct Handle* self, FileDescriptor* fd, const void* buffer, usize amount,
 								   off_t offset)
 {
-	spin_acquire_force(&self->lock);
+	spin_lock(&self->lock);
 
 	TmpHandle* const handle = (TmpHandle*)self;
 
@@ -108,7 +108,7 @@ static isize devtmpfs_handle_write(struct Handle* self, FileDescriptor* fd, cons
 	written = amount;
 
 fail:
-	spin_free(&self->lock);
+	spin_unlock(&self->lock);
 	return written;
 }
 
@@ -272,11 +272,11 @@ bool devtmpfs_add_device(Handle* device, const char* name)
 	device->stat.st_ino = inode_counter++;
 	device->stat.st_nlink = 1;
 
-	spin_acquire_force(&vfs_lock);
+	spin_lock(&vfs_lock);
 	hashmap_insert(&devtmpfs_root->children, name, strlen(name), node);
 	char path[256];
 	vfs_get_path(node, path, 256);
-	spin_free(&vfs_lock);
+	spin_unlock(&vfs_lock);
 
 	return true;
 }

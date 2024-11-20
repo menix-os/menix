@@ -52,8 +52,8 @@ static SpinLock device_counter_lock = spin_new();
 
 usize handle_new_device()
 {
-	spin_acquire_force(&device_counter_lock);
+	spin_lock(&device_counter_lock);
 	usize dev = device_counter++;
-	spin_free(&device_counter_lock);
+	spin_unlock(&device_counter_lock);
 	return dev;
 }

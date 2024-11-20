@@ -49,7 +49,7 @@ void slab_init(void)
 
 static void* slab_do_alloc(Slab* slab)
 {
-	spin_acquire_force(&slab->lock);
+	spin_lock(&slab->lock);
 
 	if (slab->head == NULL)
 		slab_new(slab, slab->ent_size);
@@ -58,13 +58,13 @@ static void* slab_do_alloc(Slab* slab)
 	slab->head = *old_free;
 	memset(old_free, 0, slab->ent_size);
 
-	spin_free(&slab->lock);
+	spin_unlock(&slab->lock);
 	return old_free;
 }
 
 static void slab_do_free(Slab* slab, void* addr)
 {
-	spin_acquire_force(&slab->lock);
+	spin_lock(&slab->lock);
 
 	if (addr == NULL)
 		goto cleanup;
@@ -74,7 +74,7 @@ static void slab_do_free(Slab* slab, void* addr)
 	slab->head = new_head;
 
 cleanup:
-	spin_free(&slab->lock);
+	spin_unlock(&slab->lock);
 }
 
 // Finds a suitable slab that can contain `size` bytes.

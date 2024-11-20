@@ -11,7 +11,7 @@ void spin_use(bool on)
 	use_spin = on;
 }
 
-bool spin_acquire(SpinLock* lock)
+bool spin_try_lock(SpinLock* lock)
 {
 	if (!use_spin)
 		return true;
@@ -30,7 +30,7 @@ bool spin_acquire(SpinLock* lock)
 	return result;
 }
 
-void spin_acquire_force(SpinLock* lock)
+void spin_lock(SpinLock* lock)
 {
 	if (!lock)
 		return;
@@ -40,7 +40,7 @@ void spin_acquire_force(SpinLock* lock)
 	// Keep trying to lock.
 	while (1)
 	{
-		if (spin_acquire(lock))
+		if (spin_try_lock(lock))
 			break;
 		asm_pause();
 	}
@@ -48,7 +48,7 @@ void spin_acquire_force(SpinLock* lock)
 	lock->owner = __builtin_return_address(0);
 }
 
-void spin_free(SpinLock* lock)
+void spin_unlock(SpinLock* lock)
 {
 	if (!use_spin)
 		return;

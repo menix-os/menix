@@ -24,7 +24,7 @@ ProcessList dead_processes;
 
 Process* proc_create(const char* name, ProcessState state, bool is_user, Process* parent)
 {
-	spin_acquire_force(&proc_lock);
+	spin_lock(&proc_lock);
 
 	Process* proc = kzalloc(sizeof(Process));
 	strncpy(proc->name, name, sizeof(proc->name));
@@ -56,7 +56,7 @@ Process* proc_create(const char* name, ProcessState state, bool is_user, Process
 
 	sch_add_process(&proc_list, proc);
 
-	spin_free(&proc_lock);
+	spin_unlock(&proc_lock);
 	return proc;
 }
 
@@ -118,7 +118,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 
 	Process* proc = proc_create(name, ProcessState_Ready, is_user, arch_current_cpu()->thread->parent);
 
-	spin_acquire_force(&proc_lock);
+	spin_lock(&proc_lock);
 	proc->page_map = map;
 	proc->working_dir = node->parent;
 	proc->map_base = CONFIG_user_map_base;
@@ -140,14 +140,14 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 	// TODO: arch_current_cpu()->user_stack = proc->stack_top;
 
 	vm_set_page_map(map);
-	spin_free(&proc_lock);
+	spin_unlock(&proc_lock);
 
 	return true;
 }
 
 usize proc_fork(Process* proc, Thread* thread)
 {
-	spin_acquire_force(&proc_lock);
+	spin_lock(&proc_lock);
 
 	Process* fork = kzalloc(sizeof(Process));
 	strncpy(fork->name, proc->name, sizeof(proc->name));
@@ -178,7 +178,7 @@ usize proc_fork(Process* proc, Thread* thread)
 	thread_fork(fork, thread);
 
 	fork->state = ProcessState_Ready;
-	spin_free(&proc_lock);
+	spin_unlock(&proc_lock);
 
 	proc_log("Forked process \"%s\", new pid %zu\n", proc->name, fork->id);
 	return fork->id;
@@ -195,7 +195,7 @@ void proc_kill(Process* proc, bool is_crash)
 		is_suicide = true;
 
 	// Hand the threads over to the hangman.
-	spin_lock(&proc_lock, {
+	spin_lock_scope(&proc_lock, {
 		for (usize i = 0; i < proc->threads.length; i++)
 		{
 			sch_remove_thread(&thread_list, proc->threads.items[i]);
@@ -212,7 +212,7 @@ void proc_kill(Process* proc, bool is_crash)
 	}
 
 	// Remove the process from the scheduler.
-	spin_lock(&proc_lock, { sch_remove_process(&proc_list, proc); });
+	spin_lock_scope(&proc_lock, { sch_remove_process(&proc_list, proc); });
 
 	Process* init = proc_list->next;
 
@@ -243,7 +243,7 @@ void proc_kill(Process* proc, bool is_crash)
 	list_free(&proc->children);
 	list_free(&proc->threads);
 
-	spin_lock(&proc_lock, {
+	spin_lock_scope(&proc_lock, {
 		sch_remove_process(&proc_list, proc);
 		sch_add_process(&hanging_proc_list, proc);
 	});
@@ -261,7 +261,7 @@ FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
 		return NULL;
 
 	FileDescriptor* file_desc = NULL;
-	spin_lock(&process->fd_lock, {
+	spin_lock_scope(&process->fd_lock, {
 		file_desc = process->file_descs[fd];
 		if (file_desc == NULL)
 			break;

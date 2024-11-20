@@ -374,7 +374,7 @@ i32 module_load_elf(const char* path)
 
 		if (seg->p_type == PT_LOAD)
 		{
-			spin_acquire_force(&module_map_lock);
+			spin_lock(&module_map_lock);
 
 			// Amount of pages to allocate for this segment.
 			const usize page_size = vm_get_page_size(VMLevel_0);
@@ -414,7 +414,7 @@ i32 module_load_elf(const char* path)
 			// Zero out unloaded data.
 			memset((void*)seg->p_vaddr + seg->p_filesz, 0, seg->p_memsz - seg->p_filesz);
 
-			spin_free(&module_map_lock);
+			spin_unlock(&module_map_lock);
 		}
 		else if (seg->p_type == PT_DYNAMIC)
 		{

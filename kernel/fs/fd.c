@@ -13,7 +13,7 @@ FileDescriptor* fd_from_num(Process* proc, int fd)
 	if (proc == NULL)
 		proc = arch_current_cpu()->thread->parent;
 
-	spin_acquire_force(&proc->fd_lock);
+	spin_lock(&proc->fd_lock);
 
 	// Check if fd is inside bounds.
 	if (fd < 0 || fd >= OPEN_MAX)
@@ -33,6 +33,6 @@ FileDescriptor* fd_from_num(Process* proc, int fd)
 	result->num_refs++;
 
 leave:
-	spin_free(&proc->fd_lock);
+	spin_unlock(&proc->fd_lock);
 	return result;
 }

@@ -118,7 +118,7 @@ static usize* vm_x86_get_pte(PageMap* page_map, VirtAddr virt_addr, bool allocat
 		cur_head = vm_x86_traverse(cur_head, index, allocate);
 		if (cur_head == NULL)
 		{
-			spin_free(&page_map->lock);
+			spin_unlock(&page_map->lock);
 			return NULL;
 		}
 	}
@@ -148,14 +148,14 @@ void vm_page_map_destroy(PageMap* map)
 
 PageMap* vm_page_map_fork(PageMap* source)
 {
-	spin_acquire_force(&source->lock);
+	spin_lock(&source->lock);
 	PageMap* result = vm_page_map_new(source->size);
 
 	if (result == NULL)
 		goto fail;
 
 fail:
-	spin_free(&source->lock);
+	spin_unlock(&source->lock);
 	if (result != NULL)
 		vm_page_map_destroy(result);
 	return result;
@@ -166,7 +166,7 @@ bool vm_x86_remap(PageMap* page_map, VirtAddr virt_addr, usize flags)
 	kassert(page_map != NULL, "No page map was provided! Unable to remap page 0x%p to 0x%p!", pm_get_phys_base(),
 			virt_addr);
 
-	spin_acquire_force(&page_map->lock);
+	spin_lock(&page_map->lock);
 	u64* cur_head = page_map->head;
 	usize index = 0;
 
@@ -189,14 +189,14 @@ bool vm_x86_remap(PageMap* page_map, VirtAddr virt_addr, usize flags)
 		cur_head = vm_x86_traverse(cur_head, index, false);
 		if (cur_head == NULL)
 		{
-			spin_free(&page_map->lock);
+			spin_unlock(&page_map->lock);
 			return false;
 		}
 	}
 
 	if ((cur_head[index] & PT_PRESENT) == 0)
 	{
-		spin_free(&page_map->lock);
+		spin_unlock(&page_map->lock);
 		return false;
 	}
 
@@ -204,7 +204,7 @@ bool vm_x86_remap(PageMap* page_map, VirtAddr virt_addr, usize flags)
 	cur_head[index] &= PT_ADDR_MASK;
 	// Set new ones.
 	cur_head[index] |= (flags & ~(PT_ADDR_MASK));
-	spin_free(&page_map->lock);
+	spin_unlock(&page_map->lock);
 
 	return true;
 }
@@ -214,7 +214,7 @@ bool vm_unmap(PageMap* page_map, VirtAddr virt_addr)
 	kassert(page_map != NULL, "No page map was provided! Unable to remap page 0x%p to 0x%p!", pm_get_phys_base(),
 			virt_addr);
 
-	spin_acquire_force(&page_map->lock);
+	spin_lock(&page_map->lock);
 	const usize virt_val = (usize)virt_addr;
 	u64* cur_head = page_map->head;
 	usize index = 0;
@@ -233,21 +233,21 @@ bool vm_unmap(PageMap* page_map, VirtAddr virt_addr)
 		cur_head = vm_x86_traverse(cur_head, index, false);
 		if (cur_head == NULL)
 		{
-			spin_free(&page_map->lock);
+			spin_unlock(&page_map->lock);
 			return false;
 		}
 	}
 
 	if ((cur_head[index] & PT_PRESENT) == 0)
 	{
-		spin_free(&page_map->lock);
+		spin_unlock(&page_map->lock);
 		return false;
 	}
 
 	// Clear everything.
 	cur_head[index] = 0;
 	vm_flush_tlb(virt_addr);
-	spin_free(&page_map->lock);
+	spin_unlock(&page_map->lock);
 
 	return true;
 }
@@ -255,9 +255,9 @@ bool vm_unmap(PageMap* page_map, VirtAddr virt_addr)
 PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 {
 	kassert(page_map != NULL, "page_map may not be null!");
-	spin_acquire_force(&page_map->lock);
+	spin_lock(&page_map->lock);
 	usize* pte = vm_x86_get_pte(page_map, address, false);
-	spin_free(&page_map->lock);
+	spin_unlock(&page_map->lock);
 
 	// If the page is not present or the entry doesn't exist, we can't return a physical address.
 	if (pte == NULL || (*pte & PT_PRESENT) == false)
@@ -300,7 +300,7 @@ bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt pr
 	kassert(page_map != NULL, "No page map was provided! Unable to map page 0x%p to 0x%p!", phys_addr, virt_addr);
 	kassert(phys_addr % arch_page_size == 0, "Physical address is not page aligned! Value: 0x%p", phys_addr);
 
-	spin_acquire_force(&page_map->lock);
+	spin_lock(&page_map->lock);
 
 	usize x86_flags = vm_flags_to_x86(prot, flags);
 	u64* cur_head = page_map->head;
@@ -329,13 +329,13 @@ bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt pr
 
 		if (cur_head == NULL)
 		{
-			spin_free(&page_map->lock);
+			spin_unlock(&page_map->lock);
 			return false;
 		}
 	}
 
 	cur_head[index] = (phys_addr & PT_ADDR_MASK) | (x86_flags & ~(PT_ADDR_MASK));
-	spin_free(&page_map->lock);
+	spin_unlock(&page_map->lock);
 
 	return true;
 }

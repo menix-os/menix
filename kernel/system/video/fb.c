@@ -11,16 +11,16 @@ static SpinLock fb_lock = spin_new();
 
 void fb_register(FrameBuffer* fb)
 {
-	spin_acquire_force(&fb_lock);
+	spin_lock(&fb_lock);
 	fb_active = fb;
-	spin_free(&fb_lock);
+	spin_unlock(&fb_lock);
 }
 
 void fb_unregister()
 {
-	spin_acquire_force(&fb_lock);
+	spin_lock(&fb_lock);
 	fb_active = NULL;
-	spin_free(&fb_lock);
+	spin_unlock(&fb_lock);
 }
 
 FrameBuffer* fb_get_active()

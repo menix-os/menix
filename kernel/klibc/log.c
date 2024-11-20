@@ -23,14 +23,14 @@ SpinLock kmesg_lock;
 
 void kmesg(const char* fmt, ...)
 {
-	spin_acquire_force(&kmesg_lock);
+	spin_lock(&kmesg_lock);
 
 	va_list args;
 	va_start(args, fmt);
 	vprintf(fmt, args);
 	va_end(args);
 
-	spin_free(&kmesg_lock);
+	spin_unlock(&kmesg_lock);
 }
 
 void ktrace(Context* regs)

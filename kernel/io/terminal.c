@@ -30,9 +30,9 @@ void terminal_set_active(usize terminal)
 	if (terminal > TERMINAL_MAX)
 		return;
 
-	spin_acquire_force(&terminal_lock);
+	spin_lock(&terminal_lock);
 	terminal_active = terminal;
-	spin_free(&terminal_lock);
+	spin_unlock(&terminal_lock);
 }
 
 usize terminal_get_active()
@@ -53,7 +53,7 @@ void terminal_set_driver(usize terminal, Handle* driver)
 	if (terminal > TERMINAL_MAX)
 		return;
 
-	spin_acquire_force(&terminal_lock);
+	spin_lock(&terminal_lock);
 	terminal_list[terminal].driver = driver;
 	if (driver != NULL)
 	{
@@ -61,7 +61,7 @@ void terminal_set_driver(usize terminal, Handle* driver)
 		u32toa(terminal, name + 8, 10);
 		devtmpfs_add_device(terminal_list[terminal].driver, name);
 	}
-	spin_free(&terminal_lock);
+	spin_unlock(&terminal_lock);
 }
 
 void terminal_puts(usize terminal, const char* buf, usize len)

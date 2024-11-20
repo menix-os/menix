@@ -24,7 +24,7 @@ void thread_set_errno(usize errno)
 
 Thread* thread_create(Process* parent)
 {
-	spin_acquire_force(&thread_lock);
+	spin_lock(&thread_lock);
 
 	Thread* thread = kzalloc(sizeof(Thread));
 
@@ -40,7 +40,7 @@ Thread* thread_create(Process* parent)
 	list_push(&parent->threads, thread);
 	sch_add_thread(&thread_list, thread);
 
-	spin_free(&thread_lock);
+	spin_unlock(&thread_lock);
 	return thread;
 }
 

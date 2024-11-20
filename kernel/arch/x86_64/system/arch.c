@@ -23,7 +23,7 @@ extern bool can_smap;
 void arch_init_cpu(Cpu* cpu, Cpu* boot)
 {
 	// Make sure no other memory accesses happen before the CPUs are initialized.
-	spin_acquire_force(&cpu_lock);
+	spin_lock(&cpu_lock);
 
 	// Allocate stack.
 	cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_0)) + (u64)pm_get_phys_base();
@@ -128,7 +128,7 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 	if (cpu->id != boot->id)
 	{
 		// TODO: Init local APIC.
-		spin_free(&cpu_lock);
+		spin_unlock(&cpu_lock);
 
 		// Stop all other cores.
 		asm_interrupt_disable();
@@ -136,7 +136,7 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 			asm_halt();
 	}
 
-	spin_free(&cpu_lock);
+	spin_unlock(&cpu_lock);
 }
 
 void arch_early_init(BootInfo* info)

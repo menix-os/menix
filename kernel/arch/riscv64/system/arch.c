@@ -13,20 +13,20 @@ static SpinLock cpu_lock = spin_new();
 void arch_init_cpu(Cpu* cpu, Cpu* boot)
 {
 	// Make sure no other memory accesses happen before the CPUs are initialized.
-	spin_acquire_force(&cpu_lock);
+	spin_lock(&cpu_lock);
 
 	// TODO: CPU init.
 
 	if (cpu->id != boot->id)
 	{
 		boot_info->cpu_active += 1;
-		spin_free(&cpu_lock);
+		spin_unlock(&cpu_lock);
 		asm_interrupt_disable();
 		while (1)
 			asm volatile("wfi");
 	}
 	boot_info->cpu_active += 1;
-	spin_free(&cpu_lock);
+	spin_unlock(&cpu_lock);
 }
 
 void arch_early_init(BootInfo* info)

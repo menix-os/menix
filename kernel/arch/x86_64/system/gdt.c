@@ -73,9 +73,9 @@ static SpinLock gdt_lock = spin_new();
 
 void gdt_load_tss(usize addr)
 {
-	spin_acquire_force(&gdt_lock);
+	spin_lock(&gdt_lock);
 	GDT_ENCODE_LONG(gdt_table.tss, addr, sizeof(TaskStateSegment),
 					GDTA_PRESENT | GDTA_PRIV_LVL(0) | GDTA_EXECUTABLE | GDTA_ACCESSED, 0);
 	tss_reload();
-	spin_free(&gdt_lock);
+	spin_unlock(&gdt_lock);
 }
