@@ -28,6 +28,10 @@ void sch_arch_save(Cpu* core, Thread* thread);
 // ? Defined per architecture.
 void sch_arch_update(Cpu* core, Thread* next);
 
+// Stops execution on the current core and waits for another interrupt.
+// ? Defined per architecture.
+ATTR(noreturn) void sch_arch_stop();
+
 // Implementation of the scheduler. Not meant to be called directly, use `sch_invoke` instead.
 // Returns a pointer to the new context.
 // ? Defined per architecture.

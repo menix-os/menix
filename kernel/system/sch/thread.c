@@ -143,7 +143,11 @@ void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, boo
 	*(--sized_stack) = num_argv;
 
 	// Update stack start.
+#ifdef CONFIG_arch_x86_64
 	target->registers.rsp = (void*)sized_stack - foreign + target->stack;
+#elif defined(CONFIG_arch_riscv64)
+	target->registers.x2 = (void*)sized_stack - foreign + target->stack;
+#endif
 
 	vm_unmap_foreign(foreign, foreign_pages);
 

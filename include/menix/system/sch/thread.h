@@ -28,7 +28,6 @@ typedef struct Thread
 {
 	usize id;				  // Thread ID.
 	SpinLock lock;			  // Access lock.
-	bool can_exec;			  // If the thread is ready for execution.
 	ThreadState state;		  // Current state of the thread.
 	Context registers;		  // The register state at the time of context switch.
 	VirtAddr stack;			  // The stack pointer.

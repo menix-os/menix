@@ -183,10 +183,6 @@ Context* sch_reschedule(Context* context)
 
 	Cpu* cur = arch_current_cpu();
 	cur->ticks_active++;
-	// timer_stop_sched();
-
-	if (cur->ticks_active % 10000 == 0)
-		kmesg("Alive for 0x%p ticks\n", cur->ticks_active);
 
 	if (spin_try_lock(&rope_lock))
 	{
@@ -219,43 +215,30 @@ Context* sch_reschedule(Context* context)
 	// Update the state of the currently running thread.
 	if (running != NULL)
 	{
-		if (running->can_exec == true)
-		{
-			Process* parent = running->parent;
-			usize idx;
-			if (list_find(&parent->threads, idx, running))
-				list_pop(&parent->threads, idx);
+		// Save the current context.
+		running->registers = *context;
+		running->stack = cur->user_stack;
+		running->kernel_stack = cur->kernel_stack;
 
-			spin_lock(&thread_lock);
-		}
-		else
-		{
-			// Save the current context.
-			running->registers = *context;
-			running->stack = cur->user_stack;
-			running->kernel_stack = cur->kernel_stack;
-
-			sch_arch_save(cur, running);
-
-			if (running->state == ThreadState_Running)
-				running->state = ThreadState_Ready;
-
-			spin_unlock(&running->lock);
-		}
+		sch_arch_save(cur, running);
+		if (running->state == ThreadState_Running)
+			running->state = ThreadState_Ready;
 	}
 
 	// Grab the next thread.
-	running = sch_next(thread_list);
+	running = sch_next(running);
 
-	// If there are no more threads to run, something went wrong.
+	if (cur->thread != NULL)
+	{
+		// The old thread is now free.
+		spin_unlock(&cur->thread->lock);
+	}
+
+	// If there are no more threads to run, wait until an interrupt happens.
 	if (running == NULL)
 	{
-		kmesg("[Scheduler]\tNo more threads to run, halting!\n");
-
 		cur->thread = NULL;
-		asm_interrupt_enable();
-		while (true)
-			asm_halt();
+		sch_arch_stop();
 	}
 
 	// Update CPU information.
