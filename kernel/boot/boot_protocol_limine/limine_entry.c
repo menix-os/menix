@@ -77,7 +77,7 @@ void kernel_boot()
 			case LIMINE_MEMMAP_ACPI_NVS: map[i].usage = PhysMemoryUsage_Reserved; break;
 			case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
 			case LIMINE_MEMMAP_FRAMEBUFFER:
-			case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: map[i].usage = PhysMemoryUsage_Bootloader; break;
+			case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: map[i].usage = PhysMemoryUsage_Reclaimable; break;
 			default: map[i].usage = PhysMemoryUsage_Unknown; break;
 		}
 	}
@@ -233,8 +233,5 @@ void kernel_boot()
 
 	// Should be unreachable.
 	while (true)
-	{
-		asm_pause();
 		sch_invoke();
-	}
 }

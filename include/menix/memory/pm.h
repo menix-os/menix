@@ -6,11 +6,11 @@
 
 typedef enum : u8
 {
-	PhysMemoryUsage_Free,		   // Free and usable memory.
-	PhysMemoryUsage_Reserved,	   // Memory reserved by the System.
-	PhysMemoryUsage_Bootloader,	   // Used by boot loader structures.
-	PhysMemoryUsage_Kernel,		   // Kernel and modules are loaded here.
-	PhysMemoryUsage_Unknown,	   // Unknown memory region.
+	PhysMemoryUsage_Free,			// Free and usable memory.
+	PhysMemoryUsage_Reserved,		// Memory reserved by the System.
+	PhysMemoryUsage_Reclaimable,	// Can be reclaimed.
+	PhysMemoryUsage_Kernel,			// Kernel and modules are loaded here.
+	PhysMemoryUsage_Unknown,		// Unknown memory region.
 } PhysMemoryUsage;
 
 // Describes a single block of physical memory.
