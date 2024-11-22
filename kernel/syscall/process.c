@@ -8,6 +8,7 @@
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
+#include <menix/system/sch/thread.h>
 
 // Forks a thread by cloning its attributes.
 SYSCALL_IMPL(fork)
@@ -125,4 +126,16 @@ SYSCALL_IMPL(waitpid, pid_t pid, VirtAddr status, int flags)
 {
 	// TODO
 	return SYSCALL_OK(0);
+}
+
+SYSCALL_IMPL(sigsuspend)
+{
+	// TODO: sigmask
+	Thread* thread = arch_current_cpu()->thread;
+	thread->state = ThreadState_Waiting;
+	while (thread->state == ThreadState_Waiting)
+	{
+		asm_pause();
+	}
+	return SYSCALL_ERR(EINTR);
 }
