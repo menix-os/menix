@@ -4,6 +4,7 @@
 #include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
 #include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
 #include <menix/util/log.h>
 
 #include <apic.h>
@@ -68,6 +69,7 @@ Context* syscall_handler(Context* regs)
 	Thread* const thread = core->thread;
 	thread->registers = *regs;
 	thread->stack = core->user_stack;
+	sch_arch_save(core, thread);
 
 	// Execute the system call. For x86_64, use the SysV kernel ABI.
 	SyscallResult result = syscall_invoke(regs->rax, regs->rdi, regs->rsi, regs->rdx, regs->r10, regs->r8, regs->r9);
@@ -83,8 +85,8 @@ Context* interrupt_pf_handler(Context* regs);
 static InterruptFn exception_handlers[IDT_MAX_SIZE] = {
 	[0x06] = interrupt_ud_handler,
 	[0x0E] = interrupt_pf_handler,
-	[0x30] = timer_handler,
-	[0x80] = syscall_handler,
+	[INT_TIMER] = timer_handler,
+	[INT_SYSCALL] = syscall_handler,
 };
 
 void interrupt_register(usize idx, InterruptFn handler)

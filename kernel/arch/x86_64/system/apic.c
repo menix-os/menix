@@ -31,7 +31,11 @@ void apic_init()
 	arch_x86_write8(PIC2_DATA_PORT, 0x01);		 // ICW4: Set the PIC to operate in 8086/88 mode.
 	arch_x86_write8(PIC2_DATA_PORT, 0xFF);		 // Mask all interrupts.
 
-	// apic_redirect_irq(0, 48);
+	// TODO
+	// Since 0x00-0x1F are used for exceptions, and 0x20-0x2F for legacy IRQs, redirect IRQ0 to 0x30.
+
+	// apic_redirect_irq(0, 0x30);
+	// lapic_init(0);
 }
 
 static u32 ioapic_read(PhysAddr ioapic_address, usize reg)
@@ -214,11 +218,8 @@ void apic_send_eoi()
 Context* timer_handler(Context* regs)
 {
 	asm_interrupt_disable();
-
 	Context* new = sch_reschedule(regs);
-
 	apic_send_eoi();
 	asm_interrupt_enable();
-
 	return new;
 }
