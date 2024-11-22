@@ -9,14 +9,13 @@
 #include <menix/system/elf.h>
 #include <menix/system/module.h>
 #include <menix/system/pci/pci.h>
+#include <menix/util/cmd.h>
 #include <menix/util/hash_map.h>
 #include <menix/util/log.h>
 #include <menix/util/self.h>
 #include <menix/util/spin.h>
 
 #include <string.h>
-
-#include "menix/util/cmd.h"
 
 // We need to see the location and size of the .mod section.
 SECTION_DECLARE_SYMBOLS(mod)
@@ -49,7 +48,10 @@ void module_init(BootInfo* info)
 		Module* const module = (Module*)module_ptr;
 		LoadedModule* module_info = kzalloc(sizeof(LoadedModule));
 		module_info->module = module;
-		module_register(module->name, module_info);
+
+		// If this module was explicitly turned off via cmdline, don't register it.
+		if (cmd_get_usize(module->name, true))
+			module_register(module->name, module_info);
 
 		// Go to the next module. This contains the dependency string table.
 		module_ptr += sizeof(Module) + (sizeof(module->dependencies[0]) * module->num_dependencies);
@@ -84,6 +86,10 @@ void module_init(BootInfo* info)
 			if (node->handle == NULL)
 				continue;
 			if (!S_ISREG(node->handle->stat.st_mode))
+				continue;
+
+			// If this module was explicitly turned off via cmdline, don't register it.
+			if (!cmd_get_usize(node->name, true))
 				continue;
 
 			// Load only the file's path into the meta info.
