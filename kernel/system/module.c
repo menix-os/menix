@@ -205,8 +205,7 @@ i32 module_load(const char* name)
 		return 0;
 
 	Module* const mod = loaded->module;
-	module_log("Loading module \"%s\" at 0x%p: %s (%s, %s)\n", mod->name, loaded->maps[0].address, mod->description,
-			   mod->author, mod->license);
+	module_log("Loading module at 0x%p: \"%s\", \"%s\"\n", loaded->maps[0].address, mod->name, mod->description);
 
 	// Load all dependencies.
 	for (usize i = 0; i < mod->num_dependencies; i++)
