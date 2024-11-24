@@ -15,6 +15,8 @@
 
 void kernel_early_init()
 {
+	kmesg("menix " CONFIG_release " (" CONFIG_arch ", " CONFIG_version ")\n");
+
 	// Initialize virtual file system.
 	vfs_init();
 
