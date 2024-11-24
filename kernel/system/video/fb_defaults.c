@@ -64,10 +64,7 @@ void fb_default_draw_region(FrameBuffer* fb, FbDrawRegion* args)
 		void* addr_dst = (void*)fb->info.mmio_base + (mode->pitch * (args->y_src + y)) + (args->x_src * mode->cpp);
 
 		// Copy a single line.
-		if (mode->cpp == sizeof(u32))
-			memcpy32(addr_dst, addr_src, args->width);
-		else
-			memcpy(addr_dst, addr_src, args->width * mode->cpp);
+		memcpy(addr_dst, addr_src, args->width * mode->cpp);
 	}
 }
 
@@ -82,9 +79,6 @@ void fb_default_update_region(FrameBuffer* fb, FbUpdateRegion* args)
 		const usize offset = ((mode->pitch * (args->y_src + y)) + (mode->cpp * (args->x_src)));
 
 		// Copy a single line.
-		if (mode->cpp == sizeof(u32))
-			memcpy32((void*)fb->info.mmio_base + offset, (void*)args->back_buffer + offset, args->width);
-		else
-			memcpy((void*)fb->info.mmio_base + offset, (void*)args->back_buffer + offset, args->width * mode->cpp);
+		memcpy((void*)fb->info.mmio_base + offset, (void*)args->back_buffer + offset, args->width * mode->cpp);
 	}
 }

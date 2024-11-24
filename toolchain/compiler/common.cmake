@@ -3,17 +3,12 @@
 # Common options
 target_compile_options(common INTERFACE
 	-ffreestanding
-	-nostdlib
 	-fno-omit-frame-pointer
-	-fno-builtin
-	-fno-stack-protector
-	-fno-stack-check
 	-Wall
 	-Werror
 )
 target_link_options(common INTERFACE
 	-nostdlib
-	"SHELL:-z max-page-size=${max_page_size}"
 	"SHELL:-z noexecstack"
 	-Wl,--build-id=none
 )

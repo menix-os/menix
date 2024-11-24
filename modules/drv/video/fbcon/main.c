@@ -85,7 +85,6 @@ MODULE_FN void fbcon_putchar(u32 ch)
 
 	// Mark this region as modified. If we've exceeded the limit, force a redraw.
 	if (update_count >= UPDATE_QUEUE_MAX)
-
 		fbcon_copy_screen();
 	else
 	{
