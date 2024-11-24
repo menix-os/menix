@@ -7,9 +7,14 @@
 #include <menix/memory/alloc.h>
 #include <menix/system/module.h>
 #include <menix/system/video/fb.h>
-#include <menix/util/builtin_font.h>
 
 #include <string.h>
+
+#define FONT_WIDTH		8
+#define FONT_HEIGHT		12
+#define FONT_GLYPH_SIZE ((FONT_WIDTH * FONT_HEIGHT) / 8)
+
+extern u8 fbcon_font[256 * FONT_GLYPH_SIZE];
 
 // Internal terminal handle.
 static Handle* handle;
@@ -70,7 +75,7 @@ MODULE_FN void fbcon_putchar(u32 ch)
 		{
 			const usize offset = ((mode->pitch * (pix_ypos + y)) + (mode->cpp * (pix_xpos + x)));
 			const u32 pixel =
-				builtin_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0xFF000000;
+				fbcon_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0xFF000000;
 			// Write to back buffer.
 			mmio_write32(internal_buffer + offset, pixel);
 		}
