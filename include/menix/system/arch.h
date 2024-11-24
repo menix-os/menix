@@ -4,10 +4,9 @@
 
 #include <menix/system/boot.h>
 
-#define MENIX_BITS_INCLUDE
 #include <bits/arch.h>
 #include <bits/asm.h>
-#undef MENIX_BITS_INCLUDE
+#include <bits/context.h>
 
 #define arch_log(fmt, ...) kmesg("[" CONFIG_arch "]\t" fmt, ##__VA_ARGS__)
 
