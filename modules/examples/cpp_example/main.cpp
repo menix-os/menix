@@ -16,13 +16,13 @@ class Foo
 
 static Foo foo("Hello from C++ constructor!\n");
 
-MODULE_FN i32 init_fn()
+static i32 init_fn()
 {
 	module_log("Hello from C++!\n");
 	return 0;
 }
 
-MODULE_FN void exit_fn()
+static void exit_fn()
 {
 	return;
 }

@@ -85,7 +85,7 @@ static isize ps2_keyboard_read(Handle* handle, FileDescriptor* fd, void* data, u
 	return 1;
 }
 
-MODULE_FN i32 ps2_init()
+static i32 ps2_init()
 {
 	// Add this keyboard as a new input method.
 

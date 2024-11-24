@@ -19,7 +19,7 @@ typedef struct
 	u32 supported_tunnel_types;
 } VirtioNetConfig;
 
-MODULE_FN i32 init_fn()
+static i32 init_fn()
 {
 	return 0;
 }

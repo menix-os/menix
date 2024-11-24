@@ -35,7 +35,7 @@ static usize ch_height;			  // Screen height in characters
 static usize ch_xpos, ch_ypos;	  // Current cursor position in characters
 
 // Copies the back buffer to the screen.
-MODULE_FN void fbcon_copy_screen()
+static void fbcon_copy_screen()
 {
 	const FbModeInfo* mode = &internal_fb->mode;
 	memcpy((void*)internal_fb->info.mmio_base, internal_buffer, mode->pitch * mode->height);
@@ -43,7 +43,7 @@ MODULE_FN void fbcon_copy_screen()
 }
 
 // Moves all lines up by one line.
-MODULE_FN void fbcon_scroll()
+static void fbcon_scroll()
 {
 	void* const buf = internal_buffer;
 	// Offset for 1 line of characters.
@@ -58,7 +58,7 @@ MODULE_FN void fbcon_scroll()
 	fbcon_copy_screen();
 }
 
-MODULE_FN void fbcon_putchar(u32 ch)
+static void fbcon_putchar(u32 ch)
 {
 	if (!internal_fb)
 		return;
@@ -98,7 +98,7 @@ MODULE_FN void fbcon_putchar(u32 ch)
 	}
 }
 
-MODULE_FN isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf, usize len, off_t offset)
+static isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf, usize len, off_t offset)
 {
 	// Write each character to the buffer.
 	for (usize i = 0; i < len; i++)
@@ -156,7 +156,7 @@ MODULE_FN isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf,
 	return len;
 }
 
-void fbcon_post()
+static void fbcon_post()
 {
 	FrameBuffer* fb = fb_get_active();
 
@@ -176,7 +176,7 @@ void fbcon_post()
 	ch_ypos = 0;
 
 	// Clear the screen.
-	memset((void*)internal_fb->info.mmio_base, 0, mode->pitch * mode->height);
+	memset((u8*)internal_fb->info.mmio_base, 0, mode->pitch * mode->height);
 
 	module_log("Switching to framebuffer console\n");
 

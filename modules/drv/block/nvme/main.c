@@ -110,13 +110,13 @@ static PciDriver nvme_driver = {
 	.probe = nvme_probe,
 };
 
-MODULE_FN i32 nvme_init()
+static i32 nvme_init()
 {
 	pci_register_driver(&nvme_driver);
 	return 0;
 }
 
-MODULE_FN void nvme_exit()
+static void nvme_exit()
 {
 	pci_unregister_driver(&nvme_driver);
 }

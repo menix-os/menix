@@ -14,10 +14,7 @@
 #endif
 
 // Defines a new module. Modules should use this at the end of their source to export the entry.
-#define MODULE ATTR(used) ATTR(section(".mod")) static const Module this_module
-
-// Defines a new module function.
-#define MODULE_FN static ATTR(used)
+#define MODULE ATTR(used, section(".mod")) static const Module this_module
 
 // Add all module information that is provided by the build system.
 #define MODULE_META .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION, .license = MODULE_LICENSE
