@@ -13,9 +13,20 @@
 #include <menix/util/cmd.h>
 #include <menix/util/log.h>
 
-void kernel_early_init()
+void kernel_early_init(BootInfo* info)
 {
+	arch_early_init(info);
+
+	// Say hello to the console!
 	kmesg("menix " CONFIG_release " (" CONFIG_arch ", " CONFIG_version ")\n");
+
+	// Initialize memory managers.
+	pm_init(info->phys_base, info->memory_map, info->mm_num);
+	vm_init(info->kernel_phys, info->memory_map, info->mm_num);
+	alloc_init();
+
+	// Initialize command line.
+	cmd_init(info);
 
 	// Initialize virtual file system.
 	vfs_init();
@@ -24,16 +35,19 @@ void kernel_early_init()
 	terminal_init();
 }
 
-void kernel_init()
+void kernel_init(BootInfo* info)
 {
-	BootInfo* boot_info = fw_get_boot_info();
+	arch_init(info);
 
 	// Load initrd(s).
-	for (usize i = 0; i < boot_info->file_num; i++)
-		ustarfs_init(vfs_get_root(), boot_info->files[i].address, boot_info->files[i].size);
+	for (usize i = 0; i < info->file_num; i++)
+		ustarfs_init(vfs_get_root(), info->files[i].address, info->files[i].size);
 
 	// Initialize all modules and subsystems.
-	module_init(boot_info);
+	module_init(info);
+
+	boot_log("Initialization complete, handing over to scheduler.\n");
+	sch_init();
 }
 
 ATTR(noreturn) void kernel_main()
@@ -45,25 +59,9 @@ ATTR(noreturn) void kernel_main()
 	char* argv[] = {init_name, NULL};
 	char* envp[] = {NULL};
 
-	kassert(proc_execve(init_name, init_path, argv, envp, true), "Failed to run init binary!");
+	bool init_started = proc_execve(init_name, init_path, argv, envp, true);
+	kassert(init_started == true, "Failed to run init binary! Try adding \"init=...\" to the command line.");
 
 	while (true)
 		sch_invoke();
-}
-
-ATTR(noreturn) void kernel_shutdown(ShutdownReason reason)
-{
-	// Say goodbye.
-	kmesg("System is shutting down...\n");
-
-	// Clean up all modules and subsystems.
-	module_fini();
-
-	BootInfo* const boot_info = fw_get_boot_info();
-
-	// Shut the system down safely.
-	arch_shutdown(boot_info);
-
-	// If we're still here, something went wrong. In that case, just try to stop.
-	arch_stop(boot_info);
 }

@@ -49,7 +49,7 @@ static BootInfo info = {0};
 #ifdef CONFIG_smp
 static void limine_init_cpu(struct limine_smp_info* smp_info)
 {
-	arch_init_cpu((Cpu*)smp_info->extra_argument, &info.cpus[info.boot_cpu]);
+	arch_init_cpu(&info, (Cpu*)smp_info->extra_argument, &info.cpus[info.boot_cpu]);
 }
 #endif
 
@@ -89,15 +89,9 @@ void kernel_boot()
 	// Initialize virtual memory using the memory map we got.
 	info.kernel_phys = (PhysAddr)kernel_address_request.response->physical_base;
 	info.kernel_virt = (void*)kernel_address_request.response->virtual_base;
-	info.phys_map = (void*)hhdm_request.response->offset;
+	info.phys_base = (void*)hhdm_request.response->offset;
 
-	arch_early_init(&info);
-	// Initialize physical and virtual memory managers.
-	pm_init(info.phys_map, info.memory_map, info.mm_num);
-	vm_init(info.kernel_phys, info.memory_map, info.mm_num);
-	alloc_init();
-
-	kernel_early_init();
+	kernel_early_init(&info);
 
 	boot_log("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 	boot_log("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
@@ -174,7 +168,6 @@ void kernel_boot()
 #endif
 
 	fw_init(&info);
-	arch_init(&info);
 
 #ifdef CONFIG_smp
 	// Get SMP info
@@ -225,11 +218,7 @@ void kernel_boot()
 	arch_init_cpu(&info.cpus[0], &info.cpus[0]);
 #endif
 
-	kernel_init();
-
-	boot_log("Total processors active: %zu\n", info.cpu_active);
-	boot_log("Initialization complete, handing over to scheduler.\n");
-	sch_init(&info);
+	kernel_init(&info);
 
 	// Should be unreachable.
 	while (true)

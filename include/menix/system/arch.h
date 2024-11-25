@@ -41,21 +41,15 @@ void arch_early_init(BootInfo* info);
 void arch_init(BootInfo* info);
 
 // Initializes a single processor.
-// `info`: Information about the CPU that has to be enabled.
+// `cpu`: Information about the CPU that has to be enabled.
 // `boot`: Information about the boot CPU.
-void arch_init_cpu(Cpu* info, Cpu* boot);
+void arch_init_cpu(BootInfo* info, Cpu* cpu, Cpu* boot);
 
 // Disables a single processor.
 bool arch_stop_cpu(usize id);
 
-// Safely powers off the machine. This is usually called after fw_shutdown.
-void arch_shutdown(BootInfo* info);
-
 // Halts all CPUs.
-ATTR(noreturn) void arch_stop(BootInfo* info);
-
-// Writes the contents of all registers to regs.
-void arch_get_registers(Context* regs);
+ATTR(noreturn) void arch_stop();
 
 // Writes all registers to the current output stream.
 void arch_dump_registers(Context* regs);

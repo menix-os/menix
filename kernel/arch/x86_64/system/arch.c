@@ -11,16 +11,15 @@
 #include <serial.h>
 #include <stdatomic.h>
 
-static BootInfo* boot_info;
 static SpinLock cpu_lock = spin_new();
+static Cpu* per_cpu_data = NULL;
 
 // Assembly stub for syscall via SYSCALL/SYSRET.
 extern void sc_syscall(void);
-
 extern bool can_smap;
 
 // Initialize one CPU.
-void arch_init_cpu(Cpu* cpu, Cpu* boot)
+void arch_init_cpu(BootInfo* info, Cpu* cpu, Cpu* boot)
 {
 	// Make sure no other memory accesses happen before the CPUs are initialized.
 	spin_lock(&cpu_lock);
@@ -123,20 +122,16 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot)
 
 	// We are present!
 	cpu->is_present = true;
-	atomic_fetch_add(&boot_info->cpu_active, 1);
+	atomic_fetch_add(&info->cpu_active, 1);
 
-	if (cpu->id != boot->id)
-	{
-		// TODO: Init local APIC.
-		spin_unlock(&cpu_lock);
-
-		// Stop all other cores.
-		asm_interrupt_disable();
-		while (true)
-			asm_halt();
-	}
+	// TODO: Finish HPET impl for LAPIC calibration
+	// lapic_init(cpu->lapic_id);
 
 	spin_unlock(&cpu_lock);
+
+	// If this CPU is not the boot CPU, stop it.
+	if (cpu->id != boot->id)
+		arch_stop();
 }
 
 void arch_early_init(BootInfo* info)
@@ -146,23 +141,15 @@ void arch_early_init(BootInfo* info)
 	gdt_init();
 	idt_init();
 	serial_init();
-
-	boot_info = info;
+	pic_disable();
 }
 
 void arch_init(BootInfo* info)
 {
-	apic_init();
-
-	asm_interrupt_enable();
+	per_cpu_data = info->cpus;
 }
 
-void arch_shutdown(BootInfo* info)
-{
-	arch_stop(info);
-}
-
-ATTR(noreturn) void arch_stop(BootInfo* info)
+ATTR(noreturn) void arch_stop()
 {
 	asm_interrupt_disable();
 	while (true)
@@ -171,41 +158,17 @@ ATTR(noreturn) void arch_stop(BootInfo* info)
 
 Cpu* arch_current_cpu()
 {
+	kassert(per_cpu_data != NULL, "CPU data was not initialized properly!");
 #ifdef CONFIG_smp
 	// The Cpu struct starts at KERNEL_GSBASE:0
 	// Since we can't "directly" access the base address, just get the first field (Cpu.id)
 	// and use that to index into the CPU array.
 	u64 id;
 	asm volatile("mov %%gs:(0), %0" : "=r"(id) : "i"(offsetof(Cpu, id)) : "memory");
-	return &boot_info->cpus[id];
+	return &per_cpu_data[id];
 #else
-	return &boot_info->cpus[0];
+	return &per_cpu_data[0];
 #endif
-}
-
-void arch_get_registers(Context* regs)
-{
-	if (regs == NULL)
-		return;
-
-	asm_get_register(regs->rax, rax);
-	asm_get_register(regs->rbx, rbx);
-	asm_get_register(regs->rcx, rcx);
-	asm_get_register(regs->rdx, rdx);
-	asm_get_register(regs->rsi, rsi);
-	asm_get_register(regs->rdi, rdi);
-	asm_get_register(regs->rbp, rbp);
-	asm_get_register(regs->rsp, rsp);
-	asm_get_register(regs->r8, r8);
-	asm_get_register(regs->r9, r9);
-	asm_get_register(regs->r10, r10);
-	asm_get_register(regs->r11, r11);
-	asm_get_register(regs->r12, r12);
-	asm_get_register(regs->r13, r13);
-	asm_get_register(regs->r14, r14);
-	asm_get_register(regs->r15, r15);
-	asm_get_register(regs->cs, cs);
-	asm_get_register(regs->ss, ss);
 }
 
 void arch_dump_registers(Context* regs)

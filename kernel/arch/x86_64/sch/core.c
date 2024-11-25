@@ -7,6 +7,7 @@
 
 void sch_invoke()
 {
+	// Make sure interrupts are enabled.
 	asm_interrupt_enable();
 
 	// Force a software interrupt.

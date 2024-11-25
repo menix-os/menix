@@ -12,8 +12,6 @@ add_option(license_BSD3 BOOL ON)
 
 # Kernel logging
 add_option(force_asserts BOOL OFF)
-add_option(ktrace BOOL ON)
-add_option(ktrace_registers BOOL ON)
 add_option(ktrace_max NUMBER 32)
 
 # ACPI

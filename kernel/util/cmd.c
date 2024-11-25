@@ -6,6 +6,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+static const char* command_line = NULL;
+
+void cmd_init(BootInfo* info)
+{
+	command_line = strdup(info->cmd);
+}
+
 // Returns the substring of the value part of the option specified by `key`.
 // If not found, returns `NULL`.
 static const char* cmd_parse(const char* key)
@@ -15,7 +22,7 @@ static const char* cmd_parse(const char* key)
 		return NULL;
 
 	const usize key_len = strlen(key);
-	const char* start = fw_get_boot_info()->cmd;
+	const char* start = command_line;
 	for (; *start != '\0'; start++)
 	{
 		if (strncmp(start, key, key_len) == 0)

@@ -202,10 +202,7 @@
 #define CPL_USER   (0b11)
 #define CPL_KERNEL (0b00)
 
-// User defined interrupts start at 0x30 because the rest are reserved:
-// 0x00 - 0x1F Exception Vector
-// 0x20 - 0x2F Remapped PIC
-#define INT_TIMER	0x30
+#define INT_TIMER	0x20
 #define INT_SYSCALL 0x80
 
 typedef struct

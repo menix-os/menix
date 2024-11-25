@@ -14,7 +14,7 @@ Thread* thread_list = NULL;
 Thread* hanging_thread_list = NULL;
 Thread* sleeping_thread_list = NULL;
 
-void sch_init(BootInfo* info)
+void sch_init()
 {
 	// Create the first process for kernel tasks (PID 0).
 	Process* kernel_proc = proc_create("kernel", ProcessState_Ready, false, NULL);

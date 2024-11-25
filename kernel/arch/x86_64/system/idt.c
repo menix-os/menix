@@ -53,10 +53,6 @@ DUP256
 
 void idt_init()
 {
-	asm_interrupt_disable();
-
-	// Set all gates.
-
 	// clang-format off
 	IDT_SET(0); IDT_SET(1); IDT_SET(2); IDT_SET(3); IDT_SET(4); IDT_SET(5); IDT_SET(6); IDT_SET(7); IDT_SET(8); IDT_SET(9);
 	IDT_SET(10); IDT_SET(11); IDT_SET(12); IDT_SET(13); IDT_SET(14); IDT_SET(15); IDT_SET(16); IDT_SET(17); IDT_SET(18); IDT_SET(19);
@@ -85,8 +81,4 @@ void idt_init()
 	IDT_SET(240); IDT_SET(241); IDT_SET(242); IDT_SET(243); IDT_SET(244); IDT_SET(245); IDT_SET(246); IDT_SET(247); IDT_SET(248); IDT_SET(249);
 	IDT_SET(250); IDT_SET(251); IDT_SET(252); IDT_SET(253); IDT_SET(254); IDT_SET(255);
 	// clang-format on
-
-	idt_reload();
-
-	asm_interrupt_enable();
 }

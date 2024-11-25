@@ -35,16 +35,9 @@ void kmesg(const char* fmt, ...)
 
 void ktrace(Context* regs)
 {
-#ifdef CONFIG_ktrace
-	// Write out registers.
-	kmesg("Registers:\n");
-
-	Context c;
 	if (regs == NULL)
-	{
-		arch_get_registers(&c);
-		regs = &c;
-	}
+		return;
+
 	arch_dump_registers(regs);
 	StackFrame* fp = (void*)regs->rbp;
 	// Print stack trace.
@@ -63,12 +56,9 @@ void ktrace(Context* regs)
 			kmesg("\t[%zu]\t0x%p <\?\?\?>\n", i, fp->return_addr);
 	}
 	kmesg("--- End of Stack trace ---\n");
-#endif
 }
 
 ATTR(noreturn) void kabort()
 {
-	arch_stop(NULL);
-	while (1)
-		;
+	arch_stop();
 }

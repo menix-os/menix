@@ -13,10 +13,11 @@
 
 static PhysAddr lapic_addr = 0;
 static bool has_x2apic = 0;
-u32 tick_in_10ms = 0;
+u32 apic_ticks_in_10ms = 0;
 
-void apic_init()
+void pic_disable()
 {
+	// Note: We initialize the PIC properly, but completely disable it and use the APIC in favor of it.
 	// Remap IRQs so they start at 0x20 since interrupts 0x00..0x1F are used by CPU exceptions.
 	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);	 // ICW1: Begin initialization and set cascade mode.
 	arch_x86_write8(PIC1_DATA_PORT, 0x20);		 // ICW2: Set where interrupts should be mapped to (0x20-0x27).
@@ -30,12 +31,6 @@ void apic_init()
 	arch_x86_write8(PIC2_DATA_PORT, 0x02);		 // ICW3: Connect to master PIC at IRQ2.
 	arch_x86_write8(PIC2_DATA_PORT, 0x01);		 // ICW4: Set the PIC to operate in 8086/88 mode.
 	arch_x86_write8(PIC2_DATA_PORT, 0xFF);		 // Mask all interrupts.
-
-	// TODO
-	// Since 0x00-0x1F are used for exceptions, and 0x20-0x2F for legacy IRQs, redirect IRQ0 to 0x30.
-
-	// apic_redirect_irq(0, 0x30);
-	// lapic_init(0);
 }
 
 static u32 ioapic_read(PhysAddr ioapic_address, usize reg)
@@ -165,8 +160,8 @@ void lapic_init(usize cpu_id)
 	asm_cpuid(1, 0, a, b, c, d);
 	if (c & CPUID_1C_X2APIC)
 	{
-		has_x2apic = true;
 		// Set X2APIC flag
+		has_x2apic = true;
 		apic_msr |= 1 << 10;
 	}
 
@@ -182,7 +177,7 @@ void lapic_init(usize cpu_id)
 	}
 
 	// Set NMIs according to the MADT
-	for (int i = 0; i < madt_nmi_list.length; i++)
+	for (usize i = 0; i < madt_nmi_list.length; i++)
 	{
 		MadtNmi* nmi = madt_nmi_list.items[i];
 		lapic_set_nmi(2, cpu_id, nmi->acpi_id, nmi->flags, nmi->lint);
@@ -195,19 +190,20 @@ void lapic_init(usize cpu_id)
 	// Set timer init counter to -1
 	lapic_write(0x380, 0xFFFFFFFF);
 
+	// TODO
 	// timer_sleep(10);
 
 	// Stop the APIC timer
 	lapic_write(0x320, 0x10000);
 
 	// How much the APIC timer ticked in 10ms
-	tick_in_10ms = 0xFFFFFFFF - lapic_read(0x390);
+	apic_ticks_in_10ms = 0xFFFFFFFF - lapic_read(0x390);
 
 	// Start timer as periodic on IRQ 0
-	lapic_write(0x320, 32 | 0x20000);
+	lapic_write(0x320, INT_TIMER | 0x20000);
 	// With divider 16
 	lapic_write(0x3E0, 3);
-	lapic_write(0x380, tick_in_10ms / 10);
+	lapic_write(0x380, apic_ticks_in_10ms / 10);
 }
 
 void apic_send_eoi()
@@ -217,9 +213,7 @@ void apic_send_eoi()
 
 Context* timer_handler(Context* regs)
 {
-	asm_interrupt_disable();
-	Context* new = sch_reschedule(regs);
+	Context* new_context = sch_reschedule(regs);
 	apic_send_eoi();
-	asm_interrupt_enable();
-	return new;
+	return new_context;
 }

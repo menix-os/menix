@@ -5,8 +5,8 @@
 #include <menix/common.h>
 #include <menix/system/arch.h>
 
-// Initializes the APIC.
-void apic_init();
+// Disables the legacy PIC.
+void pic_disable();
 
 // Sends an End Of Interrupt signal to the APIC.
 void apic_send_eoi();

@@ -10,5 +10,6 @@ static AcpiHpet* hpet_table;
 
 void hpet_init()
 {
-	kassert(hpet_table = acpi_find_table("HPET", 0), "ACPI tables didn't contain an HPET table!");
+	hpet_table = acpi_find_table("HPET", 0);
+	kassert(hpet_table, "ACPI tables didn't contain an HPET table!");
 }
