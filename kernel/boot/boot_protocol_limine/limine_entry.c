@@ -74,9 +74,9 @@ void kernel_boot()
 			case LIMINE_MEMMAP_USABLE: map[i].usage = PhysMemoryUsage_Free; break;
 			case LIMINE_MEMMAP_KERNEL_AND_MODULES: map[i].usage = PhysMemoryUsage_Kernel; break;
 			case LIMINE_MEMMAP_RESERVED:
+			case LIMINE_MEMMAP_FRAMEBUFFER:
 			case LIMINE_MEMMAP_ACPI_NVS: map[i].usage = PhysMemoryUsage_Reserved; break;
 			case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
-			case LIMINE_MEMMAP_FRAMEBUFFER:
 			case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE: map[i].usage = PhysMemoryUsage_Reclaimable; break;
 			default: map[i].usage = PhysMemoryUsage_Unknown; break;
 		}
@@ -96,6 +96,8 @@ void kernel_boot()
 	pm_init(info.phys_map, info.memory_map, info.mm_num);
 	vm_init(info.kernel_phys, info.memory_map, info.mm_num);
 	alloc_init();
+
+	kernel_early_init();
 
 	boot_log("HHDM offset: 0x%p\n", hhdm_request.response->offset);
 	boot_log("Kernel loaded at: 0x%p (0x%p)\n", kernel_address_request.response->virtual_base,
@@ -120,7 +122,6 @@ void kernel_boot()
 		info.file_num = module_res->module_count;
 		info.files = files;
 	}
-
 	// Get early framebuffer.
 	FrameBuffer buffer = {0};
 	if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count == 0)
@@ -182,7 +183,7 @@ void kernel_boot()
 
 	usize smp_cmdline = cmd_get_usize("smp", smp_res->cpu_count);
 	// Only initialize a given amount of cores, or if none/invalid the maximum cpu count.
-	info.cpu_num = smp_cmdline > smp_res->cpu_count ? smp_res->cpu_count : smp_cmdline;
+	info.cpu_num = (smp_cmdline > smp_res->cpu_count || smp_cmdline == 0) ? smp_res->cpu_count : smp_cmdline;
 	boot_log("Initializing %zu cores.\n", info.cpu_num);
 
 	// Mark the boot CPU ID.
@@ -224,7 +225,6 @@ void kernel_boot()
 	arch_init_cpu(&info.cpus[0], &info.cpus[0]);
 #endif
 
-	kernel_early_init();
 	kernel_init();
 
 	boot_log("Total processors active: %zu\n", info.cpu_active);
