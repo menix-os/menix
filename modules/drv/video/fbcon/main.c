@@ -16,9 +16,6 @@
 
 extern u8 fbcon_font[256 * FONT_GLYPH_SIZE];
 
-// Internal terminal handle.
-static Handle* handle;
-
 // Internal render target.
 static FrameBuffer* internal_fb;
 
@@ -156,6 +153,10 @@ static isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf, us
 	return len;
 }
 
+static Handle fbcon_handle = {
+	.write = fbcon_write,
+};
+
 static void fbcon_post()
 {
 	FrameBuffer* fb = fb_get_active();
@@ -192,9 +193,7 @@ static void fbcon_post()
 i32 fbcon_init()
 {
 	// Register device.
-	handle = handle_new(sizeof(Handle));
-	handle->write = fbcon_write;
-	if (devtmpfs_add_device(handle, "fbcon") == false)
+	if (devtmpfs_add_device(&fbcon_handle, "fbcon") == false)
 	{
 		module_log("Failed to initialize fbcon!\n");
 		return 1;
