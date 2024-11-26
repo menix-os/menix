@@ -9,7 +9,7 @@ typedef struct VfsNode VfsNode;
 
 // Describes a file system.
 typedef struct FileSystem FileSystem;
-typedef struct FileSystem
+struct FileSystem
 {
 	char name[64];	  // Name of the file system.
 
@@ -23,4 +23,4 @@ typedef struct FileSystem
 	VfsNode* (*hard_link)(FileSystem* self, VfsNode* parent, const char* name, VfsNode* target);
 	// Called to create a new symbolic link at `parent`, pointing to `target`.
 	VfsNode* (*sym_link)(FileSystem* self, VfsNode* parent, const char* name, const char* target);
-} FileSystem;
+};
