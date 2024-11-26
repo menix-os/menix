@@ -1,5 +1,5 @@
-# Input/Output
+# Timekeeping
 
 target_sources(menix PUBLIC
-	terminal.c
+	clock.c
 )

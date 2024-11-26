@@ -21,7 +21,7 @@ typedef struct ATTR(packed) StackFrame
 
 SpinLock kmesg_lock;
 
-void kmesg(const char* fmt, ...)
+void kmesg_direct(const char* fmt, ...)
 {
 	spin_lock(&kmesg_lock);
 

@@ -12,7 +12,7 @@
 #include <menix/util/list.h>
 #include <menix/util/spin.h>
 
-#define proc_log(fmt, ...) kmesg("[Process]\t" fmt, ##__VA_ARGS__)
+#define proc_log(fmt, ...) kmesg("proc: " fmt, ##__VA_ARGS__)
 
 // Describes the state of a process.
 typedef enum

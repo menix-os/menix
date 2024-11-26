@@ -28,6 +28,7 @@ typedef struct
 	u8 page_protection;
 } ATTR(packed) AcpiHpet;
 
+// HPET registers
 typedef struct
 {
 	u64 capabilities;
@@ -38,6 +39,12 @@ typedef struct
 	u64 _pad2[0x19];
 	u64 main_counter;
 	u64 _pad3;
-} ATTR(packed) Hpet;
+} ATTR(packed) HpetRegisters;
+
+typedef struct
+{
+	volatile HpetRegisters* regs;
+
+} Hpet;
 
 void hpet_init();

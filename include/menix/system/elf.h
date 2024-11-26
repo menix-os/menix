@@ -8,11 +8,7 @@
 #include <menix/util/log.h>
 
 // ELF Header Identification
-#define ELF_MAG \
-	(const char[4]) \
-	{ \
-		0x7F, 'E', 'L', 'F' \
-	}
+#define ELF_MAG				(const char[4]) {0x7F, 'E', 'L', 'F'}
 #define EI_MAG0				0	  // 0x7F
 #define EI_MAG1				1	  // 'E'
 #define EI_MAG2				2	  // 'L'
@@ -516,7 +512,7 @@ typedef struct
 	char* ld_path;
 } ElfInfo;
 
-#define elf_log(fmt, ...) kmesg("[ELF]\t" fmt, ##__VA_ARGS__)
+#define elf_log(fmt, ...) kmesg("elf: " fmt, ##__VA_ARGS__)
 
 // Gets a section from an ELF by name.
 void* elf_get_section(void* elf, const char* name);

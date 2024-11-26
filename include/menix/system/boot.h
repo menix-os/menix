@@ -6,7 +6,7 @@
 #include <menix/memory/pm.h>
 #include <menix/util/log.h>
 
-#define boot_log(fmt, ...) kmesg("[Boot]\t" fmt, ##__VA_ARGS__)
+#define boot_log(fmt, ...) kmesg("boot: " fmt, ##__VA_ARGS__)
 
 typedef struct
 {

@@ -12,7 +12,6 @@ require_option(license_LGPL)
 
 add_subdirectory(arch/${MENIX_ARCH_DIR})
 add_subdirectory(boot)
-add_subdirectory(io)
 add_subdirectory(fs)
 add_subdirectory(klibc)
 add_subdirectory(memory)

@@ -4,6 +4,7 @@
 
 #include <menix/common.h>
 #include <menix/fs/handle.h>
+#include <menix/system/time/clock.h>
 
 #if !defined(NDEBUG) || CONFIG_force_asserts
 #define kassert(expr, msg, ...) \
@@ -28,10 +29,10 @@
 	} while (0)
 #endif
 
-void kmesg_set_output(Handle* handle);
+#define kmesg(fmt, ...) kmesg_direct("[%5zu.%06zu] " fmt, clock_get_elapsed(), clock_get_elapsed(), ##__VA_ARGS__)
 
 // Print a message to the kernel log.
-void kmesg(const char* fmt, ...);
+void kmesg_direct(const char* fmt, ...);
 
 typedef struct Context Context;
 

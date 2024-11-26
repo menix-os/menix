@@ -8,7 +8,7 @@
 #include <bits/asm.h>
 #include <bits/context.h>
 
-#define arch_log(fmt, ...) kmesg("[" CONFIG_arch "]\t" fmt, ##__VA_ARGS__)
+#define arch_log(fmt, ...) kmesg(CONFIG_arch ": " fmt, ##__VA_ARGS__)
 
 // CPU-local information.
 typedef struct Cpu
