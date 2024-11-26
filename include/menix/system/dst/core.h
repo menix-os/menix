@@ -4,5 +4,5 @@
 
 #include <menix/system/boot.h>
 
-// Initializes firmware.
-void fw_init(BootInfo* info);
+// Initializes the dynamic system tree.
+void dst_init(EarlyBootInfo* info);

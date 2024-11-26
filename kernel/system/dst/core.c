@@ -1,17 +1,13 @@
-// Firmware and platform initialization
+// Dynamic System Tree
 
 #include <menix/common.h>
-#include <menix/system/fw.h>
-
-#ifdef CONFIG_pci
-#include <menix/system/pci/pci.h>
-#endif
+#include <menix/system/dst/core.h>
 
 #ifdef CONFIG_acpi
 #include <menix/system/acpi/acpi.h>
 #endif
 
-void fw_init(BootInfo* info)
+void dst_init(EarlyBootInfo* info)
 {
 #ifdef CONFIG_device_tree
 	dt_init(info->fdt_blob);

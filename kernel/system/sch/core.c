@@ -228,7 +228,7 @@ Context* sch_reschedule(Context* context)
 	// Grab the next thread.
 	running = sch_next(running);
 
-	if (cur->thread != NULL)
+	if (cur->thread != NULL && cur->thread != running)
 	{
 		// The old thread is now free.
 		spin_unlock(&cur->thread->lock);

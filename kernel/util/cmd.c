@@ -1,16 +1,14 @@
 #include <menix/memory/alloc.h>
-#include <menix/system/fw.h>
 #include <menix/util/cmd.h>
-#include <menix/util/log.h>
 
 #include <stdlib.h>
 #include <string.h>
 
 static const char* command_line = NULL;
 
-void cmd_init(BootInfo* info)
+void cmd_init(const char* data)
 {
-	command_line = strdup(info->cmd);
+	command_line = strdup(data);
 }
 
 // Returns the substring of the value part of the option specified by `key`.

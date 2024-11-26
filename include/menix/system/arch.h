@@ -35,7 +35,7 @@ typedef struct Cpu
 typedef struct Context Context;
 
 // Initializes the platform for use by the kernel and boot routines.
-void arch_early_init(BootInfo* info);
+void arch_early_init(EarlyBootInfo* info);
 
 // Initializes the rest of the platform after the boot routines have completed.
 void arch_init(BootInfo* info);

@@ -3,7 +3,6 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/system/boot.h>
 #include <menix/system/elf.h>
 #include <menix/util/log.h>
 
@@ -57,7 +56,7 @@ typedef struct
 } LoadedModule;
 
 // Initialize all modules and their subsystems.
-void module_init(BootInfo* info);
+void module_init();
 
 // Clean up all modules, disconnect and disable them all.
 void module_fini();

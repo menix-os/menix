@@ -33,7 +33,7 @@ static List(ModulePostFn) module_post_fns;
 static VirtAddr module_map_region = CONFIG_vm_map_base;
 static SpinLock module_map_lock = spin_new();
 
-void module_init(BootInfo* info)
+void module_init()
 {
 	// Initialize subsystems.
 
@@ -314,7 +314,7 @@ i32 module_load_elf(const char* path)
 	LoadedModule* loaded = module_get(node->name);
 	if (loaded == NULL)
 	{
-		module_log("Module \"%s\" was not registered correctly!\n", path);
+		module_log("Module \"%s\" was not registered!\n", path);
 		return 1;
 	}
 	if (loaded->module != NULL)

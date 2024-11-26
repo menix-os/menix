@@ -7,7 +7,7 @@
 #define CMDLINE_MAX_LENGTH 1024
 
 // Initializes the command line.
-void cmd_init(BootInfo* info);
+void cmd_init(const char* data);
 
 // Returns a string from the command line matching the given key.
 // If not present, returns `fallback`.

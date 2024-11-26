@@ -134,14 +134,14 @@ void arch_init_cpu(BootInfo* info, Cpu* cpu, Cpu* boot)
 		arch_stop();
 }
 
-void arch_early_init(BootInfo* info)
+void arch_early_init(EarlyBootInfo* info)
 {
 	asm_interrupt_disable();
 
 	gdt_init();
 	idt_init();
-	serial_init();
 	pic_disable();
+	serial_init();
 }
 
 void arch_init(BootInfo* info)

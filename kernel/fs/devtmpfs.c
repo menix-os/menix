@@ -251,11 +251,6 @@ bool devtmpfs_add_device(Handle* device, const char* name)
 	if (node != NULL)
 	{
 		thread_set_errno(EEXIST);
-
-		// TODO: Free old handle.
-
-		// Update handle.
-		node->handle = device;
 		return false;
 	}
 
