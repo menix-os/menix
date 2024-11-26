@@ -232,9 +232,14 @@ print_num:
 				if (has_width)
 				{
 					char c = pad_zero ? '0' : ' ';
-					for (usize i = 0; i < width - len; i++)
-						if (!print(&c, 1))
-							return -1;
+
+					// We don't have to pad anything.
+					if (len < width)
+					{
+						for (usize i = 0; i < width - len; i++)
+							if (!print(&c, 1))
+								return -1;
+					}
 				}
 				if (write_prefix)
 				{

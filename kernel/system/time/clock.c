@@ -11,6 +11,7 @@ void clock_register(ClockSource* source)
 	if (source == NULL || source->get_elapsed_ns == NULL)
 		return;
 
+	kmesg("clock: switching to new source \"%s\"\n", source->name);
 	current_source = source;
 }
 
@@ -24,8 +25,8 @@ usize clock_get_elapsed()
 
 void clock_wait(usize ns)
 {
-	usize now = clock_get_elapsed() + ns;
-	while (now > clock_get_elapsed())
+	usize time = clock_get_elapsed() + ns;
+	while (time > clock_get_elapsed())
 	{
 		asm_pause();
 	}

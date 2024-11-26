@@ -29,7 +29,9 @@
 	} while (0)
 #endif
 
-#define kmesg(fmt, ...) kmesg_direct("[%5zu.%06zu] " fmt, clock_get_elapsed(), clock_get_elapsed(), ##__VA_ARGS__)
+#define kmesg(fmt, ...) \
+	kmesg_direct("[%5zu.%06zu] " fmt, (clock_get_elapsed() / 1000000000), ((clock_get_elapsed() / 1000) % 100000), \
+				 ##__VA_ARGS__)
 
 // Print a message to the kernel log.
 void kmesg_direct(const char* fmt, ...);

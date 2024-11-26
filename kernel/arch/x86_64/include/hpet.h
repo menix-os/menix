@@ -18,7 +18,7 @@ typedef struct
 	AcpiDescHeader header;
 	u8 hardware_rev_id;
 	Bits num_comparators:5;
-	Bits counter_size:1;
+	Bits is_64_bit:1;
 	Bits reserved:1;
 	Bits legacy_replacement:1;
 	u16 pci_vendor;
@@ -40,11 +40,5 @@ typedef struct
 	u64 main_counter;
 	u64 _pad3;
 } ATTR(packed) HpetRegisters;
-
-typedef struct
-{
-	volatile HpetRegisters* regs;
-
-} Hpet;
 
 void hpet_init();

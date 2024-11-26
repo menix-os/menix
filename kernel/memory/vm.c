@@ -59,13 +59,6 @@ void vm_init(PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 
 	// Load the new page directory.
 	vm_set_page_map(vm_kernel_map);
-	vm_log("Initialized virtual memory management!\n");
-	vm_log("Level 0 page size: 0x%zx"
-#ifdef CONFIG_dynamic_page_size
-		   " (Dynamic)"
-#endif
-		   "\n",
-		   vm_get_page_size(VMLevel_0));
 }
 
 usize vm_user_read(Process* proc, void* dst, VirtAddr src, usize num)

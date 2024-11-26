@@ -5,6 +5,9 @@
 
 typedef struct
 {
+	// Name of this clock source.
+	const char* name;
+
 	// Returns how many nanoseconds have elapsed since initialization.
 	usize (*get_elapsed_ns)();
 } ClockSource;
