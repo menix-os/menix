@@ -40,12 +40,6 @@ void arch_early_init(BootInfo* info)
 	boot_info = info;
 }
 
-void arch_init(BootInfo* info)
-{
-	fw_init(info);
-	asm_interrupt_enable();
-}
-
 void arch_shutdown(BootInfo* info)
 {
 	arch_stop(info);

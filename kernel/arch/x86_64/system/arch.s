@@ -63,7 +63,6 @@ sch_x86_finalize:
 .extern syscall_handler
 .align 0x10
 sc_syscall:
-	cli							/* Disable interrupts. */
 	swapgs						/* Change GS to kernel mode. */
 	movq	%rsp,	%gs:16		/* Save user stack to `Cpu.user_stack`. */
 	movq	%gs:8,	%rsp		/* Restore kernel stack from `Cpu.kernel_stack`. */
@@ -86,7 +85,6 @@ sc_syscall:
 	add		$0x18,	%rsp		/* Skip Context.error, Context.isr and Context.core fields. */
 	movq	%gs:16,	%rsp		/* Load user stack from `Cpu.user_stack`. */
 	swapgs						/* Change GS to user mode. */
-	sti							/* Resume interrupts. */
 	sysretq						/* Return to user mode */
 
 /* Internal function called by one of the stubs. */
@@ -101,6 +99,7 @@ interrupt_internal:
 	pop_all_regs
 	add		$0x18,	%rsp		/* Skip Context.error, Context.isr, and Context.core fields. */
 	swapgs_if_necessary			/* Change GS back to user mode if we came from user mode. */
+	sti
 	iretq
 
 /* Interrupt stub that pushes 0 as the error code. */
@@ -108,6 +107,7 @@ interrupt_internal:
 .global interrupt_\num
 .align 0x10
 interrupt_\num:
+	cli
 	swapgs_if_necessary			/* Change GS to kernel mode if we're coming from user mode. */
 	pushq	$0
 	pushq	$\num
@@ -119,6 +119,7 @@ interrupt_\num:
 .global interrupt_\num
 .align 0x10
 interrupt_\num:
+	cli
 	swapgs_if_necessary			/* Change GS to kernel mode if we're coming from user mode. */
 	pushq	$\num
 	jmp		interrupt_internal

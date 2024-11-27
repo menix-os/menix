@@ -124,8 +124,7 @@ void arch_init_cpu(BootInfo* info, Cpu* cpu, Cpu* boot)
 	cpu->is_present = true;
 	atomic_fetch_add(&info->cpu_active, 1);
 
-	// TODO: Finish HPET impl for LAPIC calibration
-	// lapic_init(cpu->lapic_id);
+	lapic_init(cpu->lapic_id);
 
 	spin_unlock(&cpu_lock);
 

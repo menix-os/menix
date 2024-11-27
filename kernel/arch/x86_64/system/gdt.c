@@ -18,7 +18,6 @@ void gdt_init()
 {
 	// clang-format off
 
-	asm_interrupt_disable();
 	// Kernel Code
 	GDT_ENCODE(gdt_table.kernel_code,
 		0, 0xFFFFF,
@@ -60,7 +59,6 @@ void gdt_init()
 
 	gdt_reload();
 	tss_reload();
-	asm_interrupt_enable();
 }
 
 void gdt_reload()
