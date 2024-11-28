@@ -37,6 +37,8 @@ static void hpet_setup(PhysAddr addr)
 	// Enable timer.
 	hpet.regs->configuration |= 1;
 
+	acpi_log("Enabled HPET.\n");
+
 	clock_register(&hpet.cs);
 }
 
@@ -45,7 +47,7 @@ void hpet_init()
 	AcpiHpet* hpet_table = acpi_find_table("HPET", 0);
 	kassert(hpet_table, "ACPI tables didn't contain an HPET table!");
 
-	acpi_log("HPET at 0x%p\n", hpet_table->address);
+	acpi_log("HPET at 0x%p\n", hpet_table->address.address);
 
 	hpet_setup(hpet_table->address.address);
 }
