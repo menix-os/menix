@@ -66,7 +66,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 {
 	if (handle == NULL)
 	{
-		elf_log("Failed to load ELF: Could not read the file.\n");
+		print_log("elf: Failed to load ELF: Could not read the file.\n");
 		return false;
 	}
 
@@ -74,14 +74,14 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 	Elf_Hdr hdr;
 	if (handle->read(handle, NULL, &hdr, sizeof(hdr), 0) != sizeof(hdr))
 	{
-		elf_log("Failed to load ELF: Could not read entire header.\n");
+		print_log("elf: Failed to load ELF: Could not read entire header.\n");
 		return false;
 	}
 
 	// Verify header magic.
 	if (memcmp(hdr.e_ident, ELF_MAG, sizeof(ELF_MAG)) != 0)
 	{
-		elf_log("Failed to load ELF: File is not an ELF executable.\n");
+		print_log("elf: Failed to load ELF: File is not an ELF executable.\n");
 		return false;
 	}
 
@@ -90,7 +90,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 		hdr.e_ident[EI_VERSION] != EV_CURRENT || hdr.e_ident[EI_OSABI] != ELFOSABI_SYSV ||
 		hdr.e_machine != EI_ARCH_MACHINE || hdr.e_phentsize != sizeof(Elf_Phdr))
 	{
-		elf_log("Failed to load ELF: File is not designed to run on this machine.\n");
+		print_log("elf: Failed to load ELF: File is not designed to run on this machine.\n");
 		return false;
 	}
 
@@ -102,7 +102,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 		const usize phdr_off = hdr.e_phoff + (i * sizeof(Elf_Phdr));
 		if (handle->read(handle, NULL, &phdr, sizeof(Elf_Phdr), phdr_off) != sizeof(Elf_Phdr))
 		{
-			elf_log("Failed to load ELF: Could not read program header at offset %zu.\n", phdr_off);
+			print_log("elf: Failed to load ELF: Could not read program header at offset %zu.\n", phdr_off);
 			return false;
 		}
 
@@ -115,7 +115,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				if (phdr.p_flags & PF_R)
 					prot |= VMProt_Read;
 				else
-					elf_log("Potential bug: Program header %zu does not have read permission.\n");
+					print_log("elf: Potential bug: Program header %zu does not have read permission.\n");
 				if (phdr.p_flags & PF_W)
 					prot |= VMProt_Write;
 				if (phdr.p_flags & PF_X)
@@ -137,7 +137,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 					if (vm_map(page_map, page, (VirtAddr)(aligned_virt + (p * page_size)), prot, VMFlags_User,
 							   VMLevel_0) == false)
 					{
-						elf_log("Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count, aligned_virt);
+						print_log("elf: Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count, aligned_virt);
 						return false;
 					}
 				}
@@ -146,7 +146,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				void* foreign = vm_map_foreign(page_map, aligned_virt, page_count);
 				if (foreign == (void*)~0UL)
 				{
-					elf_log("Failed to load ELF: Could not map foreign memory region!\n");
+					print_log("elf: Failed to load ELF: Could not map foreign memory region!\n");
 					return false;
 				}
 
@@ -159,7 +159,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				// Destroy temporary mapping.
 				if (vm_unmap_foreign(foreign, page_count) == false)
 				{
-					elf_log("Failed to load ELF: Could not unmap foreign memory region!\n");
+					print_log("elf: Failed to load ELF: Could not unmap foreign memory region!\n");
 					return false;
 				}
 

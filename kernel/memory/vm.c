@@ -2,6 +2,7 @@
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
+#include <menix/util/log.h>
 
 #include <string.h>
 

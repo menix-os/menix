@@ -6,10 +6,9 @@
 #include <menix/util/list.h>
 #include <menix/util/log.h>
 
-#define pci_log(fmt, ...) kmesg("pci: " fmt, ##__VA_ARGS__)
 #define pci_log_dev(dev, fmt, ...) \
-	kmesg("pci: %02hhx:%02hhx.%hhx (%hhu,%hhu,%hhu): " fmt, (dev)->slot->bus->id, (dev)->slot->id, (dev)->function, \
-		  (dev)->class, (dev)->sub_class, (dev)->prog_if, ##__VA_ARGS__)
+	print_log("pci: %02hhx:%02hhx.%hhx (%hhu,%hhu,%hhu): " fmt, (dev)->slot->bus->id, (dev)->slot->id, \
+			  (dev)->function, (dev)->class, (dev)->sub_class, (dev)->prog_if, ##__VA_ARGS__)
 
 #define PCI_ANY_ID (~0U)
 #define PCI_DEVICE(ven, dev) \

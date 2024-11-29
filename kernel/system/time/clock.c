@@ -3,6 +3,7 @@
 #include <menix/common.h>
 #include <menix/system/arch.h>
 #include <menix/system/time/clock.h>
+#include <menix/util/log.h>
 
 static ClockSource* current_source = NULL;
 
@@ -11,7 +12,7 @@ void clock_register(ClockSource* source)
 	if (source == NULL || source->get_elapsed_ns == NULL)
 		return;
 
-	kmesg("clock: switching to new source \"%s\"\n", source->name);
+	print_log("clock: switching to new source \"%s\"\n", source->name);
 	current_source = source;
 }
 

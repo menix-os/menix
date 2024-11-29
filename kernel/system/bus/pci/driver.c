@@ -48,7 +48,7 @@ i32 pci_register_driver(PciDriver* driver)
 			// Now, probe the device using the registered driver.
 			if (dev->driver->probe == NULL)
 			{
-				pci_log("Driver \"%s\" has no probe function! Registration failed.\n", driver->name);
+				print_log("pci: Driver \"%s\" has no probe function! Registration failed.\n", driver->name);
 				return -ENOENT;
 			}
 
@@ -62,7 +62,7 @@ i32 pci_register_driver(PciDriver* driver)
 		}
 	}
 
-	pci_log("Registered PCI driver \"%s\" with %zu variant(s).\n", driver->name, driver->num_variants);
+	print_log("pci: Registered PCI driver \"%s\" with %zu variant(s).\n", driver->name, driver->num_variants);
 	return 0;
 }
 
@@ -77,7 +77,7 @@ void pci_unregister_driver(PciDriver* driver)
 	// If we couldn't find the driver.
 	if (idx == -1)
 	{
-		pci_log("Can't unregister PCI driver \"%s\": Driver was not previously registered!\n", driver->name);
+		print_log("pci: Can't unregister PCI driver \"%s\": Driver was not previously registered!\n", driver->name);
 		return;
 	}
 
@@ -102,5 +102,5 @@ void pci_unregister_driver(PciDriver* driver)
 
 	list_pop(&pci_drivers, idx);
 
-	pci_log("Unregistered PCI driver \"%s\"\n", driver->name);
+	print_log("pci: Unregistered PCI driver \"%s\"\n", driver->name);
 }

@@ -29,7 +29,7 @@ pub struct Module {
 
 // Calls to kernel procedures.
 extern "C" {
-    fn kmesg(fmt: *const i8);
+    fn kmesg_direct(fmt: *const i8);
 }
 
 #[no_mangle]
@@ -47,7 +47,7 @@ pub static THIS_MODULE: Module = Module {
 
 pub extern "C" fn init_fn() -> i32 {
     unsafe {
-        kmesg(c"[rust_example]\tHello from Rust!\n".as_ptr());
+        print_log(c"[rust_example]\tHello from Rust!\n".as_ptr());
     }
     return 0;
 }

@@ -25,12 +25,12 @@ void mcfg_init()
 	// On the other hand, if we aren't on x86 and there is no MCFG table, we cannot configure PCI.
 	if (acpi_mcfg == NULL)
 	{
-		pci_log("Unable to configure PCI system using ACPI: The MCFG table was not present. ");
+		print_log("pci: Unable to configure PCI system using ACPI: The MCFG table was not present. ");
 #ifdef CONFIG_arch_x86_64
-		kmesg("Falling back to x86 mode.\n");
+		print_log("Falling back to x86 mode.\n");
 		// TODO: Set function callbacks to x86.
 #else
-		kmesg("Disable the PCI subsystem with `pci=0;` to continue.\n");
+		print_log("Disable the PCI subsystem with `pci=0;` to continue.\n");
 		kabort();
 #endif
 		return;
@@ -48,7 +48,7 @@ void mcfg_init()
 		list_push(&pci_platform.buses, bus);
 	}
 
-	pci_log("Configured PCI using ACPI.\n");
+	print_log("pci: Configured PCI using ACPI.\n");
 
 	pci_init();
 }

@@ -32,7 +32,7 @@ void vfs_init()
 	// Allocate a hashmap for file systems.
 	hashmap_init(fs_map, 128);
 
-	vfs_log("Initialized virtual file system.\n");
+	print_log("vfs: Initialized virtual file system.\n");
 	tmpfs_init();
 	devtmpfs_init();
 
@@ -63,7 +63,7 @@ i32 vfs_fs_register(FileSystem* fs)
 	spin_lock(&vfs_lock);
 	hashmap_insert(&fs_map, fs->name, strlen(fs->name), fs);
 	spin_unlock(&vfs_lock);
-	vfs_log("Registered new file system \"%s\"!\n", fs->name);
+	print_log("vfs: Registered new file system \"%s\"!\n", fs->name);
 	return 0;
 }
 
@@ -306,7 +306,7 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 	FileSystem* fs;
 	if (!hashmap_get(&fs_map, fs, fs_name, strlen(fs_name)))
 	{
-		vfs_log("Unable to mount file system \"%s\": Not previously registered!\n", fs_name);
+		print_log("vfs: Unable to mount file system \"%s\": Not previously registered!\n", fs_name);
 		thread_set_errno(ENODEV);
 		goto leave;
 	}
@@ -338,7 +338,7 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 	VfsNode* mount_node = fs->mount(parsed.parent, parsed.name, source_node);
 	if (mount_node == NULL)
 	{
-		vfs_log("Mounting \"%s\" failed!\n", dest_path);
+		print_log("vfs: Mounting \"%s\" failed!\n", dest_path);
 		goto leave;
 	}
 
@@ -346,9 +346,9 @@ bool vfs_mount(VfsNode* parent, const char* src_path, const char* dest_path, con
 	vfs_create_dots(mount_node, parsed.parent);
 
 	if (src_path != NULL && strlen(src_path) != 0)
-		vfs_log("Mounted \"%s\" on \"%s\" with file system \"%s\".\n", src_path, dest_path, fs_name);
+		print_log("vfs: Mounted \"%s\" on \"%s\" with file system \"%s\".\n", src_path, dest_path, fs_name);
 	else
-		vfs_log("Mounted new file system \"%s\" on \"%s\".\n", fs_name, dest_path);
+		print_log("vfs: Mounted new file system \"%s\" on \"%s\".\n", fs_name, dest_path);
 
 	// Success.
 	result = true;

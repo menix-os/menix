@@ -41,7 +41,7 @@ void ktrace(Context* regs)
 	arch_dump_registers(regs);
 	StackFrame* fp = (void*)regs->rbp;
 	// Print stack trace.
-	kmesg("--- Stack trace (Most recent call first) ---\n");
+	print_log("--- Stack trace (Most recent call first) ---\n");
 	for (usize i = 0; i < CONFIG_ktrace_max && fp != NULL; fp = fp->prev, i++)
 	{
 		// Try to resolve the symbol name and offset.
@@ -50,12 +50,12 @@ void ktrace(Context* regs)
 
 		// If we have found the corresponding symbol, print its name + offset.
 		if (module_find_symbol(fp->return_addr, &name, &sym))
-			kmesg("\t[%zu]\t0x%p <%s + 0x%zx>\n", i, fp->return_addr, name, fp->return_addr - sym->st_value);
+			print_log("\t[%zu]\t0x%p <%s + 0x%zx>\n", i, fp->return_addr, name, fp->return_addr - sym->st_value);
 		// If the address is not NULL, but we don't have any matching symbol, just print the address.
 		else if (fp->return_addr)
-			kmesg("\t[%zu]\t0x%p <\?\?\?>\n", i, fp->return_addr);
+			print_log("\t[%zu]\t0x%p <\?\?\?>\n", i, fp->return_addr);
 	}
-	kmesg("--- End of Stack trace ---\n");
+	print_log("--- End of Stack trace ---\n");
 }
 
 ATTR(noreturn) void kabort()

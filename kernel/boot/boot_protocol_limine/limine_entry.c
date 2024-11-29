@@ -100,10 +100,10 @@ void kernel_boot()
 
 	// Get modules.
 	if (module_request.response == NULL)
-		boot_log("Unable to get modules, or none were provided!\n");
+		print_log("boot: Unable to get modules, or none were provided!\n");
 	else
 	{
-		boot_log("Got modules:\n");
+		print_log("boot: Got modules:\n");
 		const struct limine_module_response* module_res = module_request.response;
 		BootFile* files = kmalloc(sizeof(BootFile) * module_res->module_count);
 		for (usize i = 0; i < module_res->module_count; i++)
@@ -111,7 +111,7 @@ void kernel_boot()
 			files[i].address = module_res->modules[i]->address;
 			files[i].size = module_res->modules[i]->size;
 			files[i].path = module_res->modules[i]->path;
-			boot_log("\t[%i] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
+			print_log("boot: \t[%i] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
 					 files[i].path);
 		}
 		full_info.file_num = module_res->module_count;
@@ -120,7 +120,7 @@ void kernel_boot()
 
 	// Get early framebuffer.
 	if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count == 0)
-		boot_log("Unable to get a framebuffer!\n");
+		print_log("boot: Unable to get a framebuffer!\n");
 	else
 	{
 		// Construct a simple framebuffer. This will get overridden by a driver loaded at a later stage.
@@ -139,7 +139,7 @@ void kernel_boot()
 		// If no early framebuffer has been set previously, do it now.
 		if (fb_get_active() == NULL)
 			fb_register(buffer);
-		boot_log("Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n",
+		print_log("boot: Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n",
 				 buffer->info.mmio_base, buffer->mode.width, buffer->mode.height, buffer->mode.cpp * 8,
 				 buffer->mode.v_width, buffer->mode.v_height);
 	}
@@ -151,7 +151,7 @@ void kernel_boot()
 	usize smp_cmdline = cmd_get_usize("smp", smp_res->cpu_count);
 	// Only initialize a given amount of cores, or if none/invalid the maximum cpu count.
 	full_info.cpu_num = (smp_cmdline > smp_res->cpu_count || smp_cmdline == 0) ? smp_res->cpu_count : smp_cmdline;
-	boot_log("Initializing %zu cores.\n", full_info.cpu_num);
+	print_log("boot: Initializing %zu cores.\n", full_info.cpu_num);
 
 	// Mark the boot CPU ID.
 #ifdef CONFIG_arch_x86_64

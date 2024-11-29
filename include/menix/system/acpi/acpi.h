@@ -8,8 +8,6 @@
 // Converts an ACPI physical address to a virtual one.
 #define ACPI_ADDR(addr) ((PhysAddr)(addr) + pm_get_phys_base())
 
-#define acpi_log(fmt, ...) kmesg("acpi: " fmt, ##__VA_ARGS__)
-
 // Initializes the ACPI subsystem with a pointer to the RSDP.
 void acpi_init(AcpiRsdp* rsdp);
 

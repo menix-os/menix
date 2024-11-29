@@ -15,7 +15,7 @@ Built-in modules are automatically included when debugging the kernel,
 since they're part of the same binary.
 This is not the case with dynamic modules! They are relocated at load time,
 so you will have to manually provide the virtual base address where the module
-was loaded. This address is printed to the console via `kmesg` during load time.
+was loaded. This address is printed to the console via `print_log` during load time.
 
 For every module you want to debug, you'll have to run:
 ```

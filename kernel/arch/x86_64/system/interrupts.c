@@ -46,13 +46,13 @@ static const char* exception_names[0x20] = {
 static Context* interrupt_ud_handler(Context* regs)
 {
 	// Make sure we're in user mode, otherwise we have to crash.
-	kmesg("Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
-	kmesg("Faulty data:");
+	print_log("Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
+	print_log("Faulty data:");
 
 	for (usize i = 0; i < 16; i++)
 	{
 		u8 instr = *(u8*)regs->rip;
-		kmesg(" %hhx", instr);
+		print_log(" %hhx", instr);
 	}
 
 	ktrace(regs);
@@ -115,7 +115,7 @@ Context* interrupt_handler(Context* regs)
 	if (regs->cs & CPL_USER)
 	{
 		Process* proc = arch_current_cpu()->thread->parent;
-		kmesg("Unhandled interrupt %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
+		print_log("Unhandled interrupt %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
 		arch_dump_registers(regs);
 
 		proc_kill(proc, true);
@@ -128,9 +128,9 @@ Context* interrupt_handler(Context* regs)
 
 	// Exception was not caused by the user and is not handled, abort.
 	if (regs->isr < ARRAY_SIZE(exception_names))
-		kmesg("Unhandled interrupt \"%s\" (%zu) in kernel mode!\n", exception_names[regs->isr], regs->isr);
+		print_log("Unhandled interrupt \"%s\" (%zu) in kernel mode!\n", exception_names[regs->isr], regs->isr);
 	else
-		kmesg("Unhandled interrupt %zu in kernel mode!\n", regs->isr);
+		print_log("Unhandled interrupt %zu in kernel mode!\n", regs->isr);
 
 	ktrace(regs);
 	kabort();

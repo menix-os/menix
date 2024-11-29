@@ -324,7 +324,7 @@ static bool print_to_terminal(const char* data, usize length)
 	// VfsNode* root = vfs_get_root();
 	// if (root != NULL)
 	//{
-	//	VfsNode* node = vfs_get_node(root, "/dev/kmesg", true);
+	//	VfsNode* node = vfs_get_node(root, "/dev/print_log", true);
 	//	if (node && node->handle)
 	//		node->handle->write(node->handle, NULL, data, length, 0);
 	// }

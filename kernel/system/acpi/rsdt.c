@@ -36,7 +36,7 @@ void acpi_init(AcpiRsdp* rsdp)
 	else
 		rsdt = ACPI_ADDR(rsdp->rsdt_address);
 
-	acpi_log("ACPI Revision %hhu\n", rsdp->revision);
+	print_log("acpi: ACPI Revision %hhu\n", rsdp->revision);
 
 	// Initialize architecture dependent tables.
 #ifdef CONFIG_arch_x86_64
@@ -50,7 +50,7 @@ void acpi_init(AcpiRsdp* rsdp)
 	mcfg_init();
 #endif
 
-	acpi_log("Initialized ACPI\n");
+	print_log("acpi: Initialized ACPI\n");
 }
 
 void* acpi_find_table(const char* signature, usize index)

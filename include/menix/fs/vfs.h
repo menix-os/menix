@@ -7,8 +7,6 @@
 #include <menix/util/hash_map.h>
 #include <menix/util/spin.h>
 
-#define vfs_log(fmt, ...) kmesg("vfs: " fmt, ##__VA_ARGS__)
-
 // A single node in the VFS.
 typedef struct VfsNode
 {

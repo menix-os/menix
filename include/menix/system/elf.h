@@ -5,7 +5,6 @@
 #include <menix/common.h>
 #include <menix/fs/handle.h>
 #include <menix/memory/vm.h>
-#include <menix/util/log.h>
 
 // ELF Header Identification
 #define ELF_MAG				(const char[4]) {0x7F, 'E', 'L', 'F'}
@@ -511,8 +510,6 @@ typedef struct
 	usize at_phnum;
 	char* ld_path;
 } ElfInfo;
-
-#define elf_log(fmt, ...) kmesg("elf: " fmt, ##__VA_ARGS__)
 
 // Gets a section from an ELF by name.
 void* elf_get_section(void* elf, const char* name);

@@ -26,23 +26,23 @@ void kernel_early_init(EarlyBootInfo* info)
 	vfs_init();
 
 	// Say hello to the console!
-	kmesg("menix " CONFIG_release " (" CONFIG_arch ", " CONFIG_version ")\n");
+	print_log("menix " CONFIG_release " (" CONFIG_arch ", " CONFIG_version ")\n");
 
 	// Initialize command line.
-	boot_log("Command line: \"%s\"\n", info->cmd);
+	print_log("boot: Command line: \"%s\"\n", info->cmd);
 	cmd_init(info->cmd);
 
 	module_load_kernel_syms(info->kernel_file);
-	boot_log("Kernel file loaded at: 0x%p\n", info->kernel_file);
+	print_log("boot: Kernel file loaded at: 0x%p\n", info->kernel_file);
 
 	// Register all terminal devices.
 	terminal_init();
 
 	// Initialize firmware.
-	boot_log("Initializing dynamic system tree.\n");
+	print_log("boot: Initializing dynamic system tree.\n");
 	dst_init(info);
 
-	boot_log("Finished early initialization.\n");
+	print_log("boot: Finished early initialization.\n");
 }
 
 ATTR(noreturn) void kernel_init(BootInfo* info)
@@ -56,7 +56,7 @@ ATTR(noreturn) void kernel_init(BootInfo* info)
 	// Initialize all modules and subsystems.
 	module_init();
 
-	boot_log("Initialization complete, handing over to scheduler.\n");
+	print_log("boot: Initialization complete, handing over to scheduler.\n");
 	sch_init();
 
 	while (true)

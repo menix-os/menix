@@ -257,7 +257,7 @@ bool devtmpfs_add_device(Handle* device, const char* name)
 	node = vfs_node_new(&devtmpfs, devtmpfs_root, name, false);
 	if (node == NULL)
 	{
-		vfs_log("Failed to add new devtmpfs node \"%s\"!\n", name);
+		print_log("vfs: Failed to add new devtmpfs node \"%s\"!\n", name);
 		return false;
 	}
 

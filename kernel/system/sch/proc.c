@@ -13,6 +13,7 @@
 #include <menix/system/sch/scheduler.h>
 #include <menix/system/sch/thread.h>
 #include <menix/util/list.h>
+#include <menix/util/log.h>
 #include <menix/util/spin.h>
 
 #include <string.h>
@@ -68,7 +69,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
 	if (node == NULL)
 	{
-		proc_log("Unable to read \"%s\": %zu\n", path, thread_errno);
+		print_log("process: Unable to read \"%s\": %zu\n", path, thread_errno);
 		return false;
 	}
 
@@ -79,7 +80,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 	ElfInfo info = {0};
 	if (elf_load(map, node->handle, 0, &info) == false)
 	{
-		proc_log("Unable to load \"%s\": %zu\n", path, thread_errno);
+		print_log("process: Unable to load \"%s\": %zu\n", path, thread_errno);
 		vm_page_map_destroy(map);
 		return false;
 	}
@@ -92,7 +93,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 		VfsNode* interp = vfs_get_node(vfs_get_root(), info.ld_path, true);
 		if (interp == NULL)
 		{
-			proc_log("Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
+			print_log("process: Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			vm_page_map_destroy(map);
 			return false;
 		}
@@ -100,7 +101,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 		ElfInfo interp_info = {0};
 		if (elf_load(map, interp->handle, CONFIG_user_interp_base, &interp_info) == false)
 		{
-			proc_log("Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
+			print_log("process: Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			vm_page_map_destroy(map);
 			return false;
 		}
@@ -114,7 +115,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 		name = node->name;
 
 	// Use the current thread as parent.
-	proc_log("Creating new process \"%s\" (%s, %s)\n", name, path, is_user ? "User" : "Kernel");
+	print_log("process: Creating new process \"%s\" (%s, %s)\n", name, path, is_user ? "User" : "Kernel");
 
 	Process* proc = proc_create(name, ProcessState_Ready, is_user, arch_current_cpu()->thread->parent);
 
@@ -180,14 +181,14 @@ usize proc_fork(Process* proc, Thread* thread)
 	fork->state = ProcessState_Ready;
 	spin_unlock(&proc_lock);
 
-	proc_log("Forked process \"%s\", new pid %zu\n", proc->name, fork->id);
+	print_log("process: Forked process \"%s\", new pid %zu\n", proc->name, fork->id);
 	return fork->id;
 }
 
 void proc_kill(Process* proc, bool is_crash)
 {
 	kassert(proc != NULL, "No process given to kill!");
-	proc_log("Killing PID %zu\n", proc->id);
+	print_log("process: Killing PID %zu\n", proc->id);
 
 	// If the process being killed is the currently running process.
 	bool is_suicide = false;

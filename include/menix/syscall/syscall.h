@@ -38,7 +38,7 @@ typedef struct SyscallResult
 #define SYSCALL_STUB(name, ...) \
 	SYSCALL_IMPL(name, __VA_ARGS__) \
 	{ \
-		kmesg("Call to unimplemented syscall " #name "!\n"); \
+		print_log("Call to unimplemented syscall " #name "!\n"); \
 		return SYSCALL_ERR(ENOSYS); \
 	}
 

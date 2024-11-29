@@ -6,6 +6,7 @@
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
 #include <menix/system/sch/thread.h>
+#include <menix/util/log.h>
 #include <menix/util/spin.h>
 
 SpinLock thread_lock = spin_new();

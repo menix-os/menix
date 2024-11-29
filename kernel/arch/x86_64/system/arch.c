@@ -172,10 +172,10 @@ Cpu* arch_current_cpu()
 
 void arch_dump_registers(Context* regs)
 {
-	kmesg("rax: 0x%p rbx: 0x%p rcx: 0x%p rdx: 0x%p\n", regs->rax, regs->rbx, regs->rcx, regs->rdx);
-	kmesg("rsi: 0x%p rdi: 0x%p rbp: 0x%p rsp: 0x%p\n", regs->rsi, regs->rdi, regs->rbp, regs->rsp);
-	kmesg("r8:  0x%p r9:  0x%p r10: 0x%p r11: 0x%p\n", regs->r8, regs->r9, regs->r10, regs->r11);
-	kmesg("r12: 0x%p r13: 0x%p r14: 0x%p r15: 0x%p\n", regs->r12, regs->r13, regs->r14, regs->r15);
-	kmesg("core:0x%p isr: 0x%p err: 0x%p rip: 0x%p\n", regs->core, regs->isr, regs->error, regs->rip);
-	kmesg("cs:  0x%p rfl: 0x%p ss:  0x%p\n", regs->cs, regs->rflags, regs->ss);
+	print_log("rax: 0x%p rbx: 0x%p rcx: 0x%p rdx: 0x%p\n", regs->rax, regs->rbx, regs->rcx, regs->rdx);
+	print_log("rsi: 0x%p rdi: 0x%p rbp: 0x%p rsp: 0x%p\n", regs->rsi, regs->rdi, regs->rbp, regs->rsp);
+	print_log("r8:  0x%p r9:  0x%p r10: 0x%p r11: 0x%p\n", regs->r8, regs->r9, regs->r10, regs->r11);
+	print_log("r12: 0x%p r13: 0x%p r14: 0x%p r15: 0x%p\n", regs->r12, regs->r13, regs->r14, regs->r15);
+	print_log("core:0x%p isr: 0x%p err: 0x%p rip: 0x%p\n", regs->core, regs->isr, regs->error, regs->rip);
+	print_log("cs:  0x%p rfl: 0x%p ss:  0x%p\n", regs->cs, regs->rflags, regs->ss);
 }

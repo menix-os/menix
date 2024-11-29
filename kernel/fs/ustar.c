@@ -106,6 +106,6 @@ i32 ustarfs_init(VfsNode* mount, void* data, usize size)
 		current_file = (void*)current_file + 512 + ALIGN_UP(file_size, 512);
 	}
 
-	vfs_log("Loaded %zu files from UStar archive at 0x%p (Size = %zu)\n", files_loaded, data, size);
+	print_log("vfs: Loaded %zu files from UStar archive at 0x%p (Size = %zu)\n", files_loaded, data, size);
 	return 0;
 }

@@ -355,35 +355,35 @@ Context* interrupt_pf_handler(Context* regs)
 	asm_get_register(cr2, cr2);
 
 #if !defined(NDEBUG) && defined(CONFIG_x86_pf_debug)
-	vm_log("Page fault: \n");
+	print_log("vm: Page fault: \n");
 
 	// Present
 	if (BIT(regs->error, 0))
-		vm_log("\t- Fault was a protection violation\n");
+		print_log("vm: \t- Fault was a protection violation\n");
 	else
-		vm_log("\t- Page was not present\n");
+		print_log("vm: \t- Page was not present\n");
 
 	// Write
 	if (BIT(regs->error, 1))
-		vm_log("\t- Fault was caused by a write access\n");
+		print_log("vm: \t- Fault was caused by a write access\n");
 	else
-		vm_log("\t- Fault was caused by a read access\n");
+		print_log("vm: \t- Fault was caused by a read access\n");
 
 	// User
 	if (BIT(regs->error, 2))
-		vm_log("\t- Fault was caused by the user\n");
+		print_log("vm: \t- Fault was caused by the user\n");
 	else
-		vm_log("\t- Fault was caused by the kernel\n");
+		print_log("vm: \t- Fault was caused by the kernel\n");
 
 	// Instruction fetch
 	if (BIT(regs->error, 4))
-		vm_log("\t- Fault was caused by an instruction fetch\n");
+		print_log("vm: \t- Fault was caused by an instruction fetch\n");
 
 	// Check if SMAP is blocking this access
 	if (can_smap & !BIT(regs->rflags, 18) & !(regs->cs & CPL_USER))
-		vm_log("\t- SMAP is enabled\n");
+		print_log("vm: \t- SMAP is enabled\n");
 
-	vm_log("Attempted to access 0x%p!\n", cr2);
+	print_log("vm: Attempted to access 0x%p!\n", cr2);
 #endif
 
 	// If the current protection level wasn't 3, that means the page fault was
@@ -391,7 +391,7 @@ Context* interrupt_pf_handler(Context* regs)
 	if (regs->cs == offsetof(Gdt, kernel_code))
 	{
 		// If we can't recover, abort.
-		vm_log("Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx, RIP: 0x%p)\n", cr2,
+		print_log("vm: Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx, RIP: 0x%p)\n", cr2,
 			   regs->error, regs->rip);
 		ktrace(regs);
 		kabort();
@@ -404,7 +404,7 @@ Context* interrupt_pf_handler(Context* regs)
 
 		// If nothing can make the process recover, we have to put it out of its misery.
 		proc_kill(proc, true);
-		vm_log("PID %zu terminated with SIGSEGV.\n", proc->id);
+		print_log("vm: PID %zu terminated with SIGSEGV.\n", proc->id);
 	}
 
 	return regs;

@@ -7,9 +7,9 @@
 #include <menix/util/log.h>
 
 #if defined(MODULE_TYPE) && defined(MODULE_NAME)
-#define module_log(fmt, ...) kmesg(MODULE_NAME ": " fmt, ##__VA_ARGS__)
+#define module_log(fmt, ...) print_log(MODULE_NAME ": " fmt, ##__VA_ARGS__)
 #else
-#define module_log(fmt, ...) kmesg("module: " fmt, ##__VA_ARGS__)
+#define module_log(fmt, ...) print_log("module: " fmt, ##__VA_ARGS__)
 #endif
 
 // Defines a new module. Modules should use this at the end of their source to export the entry.
