@@ -392,7 +392,7 @@ Context* interrupt_pf_handler(Context* regs)
 	{
 		// If we can't recover, abort.
 		print_log("vm: Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx, RIP: 0x%p)\n", cr2,
-			   regs->error, regs->rip);
+				  regs->error, regs->rip);
 		ktrace(regs);
 		kabort();
 	}
