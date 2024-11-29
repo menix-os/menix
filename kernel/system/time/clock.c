@@ -26,6 +26,14 @@ usize clock_get_elapsed()
 
 void clock_wait(usize ns)
 {
+	if (current_source == NULL)
+	{
+		print_warn("clock: Attempted to wait %zu nanoseconds, "
+				   "but this would hang indefinitely since no clock source is available.\n",
+				   ns);
+		return;
+	}
+
 	usize time = clock_get_elapsed() + ns;
 	while (time > clock_get_elapsed())
 	{
