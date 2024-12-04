@@ -7,10 +7,12 @@
 #include <menix/system/device.h>
 #include <menix/system/module.h>
 #include <menix/system/pci/pci.h>
+#include <menix/system/time/clock.h>
 #include <menix/util/units.h>
 
 #include <block/nvme.h>
 
+// Global counter for known NVMe devices.
 static usize nvme_counter = 0;
 
 void nvme_read(NvmeNameSpace* ns, PhysAddr phys, Buffer buffer)
@@ -21,6 +23,8 @@ void nvme_read(NvmeNameSpace* ns, PhysAddr phys, Buffer buffer)
 // Initializes an NVMe controller (See section 3.5.1)
 i32 nvme_probe(PciDevice* pdev)
 {
+	pci_log_dev(pdev, "Starting to probe NVMe controller.\n");
+
 	// Allocate device data.
 	NvmeController* nvme = kzalloc(sizeof(NvmeController));
 	dev_set_data(pdev->dev, nvme);
@@ -30,9 +34,10 @@ i32 nvme_probe(PciDevice* pdev)
 	// Disable the controller if it wasn't already.
 	nvme->regs->cc.en = false;
 	// Wait for the controller to indicate that the reset is complete (RDY = 0).
-	// TODO: Replace with timeout
-	while (nvme->regs->csts & NVME_CS_RDY)
-		asm_pause();
+	clock_timeout_check(SECONDS_TO_NANO(2), !(nvme->regs->csts & NVME_CS_RDY), {
+		pci_error_dev(pdev, "NVMe device didn't respond to reset within 2 seconds. Hardware is probably faulty.\n");
+		return 1;
+	});
 
 	// Get the doorbell stride.
 	nvme->doorbell_stride = 4 << nvme->regs->cap.dstrd;
@@ -62,27 +67,23 @@ i32 nvme_probe(PciDevice* pdev)
 	const usize page_max = 1 << (12 + cap->mpsmax);
 	if (vm_get_page_size(VMLevel_0) < page_min || vm_get_page_size(VMLevel_0) > page_max)
 	{
-		pci_log_dev(pdev,
-					"This machine's page size is unsupported, "
-					"this NVMe device only accepts sizes between 0x%zx and 0x%zx!\n",
-					page_min, page_max);
+		pci_error_dev(pdev,
+					  "This machine's page size is unsupported, "
+					  "this NVMe device only accepts sizes between 0x%zx and 0x%zx!\n",
+					  page_min, page_max);
 		return 1;
 	}
 	nvme->regs->cc.mps = __builtin_ctzll(vm_get_page_size(VMLevel_0)) - 12;
 
 	// Enable the controller.
 	nvme->regs->cc.en = true;
-	// TODO: Replace with timeout
-	while (!(nvme->regs->csts & NVME_CS_RDY))
-	{
+	clock_timeout_check(SECONDS_TO_NANO(2), nvme->regs->csts & NVME_CS_RDY, {
+		pci_error_dev(pdev, "NVMe device didn't respond to enable within 2 seconds. Something went wrong.\n");
 		// Check if status is fatal.
 		if (nvme->regs->csts & NVME_CS_CFS)
-		{
-			pci_log_dev(pdev, "NVMe initialization has failed!\n");
-			return 1;
-		}
-		asm_pause();
-	}
+			pci_error_dev(pdev, "NVMe initialization failure is fatal!\n");
+		return 1;
+	});
 
 	// Indentify NVMe drive.
 	// TODO
@@ -94,7 +95,7 @@ i32 nvme_probe(PciDevice* pdev)
 	nvme_io_cq_init(nvme, &nvme->io_cq, 3);
 	nvme_io_sq_init(nvme, &nvme->io_sq, &nvme->io_cq, 2);
 
-	// Init done.
+	// Init is done, register the device.
 	nvme_counter++;
 	// TODO: block_register_device();
 	pci_log_dev(pdev, "Initialized NVMe controller\n");

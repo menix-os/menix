@@ -3,6 +3,23 @@
 #pragma once
 #include <menix/common.h>
 
+// Checks a condition with a timeout.
+#define clock_timeout_check(timeout_ns, condition, fail_case) \
+	do \
+	{ \
+		usize check_start = clock_get_elapsed() + (timeout_ns); \
+		while (clock_get_elapsed() < check_start) \
+		{ \
+			if (condition) \
+				break; \
+			asm_pause(); \
+		} \
+		if (clock_get_elapsed() >= check_start) \
+		{ \
+			fail_case \
+		} \
+	} while (0)
+
 typedef struct
 {
 	// Name of this clock source.
