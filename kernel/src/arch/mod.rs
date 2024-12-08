@@ -1,4 +1,5 @@
-use crate::{boot::BootInfo, thread::thread::Thread};
+use crate::boot::BootInfo;
+use crate::{boot::EarlyBootInfo, thread::thread::Thread};
 use alloc::sync::Arc;
 
 #[cfg(target_arch = "x86_64")]
@@ -43,7 +44,7 @@ pub use internal::VirtManager;
 pub trait CommonArch {
     /// Initializes basic I/O and starts the memory allocator.
     /// This function must be called as soon as `info` contains the memory map.
-    fn early_init(info: &mut BootInfo);
+    fn early_init(info: &mut EarlyBootInfo);
 
     /// Prepares all available processors.
     /// Called before the scheduler is started.

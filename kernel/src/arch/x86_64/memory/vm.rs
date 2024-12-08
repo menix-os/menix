@@ -1,6 +1,6 @@
 // Virtual memory management
 
-use super::{PhysAddr, VirtAddr};
+use crate::arch::{PhysAddr, VirtAddr};
 use crate::{
     arch::CommonPageMap,
     memory::{

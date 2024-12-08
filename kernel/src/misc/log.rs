@@ -1,9 +1,6 @@
 // Kernel logging.
 
-use crate::{
-    arch::x86_64::{asm::write8, serial::COM1_BASE},
-    fs::handle::Handle,
-};
+use crate::fs::handle::Handle;
 use alloc::{boxed::Box, rc::Rc, sync::Arc};
 use core::{
     cell::{OnceCell, RefCell},

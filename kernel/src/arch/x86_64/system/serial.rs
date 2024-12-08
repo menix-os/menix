@@ -1,6 +1,6 @@
 // Serial I/O
 
-use super::asm::write8;
+use super::super::asm::write8;
 use crate::{
     dbg,
     fs::{fd::FileDescriptor, handle::Handle},

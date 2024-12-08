@@ -1,6 +1,10 @@
 use seq_macro::seq;
 
-use super::{consts::CPL_USER, gdt::Gdt, idt::IDT_SIZE, sched::Context, VirtAddr};
+use super::{
+    super::{consts::CPL_USER, sched::Context, VirtAddr},
+    gdt::Gdt,
+    idt::IDT_SIZE,
+};
 use crate::{arch::Cpu, pop_all_regs, push_all_regs, swapgs_if_necessary, syscall};
 use core::{
     arch::{asm, global_asm, naked_asm},

@@ -18,14 +18,12 @@ mod limine;
 // Kernel entry point.
 mod entry;
 
-/// Information passed from the bootloader. Memory is reclaimed after initialization.
+/// Early information passed from the bootloader.
+/// Only contains the most essential information to initialize memory managers.
 #[derive(Default, Debug)]
-pub struct BootInfo<'a> {
+pub struct EarlyBootInfo<'a> {
     /// Kernel command line
     pub command_line: Option<&'a str>,
-
-    /// Files to mount into the VFS.
-    pub files: &'a [BootFile<'a>],
 
     // Physical memory map. Mutable in case the architecture has to modify some entries.
     pub memory_map: &'a mut [PhysMemory],
@@ -36,11 +34,18 @@ pub struct BootInfo<'a> {
     /// Base address of a 1:1 physical to virtual mapping.
     pub identity_base: VirtAddr,
 
+    #[cfg(feature = "sys_acpi")]
+    pub rsdp_addr: PhysAddr,
+}
+
+/// Information passed from the bootloader. Memory is reclaimed after initialization.
+#[derive(Default, Debug)]
+pub struct BootInfo<'a> {
+    /// Files to mount into the VFS.
+    pub files: Option<&'a [BootFile<'a>]>,
+
     /// Processor information.
     pub smp_info: BootSmpInfo<'a>,
-
-    #[cfg(feature = "sys_acpi")]
-    pub rsdp_addr: VirtAddr,
 }
 
 /// A file loaded by the bootloader. Memory is reclaimed after initialization.

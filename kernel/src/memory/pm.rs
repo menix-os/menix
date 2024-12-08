@@ -1,8 +1,9 @@
 use super::vm::{CommonVirtManager, VmLevel::Small};
 use crate::{
-    arch::{x86_64::vm, PhysAddr, VirtAddr},
-    boot::BootInfo,
+    arch::{PhysAddr, VirtAddr},
+    boot::EarlyBootInfo,
     log,
+    memory::vm,
     misc::{align_up, bitmap::BitMap, units::MiB},
     system::error::Errno,
 };
@@ -33,7 +34,7 @@ static PMM: Mutex<PhysManager> = Mutex::new(PhysManager {
 
 impl PhysManager<'_> {
     /// Initializes the physical memory manager. Prior to this call, there may not be any heap allocations!
-    pub fn init(info: &mut BootInfo) {
+    pub fn init(info: &mut EarlyBootInfo) {
         debug_assert!(info.identity_base != 0, "HHDM identity base was NULL!");
 
         let mut pmm: spin::MutexGuard<'_, PhysManager<'_>> = PMM.lock();

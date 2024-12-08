@@ -2,9 +2,9 @@
 
 use crate::arch::Cpu;
 
-use super::idt::{IdtRegister, IDT_SIZE};
+use super::system::idt::{IdtRegister, IDT_SIZE};
 use super::VirtAddr;
-use super::{gdt::GdtRegister, Context};
+use super::{system::gdt::GdtRegister, Context};
 use core::arch::x86_64::__cpuid_count;
 use core::arch::{asm, global_asm};
 

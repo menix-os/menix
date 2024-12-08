@@ -1,8 +1,6 @@
-use super::{
-    asm,
-    consts::{CPL_KERNEL, CPL_USER},
-    tss::{self, TaskStateSegment, TSS_STORAGE},
-};
+use super::super::consts::{CPL_KERNEL, CPL_USER};
+use super::tss::{self, TaskStateSegment, TSS_STORAGE};
+use crate::arch::x86_64::asm;
 use crate::{
     arch::{
         x86_64::asm::{interrupt_disable, interrupt_enable},

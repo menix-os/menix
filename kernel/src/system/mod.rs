@@ -18,7 +18,4 @@ pub mod of;
 #[cfg(feature = "sys_pci")]
 pub mod pci;
 
-#[cfg(feature = "sys_video")]
-pub mod video;
-
 pub mod error;

@@ -4,7 +4,7 @@ use super::{
     pm::PhysManager,
     vm::{CommonVirtManager, VmLevel::Small},
 };
-use crate::{arch::x86_64::vm, misc::align_up};
+use crate::{memory::vm, misc::align_up};
 use core::{
     alloc::{GlobalAlloc, Layout},
     mem::size_of,

@@ -6,29 +6,8 @@
 			"request": "custom",
 			"name": "Debug x86_64",
 			"targetCreateCommands": [
-				"target create ${workspaceFolder}/../bootstrap/build/build/kernel/x86_64/debug/menix"
-			],
-			"processCreateCommands": [
-				"gdb-remote localhost:1234"
-			]
-		},
-		{
-			"type": "lldb",
-			"request": "custom",
-			"name": "Debug aarch64",
-			"targetCreateCommands": [
-				"target create ${workspaceFolder}/../bootstrap/build/build/kernel/aarch64/debug/menix"
-			],
-			"processCreateCommands": [
-				"gdb-remote localhost:1234"
-			]
-		},
-		{
-			"type": "lldb",
-			"request": "custom",
-			"name": "Debug riscv64",
-			"targetCreateCommands": [
-				"target create ${workspaceFolder}/../bootstrap/build/build/kernel/riscv64/debug/menix"
+				"target create ${workspaceFolder}/../bootstrap/build/install/boot/menix",
+				"target modules load --file menix --slide 0xFFFFFFFF80000000"
 			],
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"

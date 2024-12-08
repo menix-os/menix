@@ -3,7 +3,7 @@ use super::pm::PhysManager;
 pub use crate::arch::VirtManager;
 use crate::{
     arch::{CommonPageMap, PageMap, PhysAddr, VirtAddr},
-    boot::BootInfo,
+    boot::{BootInfo, EarlyBootInfo},
     log,
     misc::kernel::{self, LD_KERNEL_START},
     system::error::Errno,
@@ -47,8 +47,6 @@ pub trait CommonVirtManager {
     /// Sets a page map to be the current one.
     fn set_page_map(page_map: &PageMap);
 
-    fn get_kernel_map() -> &'static Option<PageMap>;
-
     /// Maps a virtual address to physical memory.
     fn map_page(
         page_map: &PageMap,
@@ -79,7 +77,7 @@ pub trait CommonVirtManager {
     /// Initializes the virtual memory manager.
     /// This function recreates the virtual mappings of the kernel and switches to the kernel-owned page map.
     /// This function must be called after the physical memory allocator has been initialized.
-    fn init(info: &BootInfo) {
+    fn init(info: &EarlyBootInfo) {
         // Allocate a page map for the kernel.
         let kernel_map = PageMap::new();
         log!("vm: Allocated a new page map for the kernel.\n");

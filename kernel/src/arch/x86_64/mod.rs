@@ -1,35 +1,31 @@
-pub mod apic;
 pub mod asm;
 pub mod consts;
 pub mod elf;
-pub mod gdt;
-pub mod idt;
-pub mod interrupts;
+pub mod memory;
 pub mod sched;
-pub mod serial;
-pub mod tss;
-pub mod vm;
+pub mod system;
 
 use super::{CommonArch, CommonContext, CommonCpu};
+use crate::boot::EarlyBootInfo;
 use crate::memory::pm;
 use crate::{boot::BootInfo, dbg, memory::vm::CommonVirtManager, thread::thread::Thread};
 use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use consts::MSR_KERNEL_GS_BASE;
 use core::{arch::asm, ptr::null_mut};
+pub use memory::vm::PageMap;
+pub use memory::vm::VirtManager;
 pub use sched::Context;
-pub use vm::PageMap;
-pub use vm::VirtManager;
 
 pub struct Arch;
 impl CommonArch for Arch {
-    fn early_init(info: &mut BootInfo) {
+    fn early_init(info: &mut EarlyBootInfo) {
         unsafe {
-            serial::init();
-            gdt::load();
-            idt::load();
+            system::serial::init();
+            system::gdt::load();
+            system::idt::load();
 
             pm::PhysManager::init(info);
-            vm::VirtManager::init(info);
+            memory::vm::VirtManager::init(info);
         }
     }
 

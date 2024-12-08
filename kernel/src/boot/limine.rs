@@ -1,6 +1,6 @@
-use super::BootInfo;
+use super::{BootInfo, EarlyBootInfo};
 use crate::{
-    arch::{Arch, CommonArch, VirtAddr},
+    arch::{Arch, CommonArch, PhysAddr, VirtAddr},
     dbg, log,
     memory::{
         self,
@@ -9,7 +9,7 @@ use crate::{
     misc::{log::Writer, units},
 };
 use alloc::string::String;
-use core::{fmt::Write, str};
+use core::str;
 use limine::{framebuffer, memory_map::EntryType, request::*, BaseRevision};
 
 #[used]
@@ -60,16 +60,16 @@ pub static END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
 /// This is the absolute entry point of menix.
 #[no_mangle]
 unsafe extern "C" fn kernel_boot() -> ! {
-    unsafe {
-        let mut info = BootInfo::default();
-
+    {
         // Check if requested stack size was respected by the bootloader.
         _ = STACK_SIZE.get_response().unwrap();
 
+        let mut early_info = EarlyBootInfo::default();
+
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
-        info.kernel_addr = (kernel_addr.physical_base(), kernel_addr.virtual_base());
-        info.identity_base = HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr;
+        early_info.kernel_addr = (kernel_addr.physical_base(), kernel_addr.virtual_base());
+        early_info.identity_base = HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr;
 
         // Convert the memory map. This buffer has to be fixed since at this point
         // in the boot process there is no dynamic memory allocator available yet.
@@ -87,13 +87,10 @@ unsafe extern "C" fn kernel_boot() -> ! {
                 _ => PhysMemoryUsage::Unknown,
             };
         }
-        info.memory_map = &mut memmap_buf[0..entries.len()];
-
-        // Initialize the physical allocator and serial output.
-        Arch::early_init(&mut info);
+        early_info.memory_map = &mut memmap_buf[0..entries.len()];
 
         // Convert the command line from bytes to UTF-8 if there is any.
-        info.command_line = {
+        early_info.command_line = {
             let line_buf = KERNEL_FILE_REQUEST.get_response().unwrap().file().cmdline();
             match line_buf.len() {
                 0 => None,
@@ -101,13 +98,18 @@ unsafe extern "C" fn kernel_boot() -> ! {
             }
         };
 
-        // Finalize CPU initialization.
-        Arch::init(&mut info);
-
         #[cfg(feature = "sys_acpi")]
         {
-            info.rsdp_addr = RSDP_REQUEST.get_response().unwrap().address() as VirtAddr;
+            early_info.rsdp_addr = RSDP_REQUEST.get_response().unwrap().address() as PhysAddr;
         }
+
+        // Initialize the physical allocator and serial output.
+        Arch::early_init(&mut early_info);
+
+        let mut info = BootInfo::default();
+
+        // Finalize CPU initialization.
+        Arch::init(&mut info);
     }
 
     // TODO: Invoke the scheduler.

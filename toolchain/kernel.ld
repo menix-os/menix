@@ -13,9 +13,10 @@ PHDRS
 
 SECTIONS
 {
-	. = 0xffffffff80000000 + SIZEOF_HEADERS;
+	. = SIZEOF_HEADERS;
 	LD_KERNEL_START = .;
 
+	/* Code */
 	.text ALIGN(4K):
 	{
 	LD_TEXT_START = .;
@@ -26,17 +27,22 @@ SECTIONS
 		*(.text)
 		*(.text.*)
 		*(.fini)
+		*(.plt)
+		*(.plt.*)
 	LD_TEXT_END = .;
 	} :text
 
+	/* Read-only data */
 	.rodata ALIGN(4K):
 	{
 	LD_RODATA_START = .;
 		*(.rodata)
 		*(.rodata.*)
+		*(.got)
 	LD_RODATA_END = .;
 	} :rodata
 
+	/* Read-Write data */
 	.data ALIGN(4K):
 	{
 	LD_DATA_START = .;
@@ -44,6 +50,7 @@ SECTIONS
 		*(.data.*)
 	} :data
 
+	/* Zero-initialized memory */
 	.bss ALIGN(4K):
 	{
 		*(.*bss)
@@ -51,6 +58,7 @@ SECTIONS
 		*(COMMON)
 	} :data
 
+	/* Dynamic tags */
 	.dynamic :
 	{
 		*(.dynamic)
