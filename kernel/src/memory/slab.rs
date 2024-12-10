@@ -2,7 +2,7 @@
 
 use super::{
     pm::PhysManager,
-    vm::{CommonVirtManager, VmLevel::Small},
+    vm::{CommonVirtManager, VirtManager, VmLevel},
 };
 use crate::{memory::vm, misc::align_up};
 use core::{
@@ -50,7 +50,7 @@ impl Slab {
             // Calculate the amount of bytes we need to skip in order to be able to store a reference to the slab.
             let offset = align_up(size_of::<SlabHeader>(), self.ent_size);
             // That also means we need to deduct that amount here.
-            let available_size = vm::VirtManager::get_page_size(Small) - offset;
+            let available_size = VirtManager::get_page_size(VmLevel::Small) - offset;
 
             // Get a reference to the start of the buffer.
             let ptr = head as *mut SlabHeader;
@@ -121,7 +121,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
 
         // The allocation won't fit within our defined slabs.
         // Get how many pages have to be allocated in order to fit `size`.
-        let page_size = vm::VirtManager::get_page_size(Small);
+        let page_size = VirtManager::get_page_size(VmLevel::Small);
         let num_pages = align_up(layout.size(), page_size) / page_size;
 
         // Allocate the pages plus an additional page for metadata.
