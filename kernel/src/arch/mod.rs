@@ -1,5 +1,6 @@
 use crate::boot::BootInfo;
 use crate::{boot::EarlyBootInfo, thread::thread::Thread};
+use alloc::boxed::Box;
 use alloc::sync::Arc;
 
 #[cfg(target_arch = "x86_64")]
@@ -52,10 +53,6 @@ pub trait CommonArch {
 
     /// Initializes a single core.
     fn init_cpu(cpu: &Cpu, boot_cpu: &Cpu);
-
-    /// Gets the processor info of the executing processor.
-    /// This information is processor-local and not shared with any other cores.
-    fn current_cpu() -> &'static mut Cpu;
 }
 
 /// Common functionality for a processor state (aka context).
@@ -73,12 +70,10 @@ pub trait CommonPageMap {
 /// Common functionality of processor-local data.
 /// Implementations must be called `Cpu`.
 pub trait CommonCpu {
-    /// Gets the ID of this processor.
-    fn id(&self) -> usize;
+    /// Gets the processor info of the executing processor.
+    /// This information is processor-local and not shared with any other cores.
+    fn info() -> &'static mut Cpu;
 
     /// Gets the currently running thread.
-    fn thread(&self) -> Option<&Arc<Thread>>;
-
-    /// Sets the currently running thread.
-    fn set_thread(&mut self, thread: &Arc<Thread>);
+    fn thread(&self) -> &Option<Arc<Thread>>;
 }

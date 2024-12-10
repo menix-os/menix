@@ -1,16 +1,11 @@
 use super::{BootInfo, EarlyBootInfo};
 use crate::{
     arch::{Arch, CommonArch, PhysAddr, VirtAddr},
-    dbg, log,
-    memory::{
-        self,
-        pm::{PhysMemory, PhysMemoryUsage},
-    },
-    misc::{log::Writer, units},
+    memory::pm::{PhysMemory, PhysMemoryUsage},
+    misc::units,
 };
-use alloc::string::String;
 use core::str;
-use limine::{framebuffer, memory_map::EntryType, request::*, BaseRevision};
+use limine::{memory_map::EntryType, request::*, BaseRevision};
 
 #[used]
 #[link_section = ".boot.init"]

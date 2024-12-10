@@ -7,7 +7,7 @@ pub mod system;
 
 use super::{CommonArch, CommonContext, CommonCpu};
 use crate::boot::EarlyBootInfo;
-use crate::memory::pm;
+use crate::memory::pm::{self, PhysManager};
 use crate::{boot::BootInfo, dbg, memory::vm::CommonVirtManager, thread::thread::Thread};
 use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use consts::MSR_KERNEL_GS_BASE;
@@ -15,17 +15,18 @@ use core::{arch::asm, ptr::null_mut};
 pub use memory::vm::PageMap;
 pub use memory::vm::VirtManager;
 pub use sched::Context;
+use system::{gdt, idt, serial};
 
 pub struct Arch;
 impl CommonArch for Arch {
     fn early_init(info: &mut EarlyBootInfo) {
         unsafe {
-            system::serial::init();
-            system::gdt::load();
-            system::idt::load();
+            serial::init();
+            gdt::init();
+            idt::init();
 
-            pm::PhysManager::init(info);
-            memory::vm::VirtManager::init(info);
+            PhysManager::init(info);
+            VirtManager::init(info);
         }
     }
 
@@ -62,27 +63,6 @@ impl CommonArch for Arch {
         // TODO
         todo!()
     }
-
-    fn current_cpu() -> &'static mut Cpu {
-        #[cfg(feature = "smp")]
-        unsafe {
-            let idx: usize;
-            // The Cpu struct starts at KERNEL_GSBASE:0
-            // Since we can't "directly" access the base address, just get the first field (Cpu.id)
-            // and use that to index into the CPU array.
-            asm!(
-                "mov {0}, gs:[{1}]",
-                out(reg) idx,
-                const core::mem::offset_of!(Cpu, id),
-                options(nostack, preserves_flags),
-            );
-            return PER_CPU_DATA.add(idx).as_mut().unwrap();
-        }
-        #[cfg(not(feature = "smp"))]
-        unsafe {
-            return PER_CPU_DATA.as_mut().unwrap();
-        }
-    }
 }
 
 /// Processor-local information.
@@ -102,19 +82,29 @@ pub struct Cpu {
 static mut PER_CPU_DATA: *mut Cpu = null_mut();
 
 impl CommonCpu for Cpu {
-    fn id(&self) -> usize {
-        self.id
-    }
-
-    fn thread(&self) -> Option<&Arc<Thread>> {
-        match &self.thread {
-            Some(x) => Some(x),
-            None => None,
+    fn info() -> &'static mut Cpu {
+        #[cfg(feature = "smp")]
+        unsafe {
+            let idx: usize;
+            // The Cpu struct starts at KERNEL_GSBASE:0
+            // Since we can't "directly" access the base address, just get the first field (Cpu.id)
+            // and use that to index into the CPU array.
+            asm!(
+                "mov {0}, gs:[{1}]",
+                out(reg) idx,
+                const core::mem::offset_of!(Cpu, id),
+                options(nostack, preserves_flags),
+            );
+            return PER_CPU_DATA.add(idx).as_mut().unwrap();
+        }
+        #[cfg(not(feature = "smp"))]
+        unsafe {
+            return PER_CPU_DATA.as_mut().unwrap();
         }
     }
 
-    fn set_thread(&mut self, thread: &Arc<Thread>) {
-        self.thread = Some(Arc::clone(thread));
+    fn thread(&self) -> &Option<Arc<Thread>> {
+        &self.thread
     }
 }
 

@@ -44,6 +44,10 @@ macro_rules! log {
     ($($arg:tt)*) => ({
         use core::fmt::Write;
         let mut writer = $crate::misc::log::STDOUT.lock();
+
+		let current_time = $crate::system::time::clock::Clock::get_elapsed();
+		writer.write_fmt(format_args!("[{:5}.{:06}] ", current_time / 1000000000, (current_time / 1000) % 1000000)).unwrap();
+
 		writer.write_fmt(format_args!($($arg)*)).unwrap();
     });
 }
@@ -53,6 +57,10 @@ macro_rules! dbg {
     ($($arg:tt)*) => ({
         use core::fmt::Write;
         let mut writer = $crate::misc::log::STDOUT.lock();
+
+		let current_time = $crate::system::time::clock::Clock::get_elapsed();
+		writer.write_fmt(format_args!("[{:5}.{:06}] ", current_time / 1000000000, (current_time / 1000) % 1000000)).unwrap();
+
 		writer.write_fmt(format_args!("{:#?}\n", $($arg)*)).unwrap();
     });
 }

@@ -31,7 +31,7 @@ impl InterruptDescriptorTable {
 }
 
 /// Loads the ISRs into memory and sets the IDT as the active one.
-pub fn load() {
+pub fn init() {
     unsafe {
         interrupt_disable();
         // Create a new table.

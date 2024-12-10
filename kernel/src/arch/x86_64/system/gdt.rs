@@ -159,7 +159,7 @@ impl GdtLongDesc {
     }
 }
 
-pub fn load() {
+pub fn init() {
     unsafe {
         // Allocate a new GDT.
         let gdt = Gdt {
