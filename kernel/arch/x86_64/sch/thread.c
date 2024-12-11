@@ -18,7 +18,7 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 	// Stack grows down, so move to the end of the allocated memory.
 	target->kernel_stack += CONFIG_kernel_stack_size;
 
-	const usize page_size = vm_get_page_size(VMLevel_0);
+	const usize page_size = vm_get_page_size(VMLevel_Small);
 
 	// Allocate memory for the FPU state.
 	target->saved_fpu = pm_alloc(ROUND_UP(arch_current_cpu()->fpu_size, page_size)) + pm_get_phys_base();
@@ -40,7 +40,7 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 			{
 				// Map all stack pages.
 				vm_map(proc->page_map, phys_stack + (i * page_size), target->stack + (i * page_size),
-					   VMProt_Read | VMProt_Write, VMFlags_User, VMLevel_0);
+					   VMProt_Read | VMProt_Write, VMFlags_User, VMLevel_Small);
 			}
 
 			target->registers.rsp = target->stack + CONFIG_user_stack_size;

@@ -43,8 +43,8 @@ i32 nvme_probe(PciDevice* pdev)
 	nvme->doorbell_stride = 4 << nvme->regs->cap.dstrd;
 
 	// Configure Admin Queue by setting AQA, ASQ and ACQ.
-	nvme_cq_init(nvme, &nvme->admin_cq, 1, vm_get_page_size(VMLevel_0) / sizeof(NvmeCQEntry));
-	nvme_sq_init(nvme, &nvme->admin_sq, &nvme->admin_cq, 0, vm_get_page_size(VMLevel_0) / sizeof(NvmeSQEntry));
+	nvme_cq_init(nvme, &nvme->admin_cq, 1, vm_get_page_size(VMLevel_Small) / sizeof(NvmeCQEntry));
+	nvme_sq_init(nvme, &nvme->admin_sq, &nvme->admin_cq, 0, vm_get_page_size(VMLevel_Small) / sizeof(NvmeSQEntry));
 	nvme->regs->aqa = nvme->admin_cq.mask << 16 | nvme->admin_sq.mask;
 	nvme->regs->acq = (VirtAddr)nvme->admin_cq.entry - (VirtAddr)pm_get_phys_base();
 	nvme->regs->asq = (VirtAddr)nvme->admin_sq.entry - (VirtAddr)pm_get_phys_base();
@@ -65,7 +65,7 @@ i32 nvme_probe(PciDevice* pdev)
 	// Calculate page size bits (page_size == 1 << (12 + MPS))
 	const usize page_min = 1 << (12 + cap->mpsmin);
 	const usize page_max = 1 << (12 + cap->mpsmax);
-	if (vm_get_page_size(VMLevel_0) < page_min || vm_get_page_size(VMLevel_0) > page_max)
+	if (vm_get_page_size(VMLevel_Small) < page_min || vm_get_page_size(VMLevel_Small) > page_max)
 	{
 		pci_error_dev(pdev,
 					  "This machine's page size is unsupported, "
@@ -73,7 +73,7 @@ i32 nvme_probe(PciDevice* pdev)
 					  page_min, page_max);
 		return 1;
 	}
-	nvme->regs->cc.mps = __builtin_ctzll(vm_get_page_size(VMLevel_0)) - 12;
+	nvme->regs->cc.mps = __builtin_ctzll(vm_get_page_size(VMLevel_Small)) - 12;
 
 	// Enable the controller.
 	nvme->regs->cc.en = true;

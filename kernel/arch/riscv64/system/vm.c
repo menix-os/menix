@@ -61,11 +61,9 @@ usize vm_get_page_size(VMLevel level)
 {
 	switch (level)
 	{
-		case VMLevel_0: return 4 * KiB;
-		case VMLevel_1: return 2 * MiB;
-		case VMLevel_2: return 1 * GiB;
-		case VMLevel_3: return 512 * GiB;
-		case VMLevel_4: return 256 * TiB;
+		case VMLevel_Small: return 4 * KiB;
+		case VMLevel_Medium: return 2 * MiB;
+		case VMLevel_Large: return 1 * GiB;
 		default: return 0;
 	}
 }

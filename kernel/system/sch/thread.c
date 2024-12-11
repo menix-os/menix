@@ -65,7 +65,7 @@ void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, boo
 	// argv[0..n]
 	// argc
 
-	const usize foreign_pages = CONFIG_user_stack_size / vm_get_page_size(VMLevel_0);
+	const usize foreign_pages = CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small);
 	void* foreign = vm_map_foreign(proc->page_map, target->stack, foreign_pages);
 	void* stack = foreign + CONFIG_user_stack_size;
 

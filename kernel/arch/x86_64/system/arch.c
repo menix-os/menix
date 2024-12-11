@@ -25,8 +25,8 @@ void arch_init_cpu(BootInfo* info, Cpu* cpu, Cpu* boot)
 	spin_lock(&cpu_lock);
 
 	// Allocate stack.
-	cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_0)) + (u64)pm_get_phys_base();
-	cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_0)) + (u64)pm_get_phys_base();
+	cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small)) + (u64)pm_get_phys_base();
+	cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small)) + (u64)pm_get_phys_base();
 	cpu->tss.ist2 = cpu->tss.ist1;
 
 	gdt_reload();

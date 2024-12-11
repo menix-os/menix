@@ -39,23 +39,24 @@ void vm_init(PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 	}
 
 	const void* pyhs_base = pm_get_phys_base();
-	for (usize cur = 0; cur < highest; cur += vm_get_page_size(VMLevel_2))
-		kassert(vm_map(vm_kernel_map, cur, (VirtAddr)pyhs_base + cur, VMProt_Read | VMProt_Write, 0, VMLevel_2),
+	for (usize cur = 0; cur < highest; cur += vm_get_page_size(VMLevel_Large))
+		kassert(vm_map(vm_kernel_map, cur, (VirtAddr)pyhs_base + cur, VMProt_Read | VMProt_Write, 0, VMLevel_Large),
 				"Unable to map physical memory!");
 
 	// Map the kernel segments to the current physical address again.
-	for (usize cur = (usize)SEGMENT_START(text); cur < (usize)SEGMENT_END(text); cur += vm_get_page_size(VMLevel_0))
+	for (usize cur = (usize)SEGMENT_START(text); cur < (usize)SEGMENT_END(text); cur += vm_get_page_size(VMLevel_Small))
 		kassert(vm_map(vm_kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, cur, VMProt_Read | VMProt_Execute, 0,
-					   VMLevel_0),
+					   VMLevel_Small),
 				"Unable to map text segment!");
 
-	for (usize cur = (usize)SEGMENT_START(rodata); cur < (usize)SEGMENT_END(rodata); cur += vm_get_page_size(VMLevel_0))
-		kassert(vm_map(vm_kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, cur, VMProt_Read, 0, VMLevel_0),
+	for (usize cur = (usize)SEGMENT_START(rodata); cur < (usize)SEGMENT_END(rodata);
+		 cur += vm_get_page_size(VMLevel_Small))
+		kassert(vm_map(vm_kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, cur, VMProt_Read, 0, VMLevel_Small),
 				"Unable to map rodata segment!");
 
-	for (usize cur = (usize)SEGMENT_START(data); cur < (usize)SEGMENT_END(data); cur += vm_get_page_size(VMLevel_0))
+	for (usize cur = (usize)SEGMENT_START(data); cur < (usize)SEGMENT_END(data); cur += vm_get_page_size(VMLevel_Small))
 		kassert(vm_map(vm_kernel_map, cur - (PhysAddr)KERNEL_START + kernel_base, cur, VMProt_Read | VMProt_Write, 0,
-					   VMLevel_0),
+					   VMLevel_Small),
 				"Unable to map data segment!");
 
 	// Load the new page directory.
@@ -101,13 +102,14 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
 	for (usize page = 0; page < num_pages; page++)
 	{
 		// Physical page where the data lives.
-		const PhysAddr foreign_phys = vm_virt_to_phys(page_map, foreign_addr + (page * vm_get_page_size(VMLevel_0)));
+		const PhysAddr foreign_phys =
+			vm_virt_to_phys(page_map, foreign_addr + (page * vm_get_page_size(VMLevel_Small)));
 		// Virtual address in the kernel page map.
-		const VirtAddr domestic_virt = start + (page * vm_get_page_size(VMLevel_0));
+		const VirtAddr domestic_virt = start + (page * vm_get_page_size(VMLevel_Small));
 
 		kassert(foreign_phys != ~0, "Unable to map to an address that isn't mapped in the target process!");
 
-		if (vm_map(vm_kernel_map, foreign_phys, domestic_virt, VMProt_Read | VMProt_Write, 0, VMLevel_0) == false)
+		if (vm_map(vm_kernel_map, foreign_phys, domestic_virt, VMProt_Read | VMProt_Write, 0, VMLevel_Small) == false)
 		{
 			return (void*)~0UL;
 		}
@@ -115,7 +117,7 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
 
 	// TODO: This is really bad and might cause a crash if left running for a really long time.
 	// It's a better idea to keep track of these maps, just like the PM.
-	vm_kernel_foreign_base += num_pages * vm_get_page_size(VMLevel_0);
+	vm_kernel_foreign_base += num_pages * vm_get_page_size(VMLevel_Small);
 
 	return (void*)start;
 }

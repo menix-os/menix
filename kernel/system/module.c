@@ -382,7 +382,7 @@ i32 module_load_elf(const char* path)
 			spin_lock(&module_map_lock);
 
 			// Amount of pages to allocate for this segment.
-			const usize page_size = vm_get_page_size(VMLevel_0);
+			const usize page_size = vm_get_page_size(VMLevel_Small);
 
 			// If not set previously, set the address of the first mapping as the load base.
 			if (base_virt == 0)
@@ -401,7 +401,7 @@ i32 module_load_elf(const char* path)
 			for (usize page = 0; page <= seg->p_memsz; page += page_size)
 			{
 				vm_map(vm_kernel_map, pages + page, (VirtAddr)(base_virt + aligned_virt + page),
-					   VMProt_Read | VMProt_Write, 0, VMLevel_0);
+					   VMProt_Read | VMProt_Write, 0, VMLevel_Small);
 
 				module_map_region += page_size;
 			}
@@ -537,8 +537,8 @@ i32 module_load_elf(const char* path)
 		if (segment->p_flags & PF_X)
 			prot |= VMProt_Execute;
 
-		const usize seg_size = ALIGN_UP(segment->p_memsz, vm_get_page_size(VMLevel_0));
-		for (usize page = 0; page <= seg_size; page += vm_get_page_size(VMLevel_0))
+		const usize seg_size = ALIGN_UP(segment->p_memsz, vm_get_page_size(VMLevel_Small));
+		for (usize page = 0; page <= seg_size; page += vm_get_page_size(VMLevel_Small))
 			vm_protect(vm_kernel_map, segment->p_vaddr + page, prot, 0);
 	}
 

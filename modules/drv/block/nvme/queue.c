@@ -17,7 +17,7 @@ void nvme_cq_init(NvmeController* nvme, NvmeComQueue* cq, u16 idx, u32 len)
 	cq->mask = len - 1;
 	cq->head = 0;
 	cq->entry = pm_get_phys_base() + pm_alloc(1);
-	memset(cq->entry, 0, vm_get_page_size(VMLevel_0));
+	memset(cq->entry, 0, vm_get_page_size(VMLevel_Small));
 }
 
 void nvme_sq_init(NvmeController* nvme, NvmeSubQueue* sq, NvmeComQueue* cq, u16 idx, u32 len)
@@ -31,7 +31,7 @@ void nvme_sq_init(NvmeController* nvme, NvmeSubQueue* sq, NvmeComQueue* cq, u16 
 	sq->head = 0;
 	sq->tail = 0;
 	sq->entry = pm_get_phys_base() + pm_alloc(1);
-	memset(sq->entry, 0, vm_get_page_size(VMLevel_0));
+	memset(sq->entry, 0, vm_get_page_size(VMLevel_Small));
 }
 
 void nvme_io_cq_init(NvmeController* nvme, NvmeComQueue* cq, u16 idx)
@@ -39,8 +39,8 @@ void nvme_io_cq_init(NvmeController* nvme, NvmeComQueue* cq, u16 idx)
 	// Get the length. CAP.MQES is 0 based.
 	u32 length = 1 + (nvme->regs->cap.mqes);
 
-	if (length > vm_get_page_size(VMLevel_0) / sizeof(NvmeCQEntry))
-		length = vm_get_page_size(VMLevel_0) / sizeof(NvmeCQEntry);
+	if (length > vm_get_page_size(VMLevel_Small) / sizeof(NvmeCQEntry))
+		length = vm_get_page_size(VMLevel_Small) / sizeof(NvmeCQEntry);
 
 	nvme_cq_init(nvme, cq, idx, length);
 
@@ -58,8 +58,8 @@ void nvme_io_sq_init(NvmeController* nvme, NvmeSubQueue* sq, NvmeComQueue* cq, u
 	// Get the length. CAP.MQES is 0 based.
 	u32 length = 1 + (nvme->regs->cap.mqes);
 
-	if (length > vm_get_page_size(VMLevel_0) / sizeof(NvmeCQEntry))
-		length = vm_get_page_size(VMLevel_0) / sizeof(NvmeCQEntry);
+	if (length > vm_get_page_size(VMLevel_Small) / sizeof(NvmeCQEntry))
+		length = vm_get_page_size(VMLevel_Small) / sizeof(NvmeCQEntry);
 
 	nvme_sq_init(nvme, sq, cq, idx, length);
 

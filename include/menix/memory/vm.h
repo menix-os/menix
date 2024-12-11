@@ -23,9 +23,9 @@ typedef enum : usize
 {
 #if defined(CONFIG_arch_x86_64) || defined(CONFIG_arch_aarch64) || defined(CONFIG_arch_riscv64) || \
 	defined(CONFIG_loongarch64)
-	VMLevel_0 = 1,
-	VMLevel_1 = 2,
-	VMLevel_2 = 3,
+	VMLevel_Small = 1,
+	VMLevel_Medium = 2,
+	VMLevel_Large = 3,
 #endif
 #if defined(CONFIG_arch_riscv64)
 	VMLevel_3 = 4,

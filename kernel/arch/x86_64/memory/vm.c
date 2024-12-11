@@ -319,7 +319,7 @@ bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt pr
 
 		if (lvl == level)
 		{
-			if (lvl > VMLevel_1)
+			if (lvl > VMLevel_Medium)
 				x86_flags |= PT_SIZE;
 			break;
 		}
@@ -414,9 +414,9 @@ usize vm_get_page_size(VMLevel level)
 {
 	switch (level)
 	{
-		case VMLevel_0: return 4 * KiB;
-		case VMLevel_1: return 2 * MiB;
-		case VMLevel_2: return 1 * GiB;
+		case VMLevel_Small: return 4 * KiB;
+		case VMLevel_Medium: return 2 * MiB;
+		case VMLevel_Large: return 1 * GiB;
 		default: return 0;
 	}
 }

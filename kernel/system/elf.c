@@ -121,7 +121,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				if (phdr.p_flags & PF_X)
 					prot |= VMProt_Execute;
 
-				const usize page_size = vm_get_page_size(VMLevel_0);
+				const usize page_size = vm_get_page_size(VMLevel_Small);
 
 				// Align the virtual address for mapping.
 				VirtAddr aligned_virt = ALIGN_DOWN(phdr.p_vaddr + base, page_size);
@@ -135,9 +135,10 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				{
 					PhysAddr page = pm_alloc(1);
 					if (vm_map(page_map, page, (VirtAddr)(aligned_virt + (p * page_size)), prot, VMFlags_User,
-							   VMLevel_0) == false)
+							   VMLevel_Small) == false)
 					{
-						print_log("elf: Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count, aligned_virt);
+						print_log("elf: Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count,
+								  aligned_virt);
 						return false;
 					}
 				}

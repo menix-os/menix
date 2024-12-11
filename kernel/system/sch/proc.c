@@ -74,7 +74,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 	}
 
 	// Create a new page map for the process.
-	PageMap* map = vm_page_map_new(VMLevel_0);
+	PageMap* map = vm_page_map_new(VMLevel_Small);
 
 	// Load the executable into the new page map.
 	ElfInfo info = {0};
@@ -273,7 +273,7 @@ FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
 void proc_setup(Process* proc, bool is_user)
 {
 	if (is_user)
-		proc->page_map = vm_page_map_new(VMLevel_0);
+		proc->page_map = vm_page_map_new(VMLevel_Small);
 	else
 		proc->page_map = vm_kernel_map;
 }

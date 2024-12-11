@@ -12,7 +12,7 @@
 SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usize offset)
 {
 	// If length is not given or if the hint addr is not page aligned.
-	if (length == 0 || hint % vm_get_page_size(VMLevel_0) != 0)
+	if (length == 0 || hint % vm_get_page_size(VMLevel_Small) != 0)
 		return SYSCALL_ERR(EINVAL);
 
 	Thread* thread = arch_current_cpu()->thread;
@@ -21,7 +21,7 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 
 	// TODO: Get fd and offset.
 
-	const usize page_size = vm_get_page_size(VMLevel_0);
+	const usize page_size = vm_get_page_size(VMLevel_Small);
 
 	VMProt vm_prot = 0;
 	if (prot & PROT_READ)
@@ -68,7 +68,7 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 	for (usize i = 0; i < page_size * page_count; i += page_size)
 	{
 		PhysAddr page = pm_alloc(1);
-		if (vm_map(page_map, page, addr + i, vm_prot, VMFlags_User, VMLevel_0) == false)
+		if (vm_map(page_map, page, addr + i, vm_prot, VMFlags_User, VMLevel_Small) == false)
 		{
 			pm_free(page, 1);
 			return SYSCALL_ERR(ENOMEM);
