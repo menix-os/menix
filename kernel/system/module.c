@@ -393,7 +393,7 @@ i32 module_load_elf(const char* path)
 			// If the aligned address was unaligned, that means the original addr is inbetween two pages.
 			// Allocate one more.
 			if (aligned_virt < seg->p_vaddr)
-				seg->p_memsz += page_size - seg->p_memsz;
+				seg->p_memsz += page_size - (seg->p_memsz % page_size);
 
 			PhysAddr pages = pm_alloc((seg->p_memsz / page_size) + 1);
 
@@ -416,6 +416,7 @@ i32 module_load_elf(const char* path)
 
 			// Read data from file.
 			handle->read(handle, NULL, (void*)seg->p_vaddr, seg->p_filesz, seg->p_offset);
+
 			// Zero out unloaded data.
 			memset((void*)seg->p_vaddr + seg->p_filesz, 0, seg->p_memsz - seg->p_filesz);
 
@@ -454,6 +455,8 @@ i32 module_load_elf(const char* path)
 			}
 		}
 	}
+
+	module_log("Relocated module \"%s\"\n", path);
 
 	// Load section string table.
 	char* shstrtab_data = kmalloc(section_headers[hdr->e_shstrndx].sh_size);
