@@ -3,6 +3,7 @@
 # Common options
 target_compile_options(common INTERFACE
 	-ffreestanding
+	-fno-stack-protector
 	-fno-omit-frame-pointer
 	-Wall
 	-Werror
