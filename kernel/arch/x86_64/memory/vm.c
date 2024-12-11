@@ -47,7 +47,7 @@ void vm_user_hide()
 PageMap* vm_page_map_new(VMLevel size)
 {
 	PageMap* result = kmalloc(sizeof(PageMap));
-	result->lock = spin_new();
+	result->lock = (SpinLock) {0};
 
 	// Allocate the first page table.
 	usize* pt = pm_alloc(1) + pm_get_phys_base();

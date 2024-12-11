@@ -8,7 +8,7 @@
 #include <menix/util/spin.h>
 
 static BootInfo* boot_info;
-static SpinLock cpu_lock = spin_new();
+static SpinLock cpu_lock = {0};
 
 void arch_init_cpu(Cpu* cpu, Cpu* boot)
 {

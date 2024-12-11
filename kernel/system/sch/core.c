@@ -174,8 +174,8 @@ Process* sch_id_to_process(usize pid)
 	return NULL;
 }
 
-SpinLock rope_lock = spin_new();
-SpinLock wakeup_lock = spin_new();
+SpinLock rope_lock = {0};
+SpinLock wakeup_lock = {0};
 
 Context* sch_reschedule(Context* context)
 {

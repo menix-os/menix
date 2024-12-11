@@ -11,12 +11,6 @@ typedef struct
 	bool locked;	// Whether it's locked or not.
 } SpinLock;
 
-#define spin_new() \
-	(SpinLock) \
-	{ \
-		0 \
-	}
-
 #define spin_lock_scope(lock, scope) \
 	spin_lock(lock); \
 	do \

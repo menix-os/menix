@@ -18,7 +18,7 @@
 
 #include <string.h>
 
-static SpinLock proc_lock = spin_new();
+static SpinLock proc_lock = {0};
 static usize pid_counter = 0;
 
 ProcessList dead_processes;

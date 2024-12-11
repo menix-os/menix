@@ -9,7 +9,7 @@
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
 
-SpinLock thread_lock = spin_new();
+SpinLock thread_lock = {0};
 static usize tid_counter = 0;
 
 void thread_set_errno(usize errno)
@@ -34,7 +34,7 @@ Thread* thread_create(Process* parent)
 	thread->parent = parent;
 
 	thread->next = NULL;
-	thread->lock = spin_new();
+	thread->lock = (SpinLock) {0};
 	thread->state = ThreadState_Ready;
 
 	// Register thread.

@@ -9,7 +9,7 @@
 
 #include <string.h>
 
-static SpinLock pm_lock;
+static SpinLock pm_lock = {0};
 static BitMap bit_map = NULL;		// This bitmap stores whether a page is in use or not.
 static void* phys_addr = NULL;		// Memory mapped lower 4GiB physical memory. This is only used to store the bitmap.
 static usize num_pages = 0;			// Total amount of available pages.
@@ -18,7 +18,6 @@ static usize last_page = 0;			// The last page marked as used.
 
 void pm_init(void* phys_base, PhysMemory* mem_map, usize num_entries)
 {
-	pm_lock = spin_new();
 	phys_addr = phys_base;
 
 	// Check for the highest usable physical memory address, so we know how much memory to allocate for the bitmap.

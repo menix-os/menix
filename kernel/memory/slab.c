@@ -11,7 +11,7 @@ static Slab slabs[8] = {0};
 
 static void slab_new(Slab* slab, usize size)
 {
-	slab->lock = spin_new();
+	slab->lock = (SpinLock) {0};
 	// Allocate a new page for the head.
 	slab->head = (void**)((usize)pm_alloc(1) + pm_get_phys_base());
 	slab->ent_size = size;

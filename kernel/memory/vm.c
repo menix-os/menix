@@ -19,7 +19,7 @@ void vm_init(PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 
 	// Get a pointer to the first free physical memory page. Here we'll allocate our page directory structure.
 	vm_kernel_map = pm_get_phys_base() + pm_alloc(1);
-	vm_kernel_map->lock = spin_new();
+	vm_kernel_map->lock = (SpinLock) {0};
 
 #if defined(CONFIG_arch_x86_64)
 	vm_kernel_map->head = pm_get_phys_base() + pm_alloc(1);

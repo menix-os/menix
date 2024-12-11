@@ -20,7 +20,7 @@ typedef struct
 	char* name;
 } VfsPathToNode;
 
-SpinLock vfs_lock = spin_new();
+SpinLock vfs_lock = {0};
 static VfsNode* vfs_root = NULL;
 static HashMap(FileSystem*) fs_map;
 

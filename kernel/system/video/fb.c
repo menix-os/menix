@@ -7,7 +7,7 @@
 #include <menix/util/spin.h>
 
 static FrameBuffer* fb_active = NULL;
-static SpinLock fb_lock = spin_new();
+static SpinLock fb_lock = {0};
 
 void fb_register(FrameBuffer* fb)
 {

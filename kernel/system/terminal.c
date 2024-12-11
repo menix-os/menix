@@ -10,7 +10,7 @@
 
 static Terminal terminal_list[TERMINAL_MAX] = {0};
 static usize terminal_active = 0;
-static SpinLock terminal_lock = spin_new();
+static SpinLock terminal_lock = {0};
 
 void terminal_init()
 {

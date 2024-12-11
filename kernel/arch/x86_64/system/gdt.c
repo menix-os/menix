@@ -67,7 +67,7 @@ void gdt_reload()
 	asm_flush_segment_regs(offsetof(Gdt, kernel_code), offsetof(Gdt, kernel_data));
 }
 
-static SpinLock gdt_lock = spin_new();
+static SpinLock gdt_lock = {0};
 
 void gdt_load_tss(usize addr)
 {

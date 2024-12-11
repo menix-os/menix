@@ -49,7 +49,7 @@ void* handle_new(usize size)
 }
 
 static usize device_counter = 1;
-static SpinLock device_counter_lock = spin_new();
+static SpinLock device_counter_lock = {0};
 
 usize handle_new_device()
 {

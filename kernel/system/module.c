@@ -31,7 +31,7 @@ static List(ModulePostFn) module_post_fns;
 
 // Virtual memory which is used to map modules into memory.
 static VirtAddr module_map_region = CONFIG_vm_map_base;
-static SpinLock module_map_lock = spin_new();
+static SpinLock module_map_lock = {0};
 
 void module_init()
 {

@@ -11,7 +11,7 @@
 #include <serial.h>
 #include <stdatomic.h>
 
-static SpinLock cpu_lock = spin_new();
+static SpinLock cpu_lock = {0};
 static Cpu* per_cpu_data = NULL;
 
 // Assembly stub for syscall via SYSCALL/SYSRET.
