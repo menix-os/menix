@@ -4,7 +4,7 @@
 #include <menix/common.h>
 
 // Checks a condition with a timeout.
-#define clock_timeout_check(timeout_ns, condition, fail_case) \
+#define clock_timeout_poll(timeout_ns, condition, fail_case) \
 	do \
 	{ \
 		usize check_start = clock_get_elapsed() + (timeout_ns); \

@@ -34,7 +34,7 @@ i32 nvme_probe(PciDevice* pdev)
 	// Disable the controller if it wasn't already.
 	nvme->regs->cc.en = false;
 	// Wait for the controller to indicate that the reset is complete (RDY = 0).
-	clock_timeout_check(SECONDS_TO_NANO(2), !(nvme->regs->csts & NVME_CS_RDY), {
+	clock_timeout_poll(SECONDS_TO_NANO(2), !(nvme->regs->csts & NVME_CS_RDY), {
 		pci_error_dev(pdev, "NVMe device didn't respond to reset within 2 seconds. Hardware is probably faulty.\n");
 		return 1;
 	});
@@ -77,7 +77,7 @@ i32 nvme_probe(PciDevice* pdev)
 
 	// Enable the controller.
 	nvme->regs->cc.en = true;
-	clock_timeout_check(SECONDS_TO_NANO(2), nvme->regs->csts & NVME_CS_RDY, {
+	clock_timeout_poll(SECONDS_TO_NANO(2), nvme->regs->csts & NVME_CS_RDY, {
 		pci_error_dev(pdev, "NVMe device didn't respond to enable within 2 seconds. Something went wrong.\n");
 		// Check if status is fatal.
 		if (nvme->regs->csts & NVME_CS_CFS)
