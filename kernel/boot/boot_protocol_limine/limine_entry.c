@@ -112,7 +112,7 @@ void kernel_boot()
 			files[i].size = module_res->modules[i]->size;
 			files[i].path = module_res->modules[i]->path;
 			print_log("boot: \t[%i] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
-					 files[i].path);
+					  files[i].path);
 		}
 		full_info.file_num = module_res->module_count;
 		full_info.files = files;
@@ -140,8 +140,8 @@ void kernel_boot()
 		if (fb_get_active() == NULL)
 			fb_register(buffer);
 		print_log("boot: Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n",
-				 buffer->info.mmio_base, buffer->mode.width, buffer->mode.height, buffer->mode.cpp * 8,
-				 buffer->mode.v_width, buffer->mode.v_height);
+				  buffer->info.mmio_base, buffer->mode.width, buffer->mode.height, buffer->mode.cpp * 8,
+				  buffer->mode.v_width, buffer->mode.v_height);
 	}
 
 	// TODO: Instead of relying on the bootloader to do SMP, do this ourselves.
