@@ -300,6 +300,12 @@ bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt pr
 	kassert(page_map != NULL, "No page map was provided! Unable to map page 0x%p to 0x%p!", phys_addr, virt_addr);
 	kassert(phys_addr % arch_page_size == 0, "Physical address is not page aligned! Value: 0x%p", phys_addr);
 
+	if ((flags & VMFlags_User) && (virt_addr & 0xFFFF800000000000))
+	{
+		print_error("Attempted to map a user page in higher half of address space! (virt_addr = 0x%p)\n", virt_addr);
+		return false;
+	}
+
 	spin_lock(&page_map->lock);
 
 	usize x86_flags = vm_flags_to_x86(prot, flags);
