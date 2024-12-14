@@ -157,7 +157,10 @@ ATTR(noreturn) void arch_stop()
 
 Cpu* arch_current_cpu()
 {
-	kassert(per_cpu_data != NULL, "CPU data was not initialized properly!");
+	// If it's too early, return NULL.
+	if (per_cpu_data == NULL)
+		return NULL;
+
 #ifdef CONFIG_smp
 	// The Cpu struct starts at KERNEL_GSBASE:0
 	// Since we can't "directly" access the base address, just get the first field (Cpu.id)
