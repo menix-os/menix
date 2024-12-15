@@ -157,20 +157,20 @@ void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, boo
 
 void thread_sleep(Thread* target, usize nanoseconds)
 {
-	print_warn("todo: Implement me\n");
+	todo();
 }
 
 void thread_fork(Process* parent, Thread* target)
 {
-	print_warn("todo: Implement me\n");
+	todo();
 }
 
 void thread_hang(Thread* victim, bool reschedule)
 {
-	print_warn("todo: Implement me\n");
+	todo();
 }
 
 void thread_kill(Thread* victim)
 {
-	print_warn("todo: Implement me\n");
+	todo();
 }

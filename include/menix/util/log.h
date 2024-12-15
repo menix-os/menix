@@ -61,6 +61,14 @@
 		kmesg_direct("[%5zu.%06zu] [%7zu] error: " fmt, __secs, __millis, __tid, ##__VA_ARGS__); \
 	} while (0)
 
+#define todo() \
+	do \
+	{ \
+		__get_print_info; \
+		kmesg_direct("[%5zu.%06zu] [%7zu] warn: %s (%s:%zu) is still TODO!\n", __secs, __millis, __tid, __FUNCTION__, \
+					 __FILE__, __LINE__); \
+	} while (0)
+
 // Print a message to the kernel log.
 void kmesg_direct(const char* fmt, ...);
 
