@@ -82,7 +82,8 @@ usize cmd_get_usize(const char* key, usize fallback)
 
 		char buffer[CMD_MAX];
 		const char* string = buffer;
-		memcpy(buffer, val, MIN(value_length + 1, sizeof(buffer)));
+		memcpy(buffer, val, MIN(value_length, sizeof(buffer)));
+		buffer[value_length] = 0;
 
 		// Parse the number.
 		usize result;
@@ -117,7 +118,8 @@ isize cmd_get_isize(const char* key, isize fallback)
 
 		char buffer[CMD_MAX];
 		const char* string = buffer;
-		memcpy(buffer, val, MIN(value_length + 1, sizeof(buffer)));
+		memcpy(buffer, val, MIN(value_length, sizeof(buffer)));
+		buffer[value_length] = 0;
 
 		// Parse the number.
 		isize result;
