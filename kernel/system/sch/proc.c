@@ -27,6 +27,8 @@ Process* proc_create(const char* name, ProcessState state, bool is_user, Process
 {
 	spin_lock(&proc_lock);
 
+	print_log("process: Creating new process \"%s\" (%s)\n", name, is_user ? "User" : "Kernel");
+
 	Process* proc = kzalloc(sizeof(Process));
 	strncpy(proc->name, name, sizeof(proc->name));
 
@@ -115,8 +117,6 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 		name = node->name;
 
 	// Use the current thread as parent.
-	print_log("process: Creating new process \"%s\" (%s, %s)\n", name, path, is_user ? "User" : "Kernel");
-
 	Process* proc = proc_create(name, ProcessState_Ready, is_user, arch_current_cpu()->thread->parent);
 
 	spin_lock(&proc_lock);

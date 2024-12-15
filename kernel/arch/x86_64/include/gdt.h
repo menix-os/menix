@@ -4,6 +4,8 @@
 
 #include <menix/common.h>
 
+#include <tss.h>
+
 #define GDTA_PRESENT	   (1 << 7)
 #define GDTA_PRIV_LVL(lvl) ((lvl & 3) << 5)
 #define GDTA_SEGMENT	   (1 << 4)
@@ -33,7 +35,7 @@
 	}
 
 // GDT segment descriptor
-typedef struct ATTR(packed)
+typedef struct
 {
 	Bits limit0:16;	   // Limit[0..15]
 	Bits base0:24;	   // Base[0..23]
@@ -41,10 +43,10 @@ typedef struct ATTR(packed)
 	Bits limit1:4;	   // Limit[16..19]
 	Bits flags:4;	   // Flags
 	Bits base1:8;	   // Base[24..31]
-} GdtDesc;
+} ATTR(packed) GdtDesc;
 
 // Long mode GDT segment descriptor
-typedef struct ATTR(packed)
+typedef struct
 {
 	Bits limit0:16;	   // Limit[0..15]
 	Bits base0:24;	   // Base[0..23]
@@ -54,11 +56,11 @@ typedef struct ATTR(packed)
 	Bits base1:8;	   // Base[24..31]
 	Bits base2:32;	   // Base[32..63]
 	Bits reserved;	   // Reserved
-} GdtLongDesc;
+} ATTR(packed) GdtLongDesc;
 
 // These entries are ordered exactly like this because the SYSRET instruction
 // expects it.
-typedef struct ATTR(packed)
+typedef struct
 {
 	GdtDesc null;			// Unused
 	GdtDesc kernel_code;	// Kernel CS
@@ -67,7 +69,7 @@ typedef struct ATTR(packed)
 	GdtDesc user_data;		// User DS
 	GdtDesc user_code64;	// 64-bit user CS
 	GdtLongDesc tss;		// Task state segment
-} Gdt;
+} ATTR(packed) ATTR(aligned(8)) Gdt;
 
 // GDT register
 typedef struct ATTR(packed)
@@ -76,11 +78,8 @@ typedef struct ATTR(packed)
 	Gdt* base;	  // Start of the GDT.
 } GdtRegister;
 
-// Install the Global Descriptor Table.
-void gdt_init();
+// Installs the Global Descriptor Table.
+void gdt_init(Gdt* gdt_table, TaskStateSegment* tss);
 
-// Reload the Global Descriptor Table and flush segment registers.
-void gdt_reload();
-
-// Loads a new TSS into the GDT.
-void gdt_load_tss(usize addr);
+// Loads the Global Descriptor Table and flushes segment registers.
+void gdt_load(Gdt* gdt_table);

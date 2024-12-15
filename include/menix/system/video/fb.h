@@ -99,9 +99,5 @@ struct FrameBuffer
 // Registers a framebuffer as the active rendering target.
 void fb_register(FrameBuffer* fb);
 
-// Unregisters the active framebuffer.
-// This is useful when e.g. a new video card has been detected.
-void fb_unregister();
-
 // Get the active framebuffer.
 FrameBuffer* fb_get_active();

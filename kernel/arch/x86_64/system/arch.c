@@ -2,6 +2,8 @@
 
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
+#include <menix/system/boot.h>
+#include <menix/util/cmd.h>
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
 
@@ -12,26 +14,29 @@
 #include <stdatomic.h>
 
 static SpinLock cpu_lock = {0};
-static Cpu* per_cpu_data = NULL;
+
+Cpu per_cpu_data[MAX_CPUS];
 
 // Assembly stub for syscall via SYSCALL/SYSRET.
 extern void sc_syscall(void);
 extern bool can_smap;
 
 // Initialize one CPU.
-void arch_init_cpu(BootInfo* info, Cpu* cpu, Cpu* boot)
+void arch_init_cpu(Cpu* cpu, Cpu* boot_cpu)
 {
 	// Make sure no other memory accesses happen before the CPUs are initialized.
 	spin_lock(&cpu_lock);
+
+	gdt_init(&cpu->gdt, &cpu->tss);
+	idt_init();
+	pic_disable();
+
+	gdt_load(&cpu->gdt);
 
 	// Allocate stack.
 	cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small)) + (u64)pm_get_phys_base();
 	cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small)) + (u64)pm_get_phys_base();
 	cpu->tss.ist2 = cpu->tss.ist1;
-
-	gdt_reload();
-	idt_reload();
-	gdt_load_tss((usize)&cpu->tss);
 
 	// Enable syscall extension (EFER.SCE).
 	asm_wrmsr(MSR_EFER, asm_rdmsr(MSR_EFER) | MSR_EFER_SCE);
@@ -111,7 +116,7 @@ void arch_init_cpu(BootInfo* info, Cpu* cpu, Cpu* boot)
 	if (ebx & CPUID_7B_FSGSBASE)
 	{
 		cr4 |= CR4_FSGSBASE;
-		asm_wrmsr(MSR_KERNEL_GS_BASE, 0);
+		asm_wrmsr(MSR_KERNEL_GS_BASE, (u64)cpu);
 		asm_wrmsr(MSR_GS_BASE, (u64)cpu);
 		asm_wrmsr(MSR_FS_BASE, 0);
 	}
@@ -120,32 +125,30 @@ void arch_init_cpu(BootInfo* info, Cpu* cpu, Cpu* boot)
 	asm_set_register(cr0, cr0);
 	asm_set_register(cr4, cr4);
 
-	// We are present!
-	cpu->is_present = true;
-	atomic_fetch_add(&info->cpu_active, 1);
-
+	idt_reload();
 	lapic_init(cpu->lapic_id);
 
+	// We are present!
+	cpu->is_present = true;
 	spin_unlock(&cpu_lock);
 
 	// If this CPU is not the boot CPU, stop it.
-	if (cpu->id != boot->id)
+	if (cpu->id != boot_cpu->id)
 		arch_stop();
 }
 
-void arch_early_init(EarlyBootInfo* info)
+void arch_early_init()
 {
 	asm_interrupt_disable();
 
-	gdt_init();
-	idt_init();
-	pic_disable();
-	serial_init();
+	if (cmd_get_usize("serial", 1))
+		serial_init();
 }
 
 void arch_init(BootInfo* info)
 {
-	per_cpu_data = info->cpus;
+	// Initialize the boot CPU.
+	arch_init_cpu(&per_cpu_data[0], &per_cpu_data[0]);
 }
 
 ATTR(noreturn) void arch_stop()
@@ -157,12 +160,11 @@ ATTR(noreturn) void arch_stop()
 
 Cpu* arch_current_cpu()
 {
-	// If it's too early, return NULL.
-	if (per_cpu_data == NULL)
-		return NULL;
+	if (asm_rdmsr(MSR_GS_BASE) == 0)
+		return &per_cpu_data[0];
 
 #ifdef CONFIG_smp
-	// The Cpu struct starts at KERNEL_GSBASE:0
+	// The Cpu struct starts at GS_BASE:0
 	// Since we can't "directly" access the base address, just get the first field (Cpu.id)
 	// and use that to index into the CPU array.
 	u64 id;

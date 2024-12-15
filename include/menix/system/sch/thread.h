@@ -21,7 +21,6 @@ typedef enum
 } ThreadState;
 
 typedef struct Process Process;
-typedef struct Thread Thread;
 
 // Thread information.
 typedef struct Thread
@@ -35,8 +34,8 @@ typedef struct Thread
 	usize errno;			  // `errno` value.
 	usize runtime;			  // Amount of ticks the thread has been alive.
 
-	Process* parent;	// The parent process of this thread.
-	Thread* next;		// Linked list entry for the next thread.
+	Process* parent;		// The parent process of this thread.
+	struct Thread* next;	// Linked list entry for the next thread.
 
 	// Architecture dependent fields go here.
 #if defined CONFIG_arch_x86_64

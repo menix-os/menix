@@ -7,7 +7,7 @@
 #include <menix/system/acpi/acpi.h>
 #endif
 
-void dst_init(EarlyBootInfo* info)
+void dst_init(BootInfo* info)
 {
 #ifdef CONFIG_device_tree
 	dt_init(info->fdt_blob);

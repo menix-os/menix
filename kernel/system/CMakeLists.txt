@@ -3,6 +3,7 @@
 target_sources(menix PUBLIC
 	device.c
 	elf.c
+	isr.c
 	module.c
 	terminal.c
 )

@@ -5,4 +5,4 @@
 #include <menix/system/boot.h>
 
 // Initializes the dynamic system tree.
-void dst_init(EarlyBootInfo* info);
+void dst_init(BootInfo* info);

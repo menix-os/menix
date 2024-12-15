@@ -6,24 +6,17 @@
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
 
-static FrameBuffer* fb_active = NULL;
+static FrameBuffer fb_active;
 static SpinLock fb_lock = {0};
 
 void fb_register(FrameBuffer* fb)
 {
 	spin_lock(&fb_lock);
-	fb_active = fb;
-	spin_unlock(&fb_lock);
-}
-
-void fb_unregister()
-{
-	spin_lock(&fb_lock);
-	fb_active = NULL;
+	fb_active = *fb;
 	spin_unlock(&fb_lock);
 }
 
 FrameBuffer* fb_get_active()
 {
-	return fb_active;
+	return &fb_active;
 }

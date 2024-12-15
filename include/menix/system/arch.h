@@ -3,6 +3,7 @@
 #pragma once
 
 #include <menix/system/boot.h>
+#include <menix/system/interrupts.h>
 
 #include <bits/arch.h>
 #include <bits/asm.h>
@@ -13,14 +14,16 @@
 // CPU-local information.
 typedef struct Cpu
 {
-	usize id;				  // Unique ID of this CPU.
-	usize kernel_stack;		  // Stack pointer for the kernel.
-	usize user_stack;		  // Stack pointer for the user space.
-	struct Thread* thread;	  // Current thread running on this CPU.
-	usize ticks_active;		  // The amount of ticks the running thread has been active.
-	bool is_present;		  // If the CPU is present.
+	usize id;						  // Unique ID of this CPU.
+	usize kernel_stack;				  // Stack pointer for the kernel.
+	usize user_stack;				  // Stack pointer for the user space.
+	struct Thread* thread;			  // Current thread running on this CPU.
+	usize ticks_active;				  // The amount of ticks the running thread has been active.
+	bool is_present;				  // If the CPU is present.
+	InterruptFn irq_handlers[256];	  // IRQ handlers.
 
 #ifdef CONFIG_arch_x86_64
+	Gdt gdt;
 	TaskStateSegment tss;
 	u32 lapic_id;					   // Local APIC ID.
 	usize fpu_size;					   // Size of the FPU in bytes.
@@ -31,19 +34,23 @@ typedef struct Cpu
 #endif
 } Cpu;
 
-// Code-visible CPU registers.
-typedef struct Context Context;
+#ifdef CONFIG_smp
+#define MAX_CPUS 1024
+#else
+#define MAX_CPUS 1
+#endif
+
+extern Cpu per_cpu_data[MAX_CPUS];
 
 // Initializes the platform for use by the kernel and boot routines.
-void arch_early_init(EarlyBootInfo* info);
+void arch_early_init();
 
 // Initializes the rest of the platform after the boot routines have completed.
 void arch_init(BootInfo* info);
 
 // Initializes a single processor.
 // `cpu`: Information about the CPU that has to be enabled.
-// `boot`: Information about the boot CPU.
-void arch_init_cpu(BootInfo* info, Cpu* cpu, Cpu* boot);
+void arch_init_cpu(Cpu* cpu, Cpu* boot_cpu);
 
 // Disables a single processor.
 bool arch_stop_cpu(usize id);

@@ -1,7 +1,7 @@
 #pragma once
 #include <menix/common.h>
 
-struct Context
+typedef struct Context
 {
 	u64 r15;
 	u64 r14;
@@ -30,4 +30,4 @@ struct Context
 	u64 rflags;
 	u64 rsp;
 	u64 ss;
-};
+} Context;

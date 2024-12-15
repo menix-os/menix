@@ -3,6 +3,7 @@
 #include <menix/common.h>
 #include <menix/fs/devtmpfs.h>
 #include <menix/io/terminal.h>
+#include <menix/util/cmd.h>
 #include <menix/util/spin.h>
 
 #include <stdlib.h>
@@ -12,17 +13,30 @@ static Terminal terminal_list[TERMINAL_MAX] = {0};
 static usize terminal_active = 0;
 static SpinLock terminal_lock = {0};
 
+static Handle null_driver = {
+	.read = NULL,
+	.write = NULL,
+	.ioctl = NULL,
+};
+
+i32 fbcon_init();
+
 void terminal_init()
 {
 	for (usize i = 0; i < TERMINAL_MAX; i++)
 	{
 		if (terminal_list[i].driver == NULL)
-			continue;
+		{
+			terminal_list[i].driver = &null_driver;
+		}
 
 		char name[32] = "terminal";
 		u32toa(i, name + 8, 10);
 		devtmpfs_add_device(terminal_list[i].driver, name);
 	}
+
+	if (cmd_get_usize("fbcon", 1))
+		fbcon_init();
 }
 
 void terminal_set_active(usize terminal)
@@ -71,6 +85,6 @@ void terminal_puts(usize terminal, const char* buf, usize len)
 
 	// Write each character to the buffer.
 	Handle* handle = terminal_list[terminal].driver;
-	if (handle != NULL)
+	if (handle != NULL && handle->write != NULL)
 		handle->write(handle, NULL, buf, len, 0);
 }

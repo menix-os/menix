@@ -6,8 +6,11 @@
 
 #define CMDLINE_MAX_LENGTH 1024
 
-// Initializes the command line.
-void cmd_init(const char* data);
+// Initializes the command line. Don't forget to call `cmd_init`!
+void cmd_early_init(const char* data);
+
+// Finalizes command line initialization by copying over the command line data.
+void cmd_init();
 
 // Returns a string from the command line matching the given key.
 // If not present, returns `fallback`.

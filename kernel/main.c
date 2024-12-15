@@ -13,45 +13,46 @@
 #include <menix/util/cmd.h>
 #include <menix/util/log.h>
 
-void kernel_early_init(EarlyBootInfo* info)
+ATTR(noreturn) void kernel_init(BootInfo* info)
 {
-	arch_early_init(info);
+	// Initialize command line.
+	cmd_early_init(info->cmd);
+
+	arch_early_init();
 
 	// Initialize memory managers.
 	pm_init(info->phys_base, info->memory_map, info->mm_num);
-	vm_init(info->kernel_phys, info->memory_map, info->mm_num);
 	alloc_init();
+
+	cmd_init();
 
 	// Initialize virtual file system.
 	vfs_init();
 
+	// If no early framebuffer has been set previously, do it now.
+	fb_register(info->fb);
+	// Register all terminal devices.
+	terminal_init();
+
 	// Say hello to the console!
 	print_log("menix " CONFIG_release " (" CONFIG_arch ", " CONFIG_version ")\n");
-
-	// Initialize command line.
 	print_log("boot: Command line: \"%s\"\n", info->cmd);
-	cmd_init(info->cmd);
 
 	module_load_kernel_syms(info->kernel_file);
 	print_log("boot: Kernel file loaded at: 0x%p\n", info->kernel_file);
-
-	// Register all terminal devices.
-	terminal_init();
 
 	// Initialize firmware.
 	print_log("boot: Initializing dynamic system tree.\n");
 	dst_init(info);
 
 	print_log("boot: Finished early initialization.\n");
-}
-
-ATTR(noreturn) void kernel_init(BootInfo* info)
-{
 	arch_init(info);
 
 	// Load initrd(s).
 	for (usize i = 0; i < info->file_num; i++)
 		ustarfs_init(vfs_get_root(), info->files[i].address, info->files[i].size);
+
+	vm_init(info->kernel_phys, info->memory_map, info->mm_num);
 
 	// Initialize all modules and subsystems.
 	module_init();
@@ -77,5 +78,5 @@ ATTR(noreturn) void kernel_main()
 	kassert(init_started == true, "Failed to run init binary! Try adding \"init=...\" to the command line.");
 
 	while (true)
-		sch_invoke();
+		asm_pause();
 }

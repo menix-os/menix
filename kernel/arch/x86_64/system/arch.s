@@ -1,8 +1,9 @@
 /* x86 architecture specific functions */
 
 .section .text
+.altmacro
 
-/* Swaps GSBASE if CPL == USER */
+/* Swaps GSBASE if CPL == KERNEL */
 .macro swapgs_if_necessary
 	cmpw	$0x08,	0x8(%rsp)
 	je		1f
@@ -12,51 +13,41 @@
 
 /* Pushes all general purpose registers onto the stack. */
 .macro push_all_regs
-pushq %rax
-pushq %rbx
-pushq %rcx
-pushq %rdx
-pushq %rbp
-pushq %rdi
-pushq %rsi
-pushq %r8
-pushq %r9
-pushq %r10
-pushq %r11
-pushq %r12
-pushq %r13
-pushq %r14
-pushq %r15
+	pushq %rax
+	pushq %rbx
+	pushq %rcx
+	pushq %rdx
+	pushq %rbp
+	pushq %rdi
+	pushq %rsi
+	pushq %r8
+	pushq %r9
+	pushq %r10
+	pushq %r11
+	pushq %r12
+	pushq %r13
+	pushq %r14
+	pushq %r15
 .endm
 
 /* Pops all general purpose registers from the stack. */
 .macro pop_all_regs
-popq %r15
-popq %r14
-popq %r13
-popq %r12
-popq %r11
-popq %r10
-popq %r9
-popq %r8
-popq %rsi
-popq %rdi
-popq %rbp
-popq %rdx
-popq %rcx
-popq %rbx
-popq %rax
+	popq %r15
+	popq %r14
+	popq %r13
+	popq %r12
+	popq %r11
+	popq %r10
+	popq %r9
+	popq %r8
+	popq %rsi
+	popq %rdi
+	popq %rbp
+	popq %rdx
+	popq %rcx
+	popq %rbx
+	popq %rax
 .endm
-
-/* Finalizes a context switch. */
-.global sch_x86_finalize
-sch_x86_finalize:
-	mov		%rdi,	%rsp		/* First argument is a reference to the thread's CpuRegisters field. */
-	pop_all_regs				/* Pop all values stored in that struct into the actual registers. */
-	add		$0x18,	%rsp		/* Skip .error, .isr and .core fields */
-	swapgs_if_necessary			/* Swap GSBASE to user mode. */
-	iretq						/* Instead of returning via interrupt_internal,
-								   return directly so we always land in user mode. */
 
 /* Enter syscall via AMD64 syscall/sysret instructions. */
 .global sc_syscall
@@ -94,7 +85,8 @@ interrupt_internal:
 	push_all_regs
 	mov		%rsp,	%rdi		/* Load the Context* as first argument. */
 	xor		%rbp,	%rbp		/* Zero out the base pointer so we don't backtrace into the user program */
-	call	interrupt_handler	/* Call interrupt handler */
+	.extern isr_handler
+	call	isr_handler			/* Call interrupt handler */
 	mov		%rax,	%rsp		/* interrupt_handler returns a pointer to the new context. */
 	pop_all_regs
 	add		$0x18,	%rsp		/* Skip Context.error, Context.isr, and Context.core fields. */
@@ -102,38 +94,23 @@ interrupt_internal:
 	sti
 	iretq
 
-/* Interrupt stub that pushes 0 as the error code. */
-.macro interrupt_stub num
-.global interrupt_\num
-.align 0x10
-interrupt_\num:
-	cli
-	swapgs_if_necessary			/* Change GS to kernel mode if we're coming from user mode. */
-	pushq	$0
-	pushq	$\num
-	jmp		interrupt_internal
-.endm
-
-/* Interrupt stub with an actual error code. */
-.macro interrupt_stub_err num
-.global interrupt_\num
-.align 0x10
-interrupt_\num:
-	cli
-	swapgs_if_necessary			/* Change GS to kernel mode if we're coming from user mode. */
-	pushq	$\num
-	jmp		interrupt_internal
-.endm
-
-/* Define 256 interrupt stubs using the macros above. */
-.extern interrupt_handler
-.altmacro
-.set i, 0
+/* Define 256 interrupt stubs using the macro above. */
 .rept 256
-.if (i == 8 || (i >= 10 && i <= 14) || i == 17 || i == 21 || i == 29 || i == 30)
-	interrupt_stub_err %i
-.else
-	interrupt_stub %i
+.align 0x10
+interrupt_\+:
+	cli
+	swapgs_if_necessary			/* Change GS to kernel mode if we're coming from user mode. */
+.if !(\+ == 8 || (\+ >= 10 && \+ <= 14) || \+ == 17 || \+ == 21 || \+ == 29 || \+ == 30)
+	pushq	$0					/* If this is an interrupt that doesn't push an error code, push one ourselves. */
 .endif
-	.set i, i+1
+	pushq	$\+					/* Push the ISR to the stack. */
+	jmp		interrupt_internal
+.endr
+
+/* Build a table of all the interrupt stubs */
+.section .rodata
+.global interrupt_table
+interrupt_table:
+.rept 256
+	.quad interrupt_\+
 .endr

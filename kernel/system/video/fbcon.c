@@ -157,13 +157,20 @@ static Handle fbcon_handle = {
 	.write = fbcon_write,
 };
 
-static void fbcon_post()
+i32 fbcon_init()
 {
+	// Register device.
+	if (devtmpfs_add_device(&fbcon_handle, "fbcon") == false)
+	{
+		print_log("fbcon: Failed to initialize!\n");
+		return 1;
+	}
+
 	FrameBuffer* fb = fb_get_active();
 
 	// If no regular framebuffer is available, we can't write to anything.
 	if (fb == NULL)
-		return;
+		return 1;
 
 	internal_fb = fb;
 
@@ -179,28 +186,15 @@ static void fbcon_post()
 	// Clear the screen.
 	memset((u8*)internal_fb->info.mmio_base, 0, mode->pitch * mode->height);
 
-	module_log("Switching to framebuffer console\n");
+	print_log("fbcon: Switching to framebuffer console\n");
 
 	Handle* h = terminal_get_active_node()->handle;
 	h->write = fbcon_write;
 
-	module_log("Switched to framebuffer console on /dev/terminal%zu\n", terminal_get_active());
-	module_log("Framebuffer Resolution = %ux%ux%hhu (Virtual = %ux%u)\n", internal_fb->mode.width,
-			   internal_fb->mode.height, internal_fb->mode.cpp * 8, internal_fb->mode.v_width,
-			   internal_fb->mode.v_height);
-}
+	print_log("fbcon: Switched to framebuffer console on /dev/terminal%zu\n", terminal_get_active());
+	print_log("fbcon: Framebuffer Resolution = %ux%ux%hhu (Virtual = %ux%u)\n", internal_fb->mode.width,
+			  internal_fb->mode.height, internal_fb->mode.cpp * 8, internal_fb->mode.v_width,
+			  internal_fb->mode.v_height);
 
-i32 fbcon_init()
-{
-	// Register device.
-	if (devtmpfs_add_device(&fbcon_handle, "fbcon") == false)
-	{
-		module_log("Failed to initialize fbcon!\n");
-		return 1;
-	}
-
-	module_register_post(fbcon_post);
 	return 0;
 }
-
-MODULE_DEFAULT(fbcon_init, NULL);

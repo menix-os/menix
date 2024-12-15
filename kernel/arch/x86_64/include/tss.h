@@ -4,9 +4,7 @@
 
 #include <menix/common.h>
 
-#include <gdt.h>
-
-typedef struct ATTR(packed)
+typedef struct
 {
 	u32 reserved0;
 	u64 rsp0;
@@ -25,14 +23,10 @@ typedef struct ATTR(packed)
 	u32 reserved4;
 	u16 reserved5;
 	u16 iopb;
-} TaskStateSegment;
+} ATTR(packed) ATTR(aligned(0x10)) TaskStateSegment;
 
 // Initializes the TSS.
 void tss_init(TaskStateSegment* tss);
 
 // Reloads the current TSS.
-static inline void tss_reload()
-{
-	asm volatile("movw %0, %%ax\n"
-				 "ltr %%ax\n" ::"r"((u16)offsetof(Gdt, tss)));
-}
+void tss_reload();

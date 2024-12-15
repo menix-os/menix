@@ -4,11 +4,19 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define CMD_MAX 256
+
 static const char* command_line = NULL;
 
-void cmd_init(const char* data)
+void cmd_early_init(const char* data)
 {
-	command_line = strdup(data);
+	command_line = data;
+}
+
+void cmd_init()
+{
+	// Save the command line to our own buffer.
+	command_line = strdup(command_line);
 }
 
 // Returns the substring of the value part of the option specified by `key`.
@@ -72,9 +80,9 @@ usize cmd_get_usize(const char* key, usize fallback)
 			if (val[value_length] == closing_char)
 				break;
 
-		char* buffer = kzalloc(value_length + 1);
+		char buffer[CMD_MAX];
 		const char* string = buffer;
-		memcpy(buffer, val, value_length);
+		memcpy(buffer, val, MIN(value_length + 1, sizeof(buffer)));
 
 		// Parse the number.
 		usize result;
@@ -90,8 +98,6 @@ usize cmd_get_usize(const char* key, usize fallback)
 #else
 		result = atou32(string, base);
 #endif
-
-		kfree(buffer);
 		return result;
 	}
 
@@ -109,21 +115,19 @@ isize cmd_get_isize(const char* key, isize fallback)
 			if (val[value_length] == closing_char)
 				break;
 
-		char* buffer = kzalloc(value_length + 1);
+		char buffer[CMD_MAX];
 		const char* string = buffer;
-		memcpy(buffer, val, value_length);
+		memcpy(buffer, val, MIN(value_length + 1, sizeof(buffer)));
 
 		// Parse the number.
 		isize result;
-		usize base = 10;
+		const usize base = 10;
 
 #if CONFIG_bits == 64
 		result = atoi64(string, base);
 #else
 		result = atoi32(string, base);
 #endif
-
-		kfree(buffer);
 		return result;
 	}
 
