@@ -11,6 +11,7 @@
 
 void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 {
+	target->is_user = is_user;
 	target->registers.rip = start;
 
 	// Allocate kernel stack for this thread.
@@ -25,7 +26,6 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 	memset(target->saved_fpu, 0, arch_current_cpu()->fpu_size);
 
 	Process* proc = target->parent;
-
 	if (is_user)
 	{
 		target->registers.cs = offsetof(Gdt, user_code64) | CPL_USER;

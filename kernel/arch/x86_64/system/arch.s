@@ -5,8 +5,8 @@
 
 /* Swaps GSBASE if CPL == KERNEL */
 .macro swapgs_if_necessary
-	cmpw	$0x23,	0x8(%rsp)
-	jne		1f
+	cmpw	$0x8,	0x8(%rsp)
+	je		1f
 	swapgs
 1:
 .endm
@@ -67,13 +67,12 @@ sc_syscall:
 	pushq	%rcx				/* RIP is moved into rcx by the CPU. */
 	pushq	$0x00				/* Context.error field */
 	pushq	$0x00				/* Context.isr field */
-	pushq	$0x00				/* Context.core field */
 	push_all_regs				/* Push general purpose registers so they can be written to by syscalls */
 	mov		%rsp,	%rdi		/* Load the Context* as first argument. */
 	xor		%rbp,	%rbp		/* Zero out the base pointer. */
 	call	syscall_handler		/* Call syscall handler */
 	pop_all_regs				/* Pop stack values back to the general purpose registers. */
-	add		$0x18,	%rsp		/* Skip Context.error, Context.isr and Context.core fields. */
+	add		$0x10,	%rsp		/* Skip Context.error and Context.isr fields. */
 	movq	%gs:16,	%rsp		/* Load user stack from `Cpu.user_stack`. */
 	swapgs						/* Change GS to user mode. */
 	sysretq						/* Return to user mode */
@@ -81,7 +80,6 @@ sc_syscall:
 /* Internal function called by one of the stubs. */
 .align 0x10
 interrupt_internal:
-	pushq	%gs					/* Push CPU ID. */
 	push_all_regs
 	mov		%rsp,	%rdi		/* Load the Context* as first argument. */
 	xor		%rbp,	%rbp		/* Zero out the base pointer so we don't backtrace into the user program */
@@ -89,16 +87,14 @@ interrupt_internal:
 	call	isr_handler			/* Call interrupt handler */
 	mov		%rax,	%rsp		/* interrupt_handler returns a pointer to the new context. */
 	pop_all_regs
-	add		$0x18,	%rsp		/* Skip Context.error, Context.isr, and Context.core fields. */
+	add		$0x10,	%rsp		/* Skip Context.error and Context.isr fields. */
 	swapgs_if_necessary			/* Change GS back to user mode if we came from user mode. */
-	sti
 	iretq
 
 /* Define 256 interrupt stubs using the macro above. */
 .rept 256
 .align 0x10
 interrupt_\+:
-	cli
 	swapgs_if_necessary			/* Change GS to kernel mode if we're coming from user mode. */
 .if !(\+ == 8 || (\+ >= 10 && \+ <= 14) || \+ == 17 || \+ == 21 || \+ == 29 || \+ == 30)
 	pushq	$0					/* If this is an interrupt that doesn't push an error code, push one ourselves. */

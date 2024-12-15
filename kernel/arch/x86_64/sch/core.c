@@ -26,12 +26,15 @@ void sch_arch_update(Cpu* core, Thread* next)
 {
 	core->tss.rsp0 = next->kernel_stack;
 	core->fpu_restore(next->saved_fpu);
+
+	asm_wrmsr(MSR_FS_BASE, next->fs_base);
+	asm_wrmsr(MSR_GS_BASE, next->gs_base);
 }
 
 ATTR(noreturn) void sch_arch_stop()
 {
-	asm_interrupt_enable();
 	apic_send_eoi();
+	asm_interrupt_enable();
 	while (true)
 		asm_halt();
 }

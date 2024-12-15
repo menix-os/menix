@@ -11,7 +11,7 @@
 
 Context* isr_handler(Context* regs)
 {
-	Cpu* current = arch_current_cpu();
+	const Cpu* current = arch_current_cpu();
 	// If we have a handler for this interrupt, call it.
 	if (regs->isr < ARRAY_SIZE(current->irq_handlers) && current->irq_handlers[regs->isr])
 	{
@@ -19,9 +19,9 @@ Context* isr_handler(Context* regs)
 	}
 
 	// If unhandled and caused by the user, terminate the process with SIGILL.
-	if (arch_current_cpu()->thread->parent)
+	if (current->thread->is_user)
 	{
-		Process* proc = arch_current_cpu()->thread->parent;
+		Process* proc = current->thread->parent;
 		print_log("Unhandled interrupt %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
 		arch_dump_registers(regs);
 
@@ -43,19 +43,13 @@ Context* isr_handler(Context* regs)
 void isr_register_handler(usize cpu, usize idx, InterruptFn handler)
 {
 	asm_interrupt_disable();
-	Cpu* current = arch_current_cpu();
-	if (idx >= ARRAY_SIZE(current->irq_handlers))
+	if (cpu >= ARRAY_SIZE(per_cpu_data) && idx >= ARRAY_SIZE(per_cpu_data[cpu].irq_handlers))
 	{
 		arch_log("Failed to register a handler for ISR %zu! Out of bounds.\n", idx);
 		return;
 	}
 
-	current->irq_handlers[idx] = handler;
-	arch_log("Registered handler 0x%p for interrupt %zu!\n", handler, idx);
+	per_cpu_data[cpu].irq_handlers[idx] = handler;
+	arch_log("Registered handler 0x%p for interrupt %zu on CPU %zu!\n", handler, idx, cpu);
 	asm_interrupt_enable();
-}
-
-void isr_register_irq(InterruptFn handler)
-{
-	// TODO
 }

@@ -50,7 +50,7 @@ void module_init()
 		module_info->module = module;
 
 		// If this module was explicitly turned off via cmdline, don't register it.
-		if (cmd_get_usize(module->name, true))
+		if (cmd_get_usize(module->name, 1))
 			module_register(module->name, module_info);
 
 		// Go to the next module. This contains the dependency string table.
@@ -89,7 +89,7 @@ void module_init()
 				continue;
 
 			// If this module was explicitly turned off via cmdline, don't register it.
-			if (!cmd_get_usize(node->name, true))
+			if (cmd_get_usize(node->name, 1) == 0)
 				continue;
 
 			// Load only the file's path into the meta info.

@@ -33,9 +33,9 @@ typedef struct Thread
 	VirtAddr kernel_stack;	  // The kernel stack pointer.
 	usize errno;			  // `errno` value.
 	usize runtime;			  // Amount of ticks the thread has been alive.
-
-	Process* parent;		// The parent process of this thread.
-	struct Thread* next;	// Linked list entry for the next thread.
+	bool is_user;			  // True if this is a user thread.
+	Process* parent;		  // The parent process of this thread.
+	struct Thread* next;	  // Linked list entry for the next thread.
 
 	// Architecture dependent fields go here.
 #if defined CONFIG_arch_x86_64
