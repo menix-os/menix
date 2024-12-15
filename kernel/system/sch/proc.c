@@ -119,7 +119,6 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 	// Use the current thread as parent.
 	Process* proc = proc_create(name, ProcessState_Ready, is_user, arch_current_cpu()->thread->parent);
 
-	spin_lock(&proc_lock);
 	proc->page_map = map;
 	proc->working_dir = node->parent;
 	proc->map_base = CONFIG_user_map_base;
@@ -141,7 +140,6 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 	// TODO: arch_current_cpu()->user_stack = proc->stack_top;
 
 	vm_set_page_map(map);
-	spin_unlock(&proc_lock);
 
 	return true;
 }
