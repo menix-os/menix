@@ -41,3 +41,6 @@
 
 // Gets the parent structure where the field is contained in.
 #define parentof(parent_type, field) (offsetof(parent_type, field))
+
+// Variables reclaimed after boot.
+#define RECLAIM ATTR(section(".reclaim"))
