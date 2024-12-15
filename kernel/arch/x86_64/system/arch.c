@@ -15,7 +15,7 @@
 
 static SpinLock cpu_lock = {0};
 
-Cpu per_cpu_data[MAX_CPUS];
+ATTR(aligned(0x1000)) Cpu per_cpu_data[MAX_CPUS];
 
 // Assembly stub for syscall via SYSCALL/SYSRET.
 extern void sc_syscall(void);
@@ -32,11 +32,6 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot_cpu)
 	pic_disable();
 
 	gdt_load(&cpu->gdt);
-
-	// Allocate stack.
-	cpu->tss.rsp0 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small)) + (u64)pm_get_phys_base();
-	cpu->tss.ist1 = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small)) + (u64)pm_get_phys_base();
-	cpu->tss.ist2 = cpu->tss.ist1;
 
 	// Enable syscall extension (EFER.SCE).
 	asm_wrmsr(MSR_EFER, asm_rdmsr(MSR_EFER) | MSR_EFER_SCE);
@@ -182,5 +177,5 @@ void arch_dump_registers(Context* regs)
 	print_log("r8:  0x%p r9:  0x%p r10: 0x%p r11: 0x%p\n", regs->r8, regs->r9, regs->r10, regs->r11);
 	print_log("r12: 0x%p r13: 0x%p r14: 0x%p r15: 0x%p\n", regs->r12, regs->r13, regs->r14, regs->r15);
 	print_log("core:0x%p isr: 0x%p err: 0x%p rip: 0x%p\n", regs->core, regs->isr, regs->error, regs->rip);
-	print_log("cs:  0x%p rfl: 0x%p ss:  0x%p\n", regs->cs, regs->rflags, regs->ss);
+	print_log("cs:  0x%p rfl: 0x%p ss:  0x%p gsb: 0x%p\n", regs->cs, regs->rflags, regs->ss, asm_rdmsr(MSR_GS_BASE));
 }

@@ -5,8 +5,8 @@
 
 /* Swaps GSBASE if CPL == KERNEL */
 .macro swapgs_if_necessary
-	cmpw	$0x08,	0x8(%rsp)
-	je		1f
+	cmpw	$0x23,	0x8(%rsp)
+	jne		1f
 	swapgs
 1:
 .endm

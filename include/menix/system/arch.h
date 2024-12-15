@@ -11,6 +11,13 @@
 
 #define arch_log(fmt, ...) print_log(CONFIG_arch ": " fmt, ##__VA_ARGS__)
 
+// The size of a single page.
+#ifdef CONFIG_dynamic_page_size
+extern usize arch_page_size;
+#else
+#define arch_page_size ((usize)(0x1000))
+#endif
+
 // CPU-local information.
 typedef struct Cpu
 {
@@ -32,7 +39,7 @@ typedef struct Cpu
 #elif defined(CONFIG_arch_riscv64)
 	u32 hart_id;	// Hart CPU ID.
 #endif
-} Cpu;
+} ATTR(aligned(arch_page_size)) Cpu;
 
 #ifdef CONFIG_smp
 #define MAX_CPUS 1024
@@ -63,10 +70,3 @@ void arch_dump_registers(Context* regs);
 
 // Gets processor metadata.
 Cpu* arch_current_cpu();
-
-// The size of a single page.
-#ifdef CONFIG_dynamic_page_size
-extern usize arch_page_size;
-#else
-#define arch_page_size ((usize)(0x1000))
-#endif

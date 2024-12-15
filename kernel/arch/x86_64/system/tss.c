@@ -1,5 +1,6 @@
 // Task State Segement helper functions
 
+#include <menix/memory/vm.h>
 #include <menix/util/log.h>
 
 #include <gdt.h>
@@ -8,9 +9,11 @@
 void tss_init(TaskStateSegment* tss)
 {
 	kassert(tss != NULL, "No valid TSS was provided!");
-	tss->rsp0 = 0;
-	tss->rsp1 = 0;
-	tss->rsp2 = 0;
+
+	// Allocate stack.
+	const usize stack_pages = CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small);
+	tss->rsp0 = pm_alloc(stack_pages) + (u64)pm_get_phys_base();
+	tss->ist1 = pm_alloc(stack_pages) + (u64)pm_get_phys_base();
 	tss->iopb = sizeof(TaskStateSegment);
 }
 
