@@ -20,7 +20,7 @@ void sch_init()
 	Process* kernel_proc = proc_create("kernel", ProcessState_Ready, false, NULL);
 	Thread* kernel_thread = thread_create(kernel_proc);
 	thread_setup(kernel_thread, (VirtAddr)kernel_main, false, 0);
-	sch_invoke();
+	sch_arch_invoke();
 }
 
 Thread* sch_next(Thread* list)

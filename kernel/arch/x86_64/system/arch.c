@@ -111,7 +111,7 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot_cpu)
 	if (ebx & CPUID_7B_FSGSBASE)
 	{
 		cr4 |= CR4_FSGSBASE;
-		asm_wrmsr(MSR_KERNEL_GS_BASE, (u64)cpu);
+		asm_wrmsr(MSR_KERNEL_GS_BASE, 0);
 		asm_wrmsr(MSR_GS_BASE, (u64)cpu);
 		asm_wrmsr(MSR_FS_BASE, 0);
 	}

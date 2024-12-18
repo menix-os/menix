@@ -51,7 +51,6 @@
 
 /* Enter syscall via AMD64 syscall/sysret instructions. */
 .global sc_syscall
-.extern syscall_handler
 .align 0x10
 sc_syscall:
 	swapgs						/* Change GS to kernel mode. */
@@ -70,7 +69,9 @@ sc_syscall:
 	push_all_regs				/* Push general purpose registers so they can be written to by syscalls */
 	mov		%rsp,	%rdi		/* Load the Context* as first argument. */
 	xor		%rbp,	%rbp		/* Zero out the base pointer. */
+	.extern syscall_handler
 	call	syscall_handler		/* Call syscall handler */
+	mov		%rax,	%rsp
 	pop_all_regs				/* Pop stack values back to the general purpose registers. */
 	add		$0x10,	%rsp		/* Skip Context.error and Context.isr fields. */
 	movq	%gs:16,	%rsp		/* Load user stack from `Cpu.user_stack`. */

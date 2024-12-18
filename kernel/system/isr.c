@@ -15,18 +15,18 @@ Context* isr_handler(Context* regs)
 	// If we have a handler for this interrupt, call it.
 	if (regs->isr < ARRAY_SIZE(current->irq_handlers) && current->irq_handlers[regs->isr])
 	{
-		return current->irq_handlers[regs->isr](regs);
+		Context* result = current->irq_handlers[regs->isr](regs);
+		return result;
 	}
 
 	// If unhandled and caused by the user, terminate the process with SIGILL.
-	if (current->thread->is_user)
+	if (current->thread && current->thread->is_user)
 	{
 		Process* proc = current->thread->parent;
 		print_log("Unhandled interrupt %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
 		arch_dump_registers(regs);
-
 		proc_kill(proc, true);
-		return regs;
+		return sch_reschedule(regs);
 	}
 
 	// Disable spinlocks so we have a chance of displaying a message.

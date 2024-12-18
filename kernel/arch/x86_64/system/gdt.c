@@ -59,6 +59,6 @@ void gdt_load(Gdt* gdt_table)
 	};
 
 	asm_gdt_set(gdtr);
-	asm_flush_segment_regs(offsetof(Gdt, kernel_code), offsetof(Gdt, kernel_data));
 	tss_reload();
+	asm_flush_segment_regs(offsetof(Gdt, kernel_code), offsetof(Gdt, kernel_data));
 }

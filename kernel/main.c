@@ -63,7 +63,7 @@ ATTR(noreturn) void kernel_init(BootInfo* info)
 	sch_init();
 
 	while (true)
-		sch_invoke();
+		sch_arch_invoke();
 }
 
 ATTR(noreturn) void kernel_main()

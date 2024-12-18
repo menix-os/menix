@@ -34,11 +34,12 @@
 				 "lretq\n" \
 				 "L_reload_regs%=:\n" \
 				 "mov %1, %%ax\n" \
+				 "mov %%ax, %%ss\n" \
+				 "xor %%ax, %%ax\n" \
 				 "mov %%ax, %%ds\n" \
 				 "mov %%ax, %%es\n" \
 				 "mov %%ax, %%fs\n" \
 				 "mov %%ax, %%gs\n" \
-				 "mov %%ax, %%ss\n" \
 				 : \
 				 : "i"(code_seg), "i"(data_seg) \
 				 : "rax")
