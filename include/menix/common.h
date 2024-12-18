@@ -44,3 +44,5 @@
 
 // Variables reclaimed after boot.
 #define RECLAIM ATTR(section(".reclaim"))
+
+#define restrict __restrict

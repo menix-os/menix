@@ -354,7 +354,7 @@ bool vm_protect(PageMap* page_map, VirtAddr virt_addr, VMProt prot, VMFlags flag
 	return result;
 }
 
-Context* interrupt_pf_handler(Context* regs)
+Context* interrupt_pf_handler(Context* regs, void* data)
 {
 	// CR2 holds the address that was accessed.
 	usize cr2;

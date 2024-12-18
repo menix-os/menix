@@ -1,4 +1,7 @@
 #include <menix/memory/pm.h>
+#include <menix/system/arch.h>
+#include <menix/system/interrupts.h>
+#include <menix/system/pci/pci.h>
 #include <menix/system/time/clock.h>
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
@@ -9,6 +12,9 @@
 #include <uacpi/uacpi.h>
 
 static PhysAddr acpi_rsdp;
+
+#undef todo
+#define todo()
 
 void acpi_init(PhysAddr rsdp)
 {
@@ -54,31 +60,48 @@ void* uacpi_kernel_calloc(uacpi_size count, uacpi_size size)
 
 uacpi_status uacpi_kernel_raw_memory_read(uacpi_phys_addr address, uacpi_u8 byte_width, uacpi_u64* out_value)
 {
-	todo();
-	return UACPI_STATUS_UNIMPLEMENTED;
+	void* ptr = pm_get_phys_base() + address;
+	switch (byte_width)
+	{
+		case sizeof(u8): *out_value = (*(mmio8*)ptr); break;
+		case sizeof(u16): *out_value = (*(mmio16*)ptr); break;
+		case sizeof(u32): *out_value = (*(mmio32*)ptr); break;
+		case sizeof(u64): *out_value = (*(mmio64*)ptr); break;
+		default: return UACPI_STATUS_INVALID_ARGUMENT;
+	}
+	return UACPI_STATUS_OK;
 }
+
 uacpi_status uacpi_kernel_raw_memory_write(uacpi_phys_addr address, uacpi_u8 byte_width, uacpi_u64 in_value)
 {
-	todo();
-	return UACPI_STATUS_UNIMPLEMENTED;
+	volatile void* ptr = pm_get_phys_base() + address;
+	switch (byte_width)
+	{
+		case sizeof(u8): (*(u8*)ptr) = in_value; break;
+		case sizeof(u16): (*(u16*)ptr) = in_value; break;
+		case sizeof(u32): (*(u32*)ptr) = in_value; break;
+		case sizeof(u64): (*(u64*)ptr) = in_value; break;
+		default: return UACPI_STATUS_INVALID_ARGUMENT;
+	}
+	return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_raw_io_read(uacpi_io_addr address, uacpi_u8 byte_width, uacpi_u64* out_value)
 {
-	todo();
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
+
 uacpi_status uacpi_kernel_raw_io_write(uacpi_io_addr address, uacpi_u8 byte_width, uacpi_u64 in_value)
 {
-	todo();
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_pci_read(uacpi_pci_address* address, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64* value)
 {
-	todo();
-	return UACPI_STATUS_UNIMPLEMENTED;
+	PCI_READ8(address->segment, address->bus, address->device, address->function, offset);
+	return UACPI_STATUS_OK;
 }
+
 uacpi_status uacpi_kernel_pci_write(uacpi_pci_address* address, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 value)
 {
 	todo();
@@ -147,18 +170,19 @@ void uacpi_kernel_sleep(uacpi_u64 msec)
 
 uacpi_handle uacpi_kernel_create_mutex(void)
 {
-	SpinLock* lock = kzalloc(sizeof(SpinLock));
-	return lock;
+	todo();
+	return kzalloc(8);
 }
+
 void uacpi_kernel_free_mutex(uacpi_handle mutex)
 {
-	kfree(mutex);
+	todo();
 }
 
 uacpi_handle uacpi_kernel_create_event(void)
 {
 	todo();
-	return NULL;
+	return kzalloc(8);
 }
 
 void uacpi_kernel_free_event(uacpi_handle)
@@ -169,14 +193,15 @@ void uacpi_kernel_free_event(uacpi_handle)
 uacpi_thread_id uacpi_kernel_get_thread_id(void)
 {
 	todo();
-	return NULL;
+	return (void*)arch_current_cpu();
 }
 
 uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle, uacpi_u16)
 {
 	todo();
-	return UACPI_STATUS_UNIMPLEMENTED;
+	return UACPI_STATUS_OK;
 }
+
 void uacpi_kernel_release_mutex(uacpi_handle)
 {
 	todo();
@@ -187,6 +212,7 @@ uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle, uacpi_u16)
 	todo();
 	return false;
 }
+
 void uacpi_kernel_signal_event(uacpi_handle)
 {
 	todo();
@@ -196,45 +222,71 @@ void uacpi_kernel_reset_event(uacpi_handle)
 {
 	todo();
 }
+
 uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request*)
 {
 	todo();
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
-uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interrupt_handler, uacpi_handle ctx,
+
+static Context* irq_handler_wrapper(Context* context, void* data)
+{
+	void** frame = (void**)data;
+	((uacpi_interrupt_handler)frame[0])(frame[1]);
+	return context;
+}
+
+uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interrupt_handler handler, uacpi_handle ctx,
 													uacpi_handle* out_irq_handle)
 {
-	todo();
-	return UACPI_STATUS_UNIMPLEMENTED;
+	void** context = kzalloc(sizeof(void*) * 2);
+	context[0] = handler;
+	context[1] = ctx;
+
+	isr_register_handler(arch_current_cpu()->id, irq, irq_handler_wrapper, context);
+	*out_irq_handle = context;
+	return UACPI_STATUS_OK;
 }
-uacpi_status uacpi_kernel_uninstall_interrupt_handler(uacpi_interrupt_handler, uacpi_handle irq_handle)
+
+uacpi_status uacpi_kernel_uninstall_interrupt_handler(uacpi_interrupt_handler handler, uacpi_handle irq_handle)
 {
-	todo();
-	return UACPI_STATUS_UNIMPLEMENTED;
+	void** frame = (void**)irq_handle;
+
+	// TODO
+	(void)frame;
+	// isr_unregister_handler(frame[0]);
+	kfree(irq_handle);
+	return UACPI_STATUS_OK;
 }
+
 uacpi_handle uacpi_kernel_create_spinlock(void)
 {
-	todo();
-	return NULL;
+	SpinLock* lock = kzalloc(sizeof(SpinLock));
+	return lock;
 }
-void uacpi_kernel_free_spinlock(uacpi_handle)
+
+void uacpi_kernel_free_spinlock(uacpi_handle lock)
 {
-	todo();
+	kfree(lock);
 }
-uacpi_cpu_flags uacpi_kernel_lock_spinlock(uacpi_handle)
+
+uacpi_cpu_flags uacpi_kernel_lock_spinlock(uacpi_handle lock)
 {
-	todo();
+	spin_lock(lock);
 	return 0;
 }
-void uacpi_kernel_unlock_spinlock(uacpi_handle, uacpi_cpu_flags)
+
+void uacpi_kernel_unlock_spinlock(uacpi_handle lock, uacpi_cpu_flags)
 {
-	todo();
+	spin_unlock(lock);
 }
-uacpi_status uacpi_kernel_schedule_work(uacpi_work_type, uacpi_work_handler, uacpi_handle ctx)
+
+uacpi_status uacpi_kernel_schedule_work(uacpi_work_type type, uacpi_work_handler handler, uacpi_handle ctx)
 {
 	todo();
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
+
 uacpi_status uacpi_kernel_wait_for_work_completion(void)
 {
 	todo();

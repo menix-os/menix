@@ -47,7 +47,7 @@ static void fbcon_scroll()
 	const usize offset = (FONT_HEIGHT * internal_fb->mode.pitch);
 
 	// Move all lines up by one.
-	memmove(buf, buf + offset, offset * (ch_height - 1));
+	memcpy(buf, buf + offset, offset * (ch_height - 1));
 
 	// Blank the new line.
 	memset((void*)buf + (offset * (ch_height - 1)), 0x00, offset);

@@ -7,7 +7,7 @@
 #include <apic.h>
 #include <idt.h>
 
-Context* interrupt_ud_handler(Context* regs)
+Context* interrupt_ud_handler(Context* regs, void* data)
 {
 	// Make sure we're in user mode, otherwise we have to crash.
 	print_log("Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
@@ -26,7 +26,7 @@ Context* interrupt_ud_handler(Context* regs)
 }
 
 // Handles the syscall interrupt. Also referenced by system/arch.s
-Context* syscall_handler(Context* regs)
+Context* syscall_handler(Context* regs, void* data)
 {
 	// Save the registers.
 	Cpu* const core = arch_current_cpu();

@@ -28,6 +28,7 @@ typedef struct Cpu
 	usize ticks_active;				  // The amount of ticks the running thread has been active.
 	bool is_present;				  // If the CPU is present.
 	InterruptFn irq_handlers[256];	  // IRQ handlers.
+	InterruptFn irq_data[256];		  // IRQ context to pass along.
 
 #ifdef CONFIG_arch_x86_64
 	Gdt gdt;

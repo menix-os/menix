@@ -38,13 +38,46 @@ int memcmp(const void* s1, const void* s2, usize size)
 	return diff;
 }
 
-void* memcpy(void* restrict dst_ptr, const void* restrict src_ptr, usize size)
+void* memcpy(void* restrict dest, const void* restrict src, usize n)
 {
-	for (usize i = 0; i < size; i++)
+	if (n == 0)
+		return dest;
+
+	usize d = (usize)dest;
+	usize s = (usize)src;
+
+	if (d % sizeof(usize) != 0 || s % sizeof(usize) != 0)
 	{
-		((u8*)dst_ptr)[i] = ((u8*)src_ptr)[i];
+		while (n && (d % sizeof(usize) != 0) && (s % sizeof(usize) != 0))
+		{
+			*((u8*)d) = *((u8*)s);
+			d++;
+			s++;
+			n--;
+		}
 	}
-	return dst_ptr;
+
+	usize* qword_dest = (usize*)d;
+	const usize* qword_src = (const usize*)s;
+	const usize word_count = n / sizeof(usize);
+
+	for (usize i = 0; i < word_count; i++)
+	{
+		qword_dest[i] = qword_src[i];
+	}
+
+	usize remaining_bytes = n % sizeof(usize);
+	d = (usize)(qword_dest + word_count);
+	s = (usize)(qword_src + word_count);
+
+	while (remaining_bytes--)
+	{
+		*((u8*)d) = *((u8*)s);
+		d++;
+		s++;
+	}
+
+	return dest;
 }
 
 void* memmove(void* dstptr, const void* srcptr, usize size)
@@ -64,12 +97,46 @@ void* memmove(void* dstptr, const void* srcptr, usize size)
 	return dstptr;
 }
 
-void* memset(void* dst, u8 value, usize size)
+void* memset(void* dest, u8 value, usize n)
 {
-	u8* buf = (u8*)dst;
-	for (usize i = 0; i < size; i++)
-		buf[i] = (u8)value;
-	return dst;
+	if (n == 0)
+		return dest;
+
+	usize d = (usize)dest;
+
+	if (d % sizeof(usize) != 0)
+	{
+		while (n && (d % sizeof(usize) != 0))
+		{
+			*((u8*)d) = value;
+			d++;
+			n--;
+		}
+	}
+
+	usize* qword_dest = (usize*)d;
+	usize qword_value = value;
+	qword_value |= (qword_value << 8);
+	qword_value |= (qword_value << 16);
+	qword_value |= (qword_value << 32);
+
+	const usize word_count = n / sizeof(usize);
+
+	for (usize i = 0; i < word_count; i++)
+	{
+		qword_dest[i] = qword_value;
+	}
+
+	usize remaining_bytes = n % sizeof(usize);
+	d = (usize)(qword_dest + word_count);
+
+	while (remaining_bytes--)
+	{
+		*((u8*)d) = value;
+		d++;
+	}
+
+	return dest;
 }
 
 char* strdup(const char* src)

@@ -1,3 +1,4 @@
+#include <menix/common.h>
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
@@ -6,8 +7,8 @@
 
 #include <string.h>
 
-PageMap* vm_kernel_map = NULL;									 // Page map used for the kernel.
-VirtAddr vm_kernel_foreign_base = CONFIG_vm_map_foreign_base;	 // Start of foreign mappings.
+PageMap* vm_kernel_map = NULL;							  // Page map used for the kernel.
+VirtAddr kernel_map_base = CONFIG_vm_map_foreign_base;	  // Start of mappings allocated to the kernel.
 
 SEGMENT_DECLARE_SYMBOLS(text)
 SEGMENT_DECLARE_SYMBOLS(rodata)
@@ -38,9 +39,9 @@ void vm_init(PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 			highest = region_end;
 	}
 
-	const void* pyhs_base = pm_get_phys_base();
+	const void* phys_base = pm_get_phys_base();
 	for (usize cur = 0; cur < highest; cur += vm_get_page_size(VMLevel_Large))
-		kassert(vm_map(vm_kernel_map, cur, (VirtAddr)pyhs_base + cur, VMProt_Read | VMProt_Write, 0, VMLevel_Large),
+		kassert(vm_map(vm_kernel_map, cur, (VirtAddr)phys_base + cur, VMProt_Read | VMProt_Write, 0, VMLevel_Large),
 				"Unable to map physical memory!");
 
 	// Map the kernel segments to the current physical address again.
@@ -95,9 +96,26 @@ usize vm_user_write(Process* proc, VirtAddr dst, void* src, usize num)
 	return written;
 }
 
+void* vm_map_private(PhysAddr phys_addr, usize len)
+{
+	const usize page_size = vm_get_page_size(VMLevel_Small);
+	const usize aligned_bytes = ALIGN_UP(len, page_size);
+	const usize num_pages = aligned_bytes / page_size;
+
+	VirtAddr start = kernel_map_base;
+	for (usize page = 0; page < num_pages; page++)
+	{
+		vm_map(vm_kernel_map, phys_addr + (page_size * page), start + (page_size * page), VMProt_Read | VMProt_Write, 0,
+			   VMLevel_Small);
+	}
+
+	kernel_map_base += aligned_bytes;
+	return (void*)start;
+}
+
 void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
 {
-	VirtAddr start = vm_kernel_foreign_base;
+	VirtAddr start = kernel_map_base;
 
 	for (usize page = 0; page < num_pages; page++)
 	{
@@ -117,7 +135,7 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
 
 	// TODO: This is really bad and might cause a crash if left running for a really long time.
 	// It's a better idea to keep track of these maps, just like the PM.
-	vm_kernel_foreign_base += num_pages * vm_get_page_size(VMLevel_Small);
+	kernel_map_base += num_pages * vm_get_page_size(VMLevel_Small);
 
 	return (void*)start;
 }

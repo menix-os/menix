@@ -12,7 +12,7 @@ void clock_register(ClockSource* source)
 	if (source == NULL || source->get_elapsed_ns == NULL)
 		return;
 
-	print_log("clock: switching to new source \"%s\"\n", source->name);
+	print_log("clock: Switching to new source \"%s\"\n", source->name);
 	current_source = source;
 }
 

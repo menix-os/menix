@@ -47,7 +47,7 @@ pub static THIS_MODULE: Module = Module {
 
 pub extern "C" fn init_fn() -> i32 {
     unsafe {
-        print_log(c"[rust_example]\tHello from Rust!\n".as_ptr());
+        kmesg_direct(c"[rust_example]\tHello from Rust!\n".as_ptr());
     }
     return 0;
 }

@@ -50,7 +50,7 @@ typedef struct
 } PageMap;
 
 extern PageMap* vm_kernel_map;
-extern VirtAddr vm_kernel_foreign_base;
+extern VirtAddr kernel_map_base;
 
 // Initializes the virtual memory mapping with a bootloader-provided physical memory map.
 // `kernel_base`: A physical address pointing to the memory where the kernel has been loaded.
