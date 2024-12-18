@@ -13,6 +13,8 @@
 
 #include <string.h>
 
+#define LIMINE_API_REVISION 1
+
 #include "limine.h"
 
 #define LIMINE_REQUEST(request, tag, rev) \
@@ -23,7 +25,7 @@
 	}
 
 ATTR(used, section(".requests_start_marker")) static volatile LIMINE_REQUESTS_START_MARKER;	   // Start requests
-ATTR(used, section(".requests")) static volatile LIMINE_BASE_REVISION(2);
+ATTR(used, section(".requests")) static volatile LIMINE_BASE_REVISION(3);
 
 LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST, 0);					 // Get memory map.
 LIMINE_REQUEST(hhdm_request, LIMINE_HHDM_REQUEST, 0);						 // Directly map 32-bit physical space.
@@ -42,7 +44,7 @@ LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);	   // Get device tree blob i
 
 ATTR(used, section(".requests_end_marker")) static volatile LIMINE_REQUESTS_END_MARKER;	   // End requests
 
-RECLAIM static FrameBuffer early_fb;
+static FrameBuffer early_fb;
 
 void kernel_boot()
 {

@@ -26,7 +26,7 @@ static u8 acpi_checksum(void* ptr, usize size)
 	return sum;
 }
 
-void acpi_init(AcpiRsdp* rsdp)
+void acpi_init_old(AcpiRsdp* rsdp)
 {
 	kassert(rsdp != NULL, "Failed to set RSDP: None given!");
 

@@ -40,10 +40,10 @@ int memcmp(const void* s1, const void* s2, usize size)
 
 void* memcpy(void* restrict dst_ptr, const void* restrict src_ptr, usize size)
 {
-	u8* dst = (u8*)dst_ptr;
-	const u8* src = (const u8*)src_ptr;
 	for (usize i = 0; i < size; i++)
-		dst[i] = src[i];
+	{
+		((u8*)dst_ptr)[i] = ((u8*)src_ptr)[i];
+	}
 	return dst_ptr;
 }
 

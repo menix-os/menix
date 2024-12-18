@@ -9,7 +9,7 @@
 #define ACPI_ADDR(addr) ((PhysAddr)(addr) + pm_get_phys_base())
 
 // Initializes the ACPI subsystem with a pointer to the RSDP.
-void acpi_init(AcpiRsdp* rsdp);
+void acpi_init(PhysAddr rsdp);
 
 // Finds a table using its signature.
 // `signature`: A 4-character string with the table's signature.

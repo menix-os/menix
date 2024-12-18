@@ -7,6 +7,8 @@
 #include <menix/util/log.h>
 
 #include <hpet.h>
+#include <uacpi/acpi.h>
+#include <uacpi/tables.h>
 
 typedef struct
 {
@@ -44,10 +46,12 @@ static void hpet_setup(PhysAddr addr)
 
 void hpet_init()
 {
-	AcpiHpet* hpet_table = acpi_find_table("HPET", 0);
-	kassert(hpet_table, "ACPI tables didn't contain an HPET table!");
+	uacpi_table hpet_table;
+	kassert(!uacpi_table_find_by_signature("HPET", &hpet_table), "Failed to get the HPET table!");
+	struct acpi_hpet* hpet = hpet_table.ptr;
 
-	print_log("acpi: HPET at 0x%p\n", hpet_table->address.address);
+	print_log("acpi: HPET at 0x%p\n", hpet);
 
-	hpet_setup(hpet_table->address.address);
+	hpet_setup(hpet->address.address);
+	uacpi_table_unref(&hpet_table);
 }

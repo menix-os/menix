@@ -65,8 +65,7 @@
 	do \
 	{ \
 		__get_print_info; \
-		kmesg_direct("[%5zu.%06zu] [%7zu] warn: %s (%s:%zu) is still TODO!\n", __secs, __millis, __tid, __FUNCTION__, \
-					 __FILE__, __LINE__); \
+		kmesg_direct("[%5zu.%06zu] [%7zu] warn: %s is still TODO!\n", __secs, __millis, __tid, __FUNCTION__); \
 	} while (0)
 
 // Print a message to the kernel log.

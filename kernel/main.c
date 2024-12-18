@@ -23,6 +23,9 @@ ATTR(noreturn) void kernel_init(BootInfo* info)
 
 	// Initialize memory managers.
 	pm_init(info->phys_base, info->memory_map, info->mm_num);
+	// Finalize virtual memory manager and drop reclaimable memory.
+	vm_init(info->kernel_phys, info->memory_map, info->mm_num);
+
 	alloc_init();
 
 	// Now that we can allocate, copy over the command line so it doesn't get lost when we drop `.reclaim`.
@@ -52,9 +55,6 @@ ATTR(noreturn) void kernel_init(BootInfo* info)
 
 	print_log("boot: Finished early initialization.\n");
 	arch_init(info);
-
-	// Finalize virtual memory manager and drop reclaimable memory.
-	vm_init(info->kernel_phys, info->memory_map, info->mm_num);
 
 	// Initialize all modules and subsystems.
 	module_init();

@@ -28,7 +28,7 @@ typedef struct
 	BootFile files[32];		   // Array of files.
 	FrameBuffer* fb;		   // Early frame buffer.
 #ifdef CONFIG_acpi
-	void* acpi_rsdp;	// ACPI RSDP table.
+	PhysAddr acpi_rsdp;	   // ACPI RSDP table.
 #endif
 #ifdef CONFIG_open_firmware
 	void* fdt_blob;	   // Device tree blob.
