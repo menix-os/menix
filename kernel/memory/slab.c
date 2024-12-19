@@ -37,14 +37,14 @@ static void slab_new(Slab* slab, usize size)
 void slab_init(void)
 {
 	// Create slabs for common structure sizes to minimize overhead.
-	slab_new(&slabs[0], 8);
-	slab_new(&slabs[1], 16);
-	slab_new(&slabs[2], 32);
-	slab_new(&slabs[3], 64);
-	slab_new(&slabs[4], 128);
-	slab_new(&slabs[5], 256);
-	slab_new(&slabs[6], 512);
-	slab_new(&slabs[7], 1024);
+	slab_new(&slabs[0], 16);
+	slab_new(&slabs[1], 32);
+	slab_new(&slabs[2], 64);
+	slab_new(&slabs[3], 128);
+	slab_new(&slabs[4], 256);
+	slab_new(&slabs[5], 512);
+	slab_new(&slabs[6], 1024);
+	slab_new(&slabs[7], 2048);
 }
 
 static void* slab_do_alloc(Slab* slab)
