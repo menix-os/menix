@@ -16,29 +16,6 @@ typedef struct
 	u32 creator_revision;
 } AcpiDescHeader;
 
-// Root System Description Pointer
-typedef struct
-{
-	char signature[8];
-	u8 checksum;
-	char oemid[6];
-	u8 revision;
-	u32 rsdt_address;
-	u32 length;
-#if CONFIG_bits >= 64
-	u64 xsdt_address;
-	u8 ext_checksum;
-	u8 reserved[3];
-#endif
-} ATTR(packed) AcpiRsdp;
-
-// Root System Description Table
-typedef struct
-{
-	AcpiDescHeader header;
-	PhysAddr entries[];
-} ATTR(packed) AcpiRsdt;
-
 // Multiple APIC Table
 typedef struct
 {
@@ -47,32 +24,3 @@ typedef struct
 	u32 flags;
 	u8 entries[];
 } ATTR(packed) AcpiMadt;
-
-typedef struct
-{
-	u64 base;
-	u16 segment_group;
-	u8 bus_start;
-	u8 bus_end;
-	char reserved[4];
-} ATTR(packed) AcpiMcfgEntry;
-
-// Enhanced Configuration Mechanism
-typedef struct
-{
-	AcpiDescHeader header;
-	char reserved[8];
-	AcpiMcfgEntry entries[];
-} ATTR(packed) AcpiMcfg;
-
-// Boot Graphics Record Table
-typedef struct
-{
-	AcpiDescHeader header;
-	u16 version_id;
-	u8 status;
-	u8 image_type;
-	PhysAddr image_addr;
-	u32 image_xoff;
-	u32 image_yoff;
-} ATTR(packed) AcpiBgrt;

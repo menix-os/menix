@@ -1,4 +1,5 @@
 #include <menix/memory/pm.h>
+#include <menix/system/acpi/madt.h>
 #include <menix/system/arch.h>
 #include <menix/system/interrupts.h>
 #include <menix/system/pci/pci.h>
@@ -23,7 +24,10 @@ void acpi_init(PhysAddr rsdp)
 	void* temp_buffer = kmalloc(4096);
 	uacpi_setup_early_table_access(temp_buffer, 4096);
 
+#ifdef CONFIG_arch_x86_64
 	hpet_init();
+	madt_init();
+#endif
 
 	uacpi_initialize(0);
 	kfree(temp_buffer);
@@ -88,12 +92,28 @@ uacpi_status uacpi_kernel_raw_memory_write(uacpi_phys_addr address, uacpi_u8 byt
 
 uacpi_status uacpi_kernel_raw_io_read(uacpi_io_addr address, uacpi_u8 byte_width, uacpi_u64* out_value)
 {
-	return UACPI_STATUS_UNIMPLEMENTED;
+	void* ptr = pm_get_phys_base() + address;
+	switch (byte_width)
+	{
+		case sizeof(u8): *out_value = (*(mmio8*)ptr); break;
+		case sizeof(u16): *out_value = (*(mmio16*)ptr); break;
+		case sizeof(u32): *out_value = (*(mmio32*)ptr); break;
+		default: return UACPI_STATUS_INVALID_ARGUMENT;
+	}
+	return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_raw_io_write(uacpi_io_addr address, uacpi_u8 byte_width, uacpi_u64 in_value)
 {
-	return UACPI_STATUS_UNIMPLEMENTED;
+	volatile void* ptr = pm_get_phys_base() + address;
+	switch (byte_width)
+	{
+		case sizeof(u8): (*(u8*)ptr) = in_value; break;
+		case sizeof(u16): (*(u16*)ptr) = in_value; break;
+		case sizeof(u32): (*(u32*)ptr) = in_value; break;
+		default: return UACPI_STATUS_INVALID_ARGUMENT;
+	}
+	return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_pci_read(uacpi_pci_address* address, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64* value)

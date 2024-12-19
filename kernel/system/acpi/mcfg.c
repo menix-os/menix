@@ -8,11 +8,26 @@
 #include <menix/system/pci/pci.h>
 #include <menix/util/log.h>
 
-AcpiMcfg* acpi_mcfg;
+#include <uacpi/acpi.h>
+#include <uacpi/tables.h>
+
+struct acpi_mcfg* mcfg;
 
 void mcfg_init()
 {
-	acpi_mcfg = acpi_find_table("MCFG", 0);
+	uacpi_table mcfg_table;
+
+	// There are some systems that don't have a MCFG table.
+	// If there is no MCFG table, we cannot configure PCI using ACPI.
+	if (uacpi_table_find_by_signature(ACPI_MCFG_SIGNATURE, &mcfg_table) != UACPI_STATUS_OK)
+	{
+		print_log("pci: Unable to configure PCI system using ACPI: The MCFG table was not present.\n");
+		print_log("Disable the PCI subsystem with `pci=0` or use a device tree to continue booting.\n");
+		kabort();
+	}
+
+	mcfg = mcfg_table.ptr;
+
 	pci_platform.pci_read8 = mcfg_read8;
 	pci_platform.pci_read16 = mcfg_read16;
 	pci_platform.pci_read32 = mcfg_read32;
@@ -20,23 +35,7 @@ void mcfg_init()
 	pci_platform.pci_write16 = mcfg_write16;
 	pci_platform.pci_write32 = mcfg_write32;
 
-	// There are some x86 systems that don't have a MCFG table.
-	// In that case we can still use the port IO to configure the devices as a fallback.
-	// On the other hand, if we aren't on x86 and there is no MCFG table, we cannot configure PCI.
-	if (acpi_mcfg == NULL)
-	{
-		print_log("pci: Unable to configure PCI system using ACPI: The MCFG table was not present. ");
-#ifdef CONFIG_arch_x86_64
-		print_log("Falling back to x86 mode.\n");
-		// TODO: Set function callbacks to x86.
-#else
-		print_log("Disable the PCI subsystem with `pci=0;` to continue.\n");
-		kabort();
-#endif
-		return;
-	}
-
-	const usize num_entries = (acpi_mcfg->header.length - sizeof(AcpiMcfg)) / sizeof(AcpiMcfgEntry);
+	const usize num_entries = (mcfg->hdr.length - sizeof(struct acpi_mcfg)) / sizeof(struct acpi_mcfg_allocation);
 	list_new(pci_platform.buses, num_entries);
 
 	// Scan all buses for devices.
@@ -56,16 +55,16 @@ void mcfg_init()
 #define implement_read(type, name, fn) \
 	type name(u16 seg, u8 bus, u8 slot, u8 func, u16 offset) \
 	{ \
-		const usize num_entries = (acpi_mcfg->header.length - sizeof(AcpiMcfg)) / sizeof(AcpiMcfgEntry); \
+		const usize num_entries = (mcfg->hdr.length - sizeof(struct acpi_mcfg)) / sizeof(struct acpi_mcfg_allocation); \
 		for (usize i = 0; i < num_entries; i++) \
 		{ \
-			AcpiMcfgEntry* entry = &acpi_mcfg->entries[i]; \
-			if (entry->segment_group != seg) \
+			struct acpi_mcfg_allocation* entry = &mcfg->entries[i]; \
+			if (entry->segment != seg) \
 				continue; \
-			if (bus < entry->bus_start && bus > entry->bus_end) \
+			if (bus < entry->start_bus && bus > entry->end_bus) \
 				continue; \
 			void* addr = (void*)ACPI_ADDR( \
-				((entry->base + (((bus - entry->bus_start) << 20) | (slot << 15) | (func << 12))) | offset)); \
+				((entry->address + (((bus - entry->start_bus) << 20) | (slot << 15) | (func << 12))) | offset)); \
 			return fn(addr); \
 		} \
 		return 0; \
@@ -74,16 +73,16 @@ void mcfg_init()
 #define implement_write(type, name, fn) \
 	void name(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, type value) \
 	{ \
-		const usize num_entries = (acpi_mcfg->header.length - sizeof(AcpiMcfg)) / sizeof(AcpiMcfgEntry); \
+		const usize num_entries = (mcfg->hdr.length - sizeof(struct acpi_mcfg)) / sizeof(struct acpi_mcfg_allocation); \
 		for (usize i = 0; i < num_entries; i++) \
 		{ \
-			AcpiMcfgEntry* entry = &acpi_mcfg->entries[i]; \
-			if (entry->segment_group != seg) \
+			struct acpi_mcfg_allocation* entry = &mcfg->entries[i]; \
+			if (entry->segment != seg) \
 				continue; \
-			if (bus < entry->bus_start && bus > entry->bus_end) \
+			if (bus < entry->start_bus && bus > entry->end_bus) \
 				continue; \
 			void* addr = (void*)ACPI_ADDR( \
-				((entry->base + (((bus - entry->bus_start) << 20) | (slot << 15) | (func << 12))) | offset)); \
+				((entry->address + (((bus - entry->start_bus) << 20) | (slot << 15) | (func << 12))) | offset)); \
 			fn(addr, value); \
 		} \
 	}

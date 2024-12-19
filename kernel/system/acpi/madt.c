@@ -4,7 +4,10 @@
 #include <menix/system/acpi/madt.h>
 #include <menix/util/log.h>
 
-AcpiMadt* acpi_madt;
+#include <uacpi/acpi.h>
+#include <uacpi/tables.h>
+
+struct acpi_madt* madt;
 PhysAddr lapic_addr;
 
 MadtLApicList madt_lapic_list;
@@ -19,13 +22,16 @@ void madt_init()
 	list_new(madt_iso_list, 0);
 	list_new(madt_nmi_list, 0);
 
-	acpi_madt = acpi_find_table("APIC", 0);
-	kassert(acpi_madt != NULL, "ACPI tables don't contain a MADT! This is faulty behavior!");
+	uacpi_table madt_table;
+	kassert(!uacpi_table_find_by_signature(ACPI_MADT_SIGNATURE, &madt_table),
+			"ACPI tables don't contain a MADT! This is faulty behavior!");
 
-	lapic_addr = acpi_madt->lapic_addr;
+	madt = madt_table.ptr;
+
+	lapic_addr = madt->local_interrupt_controller_address;
 
 	// Iterate over all APIC entries.
-	for (u8* cur = acpi_madt->entries; cur < (u8*)(acpi_madt + acpi_madt->header.length); cur++)
+	for (u8* cur = (u8*)madt->entries; cur < (u8*)(madt) + madt->hdr.length; cur++)
 	{
 		// First field is the type.
 		switch (*cur)
