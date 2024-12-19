@@ -5,7 +5,7 @@
 
 /* Swaps GSBASE if CPL == KERNEL */
 .macro swapgs_if_necessary
-	cmpw	$0x8,	0x8(%rsp)
+	cmpw	$0x8,	0x18(%rsp)
 	je		1f
 	swapgs
 1:
@@ -88,19 +88,20 @@ interrupt_internal:
 	call	isr_handler			/* Call interrupt handler */
 	mov		%rax,	%rsp		/* interrupt_handler returns a pointer to the new context. */
 	pop_all_regs
-	add		$0x10,	%rsp		/* Skip Context.error and Context.isr fields. */
 	swapgs_if_necessary			/* Change GS back to user mode if we came from user mode. */
+	add		$0x8,	%rsp		/* Skip Context.isr field. */
+	add		$0x8,	%rsp		/* Skip Context.error field. */
 	iretq
 
 /* Define 256 interrupt stubs using the macro above. */
 .rept 256
 .align 0x10
 interrupt_\+:
-	swapgs_if_necessary			/* Change GS to kernel mode if we're coming from user mode. */
 .if !(\+ == 8 || (\+ >= 10 && \+ <= 14) || \+ == 17 || \+ == 21 || \+ == 29 || \+ == 30)
 	pushq	$0					/* If this is an interrupt that doesn't push an error code, push one ourselves. */
 .endif
 	pushq	$\+					/* Push the ISR to the stack. */
+	swapgs_if_necessary			/* Change GS to kernel mode if we're coming from user mode. */
 	jmp		interrupt_internal
 .endr
 

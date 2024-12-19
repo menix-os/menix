@@ -91,8 +91,8 @@ void lapic_init(usize cpu_id)
 	// Set timer init counter to -1
 	lapic_write(0x380, 0xFFFFFFFF);
 
-	// See how many ticks pass in 100 microseconds.
-	clock_wait(100 * 10000);
+	// See how many ticks pass in 10 milliseconds.
+	clock_wait(10 * 1000000);
 
 	// Stop the APIC timer
 	lapic_write(0x320, 0x10000);

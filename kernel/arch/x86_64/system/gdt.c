@@ -10,6 +10,7 @@
 void gdt_init(Gdt* gdt_table, TaskStateSegment* tss)
 {
 	// clang-format off
+	asm_interrupt_disable();
 
 	// Kernel Code
 	GDT_ENCODE(gdt_table->kernel_code,
@@ -49,10 +50,12 @@ void gdt_init(Gdt* gdt_table, TaskStateSegment* tss)
 		0);
 
 	// clang-format on
+	asm_interrupt_enable();
 }
 
 void gdt_load(Gdt* gdt_table)
 {
+	asm_interrupt_disable();
 	GdtRegister gdtr = {
 		.limit = sizeof(Gdt) - 1,
 		.base = gdt_table,
@@ -61,4 +64,5 @@ void gdt_load(Gdt* gdt_table)
 	asm_gdt_set(gdtr);
 	tss_reload();
 	asm_flush_segment_regs(offsetof(Gdt, kernel_code), offsetof(Gdt, kernel_data));
+	asm_interrupt_enable();
 }
