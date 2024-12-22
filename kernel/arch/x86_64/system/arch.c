@@ -36,7 +36,7 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot_cpu)
 	// Enable syscall extension (EFER.SCE).
 	asm_wrmsr(MSR_EFER, asm_rdmsr(MSR_EFER) | MSR_EFER_SCE);
 	// Bits 32-47 are kernel segment base, Bits 48-63 are user segment base. Lower 32 bits (EIP) are unused.
-	asm_wrmsr(MSR_STAR, (offsetof(Gdt, kernel_code)) | (offsetof(Gdt, user_code) << 16) << 32);
+	asm_wrmsr(MSR_STAR, (offsetof(Gdt, kernel_code)) | ((offsetof(Gdt, user_code) | CPL_USER) << 16) << 32);
 	// Set syscall entry point.
 	asm_wrmsr(MSR_LSTAR, (u64)sc_syscall);
 	// Set the flag mask to everything except the second bit (always has to be enabled).

@@ -248,10 +248,6 @@ Context* sch_reschedule(Context* context)
 	cur->thread = running;
 	sch_arch_update(cur, running);
 
-	//! TODO: Nasty workaround. Need to figure out what's corrupting CS and SS values on interrupt entry.
-	if (running->registers.ss == 0x20)
-		running->registers.ss = 0x23;
-
 	// Load new page map.
 	vm_set_page_map(running->parent->page_map);
 	return &running->registers;
