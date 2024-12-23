@@ -9,7 +9,7 @@
 
 #include <gdt.h>
 
-void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
+void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 {
 	target->is_user = is_user;
 	target->registers.rip = start;
@@ -74,7 +74,7 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 	target->registers.rflags = 0x202;	 // Interrupt enable
 }
 
-void thread_destroy(Thread* thread)
+void thread_arch_destroy(Thread* thread)
 {
 	kfree((void*)(thread->kernel_stack - CONFIG_kernel_stack_size));
 	pm_free(thread->saved_fpu - pm_get_phys_base(), ROUND_UP(arch_current_cpu()->fpu_size, arch_page_size));

@@ -50,7 +50,7 @@ SYSCALL_IMPL(execve, const char* path, char** argv, char** envp)
 	if (path == NULL)
 		return SYSCALL_ERR(ENOENT);
 
-	if (proc_execve(NULL, path, argv, envp, true) == true)
+	if (proc_create_elf(NULL, path, argv, envp, true) == true)
 		return SYSCALL_OK(0);
 	else
 		return SYSCALL_ERR(arch_current_cpu()->thread->errno);

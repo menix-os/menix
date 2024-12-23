@@ -54,12 +54,12 @@ void thread_set_errno(usize errno);
 // `parent`: The parent process of the new thread.
 Thread* thread_create(Process* parent);
 
-// Sets up the context of a user thread using execve.
+// Sets up the context of a user thread.
 // `target`: The thread to set up.
 // `start`: The virtual address where this thread will start executing from.
 // `argv`: A NULL-terminated list of program arguments to be passed to the new process.
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
-void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, bool is_user);
+void thread_setup(Thread* target, VirtAddr start, char** argv, char** envp, bool is_user);
 
 // Sets up the context of a thread.
 // `target`: The thread to set up.
@@ -67,12 +67,12 @@ void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, boo
 // `is_user`: True if this thread belongs to the user, otherwise it's a kernel thread.
 // `stack`: (Optional) If nonzero, sets the user stack to this address instead of allocating a new stack.
 // ? Defined per architecture.
-void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack);
+void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack);
 
 // Destroys the context of a thread.
 // `target`: The thread to destroy.
 // ? Defined per architecture.
-void thread_destroy(Thread* thread);
+void thread_arch_destroy(Thread* thread);
 
 // Make a thread sleep for a certain time.
 // `target`: The thread to put to sleep.

@@ -63,7 +63,7 @@ Process* proc_create(const char* name, ProcessState state, bool is_user, Process
 	return proc;
 }
 
-bool proc_execve(const char* name, const char* path, char** argv, char** envp, bool is_user)
+bool proc_create_elf(const char* name, const char* path, char** argv, char** envp, bool is_user)
 {
 	kassert(path != NULL, "Path can't be null!");
 
@@ -136,8 +136,7 @@ bool proc_execve(const char* name, const char* path, char** argv, char** envp, b
 
 	Thread* thread = thread_create(proc);
 	proc->elf_info = info;
-	thread_execve(thread, entry_point, argv, envp, is_user);
-	// TODO: arch_current_cpu()->user_stack = proc->stack_top;
+	thread_setup(thread, entry_point, argv, envp, is_user);
 
 	vm_set_page_map(map);
 

@@ -24,6 +24,34 @@ SpinLock vfs_lock = {0};
 static VfsNode* vfs_root = NULL;
 static HashMap(FileSystem*) fs_map;
 
+char* kmesg_buffer = NULL;
+usize kmesg_len;
+usize kmesg_cap;
+
+isize terminal_kmesg_read(Handle* self, FileDescriptor* fd, void* output_buffer, usize amount, off_t offset)
+{
+	if (amount > kmesg_len)
+		amount = kmesg_len;
+
+	memcpy(output_buffer, kmesg_buffer + offset, amount);
+	return amount;
+}
+
+isize terminal_kmesg_write(Handle* self, FileDescriptor* fd, const void* input_buffer, usize amount, off_t offset)
+{
+	if (kmesg_len + amount > kmesg_cap)
+	{
+		kmesg_cap *= 2;
+		kmesg_buffer = krealloc(kmesg_buffer, kmesg_cap);
+	}
+
+	memcpy(kmesg_buffer + kmesg_len, input_buffer, amount);
+	kmesg_len += amount;
+	return amount;
+}
+
+Handle kmesg_driver = {0};
+
 void vfs_init()
 {
 	// Create root.
@@ -51,6 +79,14 @@ void vfs_init()
 	vfs_node_add(vfs_root, "/dev", 0755 | S_IFDIR);
 	kassert(vfs_mount(vfs_root, NULL, "/dev", "devtmpfs"), "Mount failed, devtmpfs unavailable!");
 	devtmpfs_register_default();
+
+	// Create /dev/kmesg.
+	kmesg_cap = 4096;
+	kmesg_len = 0;
+	kmesg_buffer = kmalloc(kmesg_cap);
+	devtmpfs_add_device(&kmesg_driver, "kmesg");
+	kmesg_driver.read = terminal_kmesg_read;
+	kmesg_driver.write = terminal_kmesg_write;
 }
 
 VfsNode* vfs_get_root()

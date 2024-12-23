@@ -78,6 +78,8 @@ void terminal_set_driver(usize terminal, Handle* driver)
 	spin_unlock(&terminal_lock);
 }
 
+extern Handle kmesg_driver;
+
 void terminal_puts(usize terminal, const char* buf, usize len)
 {
 	if (terminal > TERMINAL_MAX)
@@ -87,4 +89,7 @@ void terminal_puts(usize terminal, const char* buf, usize len)
 	Handle* handle = terminal_list[terminal].driver;
 	if (handle != NULL && handle->write != NULL)
 		handle->write(handle, NULL, buf, len, 0);
+
+	if (kmesg_driver.write)
+		kmesg_driver.write(NULL, NULL, buf, len, 0);
 }

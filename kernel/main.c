@@ -31,6 +31,9 @@ ATTR(noreturn) void kernel_init(BootInfo* boot_info)
 	vm_init(boot_info->kernel_phys, boot_info->memory_map, boot_info->mm_num);
 	alloc_init();
 
+	// Initialize virtual file system.
+	vfs_init();
+
 	// Now that we can allocate, copy over the command line so it doesn't get lost when we drop `.reclaim`.
 	cmd_init();
 
@@ -49,8 +52,6 @@ ATTR(noreturn) void kernel_init(BootInfo* boot_info)
 
 ATTR(noreturn) void kernel_main()
 {
-	// Initialize virtual file system.
-	vfs_init();
 	// Load initrd(s).
 	for (usize i = 0; i < info->file_num; i++)
 		ustarfs_init(vfs_get_root(), info->files[i].address, info->files[i].size);
@@ -78,7 +79,7 @@ ATTR(noreturn) void kernel_main()
 	char* argv[] = {init_name, NULL};
 	char* envp[] = {NULL};
 
-	bool init_started = proc_execve(init_name, init_path, argv, envp, true);
+	bool init_started = proc_create_elf(init_name, init_path, argv, envp, true);
 	kassert(init_started == true, "Failed to run init binary! Try adding \"init=...\" to the command line.");
 
 	while (true)

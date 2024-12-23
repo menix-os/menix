@@ -65,7 +65,7 @@ Process* proc_create(const char* name, ProcessState state, bool is_user, Process
 // `argv`: A NULL-terminated list of program arguments to be passed to the new process.
 // `envp`: A NULL-terminated list of environment variables to be passed to the new process.
 // `is_user`: True if this process belongs to the user, otherwise it's a kernel process.
-bool proc_execve(const char* name, const char* path, char** argv, char** envp, bool is_user);
+bool proc_create_elf(const char* name, const char* path, char** argv, char** envp, bool is_user);
 
 // Sets up a process context.
 // `proc`: The process to set up.

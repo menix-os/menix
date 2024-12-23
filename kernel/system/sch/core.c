@@ -19,7 +19,7 @@ void sch_init()
 	// Create the first process for kernel tasks (PID 0).
 	Process* kernel_proc = proc_create("kernel", ProcessState_Ready, false, NULL);
 	Thread* kernel_thread = thread_create(kernel_proc);
-	thread_setup(kernel_thread, (VirtAddr)kernel_main, false, 0);
+	thread_arch_setup(kernel_thread, (VirtAddr)kernel_main, false, 0);
 	sch_arch_invoke();
 }
 
@@ -192,7 +192,7 @@ Context* sch_reschedule(Context* context)
 		{
 			sch_remove_thread(&hanging_thread_list, thread);
 			Thread* next = thread->next;
-			thread_destroy(thread);
+			thread_arch_destroy(thread);
 			kfree(thread);
 			thread = next;
 		}

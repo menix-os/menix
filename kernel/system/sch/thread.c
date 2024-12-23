@@ -45,11 +45,11 @@ Thread* thread_create(Process* parent)
 	return thread;
 }
 
-void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, bool is_user)
+void thread_setup(Thread* target, VirtAddr start, char** argv, char** envp, bool is_user)
 {
 	kassert(argv != NULL, "argv can't be null!");
 	kassert(envp != NULL, "envp can't be null!");
-	thread_setup(target, start, is_user, 0);
+	thread_arch_setup(target, start, is_user, 0);
 
 	Process* proc = target->parent;
 
