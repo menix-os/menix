@@ -30,8 +30,11 @@ usize kmesg_cap;
 
 isize terminal_kmesg_read(Handle* self, FileDescriptor* fd, void* output_buffer, usize amount, off_t offset)
 {
-	if (amount > kmesg_len)
-		amount = kmesg_len;
+	if (offset > kmesg_len)
+		return 0;
+
+	if (offset + amount > kmesg_len)
+		amount = kmesg_len - offset;
 
 	memcpy(output_buffer, kmesg_buffer + offset, amount);
 	return amount;
