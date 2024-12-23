@@ -32,4 +32,4 @@ void lapic_write(u32 register, u32 value);
 usize lapic_get_id();
 
 // Handles an interrupt triggered by the timer.
-Context* timer_handler(Context* regs, void* data);
+Context* timer_handler(usize isr, Context* regs, void* data);

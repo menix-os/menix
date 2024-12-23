@@ -3,14 +3,6 @@
 .section .text
 .altmacro
 
-/* Swaps GSBASE if CPL == KERNEL */
-.macro swapgs_if_necessary
-	cmpw	$0x8,	0x18(%rsp)
-	je		1f
-	swapgs
-1:
-.endm
-
 /* Pushes all general purpose registers onto the stack. */
 .macro push_all_regs
 	pushq %rax
@@ -50,13 +42,13 @@
 .endm
 
 /* Enter syscall via AMD64 syscall/sysret instructions. */
-.global sc_syscall
+.global arch_syscall_internal
 .align 0x10
-sc_syscall:
-	swapgs						/* Change GS to kernel mode. */
+arch_syscall_internal:
+	swapgs
 	movq	%rsp,	%gs:16		/* Save user stack to `Cpu.user_stack`. */
 	movq	%gs:8,	%rsp		/* Restore kernel stack from `Cpu.kernel_stack`. */
-	cld							/* Clear direction bit from RFLAGS */
+	cld
 	/* We're pretending to be an interrupt, so fill the bottom fields of CpuRegisters. */
 	/* For details see: https://www.felixcloutier.com/x86/syscall */
 	pushq	$0x23				/* SS and CS are not changed during SYSCALL. Use `gdt_table.user_data | CPL_USER`. */
@@ -65,50 +57,52 @@ sc_syscall:
 	pushq	$0x2b				/* Same as SS. Use `gdt_table.user_code64 | CPL_USER` */
 	pushq	%rcx				/* RIP is moved into rcx by the CPU. */
 	pushq	$0x00				/* Context.error field */
-	pushq	$0x00				/* Context.isr field */
-	push_all_regs				/* Push general purpose registers so they can be written to by syscalls */
-	mov		%rsp,	%rdi		/* Load the Context* as first argument. */
-	xor		%rbp,	%rbp		/* Zero out the base pointer. */
-	.extern syscall_handler
-	call	syscall_handler		/* Call syscall handler */
-	mov		%rax,	%rsp
-	pop_all_regs				/* Pop stack values back to the general purpose registers. */
-	add		$0x10,	%rsp		/* Skip Context.error and Context.isr fields. */
-	movq	%gs:16,	%rsp		/* Load user stack from `Cpu.user_stack`. */
-	swapgs						/* Change GS to user mode. */
-	sysretq						/* Return to user mode */
-
-/* Internal function called by one of the stubs. */
-.align 0x10
-interrupt_internal:
 	push_all_regs
-	mov		%rsp,	%rdi		/* Load the Context* as first argument. */
-	xor		%rbp,	%rbp		/* Zero out the base pointer so we don't backtrace into the user program */
-	.extern isr_handler
-	call	isr_handler			/* Call interrupt handler */
-	mov		%rax,	%rsp		/* interrupt_handler returns a pointer to the new context. */
+	mov		$0x80,	%rdi		/* 0x80 is the ISR for syscall. It's not used here, but who knows... */
+	mov		%rsp,	%rsi		/* Load the Context* as second argument. */
+	xor		%rbp,	%rbp
+	.extern syscall_handler
+	call	syscall_handler
+	mov		%rax,	%rsp
 	pop_all_regs
-	swapgs_if_necessary			/* Change GS back to user mode if we came from user mode. */
-	add		$0x8,	%rsp		/* Skip Context.isr field. */
 	add		$0x8,	%rsp		/* Skip Context.error field. */
-	iretq
+	movq	%gs:16,	%rsp		/* Load user stack from `Cpu.user_stack`. */
+	swapgs
+	sysretq
+
+/* Swaps GSBASE if CPL == KERNEL */
+.macro swapgs_if_necessary
+	cmpw	$0x8,	0x10(%rsp)
+	je		1f
+	swapgs
+1:
+.endm
 
 /* Define 256 interrupt stubs using the macro above. */
 .rept 256
 .align 0x10
-interrupt_\+:
+arch_int_\+:
 .if !(\+ == 8 || (\+ >= 10 && \+ <= 14) || \+ == 17 || \+ == 21 || \+ == 29 || \+ == 30)
 	pushq	$0					/* If this is an interrupt that doesn't push an error code, push one ourselves. */
 .endif
-	pushq	$\+					/* Push the ISR to the stack. */
-	swapgs_if_necessary			/* Change GS to kernel mode if we're coming from user mode. */
-	jmp		interrupt_internal
+	swapgs_if_necessary
+	push_all_regs
+	mov		$\+,	%rdi		/* Load the ISR as first argument */
+	mov		%rsp,	%rsi		/* Load the Context* as second argument. */
+	xor		%rbp,	%rbp
+	.extern int_handler
+	call	int_handler
+	mov		%rax,	%rsp		/* int_handler returns a pointer to the new context. */
+	pop_all_regs
+	swapgs_if_necessary
+	add		$0x8,	%rsp		/* Skip Context.error field. */
+	iretq
 .endr
 
 /* Build a table of all the interrupt stubs */
 .section .rodata
-.global interrupt_table
-interrupt_table:
+.global arch_int_table
+arch_int_table:
 .rept 256
-	.quad interrupt_\+
+	.quad arch_int_\+
 .endr

@@ -44,7 +44,7 @@ void vm_user_hide()
 		asm volatile("clac");
 }
 
-PageMap* vm_page_map_new(VMLevel size)
+PageMap* vm_page_map_new()
 {
 	PageMap* result = kmalloc(sizeof(PageMap));
 	result->lock = (SpinLock) {0};
@@ -149,7 +149,7 @@ void vm_page_map_destroy(PageMap* map)
 PageMap* vm_page_map_fork(PageMap* source)
 {
 	spin_lock(&source->lock);
-	PageMap* result = vm_page_map_new(source->size);
+	PageMap* result = vm_page_map_new();
 
 	if (result == NULL)
 		goto fail;

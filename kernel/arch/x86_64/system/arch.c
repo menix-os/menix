@@ -18,7 +18,7 @@ static SpinLock cpu_lock = {0};
 ATTR(aligned(0x1000)) Cpu per_cpu_data[MAX_CPUS];
 
 // Assembly stub for syscall via SYSCALL/SYSRET.
-extern void sc_syscall(void);
+extern void arch_syscall_internal(void);
 extern bool can_smap;
 
 // Initialize one CPU.
@@ -38,7 +38,7 @@ void arch_init_cpu(Cpu* cpu, Cpu* boot_cpu)
 	// Bits 32-47 are kernel segment base, Bits 48-63 are user segment base. Lower 32 bits (EIP) are unused.
 	asm_wrmsr(MSR_STAR, (offsetof(Gdt, kernel_code)) | ((offsetof(Gdt, user_code) | CPL_USER) << 16) << 32);
 	// Set syscall entry point.
-	asm_wrmsr(MSR_LSTAR, (u64)sc_syscall);
+	asm_wrmsr(MSR_LSTAR, (u64)arch_syscall_internal);
 	// Set the flag mask to everything except the second bit (always has to be enabled).
 	asm_wrmsr(MSR_SFMASK, (u64) ~((u32)2));
 
@@ -176,7 +176,7 @@ void arch_dump_registers(Context* regs)
 	print_log("rsi: 0x%p rdi: 0x%p rbp: 0x%p rsp: 0x%p\n", regs->rsi, regs->rdi, regs->rbp, regs->rsp);
 	print_log("r8:  0x%p r9:  0x%p r10: 0x%p r11: 0x%p\n", regs->r8, regs->r9, regs->r10, regs->r11);
 	print_log("r12: 0x%p r13: 0x%p r14: 0x%p r15: 0x%p\n", regs->r12, regs->r13, regs->r14, regs->r15);
-	print_log("isr: 0x%p err: 0x%p rip: 0x%p\n", regs->isr, regs->error, regs->rip);
+	print_log("err: 0x%p rip: 0x%p\n", regs->error, regs->rip);
 	print_log("cs:  0x%p rfl: 0x%p ss:  0x%p regs:0x%p\n", regs->cs, regs->rflags, regs->ss, regs);
 	print_log("fsb: 0x%p gsb: 0x%p kgsb:0x%p\n", asm_rdmsr(MSR_FS_BASE), asm_rdmsr(MSR_GS_BASE),
 			  asm_rdmsr(MSR_KERNEL_GS_BASE));

@@ -5,7 +5,10 @@
 #include <menix/common.h>
 
 typedef struct Context Context;
-typedef Context* (*InterruptFn)(Context* regs, void* priv);
+typedef Context* (*InterruptFn)(usize isr, Context* regs, void* priv);
+
+// Handler called by the processor.
+Context* int_handler(usize isr, Context* regs);
 
 // Registers a new IRQ handler. Automatically selects optimal IRQ placement.
 // You can also pass an additional parameter for context passed to the handler.

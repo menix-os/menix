@@ -7,10 +7,13 @@
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
 
-#include <hpet.h>
 #include <uacpi/kernel_api.h>
 #include <uacpi/types.h>
 #include <uacpi/uacpi.h>
+
+#ifdef CONFIG_arch_x86_64
+#include <hpet.h>
+#endif
 
 static PhysAddr acpi_rsdp;
 
@@ -249,7 +252,7 @@ uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request*)
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
 
-static Context* irq_handler_wrapper(Context* context, void* data)
+static Context* irq_handler_wrapper(usize isr, Context* context, void* data)
 {
 	void** frame = (void**)data;
 	((uacpi_interrupt_handler)frame[0])(frame[1]);

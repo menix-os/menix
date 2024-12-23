@@ -19,8 +19,6 @@ typedef struct Context
 	u64 rbx;
 	u64 rax;
 
-	// Pushed onto the stack by the interrupt handler stub.
-	u64 isr;
 	// Pushed onto the stack by the CPU if exception has an error code.
 	u64 error;
 	// Pushed onto the stack by the CPU during an interrupt.

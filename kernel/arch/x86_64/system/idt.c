@@ -46,12 +46,12 @@ void idt_reload()
 	asm volatile("lidt %0" ::"m"(idtr));
 }
 
-extern void* interrupt_table[IDT_MAX_SIZE];
+extern void* arch_int_table[IDT_MAX_SIZE];
 
 void idt_init()
 {
 	for (usize i = 0; i < IDT_MAX_SIZE; i++)
 	{
-		idt_set(i, interrupt_table[i], IDT_TYPE(0, IDT_GATE_INT));
+		idt_set(i, arch_int_table[i], IDT_TYPE(0, IDT_GATE_INT));
 	}
 }

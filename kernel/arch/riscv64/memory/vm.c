@@ -57,6 +57,14 @@ PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 	return 0;
 }
 
+void vm_user_show()
+{
+}
+
+void vm_user_hide()
+{
+}
+
 usize vm_get_page_size(VMLevel level)
 {
 	switch (level)

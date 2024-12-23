@@ -32,7 +32,7 @@ SYSCALL_IMPL(uname, VirtAddr buffer)
 SYSCALL_IMPL(archctl, usize operation, usize arg0, usize arg1)
 {
 	// TODO archctl may fail.
-	return SYSCALL_OK(archctl(operation, arg0, arg1));
+	return SYSCALL_OK(arch_archctl(operation, arg0, arg1));
 }
 
 // Performs power control operations.

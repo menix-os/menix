@@ -21,23 +21,14 @@ typedef enum
 
 typedef enum : usize
 {
-#if defined(CONFIG_arch_x86_64) || defined(CONFIG_arch_aarch64) || defined(CONFIG_arch_riscv64) || \
-	defined(CONFIG_loongarch64)
 	VMLevel_Small = 1,
 	VMLevel_Medium = 2,
 	VMLevel_Large = 3,
-#endif
-#if defined(CONFIG_arch_riscv64)
-	VMLevel_3 = 4,
-	VMLevel_4 = 5,
-#endif
 } VMLevel;
 
 typedef struct
 {
 	SpinLock lock;
-	VMLevel size;
-
 #if defined(CONFIG_arch_x86_64)
 	usize* head;
 #elif defined(CONFIG_arch_aarch64)
@@ -83,7 +74,7 @@ bool vm_is_mapped(PageMap* page_map, VirtAddr address, VMProt prot);
 void vm_set_page_map(PageMap* page_map);
 
 // Creates a new page map.
-PageMap* vm_page_map_new(VMLevel size);
+PageMap* vm_page_map_new();
 
 // Creates a new page map by forking an existing one.
 PageMap* vm_page_map_fork(PageMap* source);

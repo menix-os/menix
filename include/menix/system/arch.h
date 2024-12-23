@@ -71,3 +71,14 @@ void arch_dump_registers(Context* regs);
 
 // Gets processor metadata.
 Cpu* arch_current_cpu();
+
+typedef enum : usize
+{
+	ArchCtl_None = 0,
+
+#ifdef CONFIG_arch_x86_64
+	ArchCtl_SetFsBase = 1,
+#endif
+} ArchCtl;
+
+usize arch_archctl(ArchCtl ctl, usize arg1, usize arg2);

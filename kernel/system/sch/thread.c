@@ -151,8 +151,6 @@ void thread_execve(Thread* target, VirtAddr start, char** argv, char** envp, boo
 #endif
 
 	vm_unmap_foreign(foreign, foreign_pages);
-
-	kassert(target->registers.rsp % 16 == 0, "Stack is misaligned: 0x%p!", target->registers.rsp);
 }
 
 void thread_sleep(Thread* target, usize nanoseconds)

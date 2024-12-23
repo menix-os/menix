@@ -9,13 +9,13 @@
 #include <menix/system/sch/scheduler.h>
 #include <menix/util/log.h>
 
-Context* isr_handler(Context* regs)
+Context* int_handler(usize isr, Context* regs)
 {
 	const Cpu* current = arch_current_cpu();
 	// If we have a handler for this interrupt, call it.
-	if (regs->isr < ARRAY_SIZE(current->irq_handlers) && current->irq_handlers[regs->isr])
+	if (isr < ARRAY_SIZE(current->irq_handlers) && current->irq_handlers[isr])
 	{
-		Context* result = current->irq_handlers[regs->isr](regs, current->irq_data[regs->isr]);
+		Context* result = current->irq_handlers[isr](isr, regs, current->irq_data[isr]);
 		return result;
 	}
 
@@ -23,7 +23,7 @@ Context* isr_handler(Context* regs)
 	if (current->thread && current->thread->is_user)
 	{
 		Process* proc = current->thread->parent;
-		print_log("Unhandled interrupt %zu caused by user program! Terminating PID %i!\n", regs->isr, proc->id);
+		print_log("Unhandled interrupt %zu caused by user program! Terminating PID %i!\n", isr, proc->id);
 		arch_dump_registers(regs);
 		proc_kill(proc, true);
 		return sch_reschedule(regs);
@@ -34,7 +34,7 @@ Context* isr_handler(Context* regs)
 	spin_use(false);
 
 	// Exception was not caused by the user and is not handled, abort.
-	print_log("Unhandled interrupt %zu in kernel mode!\n", regs->isr);
+	print_log("Unhandled interrupt %zu in kernel mode!\n", isr);
 
 	ktrace(regs);
 	kabort();

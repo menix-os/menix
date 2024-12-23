@@ -4,7 +4,7 @@
 #include <menix/system/archctl.h>
 #include <menix/util/log.h>
 
-usize archctl(ArchCtl ctl, usize arg1, usize arg2)
+usize arch_archctl(ArchCtl ctl, usize arg1, usize arg2)
 {
 	switch (ctl)
 	{

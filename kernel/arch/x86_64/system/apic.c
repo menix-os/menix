@@ -115,7 +115,7 @@ void apic_send_eoi()
 	lapic_write(0xB0, 0);
 }
 
-Context* timer_handler(Context* regs, void* data)
+Context* timer_handler(usize isr, Context* regs, void* data)
 {
 	Context* new_context = sch_reschedule(regs);
 	apic_send_eoi();
