@@ -23,19 +23,20 @@ i32 pci_register_driver(PciDriver* driver)
 		for (usize variant = 0; variant <= driver->num_variants; variant++)
 		{
 			const PciVariant* const var = &driver->variants[variant];
+			const volatile PciConfigSpace* cfg = dev->config_space;
 
 			// Check if this driver is a generic class driver. If it isn't, check if the IDs match.
-			if (var->vendor != (u16)PCI_ANY_ID && var->vendor != dev->vendor)
+			if (var->vendor != (u16)PCI_ANY_ID && var->vendor != cfg->vendor)
 				continue;
-			if (var->device != (u16)PCI_ANY_ID && var->device != dev->device)
+			if (var->device != (u16)PCI_ANY_ID && var->device != cfg->device)
 				continue;
 
 			// If it's generic make sure the class types match.
-			if (var->has_class && var->class != dev->class)
+			if (var->has_class && var->class != cfg->class)
 				continue;
-			if (var->has_sub_class && var->sub_class != dev->sub_class)
+			if (var->has_sub_class && var->sub_class != cfg->sub_class)
 				continue;
-			if (var->has_prog_if && var->prog_if != dev->prog_if)
+			if (var->has_prog_if && var->prog_if != cfg->prog_if)
 				continue;
 
 			// Connect the driver to the device.

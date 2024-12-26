@@ -27,13 +27,7 @@ void mcfg_init()
 	}
 
 	mcfg = mcfg_table.ptr;
-
-	pci_platform.pci_read8 = mcfg_read8;
-	pci_platform.pci_read16 = mcfg_read16;
-	pci_platform.pci_read32 = mcfg_read32;
-	pci_platform.pci_write8 = mcfg_write8;
-	pci_platform.pci_write16 = mcfg_write16;
-	pci_platform.pci_write32 = mcfg_write32;
+	pci_platform.get_cfg_addr = mcfg_get_cfg_addr;
 
 	const usize num_entries = (mcfg->hdr.length - sizeof(struct acpi_mcfg)) / sizeof(struct acpi_mcfg_allocation);
 	list_new(pci_platform.buses, num_entries);
@@ -52,45 +46,17 @@ void mcfg_init()
 	pci_init();
 }
 
-#define implement_read(type, name, fn) \
-	type name(u16 seg, u8 bus, u8 slot, u8 func, u16 offset) \
-	{ \
-		const usize num_entries = (mcfg->hdr.length - sizeof(struct acpi_mcfg)) / sizeof(struct acpi_mcfg_allocation); \
-		for (usize i = 0; i < num_entries; i++) \
-		{ \
-			struct acpi_mcfg_allocation* entry = &mcfg->entries[i]; \
-			if (entry->segment != seg) \
-				continue; \
-			if (bus < entry->start_bus && bus > entry->end_bus) \
-				continue; \
-			void* addr = (void*)ACPI_ADDR( \
-				((entry->address + (((bus - entry->start_bus) << 20) | (slot << 15) | (func << 12))) | offset)); \
-			return fn(addr); \
-		} \
-		return 0; \
+PhysAddr mcfg_get_cfg_addr(u16 segment, u16 bus, u8 slot, u8 function)
+{
+	const usize num_entries = (mcfg->hdr.length - sizeof(struct acpi_mcfg)) / sizeof(struct acpi_mcfg_allocation);
+	for (usize i = 0; i < num_entries; i++)
+	{
+		struct acpi_mcfg_allocation* entry = &mcfg->entries[i];
+		if (entry->segment != segment)
+			continue;
+		if (bus < entry->start_bus && bus > entry->end_bus)
+			continue;
+		return (PhysAddr)(entry->address + (((bus - entry->start_bus) << 20) | (slot << 15) | (function << 12)));
 	}
-
-#define implement_write(type, name, fn) \
-	void name(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, type value) \
-	{ \
-		const usize num_entries = (mcfg->hdr.length - sizeof(struct acpi_mcfg)) / sizeof(struct acpi_mcfg_allocation); \
-		for (usize i = 0; i < num_entries; i++) \
-		{ \
-			struct acpi_mcfg_allocation* entry = &mcfg->entries[i]; \
-			if (entry->segment != seg) \
-				continue; \
-			if (bus < entry->start_bus && bus > entry->end_bus) \
-				continue; \
-			void* addr = (void*)ACPI_ADDR( \
-				((entry->address + (((bus - entry->start_bus) << 20) | (slot << 15) | (func << 12))) | offset)); \
-			fn(addr, value); \
-		} \
-	}
-
-implement_read(u8, mcfg_read8, mmio_read8);
-implement_read(u16, mcfg_read16, mmio_read16);
-implement_read(u32, mcfg_read32, mmio_read32);
-
-implement_write(u8, mcfg_write8, mmio_write8);
-implement_write(u16, mcfg_write16, mmio_write16);
-implement_write(u32, mcfg_write32, mmio_write32);
+	return 0;
+}

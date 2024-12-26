@@ -11,6 +11,10 @@
 #include <uacpi/types.h>
 #include <uacpi/uacpi.h>
 
+#ifdef CONFIG_pci
+#include <menix/system/acpi/mcfg.h>
+#endif
+
 #ifdef CONFIG_arch_x86_64
 #include <hpet.h>
 #endif
@@ -30,6 +34,10 @@ void acpi_init(PhysAddr rsdp)
 #ifdef CONFIG_arch_x86_64
 	hpet_init();
 	madt_init();
+#endif
+
+#ifdef CONFIG_pci
+	mcfg_init();
 #endif
 
 	uacpi_initialize(0);
@@ -121,8 +129,7 @@ uacpi_status uacpi_kernel_raw_io_write(uacpi_io_addr address, uacpi_u8 byte_widt
 
 uacpi_status uacpi_kernel_pci_read(uacpi_pci_address* address, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64* value)
 {
-	PCI_READ8(address->segment, address->bus, address->device, address->function, offset);
-	return UACPI_STATUS_OK;
+	return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_pci_write(uacpi_pci_address* address, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 value)

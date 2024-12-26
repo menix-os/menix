@@ -8,10 +8,12 @@
 
 #define pci_log_dev(dev, fmt, ...) \
 	print_log("pci: %02hhx:%02hhx.%hhx (%hhu,%hhu,%hhu): " fmt, (dev)->slot->bus->id, (dev)->slot->id, \
-			  (dev)->function, (dev)->class, (dev)->sub_class, (dev)->prog_if, ##__VA_ARGS__)
+			  (dev)->function, (dev)->config_space->class, (dev)->config_space->sub_class, \
+			  (dev)->config_space->prog_if, ##__VA_ARGS__)
 #define pci_error_dev(dev, fmt, ...) \
 	print_error("pci: %02hhx:%02hhx.%hhx (%hhu,%hhu,%hhu): " fmt, (dev)->slot->bus->id, (dev)->slot->id, \
-				(dev)->function, (dev)->class, (dev)->sub_class, (dev)->prog_if, ##__VA_ARGS__)
+				(dev)->function, (dev)->config_space->class, (dev)->config_space->sub_class, \
+				(dev)->config_space->prog_if, ##__VA_ARGS__)
 
 #define PCI_ANY_ID (~0U)
 #define PCI_DEVICE(ven, dev) \
@@ -32,21 +34,19 @@ typedef struct PciDriver PciDriver;
 typedef struct PciSlot PciSlot;
 typedef struct PciBus PciBus;
 typedef struct PciDevice PciDevice;
+typedef struct PciConfigSpace PciConfigSpace;
 
-// Represents a PCI(e) device.
-struct PciDevice
+struct ATTR(packed) PciConfigSpace
 {
-	u8 function;		   // Function index on the current slot.
-	u16 vendor, device;	   // Primary IDs of this device.
+	u16 vendor, device;
 	u16 command, status;
-	u8 revision, class, sub_class, prog_if;
+	u8 revision, prog_if, sub_class, class;
 	u8 cache_line_size, latency_timer, header_type, bist;
 
 	// Fields depending on the header type.
-	//! CardBus is not supported.
 	union
 	{
-		struct
+		struct ATTR(packed)
 		{
 			u32 bar[6];					   // Base addresses.
 			u32 cardbus_cis;			   // CardBus CIS pointer.
@@ -58,7 +58,7 @@ struct PciDevice
 			u8 min_grant;				   // Burst period length (in 0.25 µs units).
 			u8 max_latency;				   // How often the device needs to access the PCI bus (in 0.25 µs units).
 		} generic;						   // Generic device (0)
-		struct
+		struct ATTR(packed)
 		{
 			u32 bar[2];								// Base addresses.
 			u8 bus_primary, bus_secondary;			// Bus numbers.
@@ -77,11 +77,17 @@ struct PciDevice
 			u16 bridge_control;						// Bridge control number.
 		} pci_bridge;								// PCI-to-PCI bridge (1)
 	};
+};
 
-	Device* dev;		  // Underlying device.
-	PciDriver* driver;	  // The driver managing this device.
-	usize variant_idx;	  // Index into a driver-defined structure array.
-	PciSlot* slot;		  // The slot this device is on.
+// Represents a PCI(e) device.
+struct PciDevice
+{
+	volatile PciConfigSpace* config_space;	  // Configuration space address.
+	u8 function;							  // Function index of this device.
+	Device* dev;							  // Underlying device.
+	PciDriver* driver;						  // The driver managing this device.
+	usize variant_idx;						  // Index into a driver-defined structure array.
+	PciSlot* slot;							  // The slot this device is on.
 };
 
 struct PciSlot
@@ -132,23 +138,9 @@ typedef struct PciDriver
 // Abstraction for PCI mechanisms. Can be e.g. x86 port IO or ACPI.
 typedef struct
 {
-	u8 (*pci_read8)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset);
-	u16 (*pci_read16)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset);
-	u32 (*pci_read32)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset);
-	void (*pci_write8)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u8 value);
-	void (*pci_write16)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u16 value);
-	void (*pci_write32)(u16 seg, u8 bus, u8 slot, u8 func, u16 offset, u32 value);
-
+	PhysAddr (*get_cfg_addr)(u16 segment, u16 bus, u8 slot, u8 function);
 	List(PciBus*) buses;
 } PciPlatform;
-
-#define PCI_READ8(seg, bus, slot, func, offset)	 pci_platform.pci_read8(seg, bus, slot, func, offset)
-#define PCI_READ16(seg, bus, slot, func, offset) pci_platform.pci_read16(seg, bus, slot, func, offset)
-#define PCI_READ32(seg, bus, slot, func, offset) pci_platform.pci_read32(seg, bus, slot, func, offset)
-
-#define PCI_WRITE8(seg, bus, slot, func, offset, value)	 pci_platform.pci_read8(seg, bus, slot, func, offset, value)
-#define PCI_WRITE16(seg, bus, slot, func, offset, value) pci_platform.pci_read16(seg, bus, slot, func, offset, value)
-#define PCI_WRITE32(seg, bus, slot, func, offset, value) pci_platform.pci_read32(seg, bus, slot, func, offset, value)
 
 extern PciPlatform pci_platform;
 
