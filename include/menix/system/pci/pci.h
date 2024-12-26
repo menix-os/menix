@@ -82,12 +82,16 @@ struct ATTR(packed) PciConfigSpace
 // Represents a PCI(e) device.
 struct PciDevice
 {
-	volatile PciConfigSpace* config_space;	  // Configuration space address.
-	u8 function;							  // Function index of this device.
-	Device* dev;							  // Underlying device.
-	PciDriver* driver;						  // The driver managing this device.
-	usize variant_idx;						  // Index into a driver-defined structure array.
-	PciSlot* slot;							  // The slot this device is on.
+	union
+	{
+		mmio8* config_space_addr;	 // Configuration space address.
+		volatile PciConfigSpace* config_space;
+	};
+	u8 function;		  // Function index of this device.
+	Device* dev;		  // Underlying device.
+	PciDriver* driver;	  // The driver managing this device.
+	usize variant_idx;	  // Index into a driver-defined structure array.
+	PciSlot* slot;		  // The slot this device is on.
 };
 
 struct PciSlot
@@ -117,7 +121,7 @@ typedef struct
 } PciVariant;
 
 // A PCI(e) driver with callbacks.
-typedef struct PciDriver
+struct PciDriver
 {
 	const char* name;			   // Name of the device.
 	const PciVariant* variants;	   // Array of device variants that the driver can match.
@@ -133,7 +137,7 @@ typedef struct PciDriver
 	i32 (*resume)(PciDevice* dev);
 	// Called to deinitialize a device during shutdown. (Optional).
 	void (*shutdown)(PciDevice* dev);
-} PciDriver;
+};
 
 // Abstraction for PCI mechanisms. Can be e.g. x86 port IO or ACPI.
 typedef struct
