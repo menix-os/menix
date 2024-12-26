@@ -156,7 +156,8 @@ usize proc_fork(Process* proc, Thread* thread)
 	fork->permissions = proc->permissions;
 	fork->parent = proc;
 	fork->working_dir = proc->working_dir;
-	fork->next = NULL;
+
+	fork->page_map = vm_page_map_fork(proc->page_map);
 
 	list_new(fork->children, 0);
 	list_new(fork->threads, 0);
@@ -170,6 +171,7 @@ usize proc_fork(Process* proc, Thread* thread)
 			continue;
 
 		// TODO: Duplicate FDs.
+		fork->file_descs[i] = proc->file_descs[i];
 	}
 
 	sch_add_process(&proc_list, fork);

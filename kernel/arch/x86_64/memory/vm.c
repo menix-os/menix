@@ -163,8 +163,7 @@ fail:
 
 bool vm_x86_remap(PageMap* page_map, VirtAddr virt_addr, usize flags)
 {
-	kassert(page_map != NULL, "No page map was provided! Unable to remap page 0x%p to 0x%p!", pm_get_phys_base(),
-			virt_addr);
+	kassert(page_map != NULL, "No page map was provided! Unable to remap page 0x%p!", virt_addr);
 
 	spin_lock(&page_map->lock);
 	u64* cur_head = page_map->head;

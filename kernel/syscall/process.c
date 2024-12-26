@@ -132,10 +132,10 @@ SYSCALL_IMPL(sigsuspend)
 {
 	// TODO: sigmask
 	Thread* thread = arch_current_cpu()->thread;
-	thread->state = ThreadState_Waiting;
-	while (thread->state == ThreadState_Waiting)
+	thread->state = ThreadState_Sleeping;
+	while (thread->state == ThreadState_Sleeping)
 	{
-		asm_pause();
+		sch_arch_invoke();
 	}
 	return SYSCALL_ERR(EINTR);
 }

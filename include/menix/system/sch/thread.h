@@ -69,6 +69,10 @@ void thread_setup(Thread* target, VirtAddr start, char** argv, char** envp, bool
 // ? Defined per architecture.
 void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack);
 
+// Forks thread information from `original` to `forked`.
+// ? Defined per architecture.
+void thread_arch_fork(Thread* forked, Thread* original);
+
 // Destroys the context of a thread.
 // `target`: The thread to destroy.
 // ? Defined per architecture.

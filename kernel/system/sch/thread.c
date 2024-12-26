@@ -160,7 +160,32 @@ void thread_sleep(Thread* target, usize nanoseconds)
 
 void thread_fork(Process* parent, Thread* target)
 {
-	todo();
+	spin_lock(&thread_lock);
+
+	Thread* forked = kzalloc(sizeof(Thread));
+
+	forked->id = tid_counter++;
+	forked->state = ThreadState_Ready;
+	forked->runtime = target->runtime;
+	forked->parent = parent;
+
+	// Allocate a new kernel stack.
+	forked->kernel_stack = (VirtAddr)kmalloc(CONFIG_kernel_stack_size);
+	forked->kernel_stack += CONFIG_kernel_stack_size;
+
+	// Allocate a new user stack.
+	forked->stack = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small));
+
+	// Copy context.
+	forked->registers = target->registers;
+	thread_arch_fork(forked, target);
+
+	// Add this thread to the scheduler and parent process.
+	sch_add_thread(&thread_list, forked);
+	list_push(&parent->threads, forked);
+
+	spin_unlock(&thread_lock);
+	print_log("Forked thread %zu, new TID %zu\n", target->id, forked->id);
 }
 
 void thread_hang(Thread* victim, bool reschedule)
