@@ -1,4 +1,4 @@
-// uDRM Bridge
+// uAPI pci.h implementation
 
 #include <menix/common.h>
 #include <menix/io/mmio.h>
@@ -6,6 +6,11 @@
 
 #include <uapi/status.h>
 #include <uapi/types.h>
+
+#define UAPI_KERNEL_API
+#define UAPI_WANTS_PCI
+#include <uapi/pci.h>
+#undef UAPI_KERNEL_API
 
 uapi_status uapi_kernel_pci_cfg_read(uapi_handle handle, uapi_size offset, uapi_u8 byte_width, uapi_u64* value)
 {

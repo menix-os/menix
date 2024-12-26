@@ -127,11 +127,11 @@ typedef struct PciDriver
 	i32 (*probe)(PciDevice* dev);
 	// Called when a device is being removed. (Optional).
 	void (*remove)(PciDevice* dev);
-	// Called to put a device to sleep. Returns 0 if successful.
+	// Called to put a device to sleep. Returns 0 if successful. (Optional).
 	i32 (*suspend)(PciDevice* dev);
-	// Called to wake it back up again. Returns 0 if successful.
+	// Called to wake it back up again. Returns 0 if successful. (Optional).
 	i32 (*resume)(PciDevice* dev);
-	// Called to deinitialize a device during shutdown.
+	// Called to deinitialize a device during shutdown. (Optional).
 	void (*shutdown)(PciDevice* dev);
 } PciDriver;
 

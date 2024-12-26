@@ -4,3 +4,6 @@
 [submodule "kernel/system/uapi/uapi"]
 	path = kernel/system/uapi/uapi
 	url = https://github.com/uDrivers/uAPI
+[submodule "modules/drv/gpu/drm/udrm"]
+	path = modules/drv/gpu/drm/udrm
+	url = https://github.com/uDrivers/uDRM
