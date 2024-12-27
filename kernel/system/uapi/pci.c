@@ -35,3 +35,16 @@ uapi_status uapi_kernel_pci_cfg_write(uapi_handle handle, uapi_size offset, uapi
 	}
 	return UAPI_STATUS_OK;
 }
+
+uapi_status uapi_kernel_pci_set_ctx(uapi_handle handle, void* ctx)
+{
+	PciDevice* const device = handle;
+	device->dev->driver_data = ctx;
+	return UAPI_STATUS_OK;
+}
+
+void* uapi_kernel_pci_get_ctx(uapi_handle handle)
+{
+	PciDevice* const device = handle;
+	return device->dev->driver_data;
+}
