@@ -48,4 +48,5 @@ void madt_init()
 			case 5: lapic_addr = ((MadtLApicAddr*)cur)->lapic_addr; break;
 		}
 	}
+	uacpi_table_unref(&madt_table);
 }

@@ -44,6 +44,7 @@ void mcfg_init()
 	print_log("pci: Configured PCI using ACPI.\n");
 
 	pci_init();
+	uacpi_table_unref(&mcfg_table);
 }
 
 PhysAddr mcfg_get_cfg_addr(u16 segment, u16 bus, u8 slot, u8 function)
