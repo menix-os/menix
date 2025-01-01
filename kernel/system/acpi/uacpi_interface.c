@@ -21,9 +21,6 @@
 
 static PhysAddr acpi_rsdp;
 
-#undef todo
-#define todo()
-
 void acpi_init(PhysAddr rsdp)
 {
 	acpi_rsdp = rsdp;
@@ -127,37 +124,58 @@ uacpi_status uacpi_kernel_raw_io_write(uacpi_io_addr address, uacpi_u8 byte_widt
 	return UACPI_STATUS_OK;
 }
 
-uacpi_status uacpi_kernel_pci_read(uacpi_pci_address* address, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64* value)
+uacpi_status uacpi_kernel_pci_device_open(uacpi_pci_address address, uacpi_handle* out_handle)
 {
-	return UACPI_STATUS_UNIMPLEMENTED;
+	*out_handle = pci_platform.buses.items[address.bus]->slots[address.device].devices[address.function];
+	return UACPI_STATUS_OK;
 }
 
-uacpi_status uacpi_kernel_pci_write(uacpi_pci_address* address, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 value)
+void uacpi_kernel_pci_device_close(uacpi_handle)
 {
-	todo();
-	return UACPI_STATUS_UNIMPLEMENTED;
+}
+
+uacpi_status uacpi_kernel_pci_read(uacpi_handle device, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64* value)
+{
+	PciDevice* dev = device;
+	switch (byte_width)
+	{
+		case sizeof(u8): *value = mmio_read8(dev->config_space_addr + offset); break;
+		case sizeof(u16): *value = mmio_read16(dev->config_space_addr + offset); break;
+		case sizeof(u32): *value = mmio_read32(dev->config_space_addr + offset); break;
+		default: return UACPI_STATUS_INVALID_ARGUMENT;
+	}
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_pci_write(uacpi_handle device, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 value)
+{
+	PciDevice* dev = device;
+	switch (byte_width)
+	{
+		case sizeof(u8): mmio_write8(dev->config_space_addr + offset, value); break;
+		case sizeof(u16): mmio_write16(dev->config_space_addr + offset, value); break;
+		case sizeof(u32): mmio_write32(dev->config_space_addr + offset, value); break;
+		default: return UACPI_STATUS_INVALID_ARGUMENT;
+	}
+	return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_map(uacpi_io_addr base, uacpi_size len, uacpi_handle* out_handle)
 {
-	todo();
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 void uacpi_kernel_io_unmap(uacpi_handle handle)
 {
-	todo();
 }
 
 uacpi_status uacpi_kernel_io_read(uacpi_handle, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64* value)
 {
-	todo();
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 uacpi_status uacpi_kernel_io_write(uacpi_handle, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 value)
 {
-	todo();
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
 
@@ -168,7 +186,6 @@ void* uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len)
 
 void uacpi_kernel_unmap(void* addr, uacpi_size len)
 {
-	(void)addr;
 }
 
 void uacpi_kernel_log(uacpi_log_level level, const uacpi_char* msg)
@@ -198,64 +215,55 @@ void uacpi_kernel_sleep(uacpi_u64 msec)
 	clock_wait(msec * 1000000);
 }
 
+uacpi_handle uacpi_kernel_create_event(void)
+{
+	return kzalloc(8);
+}
+
+void uacpi_kernel_free_event(uacpi_handle handle)
+{
+	kfree(handle);
+}
+
+uacpi_thread_id uacpi_kernel_get_thread_id(void)
+{
+	return (void*)arch_current_cpu();
+}
+
 uacpi_handle uacpi_kernel_create_mutex(void)
 {
-	todo();
 	return kzalloc(8);
 }
 
 void uacpi_kernel_free_mutex(uacpi_handle mutex)
 {
-	todo();
-}
-
-uacpi_handle uacpi_kernel_create_event(void)
-{
-	todo();
-	return kzalloc(8);
-}
-
-void uacpi_kernel_free_event(uacpi_handle)
-{
-	todo();
-}
-
-uacpi_thread_id uacpi_kernel_get_thread_id(void)
-{
-	todo();
-	return (void*)arch_current_cpu();
+	kfree(mutex);
 }
 
 uacpi_status uacpi_kernel_acquire_mutex(uacpi_handle, uacpi_u16)
 {
-	todo();
 	return UACPI_STATUS_OK;
 }
 
 void uacpi_kernel_release_mutex(uacpi_handle)
 {
-	todo();
 }
 
 uacpi_bool uacpi_kernel_wait_for_event(uacpi_handle, uacpi_u16)
 {
-	todo();
 	return false;
 }
 
 void uacpi_kernel_signal_event(uacpi_handle)
 {
-	todo();
 }
 
 void uacpi_kernel_reset_event(uacpi_handle)
 {
-	todo();
 }
 
 uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request*)
 {
-	todo();
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
 
@@ -273,7 +281,7 @@ uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interru
 	context[0] = handler;
 	context[1] = ctx;
 
-	isr_register_handler(arch_current_cpu()->id, irq, irq_handler_wrapper, context);
+	isr_register_handler(arch_current_cpu()->id, irq + 32, irq_handler_wrapper, context);
 	*out_irq_handle = context;
 	return UACPI_STATUS_OK;
 }
