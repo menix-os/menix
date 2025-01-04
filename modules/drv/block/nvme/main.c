@@ -29,13 +29,7 @@ i32 nvme_probe(PciDevice* pdev)
 	NvmeController* nvme = kzalloc(sizeof(NvmeController));
 	dev_set_data(pdev->dev, nvme);
 
-	// TODO: KVM puts this BAR in memory unmapped by phys_base.
-	// TODO: PCI needs a proper BAR detection + mapping function.
-	PhysAddr nvme_bar =
-		(((PhysAddr)pdev->config_space->generic.bar[1] << 32) | (pdev->config_space->generic.bar[0] & 0xFFFFC000));
-	print_log("BAR: 0x%p\n", nvme_bar);
-	nvme->mmio_base = pm_get_phys_base() + nvme_bar;
-	todo();
+	nvme->mmio_base = vm_map_memory(pci_get_bar(pdev, 0), 1 << 16, VMProt_Read | VMProt_Write);
 
 	// Disable the controller if it wasn't already.
 	nvme->regs->cc.en = false;
