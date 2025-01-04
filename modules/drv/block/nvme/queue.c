@@ -16,7 +16,7 @@ void nvme_cq_init(NvmeController* nvme, NvmeComQueue* cq, u16 idx, u32 len)
 	cq->phase = 1;
 	cq->mask = len - 1;
 	cq->head = 0;
-	cq->entry = pm_get_phys_base() + pm_alloc(1);
+	cq->entry = vm_map_memory(pm_alloc(1), vm_get_page_size(VMLevel_Small), VMProt_Read | VMProt_Write);
 	memset(cq->entry, 0, vm_get_page_size(VMLevel_Small));
 }
 
@@ -30,7 +30,7 @@ void nvme_sq_init(NvmeController* nvme, NvmeSubQueue* sq, NvmeComQueue* cq, u16 
 	sq->mask = len - 1;
 	sq->head = 0;
 	sq->tail = 0;
-	sq->entry = pm_get_phys_base() + pm_alloc(1);
+	sq->entry = vm_map_memory(pm_alloc(1), vm_get_page_size(VMLevel_Small), VMProt_Read | VMProt_Write);
 	memset(sq->entry, 0, vm_get_page_size(VMLevel_Small));
 }
 
@@ -45,7 +45,7 @@ void nvme_io_cq_init(NvmeController* nvme, NvmeComQueue* cq, u16 idx)
 	nvme_cq_init(nvme, cq, idx, length);
 
 	NvmeSQEntry* cmd =
-		nvme_cmd_new(&nvme->admin_sq, NVME_ACMD_CREATE_CQ, 0, (VirtAddr)cq->entry - (VirtAddr)pm_get_phys_base());
+		nvme_cmd_new(&nvme->admin_sq, NVME_ACMD_CREATE_CQ, 0, vm_virt_to_phys(vm_kernel_map, (VirtAddr)cq->entry));
 
 	cmd->cdw10 = (cq->mask << 16) | (idx >> 1);
 	cmd->cdw11 = 1;
@@ -64,7 +64,7 @@ void nvme_io_sq_init(NvmeController* nvme, NvmeSubQueue* sq, NvmeComQueue* cq, u
 	nvme_sq_init(nvme, sq, cq, idx, length);
 
 	NvmeSQEntry* cmd =
-		nvme_cmd_new(&nvme->admin_sq, NVME_ACMD_CREATE_SQ, 0, (VirtAddr)sq->entry - (VirtAddr)pm_get_phys_base());
+		nvme_cmd_new(&nvme->admin_sq, NVME_ACMD_CREATE_SQ, 0, vm_virt_to_phys(vm_kernel_map, (VirtAddr)sq->entry));
 
 	cmd->cdw10 = (sq->mask << 16) | (idx >> 1);
 	cmd->cdw11 = (idx >> 1) << 16 | 1;

@@ -29,7 +29,9 @@ i32 nvme_probe(PciDevice* pdev)
 	NvmeController* nvme = kzalloc(sizeof(NvmeController));
 	dev_set_data(pdev->dev, nvme);
 
-	nvme->mmio_base = vm_map_memory(pci_get_bar(pdev, 0), 1 << 16, VMProt_Read | VMProt_Write);
+	nvme->bar = pci_get_bar(pdev, 0);
+	// Map at least to the start of the queues plus 512 entries.
+	nvme->mmio_base = vm_map_memory(nvme->bar, 0x1000 + 0x1000, VMProt_Read | VMProt_Write);
 
 	// Disable the controller if it wasn't already.
 	nvme->regs->cc.en = false;

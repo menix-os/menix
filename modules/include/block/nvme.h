@@ -140,6 +140,7 @@ typedef struct
 		void* mmio_base;
 		volatile NvmeRegisters* regs;
 	};
+	PhysAddr bar;			  // Physical base address register
 	NvmeSubQueue admin_sq;	  // Admin submission queue
 	NvmeComQueue admin_cq;	  // Admin completion queue
 	NvmeSubQueue io_sq;		  // IO submission queue
