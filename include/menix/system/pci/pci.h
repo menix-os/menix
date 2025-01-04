@@ -177,3 +177,6 @@ void pci_unregister_device(PciDevice* device);
 
 // Gets a string representation of the PCI class number.
 const char* pci_get_class_name(u8 class);
+
+// Gets the calulated base address of the PCI device.
+PhysAddr pci_get_bar(PciDevice* device, usize idx);
