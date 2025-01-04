@@ -43,6 +43,14 @@ typedef struct
 extern PageMap* vm_kernel_map;
 extern VirtAddr kernel_map_base;
 
+#define VM_USER_STACK_SIZE	 0x200000
+#define VM_USER_STACK_BASE	 0x200000
+#define VM_KERNEL_STACK_SIZE 0x200000
+#define VM_USER_MAP_BASE	 0x00007F0000000000
+#define VM_MAP_BASE			 0xFFFF900000000000
+#define VM_MEMORY_BASE		 0xFFFFA00000000000
+#define VM_MODULE_BASE		 0xFFFFB00000000000
+
 // Initializes the virtual memory mapping with a bootloader-provided physical memory map.
 // `kernel_base`: A physical address pointing to the memory where the kernel has been loaded.
 void vm_init(PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries);
@@ -101,3 +109,6 @@ usize vm_user_read(Process* proc, void* dst, VirtAddr src, usize num);
 
 // Writes `num` bytes from kernel address `src` to user address `dst`. Returns actual bytes written.
 usize vm_user_write(Process* proc, VirtAddr dst, void* src, usize num);
+
+// Maps a phyiscal address with a certain length of bytes anywhere and returns a virtual address.
+void* vm_map_memory(PhysAddr phys_addr, usize len, VMProt prot);

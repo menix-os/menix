@@ -15,9 +15,9 @@ void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr st
 	target->registers.rip = start;
 
 	// Allocate kernel stack for this thread.
-	target->kernel_stack = (VirtAddr)kmalloc(CONFIG_kernel_stack_size);
+	target->kernel_stack = (VirtAddr)kmalloc(VM_KERNEL_STACK_SIZE);
 	// Stack grows down, so move to the end of the allocated memory.
-	target->kernel_stack += CONFIG_kernel_stack_size;
+	target->kernel_stack += VM_KERNEL_STACK_SIZE;
 
 	const usize page_size = vm_get_page_size(VMLevel_Small);
 
@@ -34,16 +34,16 @@ void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr st
 		// Check if we have to allocate a stack.
 		if (stack == 0)
 		{
-			PhysAddr phys_stack = pm_alloc(CONFIG_user_stack_size / page_size);
-			target->stack = CONFIG_user_stack_base - CONFIG_user_stack_size;
-			for (usize i = 0; i < CONFIG_user_stack_size / page_size; i++)
+			PhysAddr phys_stack = pm_alloc(VM_USER_STACK_SIZE / page_size);
+			target->stack = VM_USER_STACK_BASE - VM_USER_STACK_SIZE;
+			for (usize i = 0; i < VM_USER_STACK_SIZE / page_size; i++)
 			{
 				// Map all stack pages.
 				vm_map(proc->page_map, phys_stack + (i * page_size), target->stack + (i * page_size),
 					   VMProt_Read | VMProt_Write, VMFlags_User, VMLevel_Small);
 			}
 
-			target->registers.rsp = target->stack + CONFIG_user_stack_size;
+			target->registers.rsp = target->stack + VM_USER_STACK_SIZE;
 		}
 		else
 		{
@@ -76,7 +76,7 @@ void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr st
 
 void thread_arch_destroy(Thread* thread)
 {
-	kfree((void*)(thread->kernel_stack - CONFIG_kernel_stack_size));
+	kfree((void*)(thread->kernel_stack - VM_KERNEL_STACK_SIZE));
 	pm_free(thread->saved_fpu - pm_get_phys_base(), ROUND_UP(arch_current_cpu()->fpu_size, arch_page_size));
 }
 

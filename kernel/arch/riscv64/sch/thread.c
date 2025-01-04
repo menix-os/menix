@@ -11,9 +11,9 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 	target->registers.pc = start;
 
 	// Allocate kernel stack for this thread.
-	target->kernel_stack = (VirtAddr)kmalloc(CONFIG_kernel_stack_size);
+	target->kernel_stack = (VirtAddr)kmalloc(VM_KERNEL_STACK_SIZE);
 	// Stack grows down, so move to the end of the allocated memory.
-	target->kernel_stack += CONFIG_kernel_stack_size;
+	target->kernel_stack += VM_KERNEL_STACK_SIZE;
 
 	// TODO
 }

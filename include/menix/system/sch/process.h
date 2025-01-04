@@ -52,6 +52,8 @@ typedef struct Process
 	i32 return_code;	// If the process is in a dead state, contains the code to return to the parent.
 } Process;
 
+#define PROC_USER_INTERP_BASE 0x0000060000000000
+
 // Creates a new process. Returns a reference to the newly created process.
 // `name`: Name of the process.
 // `state`: Which state the process should be initialized with.

@@ -4,11 +4,13 @@
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
 #include <menix/util/log.h>
+#include <menix/util/spin.h>
 
 #include <string.h>
 
-PageMap* vm_kernel_map = NULL;							  // Page map used for the kernel.
-VirtAddr kernel_map_base = CONFIG_vm_map_foreign_base;	  // Start of mappings allocated to the kernel.
+PageMap* vm_kernel_map = NULL;					 // Page map used for the kernel.
+VirtAddr kernel_map_base = VM_MAP_BASE;			 // Start of mappings allocated to the kernel.
+VirtAddr kernel_memory_base = VM_MEMORY_BASE;	 // Start of (device, DMA) memory mappings.
 
 SEGMENT_DECLARE_SYMBOLS(text)
 SEGMENT_DECLARE_SYMBOLS(rodata)
@@ -96,20 +98,19 @@ usize vm_user_write(Process* proc, VirtAddr dst, void* src, usize num)
 	return written;
 }
 
-void* vm_map_private(PhysAddr phys_addr, usize len)
+void* vm_map_memory(PhysAddr phys_addr, usize len, VMProt prot)
 {
 	const usize page_size = vm_get_page_size(VMLevel_Small);
 	const usize aligned_bytes = ALIGN_UP(len, page_size);
 	const usize num_pages = aligned_bytes / page_size;
 
-	VirtAddr start = kernel_map_base;
+	VirtAddr start = kernel_memory_base;
 	for (usize page = 0; page < num_pages; page++)
 	{
-		vm_map(vm_kernel_map, phys_addr + (page_size * page), start + (page_size * page), VMProt_Read | VMProt_Write, 0,
-			   VMLevel_Small);
+		vm_map(vm_kernel_map, phys_addr + (page_size * page), start + (page_size * page), prot, 0, VMLevel_Small);
 	}
+	spin_lock_scope(&vm_kernel_map->lock, { kernel_map_base += aligned_bytes; });
 
-	kernel_map_base += aligned_bytes;
 	return (void*)start;
 }
 

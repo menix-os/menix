@@ -1,6 +1,7 @@
 // Thread creation and deletion functions
 
 #include <menix/common.h>
+#include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/elf.h>
 #include <menix/system/sch/process.h>
@@ -65,9 +66,9 @@ void thread_setup(Thread* target, VirtAddr start, char** argv, char** envp, bool
 	// argv[0..n]
 	// argc
 
-	const usize foreign_pages = CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small);
+	const usize foreign_pages = VM_USER_STACK_SIZE / vm_get_page_size(VMLevel_Small);
 	void* foreign = vm_map_foreign(proc->page_map, target->stack, foreign_pages);
-	void* stack = foreign + CONFIG_user_stack_size;
+	void* stack = foreign + VM_USER_STACK_SIZE;
 
 	// Copy envp onto the stack.
 	usize num_envp;
@@ -170,11 +171,11 @@ void thread_fork(Process* parent, Thread* target)
 	forked->parent = parent;
 
 	// Allocate a new kernel stack.
-	forked->kernel_stack = (VirtAddr)kmalloc(CONFIG_kernel_stack_size);
-	forked->kernel_stack += CONFIG_kernel_stack_size;
+	forked->kernel_stack = (VirtAddr)kmalloc(VM_KERNEL_STACK_SIZE);
+	forked->kernel_stack += VM_KERNEL_STACK_SIZE;
 
 	// Allocate a new user stack.
-	forked->stack = pm_alloc(CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small));
+	forked->stack = pm_alloc(VM_USER_STACK_SIZE / vm_get_page_size(VMLevel_Small));
 
 	// Copy context.
 	forked->registers = target->registers;

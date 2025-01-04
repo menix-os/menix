@@ -11,7 +11,7 @@ void tss_init(TaskStateSegment* tss)
 	kassert(tss != NULL, "No valid TSS was provided!");
 
 	// Allocate stack.
-	const usize stack_pages = CONFIG_user_stack_size / vm_get_page_size(VMLevel_Small);
+	const usize stack_pages = VM_USER_STACK_SIZE / vm_get_page_size(VMLevel_Small);
 	tss->rsp0 = pm_alloc(stack_pages) + (u64)pm_get_phys_base();
 	tss->ist1 = pm_alloc(stack_pages) + (u64)pm_get_phys_base();
 	tss->iopb = sizeof(TaskStateSegment);

@@ -51,7 +51,7 @@ Process* proc_create(const char* name, ProcessState state, bool is_user, Process
 	else
 	{
 		proc->permissions = S_IWGRP | S_IWOTH;
-		proc->map_base = CONFIG_vm_map_base;
+		proc->map_base = VM_MAP_BASE;
 	}
 
 	list_new(proc->threads, 0);
@@ -101,7 +101,7 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 		}
 
 		ElfInfo interp_info = {0};
-		if (elf_load(map, interp->handle, CONFIG_user_interp_base, &interp_info) == false)
+		if (elf_load(map, interp->handle, PROC_USER_INTERP_BASE, &interp_info) == false)
 		{
 			print_log("process: Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
 			vm_page_map_destroy(map);
@@ -121,7 +121,7 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 
 	proc->page_map = map;
 	proc->working_dir = node->parent;
-	proc->map_base = CONFIG_user_map_base;
+	proc->map_base = VM_USER_MAP_BASE;
 
 	// TODO: Make a proper IO interface
 	FileDescriptor* desc = kzalloc(sizeof(FileDescriptor));
