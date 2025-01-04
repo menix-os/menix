@@ -2,7 +2,6 @@
 
 #include <menix/memory/pm.h>
 #include <menix/system/acpi/acpi.h>
-#include <menix/system/acpi/types.h>
 #include <menix/system/time/clock.h>
 #include <menix/util/log.h>
 
