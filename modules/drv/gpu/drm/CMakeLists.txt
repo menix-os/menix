@@ -5,4 +5,7 @@ add_module(udrm "Marvin Friedrich" "Direct Rendering Manager" MAIN OFF ON
 	udrm/src/udrm.c
 	udrm/src/udrm_bochs.c
 )
-target_include_directories(${MENIX_CURRENT_MOD} PRIVATE udrm/include)
+
+if(TARGET ${MENIX_CURRENT_MOD})
+	target_include_directories(${MENIX_CURRENT_MOD} PRIVATE udrm/include)
+endif()
