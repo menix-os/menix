@@ -353,7 +353,7 @@ bool vm_protect(PageMap* page_map, VirtAddr virt_addr, VMProt prot, VMFlags flag
 	return result;
 }
 
-Context* interrupt_pf_handler(Context* regs, void* data)
+Context* interrupt_pf_handler(usize isr, Context* regs, void* data)
 {
 	// CR2 holds the address that was accessed.
 	usize cr2;
@@ -361,6 +361,7 @@ Context* interrupt_pf_handler(Context* regs, void* data)
 
 #if !defined(NDEBUG) && defined(CONFIG_x86_pf_debug)
 	print_log("vm: Page fault: \n");
+	print_log("vm: Attempted to access 0x%p!\n", cr2);
 
 	// Present
 	if (BIT(regs->error, 0))
@@ -387,8 +388,6 @@ Context* interrupt_pf_handler(Context* regs, void* data)
 	// Check if SMAP is blocking this access
 	if (can_smap & !BIT(regs->rflags, 18) & !(regs->cs & CPL_USER))
 		print_log("vm: \t- SMAP is enabled\n");
-
-	print_log("vm: Attempted to access 0x%p!\n", cr2);
 #endif
 
 	// If the current protection level wasn't 3, that means the page fault was
