@@ -1,6 +1,6 @@
 FROM archlinux/archlinux
 
-RUN pacman -Syuu cmake ninja clang gcc --noconfirm
+RUN pacman -Syuu cmake ninja clang gcc lld --noconfirm
 
 COPY include /app/include
 COPY kernel /app/kernel

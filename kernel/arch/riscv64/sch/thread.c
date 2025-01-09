@@ -18,6 +18,10 @@ void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr st
 	// TODO
 }
 
+void thread_arch_fork(Thread* forked, Thread* original)
+{
+}
+
 void thread_arch_destroy(Thread* thread)
 {
 	// TODO
