@@ -33,14 +33,8 @@ LIMINE_REQUEST(kernel_address_request, LIMINE_KERNEL_ADDRESS_REQUEST, 0);	 // Ge
 LIMINE_REQUEST(kernel_file_request, LIMINE_KERNEL_FILE_REQUEST, 0);			 // For debug symbols.
 LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 1);			 // Initial console frame buffer.
 LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);					 // Get all other modules.
-
-#ifdef CONFIG_acpi
-LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);	 // Get ACPI RSDP table if enabled.
-#endif
-
-#ifdef CONFIG_open_firmware
-LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);	   // Get device tree blob if enabled.
-#endif
+LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);						 // Get ACPI RSDP table if enabled.
+LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);							 // Get device tree blob if enabled.
 
 ATTR(used, section(".requests_end_marker")) static volatile LIMINE_REQUESTS_END_MARKER;	   // End requests
 
@@ -124,12 +118,11 @@ void kernel_boot()
 	info.kernel_file = (void*)kernel_file_request.response->kernel_file->address;
 	info.phys_base = (void*)hhdm_request.response->offset;
 	info.cmd = kernel_file_request.response->kernel_file->cmdline;
-#ifdef CONFIG_acpi
-	info.acpi_rsdp = rsdp_request.response->address;
-#endif
-#ifdef CONFIG_open_firmware
-	info.fdt_blob = dtb_request.response->dtb_ptr;
-#endif
+
+	if (rsdp_request.response)
+		info.acpi_rsdp = rsdp_request.response->address;
+	if (dtb_request.response)
+		info.fdt_blob = dtb_request.response->dtb_ptr;
 
 	kernel_init(&info);
 }

@@ -8,7 +8,7 @@
 #include <menix/system/sch/thread.h>
 #include <menix/system/time/clock.h>
 
-#if !defined(NDEBUG) || CONFIG_force_asserts
+#if !defined(NDEBUG)
 #define kassert(expr, msg, ...) \
 	do \
 	{ \

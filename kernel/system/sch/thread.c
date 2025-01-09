@@ -54,7 +54,7 @@ void thread_setup(Thread* target, VirtAddr start, char** argv, char** envp, bool
 
 	Process* proc = target->parent;
 
-	// Stack layout starting at CONFIG_user_stack_addr:
+	// Stack layout starting at VM_USER_STACK_BASE:
 	// envp data
 	// argv data
 	// - 16 byte alignment -
@@ -145,9 +145,9 @@ void thread_setup(Thread* target, VirtAddr start, char** argv, char** envp, bool
 	*(--sized_stack) = num_argv;
 
 	// Update stack start.
-#ifdef CONFIG_arch_x86_64
+#ifdef __x86_64__
 	target->registers.rsp = (void*)sized_stack - foreign + target->stack;
-#elif defined(CONFIG_arch_riscv64)
+#elif defined(__riscv) && (__riscv_xlen == 64)
 	target->registers.x2 = (void*)sized_stack - foreign + target->stack;
 #endif
 

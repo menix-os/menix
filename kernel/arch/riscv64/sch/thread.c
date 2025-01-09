@@ -5,7 +5,7 @@
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/thread.h>
 
-void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
+void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 {
 	target->is_user = is_user;
 	target->registers.pc = start;
@@ -18,7 +18,7 @@ void thread_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr stack)
 	// TODO
 }
 
-void thread_destroy(Thread* thread)
+void thread_arch_destroy(Thread* thread)
 {
 	// TODO
 }

@@ -9,10 +9,10 @@
 #include <bits/asm.h>
 #include <bits/context.h>
 
-#define arch_log(fmt, ...) print_log(CONFIG_arch ": " fmt, ##__VA_ARGS__)
+#define arch_log(fmt, ...) print_log(MENIX_ARCH ": " fmt, ##__VA_ARGS__)
 
 // The size of a single page.
-#ifdef CONFIG_dynamic_page_size
+#ifdef ARCH_HAS_DYNAMIC_PAGE_SIZE
 extern usize arch_page_size;
 #else
 #define arch_page_size ((usize)(0x1000))
@@ -30,23 +30,19 @@ typedef struct Cpu
 	InterruptFn irq_handlers[256];	  // IRQ handlers.
 	InterruptFn irq_data[256];		  // IRQ context to pass along.
 
-#ifdef CONFIG_arch_x86_64
+#ifdef __x86_64__
 	Gdt gdt;
 	TaskStateSegment tss;
 	u32 lapic_id;					   // Local APIC ID.
 	usize fpu_size;					   // Size of the FPU in bytes.
 	void (*fpu_save)(void* dst);	   // Function to call when saving the FPU state.
 	void (*fpu_restore)(void* dst);	   // Function to call when restoring the FPU state.
-#elif defined(CONFIG_arch_riscv64)
+#elif defined(__riscv) && (__riscv_xlen == 64)
 	u32 hart_id;	// Hart CPU ID.
 #endif
 } ATTR(aligned(arch_page_size)) Cpu;
 
-#ifdef CONFIG_smp
 #define MAX_CPUS 1024
-#else
-#define MAX_CPUS 1
-#endif
 
 extern Cpu per_cpu_data[MAX_CPUS];
 
@@ -76,7 +72,7 @@ typedef enum : usize
 {
 	ArchCtl_None = 0,
 
-#ifdef CONFIG_arch_x86_64
+#ifdef __x86_64__
 	ArchCtl_SetFsBase = 1,
 #endif
 } ArchCtl;

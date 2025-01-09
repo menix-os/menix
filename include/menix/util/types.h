@@ -2,8 +2,6 @@
 
 #pragma once
 
-#include <menix/config.h>
-
 #define NULL				   ((void*)0)
 #define offsetof(type, member) ((usize)(&((type*)0)->member))
 
@@ -26,12 +24,12 @@ typedef unsigned short u16;
 typedef signed int i32;
 // Unsigned 32-bit integer.
 typedef unsigned int u32;
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 // Signed 64-bit integer.
 typedef signed long i64;
 // Unsigned 64-bit integer.
 typedef unsigned long u64;
-#elif CONFIG_bits == 128
+#elif MENIX_BITS == 128
 // Signed 128-bit integer.
 typedef __int128 i128;
 // Unsigned 128-bit integer.
@@ -39,13 +37,13 @@ typedef unsigned __int128 u128;
 #endif
 
 // usize
-#if CONFIG_bits == 32
+#if MENIX_BITS == 32
 typedef u32 usize;
 typedef i32 isize;
-#elif CONFIG_bits == 64
+#elif MENIX_BITS == 64
 typedef u64 usize;
 typedef i64 isize;
-#elif CONFIG_bits == 128
+#elif MENIX_BITS == 128
 typedef u128 usize;
 typedef i128 isize;
 #else

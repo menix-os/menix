@@ -158,16 +158,12 @@ Cpu* arch_current_cpu()
 	if (asm_rdmsr(MSR_GS_BASE) == 0)
 		return &per_cpu_data[0];
 
-#ifdef CONFIG_smp
 	// The Cpu struct starts at GS_BASE:0
 	// Since we can't "directly" access the base address, just get the first field (Cpu.id)
 	// and use that to index into the CPU array.
 	u64 id;
 	asm volatile("mov %%gs:(0), %0" : "=r"(id) : "i"(offsetof(Cpu, id)) : "memory");
 	return &per_cpu_data[id];
-#else
-	return &per_cpu_data[0];
-#endif
 }
 
 void arch_dump_registers(Context* regs)

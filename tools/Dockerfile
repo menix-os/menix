@@ -9,4 +9,4 @@ COPY CMakeLists.txt /app/CMakeLists.txt
 COPY toolchain /app/toolchain
 
 WORKDIR /app
-CMD cmake -D CMAKE_BUILD_TYPE=Release -B build -G "Ninja" -D CMAKE_C_COMPILER=$CC -D MENIX_ARCH=$ARCH;cmake --build build
+CMD cmake -D CMAKE_BUILD_TYPE=Release -B build -G "Ninja" -D CMAKE_C_COMPILER=$CC -D MENIX_ARCH=$ARCH; cmake --build build

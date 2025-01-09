@@ -23,4 +23,3 @@ add_subdirectory(fs)
 
 # Example modules, disabled by default
 add_subdirectory(examples/cpp_example)
-add_subdirectory(examples/rust_example)

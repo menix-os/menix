@@ -39,10 +39,17 @@ void ktrace(Context* regs)
 		return;
 
 	arch_dump_registers(regs);
-	StackFrame* fp = (void*)regs->rbp;
+
+	StackFrame* fp =
+#if defined(__x86_64__)
+		(void*)regs->rbp;
+#elif defined(__riscv) && (__riscv_xlen == 64)
+		(void*)regs->x2;
+#endif
+
 	// Print stack trace.
 	print_log("--- Stack trace (Most recent call first) ---\n");
-	for (usize i = 0; i < CONFIG_ktrace_max && fp != NULL; fp = fp->prev, i++)
+	for (usize i = 0; i < 32 && fp != NULL; fp = fp->prev, i++)
 	{
 		// Try to resolve the symbol name and offset.
 		const char* name;

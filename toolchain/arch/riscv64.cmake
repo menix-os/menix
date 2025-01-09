@@ -15,5 +15,3 @@ target_compile_options(common_kernel INTERFACE
 )
 
 set(max_page_size 0x1000)
-
-add_option(open_firmware BOOL ON)

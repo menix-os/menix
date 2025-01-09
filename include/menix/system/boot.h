@@ -27,12 +27,8 @@ typedef struct
 	usize file_num;			   // Amount of files loaded.
 	BootFile files[32];		   // Array of files.
 	FrameBuffer* fb;		   // Early frame buffer.
-#ifdef CONFIG_acpi
-	PhysAddr acpi_rsdp;	   // ACPI RSDP table.
-#endif
-#ifdef CONFIG_open_firmware
-	void* fdt_blob;	   // Device tree blob.
-#endif
+	PhysAddr acpi_rsdp;		   // ACPI RSDP table.
+	void* fdt_blob;			   // Device tree blob.
 } BootInfo;
 
 // Initializes the rest of the system after booting has finished.

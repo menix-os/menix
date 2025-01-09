@@ -6,7 +6,7 @@
 
 #include <interrupts.h>
 
-#ifndef CONFIG_arch_x86_64
+#ifndef __x86_64__
 #error This driver is only compatible with x86!
 #endif
 

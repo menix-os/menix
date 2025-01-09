@@ -197,15 +197,15 @@ i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data,
 
 	switch (ELF_R_TYPE(reloc->r_info))
 	{
-#if defined(CONFIG_arch_x86_64)
+#if defined(__x86_64__)
 		case R_X86_64_64:
 		case R_X86_64_GLOB_DAT:
 		case R_X86_64_JUMP_SLOT:
-#elif defined(CONFIG_arch_aarch64)
-#elif defined(CONFIG_arch_riscv64)
+#elif defined(__aarch64__)
+#elif defined(__riscv) && (__riscv_xlen == 64)
 		case R_RISCV_64:
 		case R_RISCV_JUMP_SLOT:
-#elif defined(CONFIG_arch_loongarch64)
+#elif defined(__loongarch__) && (__loongarch_grlen == 64))
 #endif
 		{
 			void* resolved;
@@ -225,12 +225,12 @@ i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data,
 			*(void**)location = resolved + reloc->r_addend;
 			break;
 		}
-#if defined(CONFIG_arch_x86_64)
+#if defined(__x86_64__)
 		case R_X86_64_RELATIVE:
-#elif defined(CONFIG_arch_aarch64)
-#elif defined(CONFIG_arch_riscv64)
+#elif defined(__aarch64__)
+#elif defined(__riscv) && (__riscv_xlen == 64)
 		case R_RISCV_RELATIVE:
-#elif defined(CONFIG_arch_loongarch64)
+#elif defined(__loongarch__) && (__loongarch_grlen == 64))
 #endif
 		{
 			*(void**)location = base_virt + reloc->r_addend;

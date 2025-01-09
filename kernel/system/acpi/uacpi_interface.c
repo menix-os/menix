@@ -1,5 +1,6 @@
 #include <menix/memory/pm.h>
 #include <menix/system/acpi/madt.h>
+#include <menix/system/acpi/mcfg.h>
 #include <menix/system/arch.h>
 #include <menix/system/interrupts.h>
 #include <menix/system/pci/pci.h>
@@ -11,11 +12,7 @@
 #include <uacpi/types.h>
 #include <uacpi/uacpi.h>
 
-#ifdef CONFIG_pci
-#include <menix/system/acpi/mcfg.h>
-#endif
-
-#ifdef CONFIG_arch_x86_64
+#ifdef __x86_64__
 #include <hpet.h>
 #endif
 
@@ -28,14 +25,12 @@ void acpi_init(PhysAddr rsdp)
 	void* temp_buffer = kmalloc(4096);
 	uacpi_setup_early_table_access(temp_buffer, 4096);
 
-#ifdef CONFIG_arch_x86_64
+#ifdef __x86_64__
 	hpet_init();
 	madt_init();
 #endif
 
-#ifdef CONFIG_pci
 	mcfg_init();
-#endif
 
 	uacpi_initialize(0);
 	kfree(temp_buffer);

@@ -14,5 +14,3 @@ target_compile_options(common_kernel INTERFACE
 )
 
 set(max_page_size 0x10000)
-
-add_option(dynamic_page_size BOOL ON)

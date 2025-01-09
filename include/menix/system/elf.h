@@ -80,7 +80,7 @@
 #define ELF_ST_TYPE(i)	  ((i) & 0xf)
 #define ELF_ST_INFO(b, t) (((b) << 4) + ((t) & 0xf))
 
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 #define ELF64_R_SYM(i)	   ((i) >> 32)
 #define ELF64_R_TYPE(i)	   ((i) & 0xffffffffL)
 #define ELF64_R_INFO(s, t) (((s) << 32) + ((t) & 0xffffffffL))
@@ -89,7 +89,7 @@
 #define ELF32_R_TYPE(i)	   ((u8)(i))
 #define ELF32_R_INFO(s, t) (((s) << 8) + (u8)(t))
 
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 #define ELF_R_SYM(i)	 ELF64_R_SYM(i)
 #define ELF_R_TYPE(i)	 ELF64_R_TYPE(i)
 #define ELF_R_INFO(s, t) ELF64_R_INFO(s, t)
@@ -174,7 +174,7 @@
 #define AT_L4_ENV 0xf1
 
 // Architecture specific ELF definitions
-#if defined(CONFIG_arch_x86_64)
+#if defined(__x86_64__)
 #define EM_X86_64		   62
 #define R_X86_64_NONE	   0	 //	None	None
 #define R_X86_64_64		   1	 //	qword	S + A
@@ -201,8 +201,8 @@
 #define EI_ARCH_DATA	   ELFDATA2LSB
 #define EI_ARCH_MACHINE	   EM_X86_64
 
-#elif defined(CONFIG_arch_aarch64)
-#elif defined(CONFIG_arch_riscv64)
+#elif defined(__aarch64__)
+#elif defined(__riscv) && (__riscv_xlen == 64)
 #define EM_RISCV				  243
 #define R_RISCV_NONE			  0		//
 #define R_RISCV_32				  1		// _word32_  S + A
@@ -264,11 +264,11 @@
 #define EI_ARCH_CLASS			  ELFCLASS64
 #define EI_ARCH_DATA			  ELFDATA2LSB
 #define EI_ARCH_MACHINE			  EM_RISCV
-#elif defined(CONFIG_arch_loongarch64)
+#elif defined(__loongarch__) && (__loongarch_grlen == 64))
 #endif
 
 // ELF types that are related to the build host.
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 #define Elf_Hdr	 Elf64_Hdr
 #define Elf_Phdr Elf64_Phdr
 #define Elf_Dyn	 Elf64_Dyn
@@ -296,7 +296,7 @@
 #define Elf_Auxv Elf32_Auxv
 #endif
 
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef u64 Elf64_Addr;
 typedef u64 Elf64_Off;
 #endif
@@ -304,7 +304,7 @@ typedef u32 Elf32_Addr;
 typedef u32 Elf32_Off;
 
 // The file header is located at the beginning of the file, and is used to locate the other parts of the file.
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef struct ATTR(packed)
 {
 	u8 e_ident[EI_NIDENT];	  // ELF identification
@@ -342,7 +342,7 @@ typedef struct ATTR(packed)
 } Elf32_Hdr;
 
 // Program header. Field structure is different between bit sizes.
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef struct ATTR(packed)
 {
 	u32 p_type;
@@ -368,7 +368,7 @@ typedef struct ATTR(packed)
 } Elf32_Phdr;
 
 // Section header
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef struct ATTR(packed)
 {
 	u32 sh_name;			// Section name
@@ -398,7 +398,7 @@ typedef struct ATTR(packed)
 } Elf32_Shdr;
 
 // Symbol
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef struct ATTR(packed)
 {
 	u32 st_name;
@@ -420,7 +420,7 @@ typedef struct ATTR(packed)
 } Elf32_Sym;
 
 // Dynamic entry
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef struct ATTR(packed)
 {
 	i64 d_tag;
@@ -442,7 +442,7 @@ typedef struct ATTR(packed)
 } Elf32_Dyn;
 
 // Relocation
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef struct ATTR(packed)
 {
 	Elf64_Addr r_offset;
@@ -456,7 +456,7 @@ typedef struct ATTR(packed)
 } Elf32_Rel;
 
 // Relocation + addend
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef struct ATTR(packed)
 {
 	Elf64_Addr r_offset;
@@ -472,7 +472,7 @@ typedef struct ATTR(packed)
 } Elf32_Rela;
 
 // Note
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef struct
 {
 	u64 n_namesz;
@@ -488,7 +488,7 @@ typedef struct
 } Elf32_Nhdr;
 
 // Auxiliary Vector
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 typedef struct
 {
 	u32 atype;

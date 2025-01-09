@@ -19,9 +19,9 @@ SYSCALL_IMPL(uname, VirtAddr buffer)
 	fixed_strncpy(uname_result.sysname, "menix");
 	// TODO: Get actual network node.
 	fixed_strncpy(uname_result.nodename, "localhost");
-	fixed_strncpy(uname_result.release, CONFIG_release);
-	fixed_strncpy(uname_result.version, CONFIG_version);
-	fixed_strncpy(uname_result.machine, CONFIG_arch);
+	fixed_strncpy(uname_result.release, MENIX_RELEASE);
+	fixed_strncpy(uname_result.version, MENIX_VERSION);
+	fixed_strncpy(uname_result.machine, MENIX_ARCH);
 
 	vm_user_write(arch_current_cpu()->thread->parent, buffer, &uname_result, sizeof(uname_result));
 

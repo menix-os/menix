@@ -359,7 +359,7 @@ Context* interrupt_pf_handler(usize isr, Context* regs, void* data)
 	usize cr2;
 	asm_get_register(cr2, cr2);
 
-#if !defined(NDEBUG) && defined(CONFIG_x86_pf_debug)
+#if !defined(NDEBUG)
 	print_log("vm: Page fault: \n");
 	print_log("vm: Attempted to access 0x%p!\n", cr2);
 

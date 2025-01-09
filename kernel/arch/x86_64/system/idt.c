@@ -25,7 +25,7 @@ void idt_set(u8 idx, void* handler, u8 type_attr)
 	target->selector = offsetof(Gdt, kernel_code);
 	target->type = type_attr;
 	target->reserved = 0;
-#if CONFIG_bits >= 64
+#if MENIX_BITS >= 64
 	target->base_32_63 = (ptr >> 32) & 0xFFFFFFFF;
 	target->reserved2 = 0;
 #endif

@@ -34,7 +34,7 @@ void vm_set_page_map(PageMap* page_map)
 	// TODO
 }
 
-PageMap* vm_page_map_new(VMLevel size)
+PageMap* vm_page_map_new()
 {
 	// TODO
 	return NULL;

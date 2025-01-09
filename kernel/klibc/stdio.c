@@ -272,7 +272,7 @@ print_num:
 				const usize num = va_arg(args, usize);
 				const usize buf_size = sizeof(usize) * 2 + 1;
 				char str[buf_size];
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 				u64toa(num, number, 0x10);
 #else
 				u32toa(num, number, 0x10);

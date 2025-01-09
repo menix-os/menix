@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <menix/config.h>
 #include <menix/util/types.h>
 #include <menix/util/units.h>
 

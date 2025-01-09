@@ -29,13 +29,13 @@ typedef enum : usize
 typedef struct
 {
 	SpinLock lock;
-#if defined(CONFIG_arch_x86_64)
+#if defined(__x86_64__)
 	usize* head;
-#elif defined(CONFIG_arch_aarch64)
+#elif defined(__aarch64__)
 	usize* head[2];
-#elif defined(CONFIG_arch_riscv64)
+#elif defined(__riscv) && (__riscv_xlen == 64)
 	usize* head;
-#elif defined(CONFIG_arch_loongarch64)
+#elif defined(__loongarch__) && (__loongarch_grlen == 64))
 	usize* head[2];
 #endif
 } PageMap;

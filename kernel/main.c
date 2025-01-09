@@ -62,7 +62,7 @@ ATTR(noreturn) void kernel_main()
 	terminal_init();
 
 	// Say hello to the console!
-	print_log("menix " CONFIG_release " (" CONFIG_arch ", " CONFIG_version ")\n");
+	print_log("menix " MENIX_RELEASE " (" MENIX_ARCH ", " MENIX_VERSION ")\n");
 	print_log("boot: Command line: \"%s\"\n", info->cmd);
 
 	module_load_kernel_syms(info->kernel_file);

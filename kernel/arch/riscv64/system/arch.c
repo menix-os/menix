@@ -42,16 +42,12 @@ void arch_stop()
 
 Cpu* arch_current_cpu()
 {
-#ifdef CONFIG_smp
 	// The Cpu struct starts at tp + 0
 	// Since we can't "directly" access the base address, just get the first field (Cpu.id)
 	// and use that to index into the CPU array.
 	u64 id;
 	asm volatile("sd %0, %1(tp)" : "=r"(id) : "i"(offsetof(Cpu, id)) : "memory");
 	return &per_cpu_data[id];
-#else
-	return &per_cpu_data[0];
-#endif
 }
 
 usize arch_archctl(ArchCtl ctl, usize arg1, usize arg2)

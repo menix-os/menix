@@ -94,7 +94,7 @@ usize cmd_get_usize(const char* key, usize fallback)
 			string += 2;
 		}
 
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 		result = atou64(string, base);
 #else
 		result = atou32(string, base);
@@ -125,7 +125,7 @@ isize cmd_get_isize(const char* key, isize fallback)
 		isize result;
 		const usize base = 10;
 
-#if CONFIG_bits == 64
+#if MENIX_BITS == 64
 		result = atoi64(string, base);
 #else
 		result = atoi32(string, base);

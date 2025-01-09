@@ -24,10 +24,10 @@ void vm_init(PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 	vm_kernel_map = pm_get_phys_base() + pm_alloc(1);
 	vm_kernel_map->lock = (SpinLock) {0};
 
-#if defined(CONFIG_arch_x86_64)
+#if defined(__x86_64__)
 	vm_kernel_map->head = pm_get_phys_base() + pm_alloc(1);
 	memset(vm_kernel_map->head, 0x00, arch_page_size);
-#elif defined(CONFIG_arch_riscv64)
+#elif defined(__riscv) && (__riscv_xlen == 64)
 
 #endif
 
