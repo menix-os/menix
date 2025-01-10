@@ -44,7 +44,7 @@ struct ATTR(packed) PciConfigSpace
 	u8 cache_line_size, latency_timer, header_type, bist;
 
 	// Fields depending on the header type.
-	union
+	union ATTR(packed)
 	{
 		struct ATTR(packed)
 		{

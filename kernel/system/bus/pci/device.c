@@ -78,8 +78,7 @@ void pci_scan_devices()
 
 PhysAddr pci_get_bar(PciDevice* device, usize idx)
 {
-	volatile u32* bars = device->config_space->generic.bar;
-	PhysAddr bar = bars[idx];
+	PhysAddr bar = device->config_space->generic.bar[idx];
 
 	// Memory Space BAR
 	if ((bar & 1) == 0)
@@ -87,7 +86,7 @@ PhysAddr pci_get_bar(PciDevice* device, usize idx)
 		const usize type = (bar & 0b110) >> 1;
 		// If a 64-bit BAR, add the upper bits to the address.
 		if (type == 0x2)
-			bar |= (PhysAddr)bars[idx + 1] << 32;
+			bar |= (PhysAddr)device->config_space->generic.bar[idx + 1] << 32;
 		bar = ALIGN_DOWN(bar, 16);
 	}
 	// IO Space BAR
