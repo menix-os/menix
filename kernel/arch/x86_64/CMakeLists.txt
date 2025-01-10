@@ -6,7 +6,7 @@ add_architecture(x86_64
 	system/idt.c
 	system/tss.c
 	system/serial.c
-	system/arch.asm
+	system/arch.s
 	system/archctl.c
 	system/arch.c
 	system/apic.c
