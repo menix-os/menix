@@ -1,33 +1,33 @@
 # Contributing
+
 This document explains how to format and submit contributions to
 the `menix` project.
 
 ## General rules
+
 - **NO** discriminatory behavior, everyone should be welcome to contribute.
 - Every submission should solve exactly **ONE** problem.
 - Your submission **MUST** be written by you.
 - Your code **MUST** be licensed under the project's main license, or
   one that has less restrictions.
-- Currently, the following licenses are supported:
-	- LGPL-2.1-or-later
-	- BSD-2-Clause
-	- BSD-3-Clause
-	- MIT
 
 At the top of each file, include the following section. It should contain a
 very brief summary of the file's purpose, followed by the SPDX identifier of
-the code. If it is omitted, it's assumed to be the same as the project's
-main license.
+the code.
 
 <!-- REUSE-IgnoreStart -->
-  **Example:**
-  ```c
-  // Implementation for a cool feature
-  // SPDX-License-Identifier: BSD-3-Clause
-  ```
+
+**Example:**
+
+```c
+// SPDX-License-Identifier: BSD-2-Clause
+// Implementation for a cool feature
+```
+
 <!-- REUSE-IgnoreEnd -->
 
 ## Coding style
+
 The following section explains how code is expected to be formatted in order
 to make it easier to read for other people. Use the `.clang-format` file in the
 project root to check if your code complies with these guidelines.
