@@ -20,10 +20,9 @@ endfunction(add_linker_dir)
 # * name		Name of the module (e.g. example)
 # * author		Author of the module (e.g. "John Smith")
 # * desc		Short description of the module
-# * license		License of the module (e.g. "MIT") or "MAIN", if the project's main license.
 # * modular		If the module supports dynamic loading (ON/OFF)
 # * default		Default configuration value (ON/MOD/OFF)
-function(add_module name author desc license modular default)
+function(add_module name author desc modular default)
 	set(MENIX_CURRENT_MOD ${name} CACHE INTERNAL "")
 
 	# If the option is not in cache yet, use the default value.
@@ -65,13 +64,6 @@ function(add_module name author desc license modular default)
 			MODULE_AUTHOR="${author}"
 			MODULE_DESCRIPTION="${desc}"
 		)
-
-		# Evaluate module license
-		if(${license} STREQUAL "MAIN")
-			target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_LICENSE="${MENIX_LICENSE}")
-		else()
-			target_compile_definitions(${MENIX_CURRENT_MOD} PRIVATE MODULE_LICENSE="${license}")
-		endif()
 
 		# Add local include directory to search path.
 		target_include_directories(${MENIX_CURRENT_MOD} PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/include)

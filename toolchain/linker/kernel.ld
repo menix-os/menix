@@ -14,9 +14,11 @@ SECTIONS
 	__ld_kernel_start = .;
 
 	__ld_seg_boot_start = .;
-	.boot ALIGN(4K):
+	.boot ALIGN(CONSTANT(MAXPAGESIZE)):
 	{
-		INCLUDE boot.ld
+		KEEP(*(.requests_start_marker))
+		KEEP(*(.requests))
+		KEEP(*(.requests_end_marker))
 	} :boot
 	__ld_seg_boot_end = .;
 

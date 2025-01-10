@@ -18,9 +18,6 @@ execute_process(
 )
 set(MENIX_VERSION "${MENIX_VERSION} (${GIT_HASH})")
 
-# Project license.
-set(MENIX_LICENSE "LGPL")
-
 # Target architecture, default to x86 if none given.
 if(NOT DEFINED MENIX_ARCH)
 	set(MENIX_ARCH "x86_64")
@@ -34,7 +31,7 @@ set(CMAKE_C_STANDARD 23)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_SYSTEM_NAME Generic)
 
-project(menix LANGUAGES C CXX ASM)
+project(menix LANGUAGES C ASM)
 
 add_executable(menix)
 

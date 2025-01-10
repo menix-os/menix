@@ -1,3 +1,6 @@
-# Boot protocols
+# Limine bootloader support.
+# Limine is the default bootloader for menix.
 
-add_subdirectory(boot_protocol_limine)
+target_sources(menix PUBLIC
+	limine_entry.c
+)

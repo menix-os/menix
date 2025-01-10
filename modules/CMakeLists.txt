@@ -17,9 +17,3 @@ include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Generic drivers
 add_subdirectory(drv)
-
-# File systems
-add_subdirectory(fs)
-
-# Example modules, disabled by default
-add_subdirectory(examples/cpp_example)

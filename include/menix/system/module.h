@@ -16,7 +16,7 @@
 #define MODULE ATTR(used, section(".mod")) static const Module this_module
 
 // Add all module information that is provided by the build system.
-#define MODULE_META .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION, .license = MODULE_LICENSE
+#define MODULE_META .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION
 
 // Adds a list of dependencies to the module info.
 #define MODULE_DEPS(...) .num_dependencies = ARRAY_SIZE(((const char*[]) {__VA_ARGS__})), .dependencies = {__VA_ARGS__}
@@ -35,8 +35,7 @@ typedef struct ATTR(packed) ATTR(aligned(0x20))
 	ModuleExitFn exit;				  // Called to unload the module (Optional, as not every module can be unloaded).
 	const char name[64];			  // Name of the module.
 	const char author[64];			  // Author(s) of this module.
-	const char description[128];	  // Information about this module.
-	const char license[40];			  // License information.
+	const char description[168];	  // Information about this module.
 	usize num_dependencies;			  // Amount of dependencies.
 	const char dependencies[][64];	  // A list of modules this module depends on.
 } Module;
