@@ -7,6 +7,7 @@
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
 #include <menix/util/log.h>
 #include <menix/util/self.h>
 #include <menix/util/spin.h>
@@ -408,7 +409,7 @@ Context* interrupt_pf_handler(usize isr, Context* regs, void* data)
 
 		// If nothing can make the process recover, we have to put it out of its misery.
 		proc_kill(proc, true);
-		print_log("vm: PID %zu terminated with SIGSEGV.\n", proc->id);
+		regs = sch_reschedule(regs);
 	}
 
 	return regs;

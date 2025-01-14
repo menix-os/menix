@@ -34,7 +34,6 @@ ATTR(noreturn) void sch_arch_stop();
 
 // Implementation of the scheduler. Not meant to be called directly, use `sch_invoke` instead.
 // Returns a pointer to the new context.
-// ? Defined per architecture.
 Context* sch_reschedule(Context* regs);
 
 // Returns the next thread that's ready to get execution time.
