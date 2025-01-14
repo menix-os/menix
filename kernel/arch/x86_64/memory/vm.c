@@ -362,7 +362,7 @@ Context* interrupt_pf_handler(usize isr, Context* regs, void* data)
 
 #if !defined(NDEBUG)
 	print_log("vm: Page fault: \n");
-	print_log("vm: Attempted to access 0x%p!\n", cr2);
+	print_log("vm: Attempted to access 0x%p (ip: 0x%p)!\n", cr2, regs->rip);
 
 	// Present
 	if (BIT(regs->error, 0))

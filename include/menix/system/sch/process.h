@@ -77,19 +77,12 @@ void proc_setup(Process* proc, bool is_user);
 
 // Destroys a process context.
 // `proc`: The process to destroy.
-// ? Defined per architecture.
 void proc_destroy(Process* proc);
 
 // Forks an exisiting process and returns its process ID.
 // `proc`: The process to fork.
 // `thread`: The executing thread.
 usize proc_fork(Process* proc, Thread* thread);
-
-// Sets up the context for a forked process.
-// `fork`: Target process.
-// `source`: The process being forked from.
-// ? Defined per architecture.
-void proc_fork_context(Process* fork, Process* source);
 
 // Terminates a process.
 // `proc`: The process to kill.
