@@ -1,7 +1,7 @@
 // A global list of all system calls available.
 
 #ifdef SYSCALL_TABLE_INSERT
-#define SYSCALL(num, name) [num] = (SyscallFn)syscall_##name,
+#define SYSCALL(num, name) [num] = {.func = (SyscallFn)syscall_##name, .func_name = #name},
 #else
 #include <menix/common.h>
 typedef struct SyscallResult SyscallResult;
