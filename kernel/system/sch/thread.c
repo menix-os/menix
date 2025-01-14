@@ -186,7 +186,10 @@ void thread_fork(Process* parent, Thread* target)
 	list_push(&parent->threads, forked);
 
 	spin_unlock(&thread_lock);
-	print_log("Forked thread %zu, new TID %zu\n", target->id, forked->id);
+
+#ifndef NDEBUG
+	print_log("thread: Forked thread %zu, new ID %zu, IP at 0x%p\n", target->id, forked->id, forked->registers.rip);
+#endif
 }
 
 void thread_hang(Thread* victim, bool reschedule)

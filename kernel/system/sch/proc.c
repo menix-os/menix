@@ -277,12 +277,6 @@ void proc_setup(Process* proc, bool is_user)
 		proc->page_map = vm_kernel_map;
 }
 
-void proc_fork_context(Process* fork, Process* source)
-{
-	fork->page_map = vm_page_map_fork(source->page_map);
-	// TODO
-}
-
 void proc_destroy(Process* proc)
 {
 	if (arch_current_cpu()->thread == NULL)
