@@ -8,7 +8,13 @@
 // Include the syscalls once.
 #include <menix/syscall/syscall_list.h>
 
-static const SyscallFn syscall_table[] = {
+typedef struct
+{
+	SyscallFn func;
+	const char* func_name;
+} SyscallTable;
+
+static const SyscallTable syscall_table[] = {
 // Include them again, but now as table entry.
 #undef SYSCALL
 #define SYSCALL_TABLE_INSERT
@@ -26,9 +32,9 @@ SyscallResult syscall_invoke(usize num, usize a0, usize a1, usize a2, usize a3, 
 		return SYSCALL_ERR(ENOSYS);
 	}
 
-	if (syscall_table[num] == NULL)
+	if (syscall_table[num].func == NULL)
 		return SYSCALL_ERR(ENOSYS);
 
 	// Execute the system call.
-	return syscall_table[num](a0, a1, a2, a3, a4, a5);
+	return syscall_table[num].func(a0, a1, a2, a3, a4, a5);
 }
