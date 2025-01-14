@@ -65,15 +65,14 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 	}
 
 	vm_user_show();
+	PhysAddr page = pm_alloc(page_count);
 	for (usize i = 0; i < page_size * page_count; i += page_size)
 	{
-		PhysAddr page = pm_alloc(1);
-		if (vm_map(page_map, page, addr + i, vm_prot, VMFlags_User, VMLevel_Small) == false)
+		if (vm_map(page_map, page + i, addr + i, vm_prot, VMFlags_User, VMLevel_Small) == false)
 		{
-			pm_free(page, 1);
+			pm_free(page, page_count);
 			return SYSCALL_ERR(ENOMEM);
 		}
-		memset((void*)addr + i, 0, page_size);
 	}
 	vm_user_hide();
 
