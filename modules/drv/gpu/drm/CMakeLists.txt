@@ -3,7 +3,8 @@
 add_module(udrm "Marvin Friedrich" "Direct Rendering Manager" OFF ON
 	udrm_bridge.c
 	udrm/src/udrm.c
-	udrm/src/udrm_bochs.c
+	udrm/src/udrm_core.c
+	udrm/src/udrm_virtio.c
 )
 
 if(TARGET ${MENIX_CURRENT_MOD})

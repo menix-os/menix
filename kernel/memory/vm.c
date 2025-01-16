@@ -109,7 +109,7 @@ void* vm_map_memory(PhysAddr phys_addr, usize len, VMProt prot)
 	{
 		vm_map(vm_kernel_map, phys_addr + (page_size * page), start + (page_size * page), prot, 0, VMLevel_Small);
 	}
-	spin_lock_scope(&vm_kernel_map->lock, { kernel_map_base += aligned_bytes; });
+	spin_lock_scope(&vm_kernel_map->lock, { kernel_memory_base += aligned_bytes; });
 
 	return (void*)start;
 }
