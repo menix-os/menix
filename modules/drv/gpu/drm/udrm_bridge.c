@@ -5,33 +5,33 @@
 #include <menix/system/module.h>
 #include <menix/system/pci/pci.h>
 
+#include <udrm/core/udrm.h>
 #include <udrm/kernel_api.h>
-#include <udrm/udrm.h>
 
-// Bochs GPU
-#include <udrm/bochs.h>
+// Virtio GPU
+#include <udrm/drivers/virtio.h>
 
-static i32 bochs_probe(PciDevice* dev)
+static i32 virtio_probe(PciDevice* dev)
 {
-	return udrm_bochs_probe(dev);
+	return udrm_virtio_probe(dev);
 }
 
-static void bochs_remove(PciDevice* dev)
+static void virtio_remove(PciDevice* dev)
 {
-	udrm_bochs_remove(dev);
+	udrm_virtio_remove(dev);
 }
 
-static PciVariant bochs_variant = {
-	.vendor = 0x1234,
-	.device = 0x1111,
+static PciVariant virtio_variant = {
+	.vendor = 0x1af4,
+	.device = 0x1050,
 };
 
-static PciDriver bochs_driver = {
-	.name = "udrm_bochs",
-	.variants = &bochs_variant,
+static PciDriver virtio_driver = {
+	.name = "udrm_virtio",
+	.variants = &virtio_variant,
 	.num_variants = 1,
-	.probe = bochs_probe,
-	.remove = bochs_remove,
+	.probe = virtio_probe,
+	.remove = virtio_remove,
 };
 
 static i32 init_fn()
@@ -46,10 +46,10 @@ static i32 init_fn()
 	// Register all device drivers.
 	i32 pci_status;
 
-	pci_status = pci_register_driver(&bochs_driver);
+	pci_status = pci_register_driver(&virtio_driver);
 	if (pci_status != 0)
 	{
-		print_error("Failed to register the Bochs PCI driver.\n");
+		print_error("Failed to register the VirtIO PCI driver.\n");
 		return pci_status;
 	}
 
