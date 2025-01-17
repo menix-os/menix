@@ -15,7 +15,7 @@
 		if (!(expr)) \
 		{ \
 			print_error("Assertion failed!\n" \
-						"[Location]\t%s (%s:%zu)\n" \
+						"[Location]\t%s (%s:%u)\n" \
 						"[Expression]\t%s\n" \
 						"[Message]\t" msg "\n", \
 						__FUNCTION__, __FILE__, __LINE__, #expr, ##__VA_ARGS__); \
