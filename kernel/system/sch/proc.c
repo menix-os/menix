@@ -138,8 +138,6 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 	proc->elf_info = info;
 	thread_setup(thread, entry_point, argv, envp, is_user);
 
-	vm_set_page_map(map);
-
 	return true;
 }
 
@@ -165,7 +163,7 @@ usize proc_fork(Process* proc, Thread* thread)
 	// Link the newly forked process to the parent.
 	list_push(&proc->children, fork);
 
-	for (usize i = 0; i < OPEN_MAX; i++)
+	for (usize i = 0; i < ARRAY_SIZE(proc->file_descs); i++)
 	{
 		if (proc->file_descs[i] == NULL)
 			continue;
@@ -214,8 +212,8 @@ void proc_kill(Process* proc, bool is_crash)
 	// Remove the process from the scheduler.
 	spin_lock_scope(&proc_lock, { sch_remove_process(&proc_list, proc); });
 
-	Process* init = proc_list->next;
-
+	// Attach orphaned processes to init (PID 1).
+	Process* init = sch_id_to_process(1);
 	list_iter(&proc->children, iter)
 	{
 		(*iter)->parent = init;
@@ -257,7 +255,7 @@ FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
 	kassert(process != NULL, "No process specified! This is a kernel bug.");
 
 	// Check if fd is within bounds.
-	if (fd >= OPEN_MAX)
+	if (fd >= ARRAY_SIZE(process->file_descs))
 		return NULL;
 
 	FileDescriptor* file_desc = NULL;

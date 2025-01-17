@@ -29,25 +29,28 @@ extern ProcessList dead_processes;
 
 typedef struct Process
 {
-	usize id;				 // Process ID.
-	char name[256];			 // Name of the process.
+	usize id;		   // Process ID.
+	char name[256];	   // Name of the process.
+	SpinLock lock;	   // Access lock.
+	usize runtime;	   // Amount of ticks the process has been alive.
+
 	VfsNode* working_dir;	 // The current working directory.
-	SpinLock lock;			 // Access lock.
-	PageMap* page_map;		 // Process page map.
-	VirtAddr map_base;		 // Virtual base to create new memory mappings at.
-	usize runtime;			 // Amount of ticks the process has been alive.
 	usize permissions;		 // Process access bits.
 	ElfInfo elf_info;		 // ELF information to pass to auxv.
 
 	Process* parent;	// The owner of this process.
 	Process* next;		// Linked list entry for the next process.
 
-	ThreadList threads;		 // Threads owned by the process.
 	ProcessState state;		 // Current state of the process.
+	ThreadList threads;		 // Threads owned by the process.
 	ProcessList children;	 // Processes owned by the process.
 
 	SpinLock fd_lock;						 // Access lock for file descriptors.
 	FileDescriptor* file_descs[OPEN_MAX];	 // File descriptors for this process.
+
+	PageMap* page_map;		   // Process page map.
+	VirtAddr map_base;		   // Virtual base address to create new memory mappings at.
+	MemoryMappingList maps;	   // Mapping list of dynamically allocated pages.
 
 	i32 return_code;	// If the process is in a dead state, contains the code to return to the parent.
 } Process;

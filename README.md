@@ -1,6 +1,7 @@
 # menix
 
 A minimal and expandable Unix-like operating system.
+menix' goal is to be as lightweight and memory efficient as possible.
 
 > [!Important]
 > This repository contains only the kernel and daemons.

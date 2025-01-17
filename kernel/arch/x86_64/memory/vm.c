@@ -56,7 +56,6 @@ PageMap* vm_page_map_new()
 	result->head = pt;
 
 	// Copy over the upper half data which isn't accessible to user processes.
-	// This way we don't have to swap page maps on a syscall.
 	for (usize i = 256; i < 512; i++)
 	{
 		result->head[i] = vm_kernel_map->head[i];
@@ -154,6 +153,10 @@ PageMap* vm_page_map_fork(PageMap* source)
 
 	if (result == NULL)
 		goto fail;
+
+	// TODO
+	spin_unlock(&source->lock);
+	return source;
 
 fail:
 	spin_unlock(&source->lock);
@@ -361,8 +364,7 @@ Context* interrupt_pf_handler(usize isr, Context* regs, void* data)
 	asm_get_register(cr2, cr2);
 
 #if !defined(NDEBUG)
-	print_log("vm: Page fault: \n");
-	print_log("vm: Attempted to access 0x%p (ip: 0x%p)!\n", cr2, regs->rip);
+	print_log("vm: Page fault! Attempted to access 0x%p (ip: 0x%p)!\n", cr2, regs->rip);
 
 	// Present
 	if (BIT(regs->error, 0))
