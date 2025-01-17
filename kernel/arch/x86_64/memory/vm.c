@@ -346,6 +346,16 @@ bool vm_map(PageMap* page_map, PhysAddr phys_addr, VirtAddr virt_addr, VMProt pr
 	cur_head[index] = (phys_addr & PT_ADDR_MASK) | (x86_flags & ~(PT_ADDR_MASK));
 	spin_unlock(&page_map->lock);
 
+	// TODO: Move this to vm_map_range.
+	MemoryMapping mapping = {
+		.physical = phys_addr,
+		.virtual = virt_addr,
+		.num_pages = 1,
+		.prot = prot,
+		.flags = flags,
+	};
+	list_push(&page_map->maps, mapping);
+
 	return true;
 }
 
