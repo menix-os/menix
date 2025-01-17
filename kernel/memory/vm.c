@@ -117,16 +117,17 @@ void* vm_map_memory(PhysAddr phys_addr, usize len, VMProt prot)
 void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
 {
 	VirtAddr start = kernel_map_base;
+	const usize page_size = vm_get_page_size(VMLevel_Small);
 
 	for (usize page = 0; page < num_pages; page++)
 	{
 		// Physical page where the data lives.
-		const PhysAddr foreign_phys =
-			vm_virt_to_phys(page_map, foreign_addr + (page * vm_get_page_size(VMLevel_Small)));
+		const PhysAddr foreign_phys = vm_virt_to_phys(page_map, foreign_addr + (page * page_size));
 		// Virtual address in the kernel page map.
-		const VirtAddr domestic_virt = start + (page * vm_get_page_size(VMLevel_Small));
+		const VirtAddr domestic_virt = start + (page * page_size);
 
-		kassert(foreign_phys != ~0, "Unable to map to an address that isn't mapped in the target process!");
+		kassert(foreign_phys != ~0UL, "Unable to map to address 0x%p, because it isn't mapped in the target process!",
+				foreign_addr);
 
 		if (vm_map(vm_kernel_map, foreign_phys, domestic_virt, VMProt_Read | VMProt_Write, 0, VMLevel_Small) == false)
 		{
@@ -136,7 +137,7 @@ void* vm_map_foreign(PageMap* page_map, VirtAddr foreign_addr, usize num_pages)
 
 	// TODO: This is really bad and might cause a crash if left running for a really long time.
 	// It's a better idea to keep track of these maps, just like the PM.
-	kernel_map_base += num_pages * vm_get_page_size(VMLevel_Small);
+	kernel_map_base += num_pages * page_size;
 
 	return (void*)start;
 }
