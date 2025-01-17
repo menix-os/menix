@@ -90,4 +90,8 @@ void thread_arch_fork(Thread* forked, Thread* original)
 	forked->saved_fpu = pm_get_phys_base() + fpu_pages;
 
 	memcpy(forked->saved_fpu, original->saved_fpu, arch_current_cpu()->fpu_size);
+
+	// Return SYSCALL_OK(0) to the forked syscall process.
+	forked->registers.rax = 0;
+	forked->registers.rdx = 0;
 }

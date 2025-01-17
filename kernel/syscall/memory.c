@@ -64,7 +64,6 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 		proc->map_base += page_size * page_count;
 	}
 
-	vm_user_show();
 	PhysAddr page = pm_alloc(page_count);
 	for (usize i = 0; i < page_size * page_count; i += page_size)
 	{
@@ -74,7 +73,8 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 			return SYSCALL_ERR(ENOMEM);
 		}
 	}
-	vm_user_hide();
+	MemoryMapping mapping = {.physical = page, .virtual = addr, .num_pages = page_count};
+	list_push(&proc->maps, mapping);
 
 	return SYSCALL_OK(addr);
 }

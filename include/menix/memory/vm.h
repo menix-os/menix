@@ -5,6 +5,7 @@
 #include <menix/common.h>
 #include <menix/fs/handle.h>
 #include <menix/memory/pm.h>
+#include <menix/util/list.h>
 #include <menix/util/self.h>
 
 typedef enum
@@ -39,6 +40,15 @@ typedef struct
 	usize* head[2];
 #endif
 } PageMap;
+
+typedef struct
+{
+	PhysAddr physical;	  // Physical start of the mapping.
+	VirtAddr virtual;	  // Virtual start of the mapping.
+	usize num_pages;	  // Amount of pages allocated.
+} MemoryMapping;
+
+typedef List(MemoryMapping) MemoryMappingList;
 
 extern PageMap* vm_kernel_map;
 extern VirtAddr kernel_map_base;

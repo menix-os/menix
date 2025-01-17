@@ -188,7 +188,7 @@ void thread_fork(Process* parent, Thread* target)
 	spin_unlock(&thread_lock);
 
 #ifndef NDEBUG
-	print_log("thread: Forked thread %zu, new ID %zu, IP at 0x%p\n", target->id, forked->id, forked->registers.rip);
+	print_log("thread: Forked thread %zu, new ID %zu\n", target->id, forked->id);
 #endif
 }
 
