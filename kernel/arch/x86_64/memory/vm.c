@@ -260,7 +260,6 @@ PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 	kassert(page_map != NULL, "page_map may not be null!");
 	spin_lock(&page_map->lock);
 	usize* pte = vm_x86_get_pte(page_map, address, false);
-	spin_unlock(&page_map->lock);
 
 	// If the page is not present or the entry doesn't exist, we can't return a physical address.
 	if (pte == NULL || (*pte & PT_PRESENT) == false)
