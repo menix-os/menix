@@ -148,15 +148,40 @@ void vm_page_map_destroy(PageMap* map)
 
 PageMap* vm_page_map_fork(PageMap* source)
 {
-	spin_lock(&source->lock);
-	PageMap* result = vm_page_map_new();
+	kassert(source != NULL, "No page map was provided! Unable to fork page map!");
 
+	PageMap* result = vm_page_map_new();
 	if (result == NULL)
-		goto fail;
+		return NULL;
 
 	// TODO
-	spin_unlock(&source->lock);
-	return source;
+
+	spin_lock(&source->lock);
+	const usize page_size = vm_get_page_size(VMLevel_Small);
+	// Copy all existing mappings and copy underlying memory to the new pages.
+	list_iter(&source->maps, iter)
+	{
+		// Allocate new backing memory.
+		PhysAddr new_phys = pm_alloc(iter->num_pages);
+		// Create a window for us to copy into.
+		void* mem = vm_map_memory(new_phys, iter->num_pages * page_size, VMProt_Read | VMProt_Write);
+		void* source_mem = vm_map_foreign(source, iter->virtual, iter->num_pages);
+		if (source_mem == NULL)
+			goto fail;
+
+		// Map the new pages into the existing mappings.
+		for (usize i = 0; i < iter->num_pages; i++)
+		{
+			const usize offset = i * page_size;
+			if (!vm_map(result, new_phys + offset, iter->virtual + offset, iter->prot, iter->flags, VMLevel_Small))
+			{
+				pm_free(new_phys, iter->num_pages);
+				goto fail;
+			}
+			// Copy old page memory to the new page.
+			memcpy(mem + offset, source_mem + offset, page_size);
+		}
+	}
 
 fail:
 	spin_unlock(&source->lock);
@@ -258,7 +283,6 @@ bool vm_unmap(PageMap* page_map, VirtAddr virt_addr)
 PhysAddr vm_virt_to_phys(PageMap* page_map, VirtAddr address)
 {
 	kassert(page_map != NULL, "page_map may not be null!");
-	spin_lock(&page_map->lock);
 	usize* pte = vm_x86_get_pte(page_map, address, false);
 
 	// If the page is not present or the entry doesn't exist, we can't return a physical address.
