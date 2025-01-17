@@ -1,10 +1,10 @@
 # menix
 
 A minimal and expandable Unix-like operating system.
-menix' goal is to be as lightweight and memory efficient as possible.
+menix' goal is to be as lightweight, portable and efficient as possible.
 
 > [!Important]
-> This repository contains only the kernel and daemons.
+> This repository contains only the kernel and drivers.
 > You could run the kernel on its own in an emulator like QEMU,
 > but don't expect much to happen without a full system build and/or bootloader.
 > If you want to get a bootable image, you might want to check out
