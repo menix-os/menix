@@ -29,7 +29,19 @@ typedef enum : usize
 
 typedef struct
 {
+	PhysAddr physical;	  // Physical start of the mapping.
+	VirtAddr virtual;	  // Virtual start of the mapping.
+	usize num_pages;	  // Amount of pages allocated.
+	VMProt prot;		  // Protection of this mapping.
+	VMFlags flags;		  // Flags of this mapping.
+} MemoryMapping;
+
+typedef List(MemoryMapping) MemoryMappingList;
+
+typedef struct
+{
 	SpinLock lock;
+	MemoryMappingList maps;
 #if defined(__x86_64__)
 	usize* head;
 #elif defined(__aarch64__)
@@ -40,15 +52,6 @@ typedef struct
 	usize* head[2];
 #endif
 } PageMap;
-
-typedef struct
-{
-	PhysAddr physical;	  // Physical start of the mapping.
-	VirtAddr virtual;	  // Virtual start of the mapping.
-	usize num_pages;	  // Amount of pages allocated.
-} MemoryMapping;
-
-typedef List(MemoryMapping) MemoryMappingList;
 
 extern PageMap* vm_kernel_map;
 extern VirtAddr kernel_map_base;

@@ -73,8 +73,14 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 			return SYSCALL_ERR(ENOMEM);
 		}
 	}
-	MemoryMapping mapping = {.physical = page, .virtual = addr, .num_pages = page_count};
-	list_push(&proc->maps, mapping);
+	MemoryMapping mapping = {
+		.physical = page,
+		.virtual = addr,
+		.num_pages = page_count,
+		.prot = vm_prot,
+		.flags = VMFlags_User,
+	};
+	list_push(&proc->page_map->maps, mapping);
 
 	return SYSCALL_OK(addr);
 }
