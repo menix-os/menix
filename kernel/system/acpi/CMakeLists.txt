@@ -2,7 +2,6 @@
 
 target_sources(menix PUBLIC
 	mcfg.c
-	madt.c
 	uacpi_interface.c
 )
 
