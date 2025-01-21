@@ -27,9 +27,10 @@ ATTR(noreturn) void kernel_init(BootInfo* boot_info)
 
 	// Initialize memory managers.
 	pm_init(boot_info->phys_base, boot_info->memory_map, boot_info->mm_num);
+	alloc_init();
+
 	// Finalize virtual memory manager and drop reclaimable memory.
 	vm_init(boot_info->kernel_phys, boot_info->memory_map, boot_info->mm_num);
-	alloc_init();
 
 	// Initialize virtual file system.
 	vfs_init();

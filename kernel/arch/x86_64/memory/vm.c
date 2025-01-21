@@ -55,10 +55,11 @@ PageMap* vm_page_map_new()
 	memset(pt, 0, arch_page_size);
 	result->head = pt;
 
-	// Copy over the upper half data which isn't accessible to user processes.
-	for (usize i = 256; i < 512; i++)
+	if (vm_kernel_map != NULL)
 	{
-		result->head[i] = vm_kernel_map->head[i];
+		// Copy over the upper half data which isn't accessible to user processes.
+		for (usize i = 256; i < 512; i++)
+			result->head[i] = vm_kernel_map->head[i];
 	}
 
 	return result;

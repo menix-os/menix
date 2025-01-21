@@ -20,16 +20,8 @@ void vm_init(PhysAddr kernel_base, PhysMemory* mem_map, usize num_entries)
 {
 	kassert(num_entries > 0, "No memory map entries given!");
 
-	// Get a pointer to the first free physical memory page. Here we'll allocate our page directory structure.
-	vm_kernel_map = pm_get_phys_base() + pm_alloc(1);
-	vm_kernel_map->lock = (SpinLock) {0};
-
-#if defined(__x86_64__)
-	vm_kernel_map->head = pm_get_phys_base() + pm_alloc(1);
-	memset(vm_kernel_map->head, 0x00, arch_page_size);
-#elif defined(__riscv) && (__riscv_xlen == 64)
-
-#endif
+	// Create a memory map for the kernel.
+	vm_kernel_map = vm_page_map_new();
 
 	// Map all physical space.
 	// Check for the highest usable physical memory address, so we know how much memory to map.
