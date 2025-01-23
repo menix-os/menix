@@ -51,7 +51,6 @@
 #define PT_SHLIB			0x00000005
 #define PT_PHDR				0x00000006
 #define PT_TLS				0x00000007
-#define PT_MODULE			0x61111111	  //! Custom type to mark the module segment/.mod section.
 // Program Header Flags
 #define PF_X				0x01
 #define PF_W				0x02

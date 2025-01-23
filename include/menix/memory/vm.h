@@ -56,10 +56,12 @@ typedef struct
 extern PageMap* vm_kernel_map;
 extern VirtAddr kernel_map_base;
 
+// User constants
 #define VM_USER_STACK_SIZE	 0x200000
-#define VM_USER_STACK_BASE	 0x200000
+#define VM_USER_STACK_BASE	 0x00007F0000000000
+#define VM_USER_MAP_BASE	 0x0000600000000000
+// Kernel constants
 #define VM_KERNEL_STACK_SIZE 0x200000
-#define VM_USER_MAP_BASE	 0x00007F0000000000
 #define VM_MAP_BASE			 0xFFFF900000000000
 #define VM_MEMORY_BASE		 0xFFFFA00000000000
 #define VM_MODULE_BASE		 0xFFFFB00000000000
