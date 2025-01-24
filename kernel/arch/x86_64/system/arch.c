@@ -136,7 +136,7 @@ void arch_early_init()
 {
 	asm_interrupt_disable();
 
-	if (cmd_get_usize("serial", 1))
+	if (cmd_get_usize("x86_64.serial", 1))
 		serial_init();
 }
 
