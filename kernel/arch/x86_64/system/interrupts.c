@@ -29,7 +29,7 @@ Context* interrupt_ud_handler(usize isr, Context* regs, void* data)
 Context* syscall_handler(usize isr, Context* regs, void* data)
 {
 	// Save the registers.
-	Cpu* const core = arch_current_cpu();
+	CpuInfo* const core = arch_current_cpu();
 	Thread* const thread = core->thread;
 	thread->registers = *regs;
 	thread->stack = core->user_stack;

@@ -15,14 +15,14 @@
 
 static SpinLock cpu_lock = {0};
 
-ATTR(aligned(0x1000)) Cpu per_cpu_data[MAX_CPUS];
+ATTR(aligned(0x1000)) CpuInfo per_cpu_data[MAX_CPUS];
 
 // Assembly stub for syscall via SYSCALL/SYSRET.
 extern void arch_syscall_internal(void);
 extern bool can_smap;
 
 // Initialize one CPU.
-void arch_init_cpu(Cpu* cpu, Cpu* boot_cpu)
+void arch_init_cpu(CpuInfo* cpu, CpuInfo* boot_cpu)
 {
 	// Make sure no other memory accesses happen before the CPUs are initialized.
 	spin_lock(&cpu_lock);
@@ -153,16 +153,14 @@ ATTR(noreturn) void arch_stop()
 		asm_halt();
 }
 
-Cpu* arch_current_cpu()
+CpuInfo* arch_current_cpu()
 {
-	if (asm_rdmsr(MSR_GS_BASE) == 0)
+	if (unlikely(asm_rdmsr(MSR_GS_BASE) == 0))
 		return &per_cpu_data[0];
 
-	// The Cpu struct starts at GS_BASE:0
-	// Since we can't "directly" access the base address, just get the first field (Cpu.id)
-	// and use that to index into the CPU array.
 	u64 id;
-	asm volatile("mov %%gs:(0), %0" : "=r"(id) : "i"(offsetof(Cpu, id)) : "memory");
+	// The Cpu struct starts at %gs:0
+	asm volatile("mov %%gs:(0), %0" : "=r"(id) : "i"(offsetof(CpuInfo, id)) : "memory");
 	return &per_cpu_data[id];
 }
 

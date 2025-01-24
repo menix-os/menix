@@ -40,11 +40,11 @@ typedef struct Cpu
 #elif defined(__riscv) && (__riscv_xlen == 64)
 	u32 hart_id;	// Hart CPU ID.
 #endif
-} ATTR(aligned(arch_page_size)) Cpu;
+} ATTR(aligned(arch_page_size)) CpuInfo;
 
 #define MAX_CPUS 1024
 
-extern Cpu per_cpu_data[MAX_CPUS];
+extern CpuInfo per_cpu_data[MAX_CPUS];
 
 // Initializes the platform for use by the kernel and boot routines.
 void arch_early_init();
@@ -54,7 +54,7 @@ void arch_init(BootInfo* info);
 
 // Initializes a single processor.
 // `cpu`: Information about the CPU that has to be enabled.
-void arch_init_cpu(Cpu* cpu, Cpu* boot_cpu);
+void arch_init_cpu(CpuInfo* cpu, CpuInfo* boot_cpu);
 
 // Disables a single processor.
 bool arch_stop_cpu(usize id);
@@ -66,7 +66,7 @@ ATTR(noreturn) void arch_stop();
 void arch_dump_registers(Context* regs);
 
 // Gets processor metadata.
-Cpu* arch_current_cpu();
+CpuInfo* arch_current_cpu();
 
 typedef enum : usize
 {

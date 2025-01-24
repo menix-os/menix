@@ -15,7 +15,7 @@ static usize tid_counter = 0;
 
 void thread_set_errno(usize errno)
 {
-	Cpu* cur = arch_current_cpu();
+	CpuInfo* cur = arch_current_cpu();
 	if (cur == NULL)
 		return;
 

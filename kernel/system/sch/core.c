@@ -181,7 +181,7 @@ Context* sch_reschedule(Context* context)
 {
 	vm_set_page_map(vm_kernel_map);
 
-	Cpu* cur = arch_current_cpu();
+	CpuInfo* cur = arch_current_cpu();
 	cur->ticks_active++;
 
 	if (spin_try_lock(&rope_lock))

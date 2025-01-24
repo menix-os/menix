@@ -11,7 +11,7 @@
 
 Context* int_handler(usize isr, Context* regs)
 {
-	const Cpu* current = arch_current_cpu();
+	const CpuInfo* current = arch_current_cpu();
 	// If we have a handler for this interrupt, call it.
 	if (isr < ARRAY_SIZE(current->irq_handlers) && current->irq_handlers[isr])
 	{

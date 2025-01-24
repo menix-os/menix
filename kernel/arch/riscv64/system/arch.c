@@ -6,9 +6,9 @@
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
 
-Cpu per_cpu_data[MAX_CPUS];
+CpuInfo per_cpu_data[MAX_CPUS];
 
-void arch_init_cpu(Cpu* cpu, Cpu* boot)
+void arch_init_cpu(CpuInfo* cpu, CpuInfo* boot)
 {
 	static SpinLock cpu_lock = {0};
 	// Make sure no other memory accesses happen before the CPUs are initialized.
@@ -40,7 +40,7 @@ void arch_stop()
 		asm volatile("wfi");
 }
 
-Cpu* arch_current_cpu()
+CpuInfo* arch_current_cpu()
 {
 	// The Cpu struct starts at tp + 0
 	// Since we can't "directly" access the base address, just get the first field (Cpu.id)

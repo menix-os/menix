@@ -13,12 +13,12 @@ void sch_arch_invoke()
 	// TODO
 }
 
-void sch_arch_save(Cpu* core, Thread* thread)
+void sch_arch_save(CpuInfo* core, Thread* thread)
 {
 	// TODO
 }
 
-void sch_arch_update(Cpu* core, Thread* next)
+void sch_arch_update(CpuInfo* core, Thread* next)
 {
 	// TODO
 }

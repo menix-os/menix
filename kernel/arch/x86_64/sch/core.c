@@ -15,7 +15,7 @@ void sch_arch_invoke()
 	asm_int(INT_TIMER);
 }
 
-void sch_arch_save(Cpu* core, Thread* thread)
+void sch_arch_save(CpuInfo* core, Thread* thread)
 {
 	thread->fs_base = asm_rdmsr(MSR_FS_BASE);
 	// Save the swapped out GSBASE, not our own!
@@ -24,7 +24,7 @@ void sch_arch_save(Cpu* core, Thread* thread)
 	core->fpu_save(thread->saved_fpu);
 }
 
-void sch_arch_update(Cpu* core, Thread* next)
+void sch_arch_update(CpuInfo* core, Thread* next)
 {
 	core->tss.rsp0 = next->kernel_stack;
 	core->fpu_restore(next->saved_fpu);

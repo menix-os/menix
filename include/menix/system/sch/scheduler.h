@@ -22,11 +22,11 @@ void sch_arch_invoke();
 
 // Saves the architecture dependent data of the `thread`.
 // ? Defined per architecture.
-void sch_arch_save(Cpu* core, Thread* thread);
+void sch_arch_save(CpuInfo* core, Thread* thread);
 
 // Updates the `core` thread with the relevant information from the `next` thread.
 // ? Defined per architecture.
-void sch_arch_update(Cpu* core, Thread* next);
+void sch_arch_update(CpuInfo* core, Thread* next);
 
 // Stops execution on the current core and waits for another interrupt.
 // ? Defined per architecture.
