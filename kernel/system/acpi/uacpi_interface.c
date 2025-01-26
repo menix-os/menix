@@ -1,4 +1,5 @@
 #include <menix/memory/pm.h>
+#include <menix/memory/vm.h>
 #include <menix/system/acpi/madt.h>
 #include <menix/system/acpi/mcfg.h>
 #include <menix/system/arch.h>
@@ -9,6 +10,7 @@
 #include <menix/util/spin.h>
 
 #include <uacpi/kernel_api.h>
+#include <uacpi/status.h>
 #include <uacpi/types.h>
 #include <uacpi/uacpi.h>
 
@@ -60,65 +62,6 @@ void* uacpi_kernel_alloc(uacpi_size size)
 	return kmalloc(size);
 }
 
-void* uacpi_kernel_calloc(uacpi_size count, uacpi_size size)
-{
-	return kzalloc(count * size);
-}
-
-uacpi_status uacpi_kernel_raw_memory_read(uacpi_phys_addr address, uacpi_u8 byte_width, uacpi_u64* out_value)
-{
-	void* ptr = pm_get_phys_base() + address;
-	switch (byte_width)
-	{
-		case sizeof(u8): *out_value = (*(mmio8*)ptr); break;
-		case sizeof(u16): *out_value = (*(mmio16*)ptr); break;
-		case sizeof(u32): *out_value = (*(mmio32*)ptr); break;
-		case sizeof(u64): *out_value = (*(mmio64*)ptr); break;
-		default: return UACPI_STATUS_INVALID_ARGUMENT;
-	}
-	return UACPI_STATUS_OK;
-}
-
-uacpi_status uacpi_kernel_raw_memory_write(uacpi_phys_addr address, uacpi_u8 byte_width, uacpi_u64 in_value)
-{
-	volatile void* ptr = pm_get_phys_base() + address;
-	switch (byte_width)
-	{
-		case sizeof(u8): (*(u8*)ptr) = in_value; break;
-		case sizeof(u16): (*(u16*)ptr) = in_value; break;
-		case sizeof(u32): (*(u32*)ptr) = in_value; break;
-		case sizeof(u64): (*(u64*)ptr) = in_value; break;
-		default: return UACPI_STATUS_INVALID_ARGUMENT;
-	}
-	return UACPI_STATUS_OK;
-}
-
-uacpi_status uacpi_kernel_raw_io_read(uacpi_io_addr address, uacpi_u8 byte_width, uacpi_u64* out_value)
-{
-	void* ptr = pm_get_phys_base() + address;
-	switch (byte_width)
-	{
-		case sizeof(u8): *out_value = (*(mmio8*)ptr); break;
-		case sizeof(u16): *out_value = (*(mmio16*)ptr); break;
-		case sizeof(u32): *out_value = (*(mmio32*)ptr); break;
-		default: return UACPI_STATUS_INVALID_ARGUMENT;
-	}
-	return UACPI_STATUS_OK;
-}
-
-uacpi_status uacpi_kernel_raw_io_write(uacpi_io_addr address, uacpi_u8 byte_width, uacpi_u64 in_value)
-{
-	volatile void* ptr = pm_get_phys_base() + address;
-	switch (byte_width)
-	{
-		case sizeof(u8): (*(u8*)ptr) = in_value; break;
-		case sizeof(u16): (*(u16*)ptr) = in_value; break;
-		case sizeof(u32): (*(u32*)ptr) = in_value; break;
-		default: return UACPI_STATUS_INVALID_ARGUMENT;
-	}
-	return UACPI_STATUS_OK;
-}
-
 uacpi_status uacpi_kernel_pci_device_open(uacpi_pci_address address, uacpi_handle* out_handle)
 {
 	*out_handle = pci_platform.buses.items[address.bus]->slots[address.device].devices[address.function];
@@ -155,23 +98,87 @@ uacpi_status uacpi_kernel_pci_write(uacpi_handle device, uacpi_size offset, uacp
 	return UACPI_STATUS_OK;
 }
 
+uacpi_status uacpi_kernel_pci_read8(uacpi_handle device, uacpi_size offset, uacpi_u8* value)
+{
+	*value = mmio_read8(((PciDevice*)device)->config_space_addr + offset);
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_pci_read16(uacpi_handle device, uacpi_size offset, uacpi_u16* value)
+{
+	*value = mmio_read16(((PciDevice*)device)->config_space_addr + offset);
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_pci_read32(uacpi_handle device, uacpi_size offset, uacpi_u32* value)
+{
+	*value = mmio_read32(((PciDevice*)device)->config_space_addr + offset);
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_pci_write8(uacpi_handle device, uacpi_size offset, uacpi_u8 value)
+{
+	mmio_write8(((PciDevice*)device)->config_space_addr + offset, value);
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_pci_write16(uacpi_handle device, uacpi_size offset, uacpi_u16 value)
+{
+	mmio_write16(((PciDevice*)device)->config_space_addr + offset, value);
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_pci_write32(uacpi_handle device, uacpi_size offset, uacpi_u32 value)
+{
+	mmio_write32(((PciDevice*)device)->config_space_addr + offset, value);
+	return UACPI_STATUS_OK;
+}
+
 uacpi_status uacpi_kernel_io_map(uacpi_io_addr base, uacpi_size len, uacpi_handle* out_handle)
 {
-	return UACPI_STATUS_UNIMPLEMENTED;
+	*out_handle = vm_map_memory(base, len, VMProt_Read | VMProt_Write);
+	return UACPI_STATUS_OK;
 }
 
 void uacpi_kernel_io_unmap(uacpi_handle handle)
 {
+	// TODO
 }
 
-uacpi_status uacpi_kernel_io_read(uacpi_handle, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64* value)
+uacpi_status uacpi_kernel_io_read8(uacpi_handle h, uacpi_size offset, uacpi_u8* out_value)
 {
-	return UACPI_STATUS_UNIMPLEMENTED;
+	*out_value = mmio_read8(h + offset);
+	return UACPI_STATUS_OK;
 }
 
-uacpi_status uacpi_kernel_io_write(uacpi_handle, uacpi_size offset, uacpi_u8 byte_width, uacpi_u64 value)
+uacpi_status uacpi_kernel_io_read16(uacpi_handle h, uacpi_size offset, uacpi_u16* out_value)
 {
-	return UACPI_STATUS_UNIMPLEMENTED;
+	*out_value = mmio_read16(h + offset);
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_io_read32(uacpi_handle h, uacpi_size offset, uacpi_u32* out_value)
+{
+	*out_value = mmio_read32(h + offset);
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_io_write8(uacpi_handle h, uacpi_size offset, uacpi_u8 in_value)
+{
+	mmio_write8(h + offset, in_value);
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_io_write16(uacpi_handle h, uacpi_size offset, uacpi_u16 in_value)
+{
+	mmio_write16(h + offset, in_value);
+	return UACPI_STATUS_OK;
+}
+
+uacpi_status uacpi_kernel_io_write32(uacpi_handle h, uacpi_size offset, uacpi_u32 in_value)
+{
+	mmio_write32(h + offset, in_value);
+	return UACPI_STATUS_OK;
 }
 
 void* uacpi_kernel_map(uacpi_phys_addr addr, uacpi_size len)
@@ -207,6 +214,7 @@ void uacpi_kernel_stall(uacpi_u8 usec)
 
 void uacpi_kernel_sleep(uacpi_u64 msec)
 {
+	// TODO: Convert to sleep
 	clock_wait(msec * 1000000);
 }
 
