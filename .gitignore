@@ -24,16 +24,12 @@ compile_commands.json
 CTestTestfile.cmake
 _deps
 
-# Generated config headers
-include/generated/
-config.cmake
-
-# Download dir for tools
-deps/
-
 # Rust files
 *target/
 *Cargo.lock
 
 # mdbook
 doc/book
+
+# xbstrap
+*.xbstrap
