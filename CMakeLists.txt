@@ -9,14 +9,9 @@ set(MENIX_SRC ${CMAKE_CURRENT_SOURCE_DIR})
 set(MENIX_RELEASE "0.0.1")
 string(TIMESTAMP MENIX_VERSION "%a %b %d %H:%M:%S UTC %Y" UTC)
 
-# Get the current git commit hash.
-execute_process(
-	COMMAND git log -1 --format=%h
-	WORKING_DIRECTORY ${CMAKE_CURRENT_LIST_DIR}
-	OUTPUT_VARIABLE GIT_HASH
-	OUTPUT_STRIP_TRAILING_WHITESPACE
-)
-set(MENIX_VERSION "${MENIX_VERSION} (${GIT_HASH})")
+if(NOT(CMAKE_BUILD_TYPE STREQUAL "Release" OR CMAKE_BUILD_TYPE STREQUAL "MinSizeRel"))
+	set(MENIX_VERSION "${MENIX_VERSION} (Unoptimized)")
+endif()
 
 # Target architecture, default to x86 if none given.
 if(NOT DEFINED MENIX_ARCH)
