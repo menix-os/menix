@@ -95,6 +95,7 @@ void* vm_map_memory(PhysAddr phys_addr, usize len, VMProt prot)
 	const usize page_size = vm_get_page_size(VMLevel_Small);
 	const usize aligned_bytes = ALIGN_UP(len, page_size);
 	const usize num_pages = aligned_bytes / page_size;
+	phys_addr = ALIGN_DOWN(phys_addr, page_size);
 
 	VirtAddr start = kernel_memory_base;
 	for (usize page = 0; page < num_pages; page++)
