@@ -104,7 +104,10 @@ static PhysAddr get_free_pages(usize amount, usize start)
 		for (usize j = 1; j < amount; j++)
 		{
 			if (bitmap_get(bit_map, i + j))
+			{
+				i += j;
 				goto next_page;
+			}
 		}
 
 		// If we got here, that means we have found a region with `amount` consecutive pages.
@@ -154,6 +157,7 @@ void pm_free(PhysAddr addr, usize amount)
 	const usize page_idx = addr / arch_page_size;
 	for (usize i = page_idx; i < page_idx + amount; i++)
 	{
+		kassert(bitmap_get(bit_map, i), "Double free of a physical page! Environment is unsound!");
 		bitmap_clear(bit_map, i);
 	}
 	num_free_pages += 1;
