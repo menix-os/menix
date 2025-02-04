@@ -1,6 +1,5 @@
 // Virtual memory management for x86.
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/pm.h>

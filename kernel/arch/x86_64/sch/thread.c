@@ -22,8 +22,8 @@ void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr st
 	const usize page_size = vm_get_page_size(VMLevel_Small);
 
 	// Allocate memory for the FPU state.
-	target->saved_fpu = pm_alloc(ROUND_UP(arch_current_cpu()->fpu_size, page_size)) + pm_get_phys_base();
-	memset(target->saved_fpu, 0, arch_current_cpu()->fpu_size);
+	target->saved_fpu = pm_alloc(ROUND_UP(arch_current_cpu()->arch.fpu_size, page_size)) + pm_get_phys_base();
+	memset(target->saved_fpu, 0, arch_current_cpu()->arch.fpu_size);
 
 	Process* proc = target->parent;
 	if (is_user)
@@ -77,7 +77,7 @@ void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr st
 void thread_arch_destroy(Thread* thread)
 {
 	kfree((void*)(thread->kernel_stack - VM_KERNEL_STACK_SIZE));
-	pm_free(thread->saved_fpu - pm_get_phys_base(), ROUND_UP(arch_current_cpu()->fpu_size, arch_page_size));
+	pm_free(thread->saved_fpu - pm_get_phys_base(), ROUND_UP(arch_current_cpu()->arch.fpu_size, arch_page_size));
 }
 
 void thread_arch_fork(Thread* forked, Thread* original)
@@ -86,10 +86,10 @@ void thread_arch_fork(Thread* forked, Thread* original)
 	forked->gs_base = original->gs_base;
 
 	// Allocate FPU memory.
-	PhysAddr fpu_pages = pm_alloc(ROUND_UP(arch_current_cpu()->fpu_size, vm_get_page_size(VMLevel_Small)));
+	PhysAddr fpu_pages = pm_alloc(ROUND_UP(arch_current_cpu()->arch.fpu_size, vm_get_page_size(VMLevel_Small)));
 	forked->saved_fpu = pm_get_phys_base() + fpu_pages;
 
-	memcpy(forked->saved_fpu, original->saved_fpu, arch_current_cpu()->fpu_size);
+	memcpy(forked->saved_fpu, original->saved_fpu, arch_current_cpu()->arch.fpu_size);
 
 	// Return SYSCALL_OK(0) to the forked syscall process.
 	forked->registers.rax = 0;

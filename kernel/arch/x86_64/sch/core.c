@@ -21,13 +21,13 @@ void sch_arch_save(CpuInfo* core, Thread* thread)
 	// Save the swapped out GSBASE, not our own!
 	thread->gs_base = asm_rdmsr(MSR_KERNEL_GS_BASE);
 
-	core->fpu_save(thread->saved_fpu);
+	core->arch.fpu_save(thread->saved_fpu);
 }
 
 void sch_arch_update(CpuInfo* core, Thread* next)
 {
-	core->tss.rsp0 = next->kernel_stack;
-	core->fpu_restore(next->saved_fpu);
+	core->arch.tss.rsp0 = next->kernel_stack;
+	core->arch.fpu_restore(next->saved_fpu);
 
 	asm_wrmsr(MSR_FS_BASE, next->fs_base);
 	// Restore the swapped out GSBASE, not our own!

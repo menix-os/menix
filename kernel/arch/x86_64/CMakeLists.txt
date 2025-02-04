@@ -1,7 +1,6 @@
 # x86 architecture sources
 
-include(${MENIX_UTIL_PATH})
-add_architecture(x86_64
+target_sources(menix PRIVATE
 	system/gdt.c
 	system/idt.c
 	system/tss.c
@@ -11,8 +10,6 @@ add_architecture(x86_64
 	system/arch.c
 	system/apic.c
 	system/interrupts.c
-	system/acpi/hpet.c
-	system/acpi/madt.c
 	memory/vm.c
 	sch/core.c
 	sch/thread.c

@@ -1,12 +1,10 @@
 // Terminal Output
 
 #include <menix/common.h>
-#include <menix/fs/devtmpfs.h>
-#include <menix/fs/handle.h>
 #include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
-#include <menix/system/module.h>
 #include <menix/system/video/fb.h>
+#include <menix/util/log.h>
 
 #include <string.h>
 
@@ -95,7 +93,7 @@ static void fbcon_putchar(u32 ch)
 	}
 }
 
-static isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf, usize len, off_t offset)
+static isize fbcon_write(const void* buf, usize len)
 {
 	// Write each character to the buffer.
 	for (usize i = 0; i < len; i++)
@@ -153,19 +151,8 @@ static isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf, us
 	return len;
 }
 
-static Handle fbcon_handle = {
-	.write = fbcon_write,
-};
-
 i32 fbcon_init()
 {
-	// Register device.
-	if (devtmpfs_add_device(&fbcon_handle, "fbcon") == false)
-	{
-		print_log("fbcon: Failed to initialize!\n");
-		return 1;
-	}
-
 	FrameBuffer* fb = fb_get_active();
 
 	// If no regular framebuffer is available, we can't write to anything.
@@ -188,10 +175,9 @@ i32 fbcon_init()
 
 	print_log("fbcon: Switching to framebuffer console\n");
 
-	Handle* h = terminal_get_active_node()->handle;
-	h->write = fbcon_write;
+	terminal_global.write = fbcon_write;
 
-	print_log("fbcon: Switched to framebuffer console on /dev/terminal%zu\n", terminal_get_active());
+	print_log("fbcon: Switched to framebuffer console.\n");
 	print_log("fbcon: Framebuffer Resolution = %ux%ux%hhu (Virtual = %ux%u)\n", internal_fb->mode.width,
 			  internal_fb->mode.height, internal_fb->mode.cpp * 8, internal_fb->mode.v_width,
 			  internal_fb->mode.v_height);

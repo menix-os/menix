@@ -8,6 +8,11 @@
 #include <bits/arch.h>
 #include <bits/asm.h>
 #include <bits/context.h>
+#include <bits/cpu.h>
+
+#ifndef MENIX_BITS
+#error "Architecture doesn't define MENIX_BITS!"
+#endif
 
 #define arch_log(fmt, ...) print_log(MENIX_ARCH ": " fmt, ##__VA_ARGS__)
 
@@ -30,16 +35,7 @@ typedef struct Cpu
 	InterruptFn irq_handlers[256];	  // IRQ handlers.
 	void* irq_data[256];			  // IRQ context to pass along.
 
-#ifdef __x86_64__
-	Gdt gdt;
-	TaskStateSegment tss;
-	u32 lapic_id;					   // Local APIC ID.
-	usize fpu_size;					   // Size of the FPU in bytes.
-	void (*fpu_save)(void* dst);	   // Function to call when saving the FPU state.
-	void (*fpu_restore)(void* dst);	   // Function to call when restoring the FPU state.
-#elif defined(__riscv) && (__riscv_xlen == 64)
-	u32 hart_id;	// Hart CPU ID.
-#endif
+	ArchCpu arch;
 } ATTR(aligned(arch_page_size)) CpuInfo;
 
 #define MAX_CPUS 1024

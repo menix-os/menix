@@ -1,6 +1,5 @@
 // Abstract syscall selector
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/syscall/syscall.h>
 #include <menix/util/log.h>
@@ -29,11 +28,14 @@ SyscallResult syscall_invoke(usize num, usize a0, usize a1, usize a2, usize a3, 
 	if (num >= ARRAY_SIZE(syscall_table))
 	{
 		print_log("Attempted to execute unrecognized syscall %u\n", num);
-		return SYSCALL_ERR(ENOSYS);
+		return SYSCALL_ERR(0xDEADBEEF);
 	}
 
 	if (syscall_table[num].func == NULL)
-		return SYSCALL_ERR(ENOSYS);
+	{
+		print_log("Attempted to execute unrecognized syscall %u\n", num);
+		return SYSCALL_ERR(0xDEADBEEF);
+	}
 
 	// Execute the system call.
 	return syscall_table[num].func(a0, a1, a2, a3, a4, a5);

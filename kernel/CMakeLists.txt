@@ -9,9 +9,9 @@ target_link_options(menix PUBLIC -e kernel_boot)
 
 set(MENIX_CURRENT_MOD menix CACHE INTERNAL "")
 
-add_subdirectory(arch/${MENIX_ARCH_DIR})
+add_subdirectory(arch/${MENIX_ARCH})
+target_include_directories(menix PRIVATE arch/${MENIX_ARCH}/include)
 add_subdirectory(boot)
-add_subdirectory(fs)
 add_subdirectory(klibc)
 add_subdirectory(memory)
 add_subdirectory(syscall)

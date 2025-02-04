@@ -2,7 +2,6 @@
 
 #pragma once
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/util/log.h>
 #include <menix/util/self.h>
@@ -13,11 +12,7 @@ typedef struct SyscallResult
 	usize error;
 } SyscallResult;
 
-#define SYSCALL_OK(val) \
-	(SyscallResult) \
-	{ \
-		.value = (usize)(val), .error = 0 \
-	}
+#define SYSCALL_OK(val) (SyscallResult) {.value = (usize)(val), .error = 0}
 
 #define SYSCALL_ERR(err) \
 	(SyscallResult) \
@@ -39,7 +34,7 @@ typedef struct SyscallResult
 	SYSCALL_IMPL(name, __VA_ARGS__) \
 	{ \
 		print_log("Call to unimplemented syscall " #name "!\n"); \
-		return SYSCALL_ERR(ENOSYS); \
+		return SYSCALL_ERR(1); \
 	}
 
 typedef SyscallResult (*SyscallFn)(usize, usize, usize, usize, usize, usize);

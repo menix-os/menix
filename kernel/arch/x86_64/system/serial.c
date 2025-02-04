@@ -21,7 +21,48 @@
 // If the COM port works or not.
 static bool can_use_serial = false;
 
-static Handle serial_driver;
+static void serial_putchar(char c)
+{
+	if (!can_use_serial)
+		return;
+
+	// Wait until we can send things.
+	while (TRANSMIT_FREE == false)
+		;
+
+	switch (c)
+	{
+		case '\0': break;	 // Don't transmit null terminators.
+		default: arch_x86_write8(COM1_BASE + DATA_REG, c); break;
+	}
+}
+
+static isize serial_write(const void* data, usize size)
+{
+	for (usize i = 0; i < size; i++)
+		serial_putchar(((char*)data)[i]);
+
+	return size;
+}
+
+static char serial_getchar()
+{
+	if (!can_use_serial)
+		return '\0';
+
+	// Wait until we can send things.
+	while (TRANSMIT_FREE == false)
+		;
+
+	return arch_x86_read8(COM1_BASE + DATA_REG);
+}
+
+static isize serial_read(void* data, usize size)
+{
+	((char*)data)[0] = serial_getchar();
+
+	return 1;
+}
 
 void serial_init()
 {
@@ -42,53 +83,8 @@ void serial_init()
 	}
 
 	if (can_use_serial)
-		terminal_set_driver(0, &serial_driver);
-}
-
-static void serial_putchar(char c)
-{
-	if (!can_use_serial)
-		return;
-
-	// Wait until we can send things.
-	while (TRANSMIT_FREE == false)
-		;
-
-	switch (c)
 	{
-		case '\0': break;	 // Don't transmit null terminators.
-		default: arch_x86_write8(COM1_BASE + DATA_REG, c); break;
+		terminal_global.read = serial_read;
+		terminal_global.write = serial_write;
 	}
 }
-
-static isize serial_write(Handle* handle, FileDescriptor* fd, const void* data, usize size, off_t off)
-{
-	for (usize i = 0; i < size; i++)
-		serial_putchar(((char*)data)[i]);
-
-	return size;
-}
-
-static char serial_getchar()
-{
-	if (!can_use_serial)
-		return '\0';
-
-	// Wait until we can send things.
-	while (TRANSMIT_FREE == false)
-		;
-
-	return arch_x86_read8(COM1_BASE + DATA_REG);
-}
-
-static isize serial_read(Handle* handle, FileDescriptor* fd, void* data, usize size, off_t off)
-{
-	((char*)data)[0] = serial_getchar();
-
-	return 1;
-}
-
-static Handle serial_driver = {
-	.write = serial_write,
-	.read = serial_read,
-};

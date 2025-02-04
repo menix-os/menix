@@ -3,10 +3,10 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/fs/handle.h>
 #include <menix/memory/pm.h>
 #include <menix/util/list.h>
 #include <menix/util/self.h>
+#include <menix/util/spin.h>
 
 typedef enum
 {
@@ -38,7 +38,7 @@ typedef struct
 
 typedef List(MemoryMapping) MemoryMappingList;
 
-typedef struct
+typedef struct PageMap
 {
 	SpinLock lock;
 	MemoryMappingList maps;
@@ -64,7 +64,6 @@ extern VirtAddr kernel_map_base;
 #define VM_KERNEL_STACK_SIZE 0x200000
 #define VM_MAP_BASE			 0xFFFF900000000000
 #define VM_MEMORY_BASE		 0xFFFFA00000000000
-#define VM_MODULE_BASE		 0xFFFFB00000000000
 
 // Initializes the virtual memory mapping with a bootloader-provided physical memory map.
 // `kernel_base`: A physical address pointing to the memory where the kernel has been loaded.
@@ -118,6 +117,8 @@ void vm_user_show();
 
 // Make user memory inaccessible to the kernel.
 void vm_user_hide();
+
+typedef struct Process Process;
 
 // Reads `num` bytes from user address `src` to kernel address `dst`. Returns actual bytes read.
 usize vm_user_read(Process* proc, void* dst, VirtAddr src, usize num);

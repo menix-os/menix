@@ -27,11 +27,11 @@ void arch_init_cpu(CpuInfo* cpu, CpuInfo* boot_cpu)
 	// Make sure no other memory accesses happen before the CPUs are initialized.
 	spin_lock(&cpu_lock);
 
-	gdt_init(&cpu->gdt, &cpu->tss);
+	gdt_init(&cpu->arch.gdt, &cpu->arch.tss);
 	idt_init();
 	pic_disable();
 
-	gdt_load(&cpu->gdt);
+	gdt_load(&cpu->arch.gdt);
 
 	// Enable syscall extension (EFER.SCE).
 	asm_wrmsr(MSR_EFER, asm_rdmsr(MSR_EFER) | MSR_EFER_SCE);
@@ -83,15 +83,15 @@ void arch_init_cpu(CpuInfo* cpu, CpuInfo* boot_cpu)
 
 		asm_cpuid(13, 0, eax, ebx, ecx, edx);
 
-		cpu->fpu_size = ecx;
-		cpu->fpu_save = asm_fpu_xsave;
-		cpu->fpu_restore = asm_fpu_xrstor;
+		cpu->arch.fpu_size = ecx;
+		cpu->arch.fpu_save = asm_fpu_xsave;
+		cpu->arch.fpu_restore = asm_fpu_xrstor;
 	}
 	else
 	{
-		cpu->fpu_size = 512;
-		cpu->fpu_save = asm_fpu_fxsave;
-		cpu->fpu_restore = asm_fpu_fxrstor;
+		cpu->arch.fpu_size = 512;
+		cpu->arch.fpu_save = asm_fpu_fxsave;
+		cpu->arch.fpu_restore = asm_fpu_fxrstor;
 	}
 
 	asm_cpuid(7, 0, eax, ebx, ecx, edx);
@@ -121,7 +121,7 @@ void arch_init_cpu(CpuInfo* cpu, CpuInfo* boot_cpu)
 	asm_set_register(cr4, cr4);
 
 	idt_reload();
-	lapic_init(cpu->lapic_id);
+	lapic_init(cpu->arch.lapic_id);
 
 	// We are present!
 	cpu->is_present = true;

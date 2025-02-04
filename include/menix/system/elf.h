@@ -3,8 +3,6 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/fs/handle.h>
-#include <menix/memory/vm.h>
 
 // ELF Header Identification
 #define ELF_MAG				(const char[4]) {0x7F, 'E', 'L', 'F'}
@@ -513,12 +511,14 @@ typedef struct
 // Gets a section from an ELF by name.
 void* elf_get_section(void* elf, const char* name);
 
+typedef struct PageMap PageMap;
+
 // Loads an ELF executable into memory. Returns true if successful.
 // `page_map`: The page map of the process to map into.
-// `handle`: A reference to a data stream of where to read the ELF from.
-// `base`: If not 0: The image base where in virtual memory to load the executable.
+// `address`: The start of the ELF image in memory.
+// `length`: The length of the ELF image in bytes.
 // `info`: A reference to an ElfInfo structure to store important ELF information in.
-bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info);
+bool elf_load(PageMap* page_map, const void* address, usize length, ElfInfo* info);
 
 // Does a relocation on a symbol.
 // `reloc`: The relocation to perform.

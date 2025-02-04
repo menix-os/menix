@@ -5,78 +5,21 @@
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/elf.h>
-#include <menix/system/module.h>
+#include <menix/util/log.h>
 
 #include <string.h>
 
-void* elf_get_section(void* elf, const char* name)
+bool elf_load(PageMap* page_map, const void* address, usize length, ElfInfo* info)
 {
-	if (elf == NULL || name == NULL)
-		return NULL;
-
-	void* result = NULL;
-
-	// If the ELF is 64-bit.
-	if (((u8*)elf)[EI_CLASS] == ELFCLASS64)
+	if (page_map == NULL)
 	{
-		Elf64_Hdr* elf64 = elf;
-		Elf64_Shdr* shdr = elf + elf64->e_shoff;
-		char* shstrtab = elf + shdr[elf64->e_shstrndx].sh_offset;
-		for (usize i = 0; i < elf64->e_shnum; i++)
-		{
-			const usize name_len = strlen(name);
-			const usize sect_len = strlen(shstrtab + shdr[i].sh_name);
-
-			if (name_len != sect_len)
-				continue;
-
-			if (memcmp(name, shstrtab + shdr[i].sh_name, MIN(name_len, sect_len)) == 0)
-			{
-				result = shdr + i;
-				break;
-			}
-		}
-	}
-	// If the ELF is 32-bit.
-	else if (((u8*)elf)[EI_CLASS] == ELFCLASS32)
-	{
-		Elf32_Hdr* elf32 = elf;
-		Elf32_Shdr* shdr = elf + elf32->e_shoff;
-		char* shstrtab = elf + shdr[elf32->e_shstrndx].sh_offset;
-		for (usize i = 0; i < elf32->e_shnum; i++)
-		{
-			const usize name_len = strlen(name);
-			const usize sect_len = strlen(shstrtab + shdr[i].sh_name);
-
-			if (name_len != sect_len)
-				continue;
-
-			if (memcmp(name, shstrtab + shdr[i].sh_name, MIN(name_len, sect_len)) == 0)
-			{
-				result = shdr + i;
-				break;
-			}
-		}
-	}
-
-	return result;
-}
-
-bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
-{
-	if (handle == NULL)
-	{
-		print_log("elf: Failed to load ELF: Could not read the file.\n");
+		print_error("elf: Failed to load ELF: No page map given!\n");
 		return false;
 	}
 
 	// Read ELF header.
 	Elf_Hdr hdr;
-	if (handle->read(handle, NULL, &hdr, sizeof(hdr), 0) != sizeof(hdr))
-	{
-		print_log("elf: Failed to load ELF: Could not read entire header.\n");
-		return false;
-	}
+	memcpy(&hdr, address, sizeof(Elf_Hdr));
 
 	// Verify header magic.
 	if (memcmp(hdr.e_ident, ELF_MAG, sizeof(ELF_MAG)) != 0)
@@ -100,11 +43,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 	{
 		// Read the current header.
 		const usize phdr_off = hdr.e_phoff + (i * sizeof(Elf_Phdr));
-		if (handle->read(handle, NULL, &phdr, sizeof(Elf_Phdr), phdr_off) != sizeof(Elf_Phdr))
-		{
-			print_log("elf: Failed to load ELF: Could not read program header at offset %zu.\n", phdr_off);
-			return false;
-		}
+		memcpy(&phdr, address + phdr_off, sizeof(Elf_Phdr));
 
 		switch (phdr.p_type)
 		{
@@ -124,8 +63,8 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				const usize page_size = vm_get_page_size(VMLevel_Small);
 
 				// Align the virtual address for mapping.
-				VirtAddr aligned_virt = ALIGN_DOWN(phdr.p_vaddr + base, page_size);
-				usize align_difference = phdr.p_vaddr + base - aligned_virt;
+				VirtAddr aligned_virt = ALIGN_DOWN(phdr.p_vaddr, page_size);
+				usize align_difference = phdr.p_vaddr - aligned_virt;
 
 				// Amount of pages to allocate for this segment.
 				const usize page_count = ALIGN_UP(phdr.p_memsz + align_difference, page_size) / page_size;
@@ -139,6 +78,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 					{
 						print_log("elf: Failed to load ELF: Could not map %zu pages to 0x%p.\n", page_count,
 								  aligned_virt);
+						// TODO: Undo previous maps.
 						return false;
 					}
 				}
@@ -152,7 +92,7 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 				}
 
 				// Load data from file.
-				handle->read(handle, NULL, foreign + align_difference, phdr.p_filesz, phdr.p_offset);
+				memcpy(foreign + align_difference, address + phdr.p_offset, phdr.p_filesz);
 
 				// Zero out the remaining data.
 				memset(foreign + align_difference + phdr.p_filesz, 0, phdr.p_memsz - phdr.p_filesz);
@@ -168,79 +108,20 @@ bool elf_load(PageMap* page_map, Handle* handle, usize base, ElfInfo* info)
 			}
 			case PT_PHDR:
 			{
-				info->at_phdr = base + phdr.p_vaddr;
+				info->at_phdr = phdr.p_vaddr;
 				break;
 			}
-			case PT_INTERP:
+			default:
 			{
-				info->ld_path = kzalloc(phdr.p_filesz + 1);
-				handle->read(handle, NULL, info->ld_path, phdr.p_filesz, phdr.p_offset);
-				break;
+				print_error("elf: Failed to load ELF: Unsupported program header type %p!\n", phdr.p_type);
+				return false;
 			}
 		}
 	}
 
-	info->at_entry = base + hdr.e_entry;
+	info->at_entry = hdr.e_entry;
 	info->at_phnum = hdr.e_phnum;
 	info->at_phent = hdr.e_phentsize;
 
 	return true;
-}
-
-i32 elf_do_reloc(Elf_Rela* reloc, Elf_Sym* symtab_data, const char* strtab_data, Elf_Shdr* section_headers,
-				 void* base_virt)
-{
-	Elf_Sym* symbol = symtab_data + ELF64_R_SYM(reloc->r_info);
-	const char* symbol_name = strtab_data + symbol->st_name;
-
-	void* location = base_virt + reloc->r_offset;
-
-	switch (ELF_R_TYPE(reloc->r_info))
-	{
-#if defined(__x86_64__)
-		case R_X86_64_64:
-		case R_X86_64_GLOB_DAT:
-		case R_X86_64_JUMP_SLOT:
-#elif defined(__aarch64__)
-#elif defined(__riscv) && (__riscv_xlen == 64)
-		case R_RISCV_64:
-		case R_RISCV_JUMP_SLOT:
-#elif defined(__loongarch__) && (__loongarch_grlen == 64))
-#endif
-		{
-			void* resolved;
-			if (symbol->st_shndx == 0)
-			{
-				Elf_Sym resolved_sym = module_get_symbol(symbol_name);
-				if (resolved_sym.st_value == 0)
-				{
-					kassert(false, "Failed to find symbol \"%s\"!\n", symbol_name);
-					return 1;
-				}
-				resolved = (void*)resolved_sym.st_value;
-			}
-			else
-				resolved = base_virt + symbol->st_value;
-
-			*(void**)location = resolved + reloc->r_addend;
-			break;
-		}
-#if defined(__x86_64__)
-		case R_X86_64_RELATIVE:
-#elif defined(__aarch64__)
-#elif defined(__riscv) && (__riscv_xlen == 64)
-		case R_RISCV_RELATIVE:
-#elif defined(__loongarch__) && (__loongarch_grlen == 64))
-#endif
-		{
-			*(void**)location = base_virt + reloc->r_addend;
-			break;
-		}
-		default:
-		{
-			kassert(false, "Unhandled relocation %zu!\n", ELF_R_TYPE(reloc->r_info));
-			return 1;
-		}
-	}
-	return 0;
 }

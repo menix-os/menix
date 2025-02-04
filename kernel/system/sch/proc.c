@@ -1,9 +1,6 @@
 // Process creation
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
-#include <menix/fs/fd.h>
-#include <menix/fs/vfs.h>
 #include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/vm.h>
@@ -37,21 +34,15 @@ Process* proc_create(const char* name, ProcessState state, bool is_user, Process
 
 	proc_setup(proc, is_user);
 
-	proc->working_dir = vfs_get_root();
-
 	// If we have a parent, copy over the parent's attributes.
 	if (parent != NULL)
 	{
-		if (parent->working_dir != NULL)
-			proc->working_dir = parent->working_dir;
-		proc->permissions = parent->permissions;
 		proc->parent = parent;
 		proc->map_base = parent->map_base;
 	}
 	else
 	{
-		proc->permissions = S_IWGRP | S_IWOTH;
-		proc->map_base = VM_MAP_BASE;
+		proc->map_base = VM_USER_MAP_BASE;
 	}
 
 	list_new(proc->threads, 0);
@@ -63,15 +54,22 @@ Process* proc_create(const char* name, ProcessState state, bool is_user, Process
 	return proc;
 }
 
-bool proc_create_elf(const char* name, const char* path, char** argv, char** envp, bool is_user)
+bool proc_create_elf(const char* name, const void* data, usize length, char** argv, char** envp)
 {
-	kassert(path != NULL, "Path can't be null!");
-
-	// Open the file and ensure it's there.
-	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
-	if (node == NULL)
+	if (name == NULL)
 	{
-		print_log("process: Unable to read \"%s\": %zu\n", path, thread_errno);
+		print_error("process: Unable to load ELF: Name can't be NULL.\n");
+		return false;
+	}
+	if (data == NULL)
+	{
+		print_error("process: Unable to load ELF: Data is NULL.\n");
+		return false;
+	}
+
+	if (length == 0)
+	{
+		print_error("process: Unable to load ELF: Length is 0.\n");
 		return false;
 	}
 
@@ -80,106 +78,25 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 
 	// Load the executable into the new page map.
 	ElfInfo info = {0};
-	if (elf_load(map, node->handle, 0, &info) == false)
+	if (elf_load(map, data, length, &info) == false)
 	{
-		print_log("process: Unable to load \"%s\": %zu\n", path, thread_errno);
+		print_log("process: Unable to load \"%s\"\n", name);
 		vm_page_map_destroy(map);
 		return false;
 	}
 
 	VirtAddr entry_point = info.at_entry;
 
-	// If an interpreter was requested, load it at the configured base address.
-	if (info.ld_path != NULL)
-	{
-		VfsNode* interp = vfs_get_node(vfs_get_root(), info.ld_path, true);
-		if (interp == NULL)
-		{
-			print_log("process: Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
-			vm_page_map_destroy(map);
-			return false;
-		}
-
-		ElfInfo interp_info = {0};
-		if (elf_load(map, interp->handle, PROC_USER_INTERP_BASE, &interp_info) == false)
-		{
-			print_log("process: Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
-			vm_page_map_destroy(map);
-			return false;
-		}
-
-		// If loading the interpreter was succesful, overwrite the entry point.
-		entry_point = interp_info.at_entry;
-	}
-
-	// If no name is given, use the name of the executable.
-	if (name == NULL)
-		name = node->name;
-
 	// Use the current thread as parent.
-	Process* proc = proc_create(name, ProcessState_Ready, is_user, arch_current_cpu()->thread->parent);
+	Process* proc = proc_create(name, ProcessState_Ready, true, arch_current_cpu()->thread->parent);
 
 	proc->page_map = map;
-	proc->working_dir = node->parent;
-	proc->map_base = VM_USER_MAP_BASE;
-
-	// TODO: Make a proper IO interface
-	FileDescriptor* desc = kzalloc(sizeof(FileDescriptor));
-	VfsNode* terminal = terminal_get_active_node();
-	if (terminal)
-	{
-		desc->handle = terminal->handle;
-		proc->file_descs[0] = desc;
-		proc->file_descs[1] = desc;
-		proc->file_descs[2] = desc;
-	}
+	proc->elf_info = info;
 
 	Thread* thread = thread_create(proc);
-	proc->elf_info = info;
-	thread_setup(thread, entry_point, argv, envp, is_user);
+	thread_setup(thread, entry_point, argv, envp, true);
 
 	return true;
-}
-
-usize proc_fork(Process* proc, Thread* thread)
-{
-	spin_lock(&proc_lock);
-
-	Process* fork = kzalloc(sizeof(Process));
-	strncpy(fork->name, proc->name, sizeof(proc->name));
-
-	// Copy relevant process info.
-	fork->map_base = proc->map_base;
-	fork->id = pid_counter++;
-	fork->permissions = proc->permissions;
-	fork->parent = proc;
-	fork->working_dir = proc->working_dir;
-
-	fork->page_map = vm_page_map_fork(proc->page_map);
-
-	list_new(fork->children, 0);
-	list_new(fork->threads, 0);
-
-	// Link the newly forked process to the parent.
-	list_push(&proc->children, fork);
-
-	for (usize i = 0; i < ARRAY_SIZE(proc->file_descs); i++)
-	{
-		if (proc->file_descs[i] == NULL)
-			continue;
-
-		// TODO: Duplicate FDs.
-		fork->file_descs[i] = proc->file_descs[i];
-	}
-
-	sch_add_process(&proc_list, fork);
-	thread_fork(fork, thread);
-
-	fork->state = ProcessState_Ready;
-	spin_unlock(&proc_lock);
-
-	print_log("process: Forked process \"%s\", new pid %zu\n", proc->name, fork->id);
-	return fork->id;
 }
 
 void proc_kill(Process* proc, bool is_crash)
@@ -226,15 +143,7 @@ void proc_kill(Process* proc, bool is_crash)
 	}
 	else
 	{
-		proc->return_code = -1;
 		proc->state = ProcessState_Dead;
-	}
-
-	for (usize i = 0; i < OPEN_MAX; i++)
-	{
-		if (proc->file_descs[i] == NULL)
-			continue;
-		// TODO: fdnum_close(proc, i);
 	}
 
 	list_push(&dead_processes, proc);
@@ -248,23 +157,6 @@ void proc_kill(Process* proc, bool is_crash)
 
 	if (is_suicide)
 		arch_current_cpu()->thread = NULL;
-}
-
-FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
-{
-	kassert(process != NULL, "No process specified! This is a kernel bug.");
-
-	// Check if fd is within bounds.
-	if (fd >= ARRAY_SIZE(process->file_descs))
-		return NULL;
-
-	FileDescriptor* file_desc = NULL;
-	spin_lock_scope(&process->fd_lock, {
-		file_desc = process->file_descs[fd];
-		if (file_desc == NULL)
-			break;
-	});
-	return file_desc;
 }
 
 void proc_setup(Process* proc, bool is_user)

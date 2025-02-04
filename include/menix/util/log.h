@@ -3,7 +3,6 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/fs/handle.h>
 #include <menix/system/arch.h>
 #include <menix/system/sch/thread.h>
 #include <menix/system/time/clock.h>

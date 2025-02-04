@@ -3,7 +3,6 @@
 #include <menix/common.h>
 #include <menix/system/arch.h>
 #include <menix/system/elf.h>
-#include <menix/system/module.h>
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/thread.h>
 #include <menix/util/log.h>
@@ -51,16 +50,7 @@ void ktrace(Context* regs)
 	print_log("--- Stack trace (Most recent call first) ---\n");
 	for (usize i = 0; i < 32 && fp != NULL; fp = fp->prev, i++)
 	{
-		// Try to resolve the symbol name and offset.
-		const char* name;
-		Elf_Sym* sym;
-
-		// If we have found the corresponding symbol, print its name + offset.
-		if (module_find_symbol(fp->return_addr, &name, &sym))
-			print_log("\t[%zu]\t0x%p <%s + 0x%zx>\n", i, fp->return_addr, name, fp->return_addr - sym->st_value);
-		// If the address is not NULL, but we don't have any matching symbol, just print the address.
-		else if (fp->return_addr)
-			print_log("\t[%zu]\t0x%p <\?\?\?>\n", i, fp->return_addr);
+		print_log("\t[%zu]\t0x%p <\?\?\?>\n", i, fp->return_addr);
 	}
 	print_log("--- End of Stack trace ---\n");
 }

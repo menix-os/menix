@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <bits/arch.h>
+
 #define NULL				   ((void*)0)
 #define offsetof(type, member) ((usize)(&((type*)0)->member))
 
@@ -50,8 +52,6 @@ typedef i128 isize;
 #error "Invalid word size!"
 #endif
 
-static_assert(sizeof(usize) == sizeof(void*), "usize must be the same size as a pointer!");
-
 // Use the processor word size so we can squeeze as many bits as possible into one variable.
 typedef usize Bits;
 
@@ -60,10 +60,3 @@ typedef usize PhysAddr;
 
 // Represents a virtual address not ready for access.
 typedef usize VirtAddr;
-
-// A fixed length buffer.
-typedef struct
-{
-	usize length;
-	void* data;
-} Buffer;
