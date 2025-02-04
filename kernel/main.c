@@ -45,7 +45,7 @@ ATTR(noreturn) void kernel_init(BootInfo* boot_info)
 	arch_init(boot_info);
 
 	print_log("boot: Initialization complete, handing over to scheduler.\n");
-	sch_init();
+	sch_init((VirtAddr)kernel_main);
 
 	while (true)
 		sch_arch_invoke();

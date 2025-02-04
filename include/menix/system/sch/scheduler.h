@@ -14,7 +14,7 @@ extern Thread* hanging_thread_list;
 extern Thread* sleeping_thread_list;
 
 // Initializes the scheduler.
-void sch_init();
+void sch_init(VirtAddr entry_point);
 
 // Makes the scheduler act immediately instead of waiting for a timer.
 // ? Defined per architecture.
