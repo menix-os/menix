@@ -6,6 +6,8 @@
 #include <io.h>
 #include <serial.h>
 
+#include "menix/util/log.h"
+
 #define COM1_BASE			 0x3F8	  // Serial port
 #define DATA_REG			 0		  // Data Register
 #define INT_ENABLE_REG		 1		  // Interrupt Enable Register

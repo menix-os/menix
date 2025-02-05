@@ -20,13 +20,16 @@ ATTR(noreturn) void kernel_init(BootInfo* boot_info)
 
 	// Initialize basic IO.
 	arch_early_init();
+	print_log("boot: Finished early CPU init.\n");
 
 	// Initialize memory managers.
 	pm_init(boot_info->phys_base, boot_info->memory_map, boot_info->mm_num);
 	alloc_init();
+	print_log("boot: Initialized memory allocator.\n");
 
 	// Finalize virtual memory manager and drop reclaimable memory.
 	vm_init(boot_info->kernel_phys, boot_info->memory_map, boot_info->mm_num);
+	print_log("boot: Initialized virtual memory manager.\n");
 
 	terminal_init();
 
@@ -44,22 +47,23 @@ ATTR(noreturn) void kernel_init(BootInfo* boot_info)
 
 ATTR(noreturn) void kernel_main()
 {
-	// If no early framebuffer has been set previously, do it now.
-	fb_register(info->fb);
-
 	// Say hello to the console!
-	print_log("menix " MENIX_RELEASE " (" MENIX_ARCH ", " MENIX_VERSION ")\n");
+	print_log("boot: menix " MENIX_RELEASE " (" MENIX_ARCH ", " MENIX_VERSION ")\n");
 	print_log("boot: Command line: \"%s\"\n", info->cmd);
 
-	char* argv[] = {"init", NULL};
-	char* envp[] = {NULL};
-
+	// Load all initial processes. There may not be none.
+	kassert(info->file_num != 0, "boot: No inital processes given, system is unable to start!");
 	for (usize i = 0; i < info->file_num; i++)
 	{
+		char* argv[] = {info->files[i].path, (char*)info, NULL};
+		char* envp[] = {NULL};
+
 		bool init_started = proc_create_elf("init", info->files[i].address, info->files[i].size, argv, envp);
-		kassert(init_started == true, "Failed to run startup binary \"%s\"", info->files[i].path);
+		kassert(init_started == true, "boot: Failed to run startup binary \"%s\"", info->files[i].path);
+		print_log("boot: Started init process \"%s\"\n", info->files[i].path);
 	}
 
+	// Wait to be rescheduled.
 	while (true)
 		asm_pause();
 }

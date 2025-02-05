@@ -1,5 +1,5 @@
-add_executable(testd
+add_executable(bootd
 	main.c
 )
 
-target_link_libraries(testd PRIVATE common_server)
+target_link_libraries(bootd PRIVATE common_server)

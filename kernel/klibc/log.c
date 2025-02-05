@@ -22,6 +22,15 @@ SpinLock kmesg_lock;
 
 void kmesg_direct(const char* fmt, ...)
 {
+	usize __time = clock_get_elapsed();
+	usize __secs = (__time / 1000000000);
+	usize __millis = ((__time / 1000) % 1000000);
+	CpuInfo* __cpu = arch_current_cpu();
+	usize __tid = 0;
+	if (__cpu != NULL && __cpu->thread != NULL)
+		__tid = __cpu->thread->id;
+	printf("[%5zu.%06zu] [%7zu] ", __secs, __millis, __tid);
+
 	spin_lock(&kmesg_lock);
 
 	va_list args;

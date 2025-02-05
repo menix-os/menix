@@ -17,12 +17,18 @@ target_compile_options(common_kernel INTERFACE
 	-static
 	-nostdlib
 	-ffreestanding
-	-fno-lto
 	-fno-PIC
 	-fno-PIE
 )
-
 target_link_options(common_kernel INTERFACE
 	-nostdlib
 	-T ${MENIX_SRC}/toolchain/linker/kernel.ld
+)
+
+# Server options
+target_compile_options(common_server INTERFACE
+	-static
+)
+target_link_options(common_server INTERFACE
+	-static
 )

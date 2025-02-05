@@ -170,6 +170,10 @@ i32 fbcon_init()
 	ch_xpos = 0;
 	ch_ypos = 0;
 
+	kassert(internal_fb->funcs.copy_region && internal_fb->funcs.update_region && internal_fb->funcs.draw_region &&
+				internal_fb->funcs.fill_region,
+			"fbcon: Unable to switch to framebuffer, callbacks are not set.");
+
 	// Clear the screen.
 	memset((u8*)internal_fb->info.mmio_base, 0, mode->pitch * mode->height);
 

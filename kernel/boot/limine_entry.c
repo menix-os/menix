@@ -70,25 +70,6 @@ void kernel_boot()
 		}
 	}
 
-	// Get modules.
-	if (module_request.response == NULL)
-		print_log("limine: Unable to get modules, or none were provided!\n");
-	else
-	{
-		const struct limine_module_response* module_res = module_request.response;
-		BootFile* const files = info.files;
-		print_log("limine: Got %zu module(s)\n", module_res->module_count);
-		for (usize i = 0; i < module_res->module_count; i++)
-		{
-			files[i].address = module_res->modules[i]->address;
-			files[i].size = module_res->modules[i]->size;
-			files[i].path = module_res->modules[i]->path;
-			print_log("limine: [%zu] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
-					  files[i].path);
-		}
-		info.file_num = module_res->module_count;
-	}
-
 	// Get early framebuffer.
 	if (framebuffer_request.response == NULL || framebuffer_request.response->framebuffer_count == 0)
 		print_log("limine: Unable to get a framebuffer!\n");
@@ -106,9 +87,29 @@ void kernel_boot()
 		buffer->mode.v_height = buf->height;
 		buffer->mode.pitch = buf->pitch;
 		buffer->funcs = FB_DEFAULT_FUNCS;
+		fb_register(buffer);
 		print_log("limine: Early framebuffer: Address = 0x%p, Resolution = %ux%ux%hhu (Virtual = %ux%u)\n",
 				  buffer->info.mmio_base, buffer->mode.width, buffer->mode.height, buffer->mode.cpp * 8,
 				  buffer->mode.v_width, buffer->mode.v_height);
+	}
+
+	// Get modules.
+	if (module_request.response == NULL)
+		print_log("limine: Unable to get modules, or none were provided!\n");
+	else
+	{
+		const struct limine_module_response* module_res = module_request.response;
+		BootFile* const files = info.files;
+		print_log("limine: Got %zu module(s)\n", module_res->module_count);
+		for (usize i = 0; i < module_res->module_count; i++)
+		{
+			files[i].address = module_res->modules[i]->address;
+			files[i].size = module_res->modules[i]->size;
+			files[i].path = module_res->modules[i]->path;
+			print_log("limine: [%zu] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, files[i].address, files[i].size,
+					  files[i].path);
+		}
+		info.file_num = module_res->module_count;
 	}
 
 	info.memory_map = map;

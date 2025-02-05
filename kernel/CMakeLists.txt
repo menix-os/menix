@@ -1,13 +1,12 @@
 # Main kernel sources
 
-target_sources(menix PUBLIC main.c)
+add_executable(menix)
+target_link_libraries(menix PRIVATE common common_kernel)
 
-set_target_properties(menix PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/")
+target_sources(menix PUBLIC main.c)
 
 # Mark entry point.
 target_link_options(menix PUBLIC -e kernel_boot)
-
-set(MENIX_CURRENT_MOD menix CACHE INTERNAL "")
 
 add_subdirectory(arch/${MENIX_ARCH})
 target_include_directories(menix PRIVATE arch/${MENIX_ARCH}/include)
