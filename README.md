@@ -1,18 +1,19 @@
-# menix
+# The Menix Operating System
 
-A minimal and expandable Unix-like operating system.
-menix' goal is to be as lightweight, portable and efficient as possible.
+A Lightweight, Distributed, Microkernel-based OS
 
-> [!Important]
-> This repository contains only the kernel and drivers.
-> You could run the kernel on its own in an emulator like QEMU,
-> but don't expect much to happen without a full system build and/or bootloader.
-> If you want to get a bootable image, you might want to check out
-> **https://github.com/menix-os/bootstrap** instead.
+## What's special about it?
+Menix is a distributed system, which means it's able to run servers across multiple devices at the same time.
+While doing that, Menix' goal is to be as lightweight, portable and efficient as possible.
 
 ## Getting started
 
-Follow the **[build instructions](doc/src/building.md)** for building the kernel and drivers.
+> [!Important]
+> This repository contains only the kernel and servers.
+> If you want to get a bootable image, you might want to check out
+> **https://github.com/menix-os/bootstrap** instead.
+
+Follow the **[build instructions](doc/src/building.md)** for building the kernel and servers.
 
 ## Contributing
 

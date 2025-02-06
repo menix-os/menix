@@ -15,7 +15,7 @@
 
 static SpinLock cpu_lock = {0};
 
-ATTR(aligned(0x1000)) CpuInfo per_cpu_data[MAX_CPUS];
+CpuInfo per_cpu_data[MAX_CPUS];
 
 // Assembly stub for syscall via SYSCALL/SYSRET.
 extern void arch_syscall_internal(void);

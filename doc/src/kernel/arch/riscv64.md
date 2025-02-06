@@ -1,3 +1,3 @@
 # riscv64
 
-On riscv64, menix assumes a RVA22 profile.
+On riscv64, Menix assumes `rv64gc_zicsr_zifencei_zihintpause`.

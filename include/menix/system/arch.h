@@ -24,7 +24,7 @@ extern usize arch_page_size;
 #endif
 
 // CPU-local information.
-typedef struct Cpu
+typedef struct CpuInfo
 {
 	usize id;						  // Unique ID of this CPU.
 	usize kernel_stack;				  // Stack pointer for the kernel.

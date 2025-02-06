@@ -6,5 +6,4 @@ target_compile_options(common INTERFACE
 )
 
 target_compile_options(common_kernel INTERFACE
-	-flto
 )
