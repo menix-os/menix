@@ -62,12 +62,12 @@ void module_init()
 	VfsNode* module_path = vfs_get_node(vfs_get_root(), dyn_modules_path, true);
 	if (module_path == NULL)
 	{
-		module_log("Can't find dynamic modules, directory \"%s\" is missing!\n", dyn_modules_path);
+		print_warn("module: Can't find dynamic modules, directory \"%s\" is missing!\n", dyn_modules_path);
 		goto skip_dynamic;
 	}
 	if (!S_ISDIR(module_path->handle->stat.st_mode))
 	{
-		module_log("Can't find dynamic modules, \"%s\" is not a directory!\n", dyn_modules_path);
+		print_warn("module: Can't find dynamic modules, \"%s\" is not a directory!\n", dyn_modules_path);
 		goto skip_dynamic;
 	}
 
@@ -137,7 +137,7 @@ skip_dynamic:
 			LoadedModule* loaded = bucket->items[i].item;
 			i32 ret = module_load(loaded->module->name);
 			if (ret != 0)
-				module_log("\"%s\" failed to initialize with error code %i!\n", loaded->module->name, ret);
+				print_error("module: \"%s\" failed to initialize with error code %i!\n", loaded->module->name, ret);
 		}
 	}
 
@@ -180,7 +180,7 @@ void module_register(const char* name, LoadedModule* module)
 	if (hashmap_get(&module_map, old, name, strlen(name)))
 	{
 		// If the module is already loaded, ignore it.
-		module_log("Ignoring already loaded module \"%s\" (%s)\n", name,
+		print_warn("module: Ignoring already loaded module \"%s\" (%s)\n", name,
 				   old->file_path[0] != '\0' ? old->file_path : "built-in");
 	}
 	else
@@ -198,8 +198,8 @@ i32 module_load(const char* name)
 	// Check if module is registered.
 	if (!hashmap_get(&module_map, loaded, name, strlen(name)))
 	{
-		module_log("Unable to load \"%s\": Not previously registered!\n", name);
-		return -ENOENT;
+		print_error("module: Unable to load \"%s\": Not previously registered!\n", name);
+		return ENOENT;
 	}
 	if (loaded->loaded)
 		return 0;

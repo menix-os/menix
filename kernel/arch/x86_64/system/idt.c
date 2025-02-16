@@ -36,6 +36,7 @@ void idt_reload()
 	const usize cpu = arch_current_cpu()->id;
 
 	// Set IRQ handlers for known ISRs (Exceptions, timer, syscall) on this core.
+	isr_register_handler(cpu, 0x3, interrupt_debug_handler, NULL);
 	isr_register_handler(cpu, 0x6, interrupt_ud_handler, NULL);
 	isr_register_handler(cpu, 0xE, interrupt_pf_handler, NULL);
 	isr_register_handler(cpu, INT_TIMER, timer_handler, NULL);

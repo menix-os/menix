@@ -67,3 +67,10 @@ const char* pci_get_class_name(u8 class)
 	}
 	return "Unclassified";
 }
+
+void pci_set_bus_mastering(PciDevice* dev, bool set)
+{
+	u16 cmd = dev->config_space->command;
+	cmd |= (set << 2);
+	dev->config_space->command = cmd;
+}

@@ -43,7 +43,7 @@ Context* int_handler(usize isr, Context* regs)
 bool isr_register_handler(usize cpu, usize idx, InterruptFn handler, void* data)
 {
 	asm_interrupt_disable();
-	if (cpu >= ARRAY_SIZE(per_cpu_data) && idx >= ARRAY_SIZE(per_cpu_data[cpu].irq_handlers))
+	if (cpu >= ARRAY_SIZE(per_cpu_data) || idx >= ARRAY_SIZE(per_cpu_data[cpu].irq_handlers))
 	{
 		arch_log("Failed to register a handler for ISR %zu! Out of bounds.\n", idx);
 		return false;

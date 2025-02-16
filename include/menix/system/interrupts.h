@@ -16,5 +16,4 @@ Context* int_handler(usize isr, Context* regs);
 bool irq_allocate_handler(InterruptFn handler, void* data);
 
 // Internal function to register an interrupt handler at a specific ISR index on the current CPU.
-// ! If you thought about using this function for IRQs, you probably meant to use `irq_register_handler`.
 bool isr_register_handler(usize cpu, usize idx, InterruptFn handler, void* data);

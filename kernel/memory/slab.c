@@ -51,7 +51,7 @@ static void* slab_do_alloc(Slab* slab)
 {
 	spin_lock(&slab->lock);
 
-	if (slab->head == NULL)
+	if (unlikely(slab->head == NULL))
 		slab_new(slab, slab->ent_size);
 
 	void** old_free = slab->head;
@@ -66,7 +66,7 @@ static void slab_do_free(Slab* slab, void* addr)
 {
 	spin_lock(&slab->lock);
 
-	if (addr == NULL)
+	if (unlikely(addr == NULL))
 		goto cleanup;
 
 	void** new_head = addr;
@@ -102,7 +102,7 @@ void* slab_alloc(usize size)
 	// Allocate the pages plus an additional page for metadata.
 	PhysAddr ret = pm_alloc(num_pages + 1);
 	// If the allocation failed, return NULL.
-	if (ret == 0)
+	if (unlikely(ret == 0))
 		return NULL;
 
 	ret = ret + (PhysAddr)pm_get_phys_base();
@@ -147,7 +147,7 @@ void* slab_realloc(void* old, usize new_bytes)
 	SlabHeader* slab_header = (SlabHeader*)((usize)old & ~0xFFF);
 	Slab* slab = slab_header->slab;
 
-	if (new_bytes > slab->ent_size)
+	if (unlikely(new_bytes > slab->ent_size))
 	{
 		void* new_addr = slab_alloc(new_bytes);
 		if (new_addr == NULL)

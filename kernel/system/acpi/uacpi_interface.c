@@ -38,6 +38,7 @@ void acpi_init(PhysAddr rsdp)
 	kfree(temp_buffer);
 
 	uacpi_namespace_load();
+	uacpi_namespace_initialize();
 }
 
 uacpi_status uacpi_kernel_get_rsdp(uacpi_phys_addr* out_rsdp_address)
@@ -142,42 +143,53 @@ uacpi_status uacpi_kernel_io_map(uacpi_io_addr base, uacpi_size len, uacpi_handl
 
 void uacpi_kernel_io_unmap(uacpi_handle handle)
 {
-	// TODO
 }
 
 uacpi_status uacpi_kernel_io_read8(uacpi_handle h, uacpi_size offset, uacpi_u8* out_value)
 {
-	*out_value = mmio_read8(h + offset);
+#ifdef __x86_64
+	*out_value = asm_read8(offset);
+#endif
 	return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_read16(uacpi_handle h, uacpi_size offset, uacpi_u16* out_value)
 {
-	*out_value = mmio_read16(h + offset);
+#ifdef __x86_64
+	*out_value = asm_read16(offset);
+#endif
 	return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_read32(uacpi_handle h, uacpi_size offset, uacpi_u32* out_value)
 {
-	*out_value = mmio_read32(h + offset);
+#ifdef __x86_64
+	*out_value = asm_read32(offset);
+#endif
 	return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_write8(uacpi_handle h, uacpi_size offset, uacpi_u8 in_value)
 {
-	mmio_write8(h + offset, in_value);
+#ifdef __x86_64
+	asm_write8(offset, in_value);
+#endif
 	return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_write16(uacpi_handle h, uacpi_size offset, uacpi_u16 in_value)
 {
-	mmio_write16(h + offset, in_value);
+#ifdef __x86_64
+	asm_write16(offset, in_value);
+#endif
 	return UACPI_STATUS_OK;
 }
 
 uacpi_status uacpi_kernel_io_write32(uacpi_handle h, uacpi_size offset, uacpi_u32 in_value)
 {
-	mmio_write32(h + offset, in_value);
+#ifdef __x86_64
+	asm_write32(offset, in_value);
+#endif
 	return UACPI_STATUS_OK;
 }
 

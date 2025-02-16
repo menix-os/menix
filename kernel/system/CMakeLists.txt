@@ -5,7 +5,7 @@ target_sources(menix PUBLIC
 	elf.c
 	interrupts.c
 	module.c
-	terminal.c
+	logger.c
 )
 
 add_subdirectory(acpi)

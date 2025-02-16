@@ -6,9 +6,6 @@
 #include <menix/util/list.h>
 #include <menix/util/spin.h>
 
-// Direct access to the errno of the current thread
-#define thread_errno arch_current_cpu()->thread->errno
-
 extern SpinLock thread_lock;
 
 // Describes the state of a thread.

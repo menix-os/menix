@@ -1,5 +1,6 @@
 #include <menix/abi/errno.h>
 #include <menix/common.h>
+#include <menix/fs/fd.h>
 #include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
 #include <menix/system/sch/process.h>
@@ -168,15 +169,6 @@ SYSCALL_IMPL(stat, int fd, VirtAddr path, VirtAddr buf)
 	return SYSCALL_OK(0);
 }
 
-// Opens a connection between a file and a file descriptor. Returns a new file descriptor.
-// `path`: The path to the file to be opened.
-// `oflag`: Flags for opening the file.
-// `mode`:
-SYSCALL_IMPL(open, VirtAddr path, int oflag, mode_t mode)
-{
-	return syscall_openat(AT_FDCWD, path, oflag, mode);
-}
-
 // Closes a file descriptor.
 // `fd`: The file descriptor to close.
 SYSCALL_IMPL(close, int fd)
@@ -229,14 +221,58 @@ SYSCALL_IMPL(seek, int fd, isize offset, int whence)
 	return SYSCALL_OK(file_desc->offset);
 }
 
+SYSCALL_IMPL(chdir, VirtAddr path)
+{
+	Process* process = arch_current_cpu()->thread->parent;
+	if (path == 0)
+		return SYSCALL_ERR(EINVAL);
+
+	char* kernel_path = kmalloc(PATH_MAX);
+	vm_user_read(process, kernel_path, path, PATH_MAX);
+
+	VfsNode* new_cwd = vfs_get_node(process->working_dir, kernel_path, true);
+	kfree(kernel_path);
+	if (new_cwd == NULL)
+		return SYSCALL_ERR(ENOENT);
+
+	if (!S_ISDIR(new_cwd->handle->stat.st_mode))
+		return SYSCALL_ERR(ENOTDIR);
+
+	process->working_dir = new_cwd;
+
+	return SYSCALL_OK(0);
+}
+
+SYSCALL_IMPL(fchdir, usize fd)
+{
+	Process* process = arch_current_cpu()->thread->parent;
+
+	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+	if (file_desc == NULL)
+		return SYSCALL_ERR(EBADFD);
+
+	if (!S_ISDIR(file_desc->handle->stat.st_mode))
+		return SYSCALL_ERR(ENOTDIR);
+
+	process->working_dir = file_desc->node;
+
+	return SYSCALL_OK(0);
+}
+
 SYSCALL_STUB(access)
-SYSCALL_STUB(chmod)
-SYSCALL_STUB(chown)
+SYSCALL_STUB(faccessat)
+SYSCALL_STUB(chmodat)
+SYSCALL_STUB(chownat)
+SYSCALL_STUB(chroot)
 SYSCALL_STUB(unmount)
 SYSCALL_STUB(mount)
-SYSCALL_STUB(unlink)
-SYSCALL_STUB(symlink)
-SYSCALL_STUB(readlink)
-SYSCALL_STUB(link)
-SYSCALL_STUB(rmdir)
+SYSCALL_STUB(unlinkat)
+SYSCALL_STUB(readlinkat)
+SYSCALL_STUB(linkat)
+SYSCALL_STUB(mkdirat)
 SYSCALL_STUB(sync)
+SYSCALL_STUB(isatty)
+SYSCALL_STUB(fcntl)
+SYSCALL_STUB(readdir)
+SYSCALL_STUB(umask)
+SYSCALL_STUB(poll)

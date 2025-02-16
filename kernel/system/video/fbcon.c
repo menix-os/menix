@@ -3,10 +3,11 @@
 #include <menix/common.h>
 #include <menix/fs/devtmpfs.h>
 #include <menix/fs/handle.h>
-#include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
+#include <menix/system/logger.h>
 #include <menix/system/module.h>
 #include <menix/system/video/fb.h>
+#include <menix/system/video/fbcon.h>
 
 #include <string.h>
 
@@ -30,6 +31,8 @@ static usize update_count = 0;							 // Amount of queued changes.
 static usize ch_width;			  // Screen width in characters
 static usize ch_height;			  // Screen height in characters
 static usize ch_xpos, ch_ypos;	  // Current cursor position in characters
+
+static bool fbcon_active = false;
 
 // Copies the back buffer to the screen.
 static void fbcon_copy_screen()
@@ -71,8 +74,7 @@ static void fbcon_putchar(u32 ch)
 		for (usize x = 0; x < FONT_WIDTH; x++)
 		{
 			const usize offset = ((mode->pitch * (pix_ypos + y)) + (mode->cpp * (pix_xpos + x)));
-			const u32 pixel =
-				fbcon_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0xFF000000;
+			const u32 pixel = fbcon_font[(c * FONT_GLYPH_SIZE) + y] & (1 << (FONT_WIDTH - x - 1)) ? 0xFFFFFFFF : 0;
 			// Write to back buffer.
 			mmio_write32(internal_buffer + offset, pixel);
 		}
@@ -95,8 +97,11 @@ static void fbcon_putchar(u32 ch)
 	}
 }
 
-static isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf, usize len, off_t offset)
+static isize fbcon_write(const void* buf, usize len)
 {
+	if (fbcon_active == false)
+		return 0;
+
 	// Write each character to the buffer.
 	for (usize i = 0; i < len; i++)
 	{
@@ -153,24 +158,13 @@ static isize fbcon_write(Handle* handle, FileDescriptor* fd, const void* buf, us
 	return len;
 }
 
-static Handle fbcon_handle = {
-	.write = fbcon_write,
-};
-
-i32 fbcon_init()
+void fbcon_init()
 {
-	// Register device.
-	if (devtmpfs_add_device(&fbcon_handle, "fbcon") == false)
-	{
-		print_log("fbcon: Failed to initialize!\n");
-		return 1;
-	}
-
 	FrameBuffer* fb = fb_get_active();
 
 	// If no regular framebuffer is available, we can't write to anything.
 	if (fb == NULL)
-		return 1;
+		return;
 
 	internal_fb = fb;
 
@@ -186,15 +180,16 @@ i32 fbcon_init()
 	// Clear the screen.
 	memset((u8*)internal_fb->info.mmio_base, 0, mode->pitch * mode->height);
 
-	print_log("fbcon: Switching to framebuffer console\n");
+	print_log("fbcon: Registering framebuffer console.\n");
 
-	Handle* h = terminal_get_active_node()->handle;
-	h->write = fbcon_write;
+	logger_register("fbcon", fbcon_write);
 
-	print_log("fbcon: Switched to framebuffer console on /dev/terminal%zu\n", terminal_get_active());
 	print_log("fbcon: Framebuffer Resolution = %ux%ux%hhu (Virtual = %ux%u)\n", internal_fb->mode.width,
 			  internal_fb->mode.height, internal_fb->mode.cpp * 8, internal_fb->mode.v_width,
 			  internal_fb->mode.v_height);
+}
 
-	return 0;
+void fbcon_enable(bool status)
+{
+	fbcon_active = status;
 }

@@ -4,11 +4,11 @@
 #include <menix/common.h>
 #include <menix/fs/fd.h>
 #include <menix/fs/vfs.h>
-#include <menix/io/terminal.h>
 #include <menix/memory/alloc.h>
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/elf.h>
+#include <menix/system/logger.h>
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
 #include <menix/system/sch/thread.h>
@@ -71,7 +71,7 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 	VfsNode* node = vfs_get_node(vfs_get_root(), path, true);
 	if (node == NULL)
 	{
-		print_log("process: Unable to read \"%s\": %zu\n", path, thread_errno);
+		print_log("process: Unable to read \"%s\"\n", path);
 		return false;
 	}
 
@@ -82,7 +82,7 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 	ElfInfo info = {0};
 	if (elf_load(map, node->handle, 0, &info) == false)
 	{
-		print_log("process: Unable to load \"%s\": %zu\n", path, thread_errno);
+		print_log("process: Unable to load \"%s\": %zu\n", path);
 		vm_page_map_destroy(map);
 		return false;
 	}
@@ -95,7 +95,7 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 		VfsNode* interp = vfs_get_node(vfs_get_root(), info.ld_path, true);
 		if (interp == NULL)
 		{
-			print_log("process: Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
+			print_log("process: Unable to load interpreter \"%s\" for \"%s\"\n", info.ld_path, path);
 			vm_page_map_destroy(map);
 			return false;
 		}
@@ -103,7 +103,7 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 		ElfInfo interp_info = {0};
 		if (elf_load(map, interp->handle, PROC_USER_INTERP_BASE, &interp_info) == false)
 		{
-			print_log("process: Unable to load interpreter \"%s\" for \"%s\": %zu\n", info.ld_path, path, thread_errno);
+			print_log("process: Unable to load interpreter \"%s\" for \"%s\"\n", info.ld_path, path);
 			vm_page_map_destroy(map);
 			return false;
 		}
@@ -122,17 +122,6 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 	proc->page_map = map;
 	proc->working_dir = node->parent;
 	proc->map_base = VM_USER_MAP_BASE;
-
-	// TODO: Make a proper IO interface
-	FileDescriptor* desc = kzalloc(sizeof(FileDescriptor));
-	VfsNode* terminal = terminal_get_active_node();
-	if (terminal)
-	{
-		desc->handle = terminal->handle;
-		proc->file_descs[0] = desc;
-		proc->file_descs[1] = desc;
-		proc->file_descs[2] = desc;
-	}
 
 	Thread* thread = thread_create(proc);
 	proc->elf_info = info;

@@ -7,13 +7,9 @@
 #include <menix/util/log.h>
 
 #define pci_log_dev(dev, fmt, ...) \
-	print_log("pci: %02hhx:%02hhx.%hhx (%hhu,%hhu,%hhu): " fmt, (dev)->slot->bus->id, (dev)->slot->id, \
-			  (dev)->function, (dev)->config_space->class, (dev)->config_space->sub_class, \
-			  (dev)->config_space->prog_if, ##__VA_ARGS__)
+	print_log("pci: %02hhx:%02hhx.%hhx: " fmt, (dev)->slot->bus->id, (dev)->slot->id, (dev)->function, ##__VA_ARGS__)
 #define pci_error_dev(dev, fmt, ...) \
-	print_error("pci: %02hhx:%02hhx.%hhx (%hhu,%hhu,%hhu): " fmt, (dev)->slot->bus->id, (dev)->slot->id, \
-				(dev)->function, (dev)->config_space->class, (dev)->config_space->sub_class, \
-				(dev)->config_space->prog_if, ##__VA_ARGS__)
+	print_error("pci: %02hhx:%02hhx.%hhx: " fmt, (dev)->slot->bus->id, (dev)->slot->id, (dev)->function, ##__VA_ARGS__)
 
 #define PCI_ANY_ID (~0U)
 #define PCI_DEVICE(ven, dev) \
@@ -180,3 +176,5 @@ const char* pci_get_class_name(u8 class);
 
 // Gets the calulated base address of the PCI device.
 PhysAddr pci_get_bar(PciDevice* device, usize idx);
+
+void pci_set_bus_mastering(PciDevice* dev, bool set);

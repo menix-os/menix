@@ -20,18 +20,18 @@ void pic_disable()
 {
 	// Note: We initialize the PIC properly, but completely disable it and use the APIC in favor of it.
 	// Remap IRQs so they start at 0x20 since interrupts 0x00..0x1F are used by CPU exceptions.
-	arch_x86_write8(PIC1_COMMAND_PORT, 0x11);	 // ICW1: Begin initialization and set cascade mode.
-	arch_x86_write8(PIC1_DATA_PORT, 0x20);		 // ICW2: Set where interrupts should be mapped to (0x20-0x27).
-	arch_x86_write8(PIC1_DATA_PORT, 0x04);		 // ICW3: Connect IRQ2 (0x04) to the slave PIC.
-	arch_x86_write8(PIC1_DATA_PORT, 0x01);		 // ICW4: Set the PIC to operate in 8086/88 mode.
-	arch_x86_write8(PIC1_DATA_PORT, 0xFF);		 // Mask all interrupts.
+	asm_write8(PIC1_COMMAND_PORT, 0x11);	// ICW1: Begin initialization and set cascade mode.
+	asm_write8(PIC1_DATA_PORT, 0x20);		// ICW2: Set where interrupts should be mapped to (0x20-0x27).
+	asm_write8(PIC1_DATA_PORT, 0x04);		// ICW3: Connect IRQ2 (0x04) to the slave PIC.
+	asm_write8(PIC1_DATA_PORT, 0x01);		// ICW4: Set the PIC to operate in 8086/88 mode.
+	asm_write8(PIC1_DATA_PORT, 0xFF);		// Mask all interrupts.
 
 	// Same for the slave PIC.
-	arch_x86_write8(PIC2_COMMAND_PORT, 0x11);	 // ICW1: Begin initialization.
-	arch_x86_write8(PIC2_DATA_PORT, 0x28);		 // ICW2: Set where interrupts should be mapped to (0x28-0x2F).
-	arch_x86_write8(PIC2_DATA_PORT, 0x02);		 // ICW3: Connect to master PIC at IRQ2.
-	arch_x86_write8(PIC2_DATA_PORT, 0x01);		 // ICW4: Set the PIC to operate in 8086/88 mode.
-	arch_x86_write8(PIC2_DATA_PORT, 0xFF);		 // Mask all interrupts.
+	asm_write8(PIC2_COMMAND_PORT, 0x11);	// ICW1: Begin initialization.
+	asm_write8(PIC2_DATA_PORT, 0x28);		// ICW2: Set where interrupts should be mapped to (0x28-0x2F).
+	asm_write8(PIC2_DATA_PORT, 0x02);		// ICW3: Connect to master PIC at IRQ2.
+	asm_write8(PIC2_DATA_PORT, 0x01);		// ICW4: Set the PIC to operate in 8086/88 mode.
+	asm_write8(PIC2_DATA_PORT, 0xFF);		// Mask all interrupts.
 }
 static inline u32 reg_to_x2apic(u32 reg)
 {

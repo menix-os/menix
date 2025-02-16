@@ -6,5 +6,4 @@ target_sources(menix PUBLIC
 	string.c
 	stdlib.c
 	stdio.c
-	log.c
 )

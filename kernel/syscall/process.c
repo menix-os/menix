@@ -62,18 +62,6 @@ SYSCALL_IMPL(getpid)
 	return SYSCALL_OK(arch_current_cpu()->thread->parent->id);
 }
 
-// Returns the ID of the parent of the calling process.
-SYSCALL_IMPL(getparentpid)
-{
-	// Get the parent of the current process.
-	Process* parent_process = arch_current_cpu()->thread->parent->parent;
-
-	if (parent_process != NULL)
-		return SYSCALL_OK(parent_process->id);
-
-	return SYSCALL_OK(0);
-}
-
 SYSCALL_IMPL(getcwd, VirtAddr buf, usize size)
 {
 	if (buf == 0 || size == 0)
@@ -100,28 +88,6 @@ SYSCALL_STUB(getuid)
 SYSCALL_STUB(setgid)
 SYSCALL_STUB(getgid)
 
-SYSCALL_IMPL(chdir, VirtAddr path)
-{
-	Process* process = arch_current_cpu()->thread->parent;
-	if (path == 0)
-		return SYSCALL_ERR(EINVAL);
-
-	char* kernel_path = kmalloc(PATH_MAX);
-	vm_user_read(process, kernel_path, path, PATH_MAX);
-
-	VfsNode* new_cwd = vfs_get_node(process->working_dir, kernel_path, true);
-	kfree(kernel_path);
-	if (new_cwd == NULL)
-		return SYSCALL_ERR(ENOENT);
-
-	if (!S_ISDIR(new_cwd->handle->stat.st_mode))
-		return SYSCALL_ERR(ENOTDIR);
-
-	process->working_dir = new_cwd;
-
-	return SYSCALL_OK(0);
-}
-
 SYSCALL_IMPL(waitpid, pid_t pid, VirtAddr status, int flags)
 {
 	// TODO
@@ -139,3 +105,12 @@ SYSCALL_IMPL(sigsuspend)
 	}
 	return SYSCALL_ERR(EINTR);
 }
+
+SYSCALL_STUB(sigprocmask)
+SYSCALL_STUB(sigpending)
+SYSCALL_STUB(sigaction)
+SYSCALL_STUB(sigreturn)
+SYSCALL_STUB(sigtimedwait)
+
+SYSCALL_STUB(futex_wait)
+SYSCALL_STUB(futex_wake)

@@ -14,5 +14,5 @@ endif()
 # Shared headers
 include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
-# Generic drivers
-add_subdirectory(drv)
+add_subdirectory(block)
+add_subdirectory(gpu)

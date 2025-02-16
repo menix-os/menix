@@ -98,3 +98,39 @@ static inline void asm_fpu_xrstor(void* mem)
 {
 	asm volatile("xrstor %0" ::"m"(*(u8*)mem) : "memory");
 }
+
+static inline u8 asm_read8(u16 port)
+{
+	u8 result;
+	asm volatile("inb %1, %0" : "=a"(result) : "Nd"(port));
+	return result;
+}
+
+static inline u16 asm_read16(u16 port)
+{
+	u16 result;
+	asm volatile("inw %1, %0" : "=a"(result) : "Nd"(port));
+	return result;
+}
+
+static inline u32 asm_read32(u16 port)
+{
+	u32 result;
+	asm volatile("inl %1, %0" : "=a"(result) : "Nd"(port));
+	return result;
+}
+
+static inline void asm_write8(u16 port, u8 value)
+{
+	asm volatile("outb %0, %1" : : "a"(value), "Nd"(port));
+}
+
+static inline void asm_write16(u16 port, u16 value)
+{
+	asm volatile("outw %0, %1" : : "a"(value), "Nd"(port));
+}
+
+static inline void asm_write32(u16 port, u32 value)
+{
+	asm volatile("outl %0, %1" : : "a"(value), "Nd"(port));
+}

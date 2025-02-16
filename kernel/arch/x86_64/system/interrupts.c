@@ -6,21 +6,23 @@
 
 #include <apic.h>
 #include <idt.h>
+#include <interrupts.h>
 
 Context* interrupt_ud_handler(usize isr, Context* regs, void* data)
 {
 	// Make sure we're in user mode, otherwise we have to crash.
 	print_log("Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
-	print_log("Faulty data:");
-
-	for (usize i = 0; i < 16; i++)
-	{
-		u8 instr = *(u8*)regs->rip;
-		print_log(" %hhx", instr);
-	}
 
 	ktrace(regs);
 	kabort();
+
+	return regs;
+}
+
+Context* interrupt_debug_handler(usize isr, Context* regs, void* data)
+{
+	// We use this exception just to print the current registers, so no abort.
+	ktrace(regs);
 
 	return regs;
 }

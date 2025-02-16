@@ -14,11 +14,9 @@
 	{ \
 		if (!(expr)) \
 		{ \
-			print_error("Assertion failed!\n" \
-						"[Location]\t%s (%s:%u)\n" \
-						"[Expression]\t%s\n" \
-						"[Message]\t" msg "\n", \
-						__FUNCTION__, __FILE__, __LINE__, #expr, ##__VA_ARGS__); \
+			print_error("Environment is unsound! Assertion \"%s\" failed!\n", #expr); \
+			print_error("In function \"%s\" (%s:%u):\n", __FUNCTION__, __FILE__, __LINE__); \
+			print_error(msg "\n", ##__VA_ARGS__); \
 			ktrace(NULL); \
 			kabort(); \
 		} \
@@ -31,41 +29,28 @@
 	} while (0)
 #endif
 
-#define __get_print_info \
-	usize __time = clock_get_elapsed(); \
-	usize __secs = (__time / 1000000000); \
-	usize __millis = ((__time / 1000) % 1000000); \
-	CpuInfo* __cpu = arch_current_cpu(); \
-	usize __tid = 0; \
-	if (__cpu != NULL && __cpu->thread != NULL) \
-		__tid = __cpu->thread->id;
-
 #define print_log(fmt, ...) \
 	do \
 	{ \
-		__get_print_info; \
-		kmesg_direct("[%5zu.%06zu] [%7zu] " fmt, __secs, __millis, __tid, ##__VA_ARGS__); \
+		kmesg_direct(fmt, ##__VA_ARGS__); \
 	} while (0)
 
 #define print_warn(fmt, ...) \
 	do \
 	{ \
-		__get_print_info; \
-		kmesg_direct("[%5zu.%06zu] [%7zu] warn: " fmt, __secs, __millis, __tid, ##__VA_ARGS__); \
+		kmesg_direct("[warn] " fmt, ##__VA_ARGS__); \
 	} while (0)
 
 #define print_error(fmt, ...) \
 	do \
 	{ \
-		__get_print_info; \
-		kmesg_direct("[%5zu.%06zu] [%7zu] error: " fmt, __secs, __millis, __tid, ##__VA_ARGS__); \
+		kmesg_direct("[error] " fmt, ##__VA_ARGS__); \
 	} while (0)
 
 #define todo() \
 	do \
 	{ \
-		__get_print_info; \
-		kmesg_direct("[%5zu.%06zu] [%7zu] warn: %s is still TODO!\n", __secs, __millis, __tid, __FUNCTION__); \
+		kmesg_direct("[warn] %s is still TODO!\n", __FUNCTION__); \
 	} while (0)
 
 // Print a message to the kernel log.

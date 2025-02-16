@@ -2,7 +2,7 @@
 #include <menix/fs/devtmpfs.h>
 #include <menix/fs/fd.h>
 #include <menix/fs/handle.h>
-#include <menix/io/terminal.h>
+#include <menix/system/logger.h>
 
 #include <interrupts.h>
 
@@ -23,6 +23,7 @@
 #define KEYBOARD_DATA_PORT	 0x60
 #define KEYBOARD_STATUS_PORT 0x64
 
+#if 0
 unsigned char keyboard_map[128] = {
 	'\0', '\e', '1',  '2', '3',	 '4',  '5',	 '6',  '7',	 '8',  '9',	 '0',  '-',	 '=',  '\b', '\t', 'q',	 'w',
 	'e',  'r',	't',  'y', 'u',	 'i',  'o',	 'p',  '[',	 ']',  '\n', '\0', 'a',	 's',  'd',	 'f',  'g',	 'h',
@@ -44,9 +45,9 @@ static u8 ps2_read()
 	u8 status;
 	do
 	{
-		status = arch_x86_read8(KEYBOARD_STATUS_PORT);
+		status = asm_read8(KEYBOARD_STATUS_PORT);
 	} while ((status & 0x01) == 0);
-	return arch_x86_read8(KEYBOARD_DATA_PORT);
+	return asm_read8(KEYBOARD_DATA_PORT);
 }
 
 static char read_keycode()
@@ -66,8 +67,8 @@ static char read_keycode()
 
 	char ch = shift ? keyboard_map[keycode] : keyboard_shift_map[keycode];
 
-	Handle* h = terminal_get_active_node()->handle;
-	h->write(h, NULL, &ch, 1, 0);
+	// Handle* h = terminal_get_active_node()->handle;
+	// h->write(h, NULL, &ch, 1, 0);
 
 	return ch;
 }
@@ -84,15 +85,17 @@ static isize ps2_keyboard_read(Handle* handle, FileDescriptor* fd, void* data, u
 
 	return 1;
 }
+#endif
 
 static i32 ps2_init()
 {
-	// Add this keyboard as a new input method.
+	// TODO: Add this keyboard as a new input method.
 
-	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xFF);	// Reset PS/2 controller.
-	arch_x86_write8(KEYBOARD_STATUS_PORT, 0xAE);	// Enable PS/2 keyboard.
+#if 0
+	asm_write8(KEYBOARD_STATUS_PORT, 0xFF);	// Reset PS/2 controller.
+	asm_write8(KEYBOARD_STATUS_PORT, 0xAE);	// Enable PS/2 keyboard.
 
-	arch_x86_write8(KEYBOARD_DATA_PORT, 0xFF);	  // Reset the keyboard.
+	asm_write8(KEYBOARD_DATA_PORT, 0xFF);	  // Reset the keyboard.
 
 	if (ps2_read() != 0xFA)
 	{
@@ -100,14 +103,15 @@ static i32 ps2_init()
 		return 1;
 	}
 
-	arch_x86_write8(KEYBOARD_DATA_PORT, 0xF0);	  // Send "Set Scan Code Set" command.
-	arch_x86_write8(KEYBOARD_DATA_PORT, 0x02);	  // Set scan code set to 2.
+	asm_write8(KEYBOARD_DATA_PORT, 0xF0);	  // Send "Set Scan Code Set" command.
+	asm_write8(KEYBOARD_DATA_PORT, 0x02);	  // Set scan code set to 2.
 
 	// Register input from PS/2 keyboard.
 	Handle* h = terminal_get_active_node()->handle;
 	if (h != NULL)
 		h->read = ps2_keyboard_read;
 
+#endif
 	return 0;
 }
 
