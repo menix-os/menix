@@ -13,7 +13,7 @@
 
 #include <string.h>
 
-#define LIMINE_API_REVISION 1
+#define LIMINE_API_REVISION 3
 
 #include "limine.h"
 
@@ -27,14 +27,14 @@
 ATTR(used, section(".requests_start_marker")) static volatile LIMINE_REQUESTS_START_MARKER;	   // Start requests
 ATTR(used, section(".requests")) static volatile LIMINE_BASE_REVISION(3);
 
-LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST, 0);					 // Get memory map.
-LIMINE_REQUEST(hhdm_request, LIMINE_HHDM_REQUEST, 0);						 // Directly map 32-bit physical space.
-LIMINE_REQUEST(kernel_address_request, LIMINE_KERNEL_ADDRESS_REQUEST, 0);	 // Get the physical kernel address.
-LIMINE_REQUEST(kernel_file_request, LIMINE_KERNEL_FILE_REQUEST, 0);			 // For debug symbols.
-LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 1);			 // Initial console frame buffer.
-LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);					 // Get all other modules.
-LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);						 // Get ACPI RSDP table if enabled.
-LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);							 // Get device tree blob if enabled.
+LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST, 0);	 // Get memory map.
+LIMINE_REQUEST(hhdm_request, LIMINE_HHDM_REQUEST, 0);		 // Directly map 32-bit physical space.
+LIMINE_REQUEST(executable_address_request, LIMINE_EXECUTABLE_ADDRESS_REQUEST, 0);	 // Get the physical kernel address.
+LIMINE_REQUEST(executable_file_request, LIMINE_EXECUTABLE_FILE_REQUEST, 0);			 // For debug symbols.
+LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 1);					 // Initial console frame buffer.
+LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);							 // Get all other modules.
+LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);								 // Get ACPI RSDP table if enabled.
+LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);									 // Get device tree blob if enabled.
 
 ATTR(used, section(".requests_end_marker")) static volatile LIMINE_REQUESTS_END_MARKER;	   // End requests
 
@@ -46,8 +46,8 @@ void kernel_boot()
 
 	kassert(memmap_request.response, "Unable to get memory map!");
 	kassert(hhdm_request.response, "Unable to get HHDM response!");
-	kassert(kernel_address_request.response, "Unable to get kernel address info!");
-	kassert(kernel_file_request.response, "Unable to get kernel file info!");
+	kassert(executable_address_request.response, "Unable to get kernel address info!");
+	kassert(executable_file_request.response, "Unable to get kernel file info!");
 
 	// Get the memory map.
 	struct limine_memmap_response* const mm_res = memmap_request.response;
@@ -60,7 +60,7 @@ void kernel_boot()
 		switch (mm_res->entries[i]->type)
 		{
 			case LIMINE_MEMMAP_USABLE: map[i].usage = PhysMemoryUsage_Free; break;
-			case LIMINE_MEMMAP_KERNEL_AND_MODULES: map[i].usage = PhysMemoryUsage_Kernel; break;
+			case LIMINE_MEMMAP_EXECUTABLE_AND_MODULES: map[i].usage = PhysMemoryUsage_Kernel; break;
 			case LIMINE_MEMMAP_RESERVED:
 			case LIMINE_MEMMAP_FRAMEBUFFER:
 			case LIMINE_MEMMAP_ACPI_NVS: map[i].usage = PhysMemoryUsage_Reserved; break;
@@ -113,11 +113,11 @@ void kernel_boot()
 
 	info.memory_map = map;
 	info.mm_num = mm_res->entry_count;
-	info.kernel_phys = (PhysAddr)kernel_address_request.response->physical_base;
-	info.kernel_virt = (void*)kernel_address_request.response->virtual_base;
-	info.kernel_file = (void*)kernel_file_request.response->kernel_file->address;
+	info.kernel_phys = (PhysAddr)executable_address_request.response->physical_base;
+	info.kernel_virt = (void*)executable_address_request.response->virtual_base;
+	info.kernel_file = (void*)executable_file_request.response->executable_file->address;
 	info.phys_base = (void*)hhdm_request.response->offset;
-	info.cmd = kernel_file_request.response->kernel_file->cmdline;
+	info.cmd = executable_file_request.response->executable_file->string;
 
 	if (rsdp_request.response)
 		info.acpi_rsdp = rsdp_request.response->address;
