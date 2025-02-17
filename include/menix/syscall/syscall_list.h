@@ -1,11 +1,7 @@
 // A global list of all system calls available.
 
-#ifdef SYSCALL_TABLE_INSERT
-#define SYSCALL(num, name) [num] = {.func = (SyscallFn)syscall_##name, .func_name = #name},
-#else
-#include <menix/common.h>
-typedef struct SyscallResult SyscallResult;
-#define SYSCALL(num, name) SyscallResult syscall_##name(usize a0, usize a1, usize a2, usize a3, usize a4, usize a5);
+#ifndef SYSCALL
+#define SYSCALL(num, name)
 #endif
 
 SYSCALL(0, exit)
@@ -52,29 +48,29 @@ SYSCALL(36, mount)
 SYSCALL(37, unmount)
 SYSCALL(38, setuid)
 SYSCALL(39, getuid)
-SYSCALL(30, setgid)
-SYSCALL(40, getgid)
-SYSCALL(41, umask)
-SYSCALL(42, poll)
-SYSCALL(43, isatty)
-SYSCALL(44, chroot)
+SYSCALL(40, setgid)
+SYSCALL(41, getgid)
+SYSCALL(42, umask)
+SYSCALL(43, poll)
+SYSCALL(44, isatty)
+SYSCALL(45, chroot)
 // Futex
-SYSCALL(45, futex_wait)
-SYSCALL(46, futex_wake)
+SYSCALL(46, futex_wait)
+SYSCALL(47, futex_wake)
 // Sockets
-SYSCALL(47, socket)
-SYSCALL(48, socketpair)
-SYSCALL(49, bind)
-SYSCALL(50, connect)
-SYSCALL(51, accept)
-SYSCALL(52, listen)
-SYSCALL(53, getpeername)
-SYSCALL(54, getsockname)
-SYSCALL(55, getsockopt)
-SYSCALL(56, setsockopt)
-SYSCALL(57, recvmsg)
-SYSCALL(58, sendmsg)
-SYSCALL(59, sethostname)
+SYSCALL(48, socket)
+SYSCALL(49, socketpair)
+SYSCALL(50, bind)
+SYSCALL(51, connect)
+SYSCALL(52, accept)
+SYSCALL(53, listen)
+SYSCALL(54, getpeername)
+SYSCALL(55, getsockname)
+SYSCALL(56, getsockopt)
+SYSCALL(57, setsockopt)
+SYSCALL(58, recvmsg)
+SYSCALL(59, sendmsg)
+SYSCALL(60, sethostname)
 // Misc
-SYSCALL(60, uname)
-SYSCALL(61, archctl)
+SYSCALL(61, uname)
+SYSCALL(62, archctl)

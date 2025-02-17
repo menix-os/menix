@@ -6,6 +6,8 @@
 #include <menix/util/log.h>
 
 // Include the syscalls once.
+#undef SYSCALL
+#define SYSCALL(num, name) SyscallResult syscall_##name(usize a0, usize a1, usize a2, usize a3, usize a4, usize a5);
 #include <menix/syscall/syscall_list.h>
 
 typedef struct
@@ -17,9 +19,8 @@ typedef struct
 static const SyscallTable syscall_table[] = {
 // Include them again, but now as table entry.
 #undef SYSCALL
-#define SYSCALL_TABLE_INSERT
+#define SYSCALL(num, name) [num] = {.func = (SyscallFn)syscall_##name, .func_name = #name},
 #include <menix/syscall/syscall_list.h>
-#undef SYSCALL_TABLE_INSERT
 };
 
 SyscallResult syscall_invoke(usize num, usize a0, usize a1, usize a2, usize a3, usize a4, usize a5)
