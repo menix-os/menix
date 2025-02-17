@@ -1,9 +1,3 @@
 [submodule "kernel/system/acpi/uACPI"]
 	path = kernel/system/acpi/uacpi
 	url = https://github.com/UltraOS/uACPI
-[submodule "kernel/system/uapi/uapi"]
-	path = kernel/system/uapi/uapi
-	url = https://github.com/uDrivers/uAPI
-[submodule "modules/drv/gpu/drm/udrm"]
-	path = modules/gpu/udrm/udrm
-	url = https://github.com/uDrivers/uDRM
