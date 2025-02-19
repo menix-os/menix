@@ -7,6 +7,8 @@
 #include <uacpi/acpi.h>
 #include <uacpi/tables.h>
 
+#include "uacpi/status.h"
+
 struct acpi_madt* madt;
 PhysAddr lapic_addr;
 
@@ -23,8 +25,11 @@ void madt_init()
 	list_new(madt_nmi_list, 0);
 
 	uacpi_table madt_table;
-	kassert(!uacpi_table_find_by_signature(ACPI_MADT_SIGNATURE, &madt_table),
-			"ACPI tables don't contain a MADT! This is faulty behavior!");
+	if (uacpi_table_find_by_signature(ACPI_MADT_SIGNATURE, &madt_table) != UACPI_STATUS_OK)
+	{
+		print_error("acpi: Can't find the MADT table! This is faulty behavior!\n");
+		return;
+	}
 
 	madt = madt_table.ptr;
 

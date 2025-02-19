@@ -54,7 +54,7 @@ SpinLock kmesg_lock;
 
 void kmesg_direct(const char* fmt, ...)
 {
-	usize __time = clock_get_elapsed();
+	usize __time = clock_get_elapsed_ns();
 	usize __secs = (__time / 1000000000);
 	usize __millis = ((__time / 1000) % 1000000);
 	CpuInfo* __cpu = arch_current_cpu();

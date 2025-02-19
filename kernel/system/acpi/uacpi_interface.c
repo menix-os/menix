@@ -137,7 +137,13 @@ uacpi_status uacpi_kernel_pci_write32(uacpi_handle device, uacpi_size offset, ua
 
 uacpi_status uacpi_kernel_io_map(uacpi_io_addr base, uacpi_size len, uacpi_handle* out_handle)
 {
-	*out_handle = vm_map_memory(base, len, VMProt_Read | VMProt_Write);
+	// On x86, this function does port IO.
+#if defined(__x86_64__)
+	if (base > 0xFFFF)
+		return UACPI_STATUS_INVALID_ARGUMENT;
+#endif
+
+	*out_handle = (uacpi_handle)base;
 	return UACPI_STATUS_OK;
 }
 
@@ -148,7 +154,7 @@ void uacpi_kernel_io_unmap(uacpi_handle handle)
 uacpi_status uacpi_kernel_io_read8(uacpi_handle h, uacpi_size offset, uacpi_u8* out_value)
 {
 #ifdef __x86_64
-	*out_value = asm_read8(offset);
+	*out_value = asm_read8((usize)h + offset);
 #endif
 	return UACPI_STATUS_OK;
 }
@@ -156,7 +162,7 @@ uacpi_status uacpi_kernel_io_read8(uacpi_handle h, uacpi_size offset, uacpi_u8* 
 uacpi_status uacpi_kernel_io_read16(uacpi_handle h, uacpi_size offset, uacpi_u16* out_value)
 {
 #ifdef __x86_64
-	*out_value = asm_read16(offset);
+	*out_value = asm_read16((usize)h + offset);
 #endif
 	return UACPI_STATUS_OK;
 }
@@ -164,7 +170,7 @@ uacpi_status uacpi_kernel_io_read16(uacpi_handle h, uacpi_size offset, uacpi_u16
 uacpi_status uacpi_kernel_io_read32(uacpi_handle h, uacpi_size offset, uacpi_u32* out_value)
 {
 #ifdef __x86_64
-	*out_value = asm_read32(offset);
+	*out_value = asm_read32((usize)h + offset);
 #endif
 	return UACPI_STATUS_OK;
 }
@@ -172,7 +178,7 @@ uacpi_status uacpi_kernel_io_read32(uacpi_handle h, uacpi_size offset, uacpi_u32
 uacpi_status uacpi_kernel_io_write8(uacpi_handle h, uacpi_size offset, uacpi_u8 in_value)
 {
 #ifdef __x86_64
-	asm_write8(offset, in_value);
+	asm_write8((usize)h + offset, in_value);
 #endif
 	return UACPI_STATUS_OK;
 }
@@ -180,7 +186,7 @@ uacpi_status uacpi_kernel_io_write8(uacpi_handle h, uacpi_size offset, uacpi_u8 
 uacpi_status uacpi_kernel_io_write16(uacpi_handle h, uacpi_size offset, uacpi_u16 in_value)
 {
 #ifdef __x86_64
-	asm_write16(offset, in_value);
+	asm_write16((usize)h + offset, in_value);
 #endif
 	return UACPI_STATUS_OK;
 }
@@ -188,7 +194,7 @@ uacpi_status uacpi_kernel_io_write16(uacpi_handle h, uacpi_size offset, uacpi_u1
 uacpi_status uacpi_kernel_io_write32(uacpi_handle h, uacpi_size offset, uacpi_u32 in_value)
 {
 #ifdef __x86_64
-	asm_write32(offset, in_value);
+	asm_write32((usize)h + offset, in_value);
 #endif
 	return UACPI_STATUS_OK;
 }
@@ -216,7 +222,7 @@ void uacpi_kernel_log(uacpi_log_level level, const uacpi_char* msg)
 
 uacpi_u64 uacpi_kernel_get_nanoseconds_since_boot(void)
 {
-	return clock_get_elapsed();
+	return clock_get_elapsed_ns();
 }
 
 void uacpi_kernel_stall(uacpi_u8 usec)

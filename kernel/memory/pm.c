@@ -146,9 +146,8 @@ PhysAddr pm_alloc(usize amount)
 		mem = get_free_pages(amount, last_page);
 	}
 
-	if (free_before - amount != num_free_pages)
-		print_warn("pm: We allocated more pages than asked for! Difference of %zu pages!\n",
-				   free_before - num_free_pages);
+	kassert_debug(free_before - amount == num_free_pages,
+				  "We allocated more pages than asked for! Difference of %zu pages!", free_before - num_free_pages);
 
 	if (mem == 0)
 	{
@@ -168,7 +167,7 @@ void pm_free(PhysAddr addr, usize amount)
 	const usize page_idx = addr / arch_page_size;
 	for (usize i = page_idx; i < page_idx + amount; i++)
 	{
-		kassert(bitmap_get(bit_map, i), "Double free of a physical page! Environment is unsound!");
+		kassert_debug(bitmap_get(bit_map, i), "Double free of a physical page! Environment is unsound!");
 		bitmap_clear(bit_map, i);
 	}
 	num_free_pages += 1;

@@ -7,14 +7,14 @@
 #define clock_timeout_poll(timeout_ns, condition, fail_case) \
 	do \
 	{ \
-		usize check_start = clock_get_elapsed() + (timeout_ns); \
-		while (clock_get_elapsed() < check_start) \
+		usize check_start = clock_get_elapsed_ns() + (timeout_ns); \
+		while (clock_get_elapsed_ns() < check_start) \
 		{ \
 			if (condition) \
 				break; \
 			asm_pause(); \
 		} \
-		if (clock_get_elapsed() >= check_start) \
+		if (clock_get_elapsed_ns() >= check_start) \
 		{ \
 			fail_case \
 		} \
@@ -26,7 +26,10 @@ typedef struct
 	const char* name;
 
 	// Returns how many nanoseconds have elapsed since initialization.
-	usize (*get_elapsed_ns)();
+	usize (*get_elapsed_ns)(void);
+
+	// Resets the clock's counter.
+	void (*reset)(void);
 } ClockSource;
 
 // Registers a `source` as the new time
@@ -34,7 +37,10 @@ void clock_register(ClockSource* source);
 
 // If a clock source is available, returns the current time elapsed since init.
 // If not, returns 0.
-usize clock_get_elapsed();
+usize clock_get_elapsed_ns();
 
-// Waits `ns` nanoseconds.
+// Updates the base of the counter.
+void clock_set_elapsed_ns(usize value);
+
+// Spins for `ns` nanoseconds.
 void clock_wait(usize ns);

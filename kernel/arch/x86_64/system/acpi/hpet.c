@@ -17,9 +17,10 @@ typedef struct
 } Hpet;
 
 static usize hpet_get_elapsed_ns();
+static void hpet_reset();
 
 static Hpet hpet = {
-	.cs = {"hpet", hpet_get_elapsed_ns},
+	.cs = {.name = "hpet", .get_elapsed_ns = hpet_get_elapsed_ns, .reset = hpet_reset},
 };
 
 static usize hpet_get_elapsed_ns()
@@ -28,8 +29,14 @@ static usize hpet_get_elapsed_ns()
 	return hpet.regs->main_counter * (hpet.period / 1000000);
 }
 
+static void hpet_reset()
+{
+	hpet.regs->main_counter = 0;
+}
+
 static void hpet_setup(PhysAddr addr)
 {
+	print_log("acpi: HPET at 0x%p\n", addr);
 	hpet.regs = pm_get_phys_base() + addr;
 
 	// Get the period.
@@ -46,10 +53,13 @@ static void hpet_setup(PhysAddr addr)
 void hpet_init()
 {
 	uacpi_table hpet_table;
-	kassert(!uacpi_table_find_by_signature("HPET", &hpet_table), "Failed to get the HPET table!");
-	struct acpi_hpet* hpet = hpet_table.ptr;
+	if (uacpi_table_find_by_signature("HPET", &hpet_table) != UACPI_STATUS_OK)
+	{
+		print_error("acpi: Failed to get the HPET table!\n");
+		return;
+	}
 
-	print_log("acpi: HPET at 0x%p\n", hpet);
+	struct acpi_hpet* hpet = hpet_table.ptr;
 
 	hpet_setup(hpet->address.address);
 	uacpi_table_unref(&hpet_table);

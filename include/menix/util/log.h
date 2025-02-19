@@ -8,11 +8,10 @@
 #include <menix/system/sch/thread.h>
 #include <menix/system/time/clock.h>
 
-#if !defined(NDEBUG)
 #define kassert(expr, msg, ...) \
 	do \
 	{ \
-		if (!(expr)) \
+		if (unlikely(!(expr))) \
 		{ \
 			print_error("Environment is unsound! Assertion \"%s\" failed!\n", #expr); \
 			print_error("In function \"%s\" (%s:%u):\n", __FUNCTION__, __FILE__, __LINE__); \
@@ -21,8 +20,22 @@
 			kabort(); \
 		} \
 	} while (0)
+
+#if !defined(NDEBUG)
+#define kassert_debug(expr, msg, ...) \
+	do \
+	{ \
+		if (unlikely(!(expr))) \
+		{ \
+			print_error("Environment is unsound! Debug assertion \"%s\" failed!\n", #expr); \
+			print_error("In function \"%s\" (%s:%u):\n", __FUNCTION__, __FILE__, __LINE__); \
+			print_error(msg "\n", ##__VA_ARGS__); \
+			ktrace(NULL); \
+			kabort(); \
+		} \
+	} while (0)
 #else
-#define kassert(expr, msg, ...) \
+#define kassert_debug(expr, msg, ...) \
 	do \
 	{ \
 		(void)(expr); \
