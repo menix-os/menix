@@ -56,7 +56,7 @@ function(add_module name author desc modular default)
 	endif()
 endfunction(add_module)
 
-file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
+file(MAKE_DIRECTORY "${CMAKE_BINARY_DIR}/bin/modules")
 
 # Architecture dependent drivers
 if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/arch/${MENIX_ARCH})
