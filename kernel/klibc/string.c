@@ -97,7 +97,7 @@ void* memmove(void* dstptr, const void* srcptr, usize size)
 	return dstptr;
 }
 
-void* memset(void* dest, u8 value, usize n)
+void* memset(void* dest, int value, usize n)
 {
 	if (n == 0)
 		return dest;
@@ -141,9 +141,6 @@ void* memset(void* dest, u8 value, usize n)
 
 char* strdup(const char* src)
 {
-	if (src == NULL)
-		return NULL;
-
 	usize length = strlen(src) + 1;
 	char* dest = kmalloc(length);
 	if (dest == NULL)
@@ -157,7 +154,7 @@ char* strncpy(char* restrict dst, const char* restrict src, usize len)
 	return memcpy(dst, src, MIN(len, src_len));
 }
 
-usize strncmp(const char* str1, const char* str2, usize len)
+int strncmp(const char* str1, const char* str2, usize len)
 {
 	while (len && *str1 && (*str1 == *str2))
 	{

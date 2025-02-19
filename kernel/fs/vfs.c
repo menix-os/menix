@@ -1,6 +1,5 @@
 // Virtual File System
 
-#include <menix/abi/errno.h>
 #include <menix/fs/devtmpfs.h>
 #include <menix/fs/tmpfs.h>
 #include <menix/fs/vfs.h>
@@ -11,6 +10,8 @@
 #include <menix/util/hash_map.h>
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
+
+#include <uapi/errno.h>
 
 #include <string.h>
 

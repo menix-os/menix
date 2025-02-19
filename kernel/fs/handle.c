@@ -1,6 +1,5 @@
 // Handle for managing input/output streams.
 
-#include <menix/abi/errno.h>
 #include <menix/fs/fd.h>
 #include <menix/fs/handle.h>
 #include <menix/memory/alloc.h>
@@ -8,6 +7,8 @@
 #include <menix/system/sch/process.h>
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
+
+#include <uapi/errno.h>
 
 static isize handle_default_read(Handle* self, FileDescriptor* fd, void* buf, usize amount, off_t offset)
 {

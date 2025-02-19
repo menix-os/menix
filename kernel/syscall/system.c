@@ -8,6 +8,8 @@
 
 #include <string.h>
 
+#define fixed_strncpy(dst, src) memcpy(dst, src, MIN(sizeof(dst), sizeof(src)))
+
 SYSCALL_IMPL(uname, VirtAddr buffer)
 {
 	// If we have no buffer to write to, fail.
@@ -16,7 +18,7 @@ SYSCALL_IMPL(uname, VirtAddr buffer)
 
 	struct utsname uname_result;
 
-	fixed_strncpy(uname_result.sysname, "menix");
+	fixed_strncpy(uname_result.sysname, "Menix");
 	// TODO: Get actual network node.
 	fixed_strncpy(uname_result.nodename, "localhost");
 	fixed_strncpy(uname_result.release, MENIX_RELEASE);

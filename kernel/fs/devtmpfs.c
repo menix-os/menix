@@ -1,6 +1,5 @@
 // Temporary file system for device files.
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/fs/devtmpfs.h>
 #include <menix/fs/fs.h>
@@ -12,6 +11,8 @@
 #include <menix/system/sch/process.h>
 #include <menix/util/hash_map.h>
 #include <menix/util/spin.h>
+
+#include <uapi/errno.h>
 
 #include <string.h>
 

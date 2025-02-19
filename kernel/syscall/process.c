@@ -1,6 +1,5 @@
 // Syscalls for process management
 
-#include <menix/abi/errno.h>
 #include <menix/fs/vfs.h>
 #include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
@@ -9,6 +8,8 @@
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
 #include <menix/system/sch/thread.h>
+
+#include <uapi/errno.h>
 
 // Forks a thread by cloning its attributes.
 SYSCALL_IMPL(fork)

@@ -1,11 +1,12 @@
 // File descriptor utils
 
-#include <menix/abi/errno.h>
 #include <menix/fs/fd.h>
 #include <menix/system/abi.h>
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
 #include <menix/util/spin.h>
+
+#include <uapi/errno.h>
 
 FileDescriptor* fd_from_num(Process* proc, int fd)
 {

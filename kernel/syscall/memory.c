@@ -1,11 +1,12 @@
 // Syscalls for virtual memory management.
 
-#include <menix/abi/errno.h>
 #include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
 #include <menix/system/abi.h>
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
+
+#include <uapi/errno.h>
 
 // Maps memory to a virtual address.
 // Returns the start of new memory.

@@ -1,5 +1,5 @@
-#ifndef _ABIBITS_ERRNO_H
-#define _ABIBITS_ERRNO_H
+#ifndef __MENIX_ERRNO_H
+#define __MENIX_ERRNO_H
 
 #define EPERM			1
 #define ENOENT			2
@@ -135,8 +135,6 @@
 #define ENOTRECOVERABLE 131
 #define ERFKILL			132
 #define EHWPOISON		133
+#define EIEIO			4095
 
-/* This is mlibc-specific. */
-#define EIEIO 4095
-
-#endif /* _ABIBITS_ERRNO_H */
+#endif /* __MENIX_ERRNO_H */

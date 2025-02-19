@@ -1,9 +1,10 @@
 // Abstract syscall selector
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/syscall/syscall.h>
 #include <menix/util/log.h>
+
+#include <uapi/errno.h>
 
 // Include the syscalls once.
 #undef SYSCALL

@@ -1,6 +1,5 @@
 // Process creation
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/fs/fd.h>
 #include <menix/fs/vfs.h>
@@ -15,6 +14,8 @@
 #include <menix/util/list.h>
 #include <menix/util/log.h>
 #include <menix/util/spin.h>
+
+#include <uapi/errno.h>
 
 #include <string.h>
 

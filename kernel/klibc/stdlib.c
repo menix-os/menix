@@ -2,7 +2,6 @@
 
 #include <menix/common.h>
 
-#include <stdlib.h>
 #include <string.h>
 
 static void reverse(char* s)

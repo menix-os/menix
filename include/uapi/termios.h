@@ -1,6 +1,5 @@
-// mlibc termios.h
-
-#pragma once
+#ifndef __MENIX_TERMIOS_H
+#define __MENIX_TERMIOS_H
 
 typedef unsigned int cc_t;
 typedef unsigned int speed_t;
@@ -111,3 +110,5 @@ struct termios
 	speed_t ibaud;
 	speed_t obaud;
 };
+
+#endif /* __MENIX_TERMIOS_H */

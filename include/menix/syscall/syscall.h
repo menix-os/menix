@@ -2,10 +2,11 @@
 
 #pragma once
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/util/log.h>
 #include <menix/util/self.h>
+
+#include <uapi/errno.h>
 
 typedef struct SyscallResult
 {
@@ -13,11 +14,7 @@ typedef struct SyscallResult
 	usize error;
 } SyscallResult;
 
-#define SYSCALL_OK(val) \
-	(SyscallResult) \
-	{ \
-		.value = (usize)(val), .error = 0 \
-	}
+#define SYSCALL_OK(val) (SyscallResult) {.value = (usize)(val), .error = 0}
 
 #define SYSCALL_ERR(err) \
 	(SyscallResult) \

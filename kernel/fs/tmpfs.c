@@ -1,6 +1,5 @@
 // tmpfs file system
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/fs/fs.h>
 #include <menix/fs/tmpfs.h>
@@ -9,6 +8,8 @@
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
 #include <menix/util/spin.h>
+
+#include <uapi/errno.h>
 
 #include <string.h>
 

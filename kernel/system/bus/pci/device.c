@@ -1,7 +1,8 @@
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/memory/pm.h>
 #include <menix/system/pci/pci.h>
+
+#include <uapi/errno.h>
 
 PciDeviceList pci_devices;
 

@@ -1,11 +1,12 @@
 // PCI management
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/memory/alloc.h>
 #include <menix/system/pci/pci.h>
 #include <menix/util/list.h>
 #include <menix/util/log.h>
+
+#include <uapi/errno.h>
 
 PciPlatform pci_platform = {0};
 

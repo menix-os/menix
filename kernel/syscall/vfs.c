@@ -1,9 +1,10 @@
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/fs/fd.h>
 #include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
 #include <menix/system/sch/process.h>
+
+#include <uapi/errno.h>
 
 // Writes data from a buffer to a file descriptor.
 // `fd`: The file descriptor to write to.

@@ -1,6 +1,5 @@
 // Module and sub-system initialization.
 
-#include <menix/abi/errno.h>
 #include <menix/common.h>
 #include <menix/fs/vfs.h>
 #include <menix/memory/pm.h>
@@ -14,6 +13,8 @@
 #include <menix/util/log.h>
 #include <menix/util/self.h>
 #include <menix/util/spin.h>
+
+#include <uapi/errno.h>
 
 #include <string.h>
 
