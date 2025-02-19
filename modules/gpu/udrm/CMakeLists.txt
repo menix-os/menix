@@ -7,6 +7,6 @@ add_module(udrm "Marvin Friedrich" "uDRM Bridge" OFF ON
 	udrm/src/udrm_virtio.c
 )
 
-if(TARGET ${MENIX_CURRENT_MOD})
-	target_include_directories(${MENIX_CURRENT_MOD} PRIVATE udrm/include)
+if(TARGET udrm)
+	target_include_directories(udrm PRIVATE udrm/include)
 endif()

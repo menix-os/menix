@@ -2,12 +2,10 @@
 
 target_sources(menix PUBLIC main.c)
 
-set_target_properties(menix PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/")
+set_target_properties(menix PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin")
 
 # Mark entry point.
 target_link_options(menix PUBLIC -e kernel_boot)
-
-set(MENIX_CURRENT_MOD menix CACHE INTERNAL "")
 
 add_subdirectory(arch/${MENIX_ARCH})
 add_subdirectory(boot)
