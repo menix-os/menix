@@ -1,4 +1,4 @@
-# Architectures
+# Platform support
 
-menix supports all CPU architectures which are capable of providing a
-configuration mechanism like ACPI or OpenFirmware and an UEFI boot environment.
+Menix supports all devices which are capable of providing both
+ACPI and an UEFI boot environment.

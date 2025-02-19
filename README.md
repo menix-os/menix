@@ -1,7 +1,8 @@
-# menix
+# The Menix Operating System
 
 A minimal and expandable Unix-like operating system.
-menix' goal is to be as lightweight, portable and efficient as possible.
+Menix' goal is to be as lightweight, portable and efficient as possible.
+It also aims to be POSIX.1-2024 compliant.
 
 > [!Important]
 > This repository contains only the kernel and drivers.

@@ -3,11 +3,10 @@
 	"configurations": [
 		{
 			"type": "lldb",
-			"request": "custom",
+			"request": "launch",
 			"name": "Debug",
 			"targetCreateCommands": [
-				"settings set target.source-map ${workspaceFolder}/../bootstrap/build/source/kernel ${workspaceFolder}",
-				"target create ${workspaceFolder}/../bootstrap/build/build/kernel/bin/menix"
+				"target create ${workspaceFolder}/build/bin/menix"
 			],
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"

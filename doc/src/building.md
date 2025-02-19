@@ -1,6 +1,6 @@
-# Building kernel
+# Building from source
 
-This document explains how to build the `menix` kernel on your machine from source code.
+This document explains how to build the kernel on your machine from source code.
 
 ## Dependencies
 
@@ -8,7 +8,8 @@ You need to install the following packages and make sure they're available in `$
 
 - `cmake`
 - Either `clang` or a `gcc` for the target architecture
-- Binutils for your toolchain
+  >Make sure your compiler has gnu2x (C23) support and is recent enough!
+- GNU Binutils for the target architecture
 
 ## Building steps
 
@@ -16,8 +17,6 @@ Create a `build` directory and configure with CMake.
 
 ```sh
 cmake -D CMAKE_BUILD_TYPE=Release -B build
-# To cross-compile with clang:
-cmake -D CMAKE_BUILD_TYPE=Release -B build -D MENIX_ARCH="<arch>" -D CMAKE_C_COMPILER="clang"
 ```
 
 Then, to build:
@@ -26,20 +25,4 @@ Then, to build:
 cmake --build build
 ```
 
-The final executable and dynamic modules are stored in `build/bin/`.
-
-## Building using Docker
-
-```sh
-cd tools
-docker compose build
-docker compose up
-```
-
-### Cross-compilation with Docker
-
-```sh
-cd tools
-docker compose build
-docker compose run -e ARCH="<arch>" builder
-```
+The final executable and dynamic modules are stored in `build/bin/` and `build/bin/modules/` respectively.

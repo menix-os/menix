@@ -71,10 +71,12 @@ IncludeBlocks: Regroup
 IncludeCategories:
   - Regex: "^<menix/.*>"
     Priority: 1
-  - Regex: '^<.*\.h>'
+  - Regex: "^<uapi/.*>"
     Priority: 2
-  - Regex: '^".*\.h"'
+  - Regex: '^<.*\.h>'
     Priority: 3
+  - Regex: '^".*\.h"'
+    Priority: 4
 SortIncludes: CaseInsensitive
 
 # Comment style

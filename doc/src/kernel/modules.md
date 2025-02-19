@@ -15,7 +15,7 @@ directly into the kernel binary.
 Device drivers are grouped by function. For example, all USB drivers are in `/modules/drv/usb/`.
 
 ## Other languages
-menix has module support for all languages that can produce a dynamic library
+Menix has module support for all languages that can produce a dynamic library
 without external runtime support (-ffreestanding, etc).
 
 The build system supports C, C++ and Rust at the moment of writing this.

@@ -1,7 +1,7 @@
 # Contributing
 
 This document explains how to format and submit contributions to
-the `menix` project.
+the Menix project.
 
 ## General rules
 
@@ -34,7 +34,7 @@ project root to check if your code complies with these guidelines.
 
 - Always use tabs for indentation.
   > **Rationale:** Different people prefer different indentations. Having an
-  > adjustable indentation fixes this.
+  > adjustable indentation addresses this.
 - Tabs have a width of 4 characters.
 - All code should be less than 120 characters in width.
   > **Note:** Long paragraphs of doc strings should be around 80 characters
@@ -49,15 +49,17 @@ project root to check if your code complies with these guidelines.
   > programmers learn directly from the code.
 - Split your code into paragraphs where it makes sense and comment what
   each one does.
-- Always use single line (aka C++ style) comments.
+- Always use single line (aka C++ style) comments, unless the
+  formatting requires it.
 - Headers should always use `#pragma once` instead of header guards.
-- Headers should first include standard libary headers, then `menix` headers,
+- Headers should first include `menix` headers, then standard libary headers,
   then relative headers.
 - **DO NOT** include out of tree headers like `#include "../../random.h"`,
   always use `#include <path/to/random.h>` instead.
-- For primitives, always use standard types like `i32` and `u8`
-  over built-in types like `int` or `unsigned char` (exception here is `char`).
-- Avoid `i64`, `u64`, `i128` and `u128`, as they might not be available on all platforms.
+- For primitives, always use standard types over built-in types like `int` or
+  `unsigned char` (exception here is `char`).
+- Avoid `i64`, `u64`, `i128` and `u128`, as they might not be available on
+  all platforms.
   > **Note:** Consider using `isize` and `usize` instead.
 - Avoid floating-point types.
 - Avoid using `this` as variable or identifier names, use `self` instead.
