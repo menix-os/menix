@@ -22,7 +22,7 @@ Context* interrupt_ud_handler(usize isr, Context* regs, void* data)
 Context* interrupt_debug_handler(usize isr, Context* regs, void* data)
 {
 	// We use this exception just to print the current registers, so no abort.
-	ktrace(regs);
+	arch_dump_registers(regs);
 
 	return regs;
 }

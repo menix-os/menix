@@ -83,8 +83,8 @@ void ktrace(Context* regs)
 		asm volatile("int $3");
 #endif
 	}
-
-	arch_dump_registers(regs);
+	else
+		arch_dump_registers(regs);
 
 	StackFrame* fp = __builtin_frame_address(0);
 
