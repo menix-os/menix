@@ -3,7 +3,7 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/io/mmio.h>
+#include <menix/memory/mmio.h>
 #include <menix/system/abi.h>
 #include <menix/system/device.h>
 #include <menix/util/spin.h>

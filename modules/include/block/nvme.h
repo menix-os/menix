@@ -2,7 +2,7 @@
 
 #pragma once
 #include <menix/common.h>
-#include <menix/io/mmio.h>
+#include <menix/memory/mmio.h>
 
 // Generic Command Set
 #define NVME_CMD_FLUSH 0x00

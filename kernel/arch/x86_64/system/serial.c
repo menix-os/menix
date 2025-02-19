@@ -1,6 +1,7 @@
 // x86 Serial interface
 
 #include <menix/common.h>
+#include <menix/system/arch.h>
 #include <menix/system/logger.h>
 #include <menix/util/log.h>
 

@@ -1,6 +1,6 @@
 // Interrupt descriptor table setting
 
-#include <menix/io/mmio.h>
+#include <menix/memory/mmio.h>
 #include <menix/system/arch.h>
 #include <menix/system/interrupts.h>
 #include <menix/util/log.h>

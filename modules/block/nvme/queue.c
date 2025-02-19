@@ -2,6 +2,7 @@
 
 #include <menix/memory/pm.h>
 #include <menix/memory/vm.h>
+#include <menix/system/arch.h>
 #include <menix/util/log.h>
 
 #include <block/nvme.h>

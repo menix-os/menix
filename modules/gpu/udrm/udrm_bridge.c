@@ -1,7 +1,7 @@
 // uDRM Bridge
 
 #include <menix/common.h>
-#include <menix/io/mmio.h>
+#include <menix/memory/mmio.h>
 #include <menix/system/module.h>
 #include <menix/system/pci/pci.h>
 

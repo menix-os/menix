@@ -3,10 +3,6 @@
 #pragma once
 
 #include <menix/common.h>
-#include <menix/fs/handle.h>
-#include <menix/system/arch.h>
-#include <menix/system/sch/thread.h>
-#include <menix/system/time/clock.h>
 
 #define kassert(expr, msg, ...) \
 	do \
@@ -45,29 +41,29 @@
 #define print_log(fmt, ...) \
 	do \
 	{ \
-		kmesg_direct(fmt, ##__VA_ARGS__); \
+		kmesg(fmt, ##__VA_ARGS__); \
 	} while (0)
 
 #define print_warn(fmt, ...) \
 	do \
 	{ \
-		kmesg_direct("[warn] " fmt, ##__VA_ARGS__); \
+		kmesg("[warn] " fmt, ##__VA_ARGS__); \
 	} while (0)
 
 #define print_error(fmt, ...) \
 	do \
 	{ \
-		kmesg_direct("[error] " fmt, ##__VA_ARGS__); \
+		kmesg("[error] " fmt, ##__VA_ARGS__); \
 	} while (0)
 
 #define todo() \
 	do \
 	{ \
-		kmesg_direct("[warn] %s is still TODO!\n", __FUNCTION__); \
+		kmesg("[warn] %s is still TODO!\n", __FUNCTION__); \
 	} while (0)
 
 // Print a message to the kernel log.
-void kmesg_direct(const char* fmt, ...);
+void kmesg(const char* fmt, ...);
 
 typedef struct Context Context;
 

@@ -2,6 +2,7 @@
 
 #pragma once
 #include <menix/common.h>
+#include <menix/memory/mmio.h>
 #include <menix/system/device.h>
 #include <menix/util/list.h>
 #include <menix/util/log.h>

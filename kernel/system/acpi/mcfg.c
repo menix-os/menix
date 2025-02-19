@@ -1,7 +1,7 @@
 // PCI configuration using the MCFG table.
 
 #include <menix/common.h>
-#include <menix/io/mmio.h>
+#include <menix/memory/mmio.h>
 #include <menix/system/acpi/acpi.h>
 #include <menix/system/acpi/mcfg.h>
 #include <menix/system/pci/pci.h>

@@ -35,6 +35,11 @@ ATTR(noreturn) void kernel_init(BootInfo* boot_info)
 	// Finalize virtual memory manager and drop reclaimable memory.
 	vm_init(boot_info->kernel_phys, boot_info->memory_map, boot_info->mm_num);
 
+	module_load_kernel_syms(info->kernel_file);
+
+	// Initialize virtual file system.
+	vfs_init();
+
 	// If no early framebuffer has been set previously, do it now.
 	if (info->fb && cmd_get_usize("fbcon", true))
 	{
@@ -42,11 +47,6 @@ ATTR(noreturn) void kernel_init(BootInfo* boot_info)
 		fbcon_enable(true);
 		fbcon_init();
 	}
-
-	module_load_kernel_syms(info->kernel_file);
-
-	// Initialize virtual file system.
-	vfs_init();
 
 	// Say hello to the console!
 	print_log("menix " MENIX_RELEASE " (" MENIX_ARCH ", " MENIX_VERSION ")\n");
