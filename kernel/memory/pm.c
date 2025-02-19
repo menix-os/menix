@@ -117,6 +117,10 @@ static PhysAddr get_free_pages(usize amount, usize start)
 		}
 
 		last_page = i + amount;
+
+		// Lastly, mark the pages as used now.
+		num_free_pages -= amount;
+
 		return (PhysAddr)(i * arch_page_size);
 
 next_page:
@@ -130,6 +134,8 @@ PhysAddr pm_alloc(usize amount)
 {
 	spin_lock(&pm_lock);
 
+	usize free_before = num_free_pages;
+
 	PhysAddr mem = get_free_pages(amount, last_page);
 	// If we couldn't find a free region starting at our last page offset, do another check, but from the beginning.
 	// This is a lot slower, but a last resort because the other option is to panic as we are out of physical memory.
@@ -140,10 +146,15 @@ PhysAddr pm_alloc(usize amount)
 		mem = get_free_pages(amount, last_page);
 	}
 
-	kassert(mem != 0, "Unable to allocate %zu consecutive pages, total %zu available!", amount, num_free_pages);
+	if (free_before - amount != num_free_pages)
+		print_warn("pm: We allocated more pages than asked for! Difference of %zu pages!\n",
+				   free_before - num_free_pages);
 
-	// Lastly, mark the pages as used now.
-	num_free_pages -= amount;
+	if (mem == 0)
+	{
+		print_error("Unable to allocate %zu consecutive pages, total %zu available!\n", amount, num_free_pages);
+		return 0;
+	}
 
 	spin_unlock(&pm_lock);
 	return mem;
