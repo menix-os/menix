@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include <bits/arch_defs.h>
+
 #define NULL				   ((void*)0)
 #define offsetof(type, member) ((usize)(&((type*)0)->member))
 #define atomic				   _Atomic
@@ -18,7 +20,7 @@ typedef unsigned short u16;
 typedef signed int i32;
 // Unsigned 32-bit integer.
 typedef unsigned int u32;
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 // Signed 64-bit integer.
 typedef signed long i64;
 // Unsigned 64-bit integer.
@@ -26,12 +28,14 @@ typedef unsigned long u64;
 #endif
 
 // usize
-#if MENIX_BITS == 32
+#if ARCH_BITS == 32
 typedef u32 usize;
 typedef i32 isize;
-#elif MENIX_BITS == 64
+#elif ARCH_BITS == 64
 typedef u64 usize;
 typedef i64 isize;
+#else
+#error "Incorrect ARCH_BITS size!"
 #endif
 
 static_assert(sizeof(usize) == sizeof(void*), "usize must be the same size as a pointer!");

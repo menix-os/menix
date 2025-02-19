@@ -4,3 +4,5 @@
 target_sources(menix PUBLIC
 	limine_entry.c
 )
+
+target_link_options(menix PUBLIC -T ${CMAKE_CURRENT_SOURCE_DIR}/limine.ld)

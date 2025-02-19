@@ -1,7 +1,6 @@
 # x86 architecture sources
 
-include(${MENIX_UTIL_PATH})
-add_architecture(x86_64
+target_sources(menix PUBLIC
 	system/gdt.c
 	system/idt.c
 	system/tss.c

@@ -5,7 +5,7 @@
 typedef volatile u8 mmio8;
 typedef volatile u16 mmio16;
 typedef volatile u32 mmio32;
-#if MENIX_BITS >= 64
+#if ARCH_BITS >= 64
 typedef volatile u64 mmio64;
 #endif
 typedef volatile usize mmiosize;
@@ -18,7 +18,7 @@ typedef volatile usize mmiosize;
 #define mmio_write16(addr, value) (*((mmio16*)(addr)) = (u16)(value))
 #define mmio_read32(addr)		  (*((mmio32*)(addr)))
 #define mmio_write32(addr, value) (*((mmio32*)(addr)) = (u32)(value))
-#if MENIX_BITS >= 64
+#if ARCH_BITS >= 64
 #define mmio_read64(addr)		  (*((mmio64*)(addr)))
 #define mmio_write64(addr, value) (*((mmio64*)(addr)) = (u64)(value))
 #endif

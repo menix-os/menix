@@ -7,8 +7,6 @@
 #include <gdt.h>
 #include <tss.h>
 
-#define MAX_PAGE_SIZE 0x1000
-
 // CPUID Leaf 1 ECX
 #define CPUID_1C_SSE3		(1 << 0)
 #define CPUID_1C_PCLMUL		(1 << 1)

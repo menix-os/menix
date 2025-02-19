@@ -79,7 +79,7 @@
 #define ELF_ST_TYPE(i)	  ((i) & 0xf)
 #define ELF_ST_INFO(b, t) (((b) << 4) + ((t) & 0xf))
 
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 #define ELF64_R_SYM(i)	   ((i) >> 32)
 #define ELF64_R_TYPE(i)	   ((i) & 0xffffffffL)
 #define ELF64_R_INFO(s, t) (((s) << 32) + ((t) & 0xffffffffL))
@@ -88,7 +88,7 @@
 #define ELF32_R_TYPE(i)	   ((u8)(i))
 #define ELF32_R_INFO(s, t) (((s) << 8) + (u8)(t))
 
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 #define ELF_R_SYM(i)	 ELF64_R_SYM(i)
 #define ELF_R_TYPE(i)	 ELF64_R_TYPE(i)
 #define ELF_R_INFO(s, t) ELF64_R_INFO(s, t)
@@ -267,7 +267,7 @@
 #endif
 
 // ELF types that are related to the build host.
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 #define Elf_Hdr	 Elf64_Hdr
 #define Elf_Phdr Elf64_Phdr
 #define Elf_Dyn	 Elf64_Dyn
@@ -295,7 +295,7 @@
 #define Elf_Auxv Elf32_Auxv
 #endif
 
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef u64 Elf64_Addr;
 typedef u64 Elf64_Off;
 #endif
@@ -303,7 +303,7 @@ typedef u32 Elf32_Addr;
 typedef u32 Elf32_Off;
 
 // The file header is located at the beginning of the file, and is used to locate the other parts of the file.
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef struct ATTR(packed)
 {
 	u8 e_ident[EI_NIDENT];	  // ELF identification
@@ -341,7 +341,7 @@ typedef struct ATTR(packed)
 } Elf32_Hdr;
 
 // Program header. Field structure is different between bit sizes.
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef struct ATTR(packed)
 {
 	u32 p_type;
@@ -367,7 +367,7 @@ typedef struct ATTR(packed)
 } Elf32_Phdr;
 
 // Section header
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef struct ATTR(packed)
 {
 	u32 sh_name;			// Section name
@@ -397,7 +397,7 @@ typedef struct ATTR(packed)
 } Elf32_Shdr;
 
 // Symbol
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef struct ATTR(packed)
 {
 	u32 st_name;
@@ -419,7 +419,7 @@ typedef struct ATTR(packed)
 } Elf32_Sym;
 
 // Dynamic entry
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef struct ATTR(packed)
 {
 	i64 d_tag;
@@ -441,7 +441,7 @@ typedef struct ATTR(packed)
 } Elf32_Dyn;
 
 // Relocation
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef struct ATTR(packed)
 {
 	Elf64_Addr r_offset;
@@ -455,7 +455,7 @@ typedef struct ATTR(packed)
 } Elf32_Rel;
 
 // Relocation + addend
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef struct ATTR(packed)
 {
 	Elf64_Addr r_offset;
@@ -471,7 +471,7 @@ typedef struct ATTR(packed)
 } Elf32_Rela;
 
 // Note
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef struct
 {
 	u64 n_namesz;
@@ -487,7 +487,7 @@ typedef struct
 } Elf32_Nhdr;
 
 // Auxiliary Vector
-#if MENIX_BITS == 64
+#if ARCH_BITS == 64
 typedef struct
 {
 	u32 atype;

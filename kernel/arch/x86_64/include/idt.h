@@ -16,7 +16,7 @@ typedef struct ATTR(packed)
 {
 	u16 base_0_15;
 	u16 selector;
-#if MENIX_BITS >= 64
+#if ARCH_BITS >= 64
 	Bits ist:2;
 	Bits reserved:6;
 #else
@@ -24,7 +24,7 @@ typedef struct ATTR(packed)
 #endif
 	u8 type;
 	u16 base_16_31;
-#if MENIX_BITS >= 64
+#if ARCH_BITS >= 64
 	u32 base_32_63;
 	u32 reserved2;
 #endif
