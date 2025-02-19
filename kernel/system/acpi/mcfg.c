@@ -22,7 +22,7 @@ void mcfg_init()
 	{
 		print_log("pci: Unable to configure PCI system using ACPI: The MCFG table was not present.\n");
 		print_log("Disable the PCI subsystem with `pci=0` or use a device tree to continue booting.\n");
-		kabort();
+		panic();
 	}
 
 	mcfg = mcfg_table.ptr;

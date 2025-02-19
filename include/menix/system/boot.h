@@ -36,6 +36,9 @@ typedef struct
 // After this call, `info` may be destroyed.
 ATTR(noreturn) void kernel_init(BootInfo* info);
 
-// Gets called after platform initialization has finished.
 // This is the main kernel function.
+// Gets called after platform initialization has finished.
 ATTR(noreturn) void kernel_main();
+
+// Kernel shutdown function.
+ATTR(noreturn) void kernel_fini();

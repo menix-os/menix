@@ -17,7 +17,7 @@
 			print_error("In function \"%s\" (%s:%u):\n", __FUNCTION__, __FILE__, __LINE__); \
 			print_error(msg "\n", ##__VA_ARGS__); \
 			ktrace(NULL); \
-			kabort(); \
+			panic(); \
 		} \
 	} while (0)
 
@@ -31,7 +31,7 @@
 			print_error("In function \"%s\" (%s:%u):\n", __FUNCTION__, __FILE__, __LINE__); \
 			print_error(msg "\n", ##__VA_ARGS__); \
 			ktrace(NULL); \
-			kabort(); \
+			panic(); \
 		} \
 	} while (0)
 #else
@@ -75,4 +75,4 @@ typedef struct Context Context;
 void ktrace(Context* regs);
 
 // Abort kernel execution.
-ATTR(noreturn) void kabort();
+ATTR(noreturn) void panic();

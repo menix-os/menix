@@ -37,7 +37,7 @@ Context* int_handler(usize isr, Context* regs)
 	print_log("Unhandled interrupt %zu in kernel mode!\n", isr);
 
 	ktrace(regs);
-	kabort();
+	panic();
 }
 
 bool isr_register_handler(usize cpu, usize idx, InterruptFn handler, void* data)

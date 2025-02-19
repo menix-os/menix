@@ -14,7 +14,7 @@ Context* interrupt_ud_handler(usize isr, Context* regs, void* data)
 	print_log("Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
 
 	ktrace(regs);
-	kabort();
+	panic();
 
 	return regs;
 }

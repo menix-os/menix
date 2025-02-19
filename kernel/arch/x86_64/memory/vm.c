@@ -435,7 +435,7 @@ Context* interrupt_pf_handler(usize isr, Context* regs, void* data)
 		print_log("vm: Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx, RIP: 0x%p)\n", cr2,
 				  regs->error, regs->rip);
 		ktrace(regs);
-		kabort();
+		panic();
 	}
 
 	// TODO: Handle user page fault.

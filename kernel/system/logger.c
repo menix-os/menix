@@ -75,10 +75,13 @@ void kmesg_direct(const char* fmt, ...)
 
 void ktrace(Context* regs)
 {
+	// If no context is given, raise a software interrupt reserved for this purpose.
 	if (regs == NULL)
 	{
-		// TODO: Convert to define, this only works on x86_64
+#if defined(__x86_64__)
+		// TODO(port): Convert to define, this only works on x86_64
 		asm volatile("int $3");
+#endif
 	}
 
 	arch_dump_registers(regs);
@@ -104,7 +107,8 @@ void ktrace(Context* regs)
 	print_log("--- End of Stack trace ---\n");
 }
 
-ATTR(noreturn) void kabort()
+ATTR(noreturn) void panic()
 {
+	print_error("Panic was triggered! Stopping machine.\n");
 	arch_stop();
 }
