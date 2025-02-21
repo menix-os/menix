@@ -39,3 +39,6 @@ SYSCALL_IMPL(archctl, usize operation, usize arg0, usize arg1)
 
 // Performs power control operations.
 SYSCALL_STUB(powerctl, usize operation, usize arg0, usize arg1)
+
+SYSCALL_STUB(readtimer)
+SYSCALL_STUB(savetls, VirtAddr addr)

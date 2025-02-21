@@ -115,3 +115,4 @@ SYSCALL_STUB(sigtimedwait)
 
 SYSCALL_STUB(futex_wait)
 SYSCALL_STUB(futex_wake)
+SYSCALL_STUB(gettid)
