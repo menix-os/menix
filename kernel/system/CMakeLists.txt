@@ -11,7 +11,6 @@ target_sources(menix PUBLIC
 add_subdirectory(acpi)
 add_subdirectory(bus)
 add_subdirectory(dst)
-add_subdirectory(dtb)
 add_subdirectory(net)
 add_subdirectory(sch)
 add_subdirectory(time)
