@@ -385,9 +385,9 @@ void ktrace(Context* regs)
 	else
 		arch_dump_registers(regs);
 
-	StackFrame* fp = (StackFrame*)
+	StackFrame* fp =
 #ifdef __x86_64__
-	regs->rbp;
+		(StackFrame*)regs->rbp;
 #endif
 
 	// Print stack trace.
