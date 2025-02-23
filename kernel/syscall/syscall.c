@@ -8,7 +8,7 @@
 
 // Include the syscalls once.
 #undef SYSCALL
-#define SYSCALL(num, name) SyscallResult syscall_##name(usize a0, usize a1, usize a2, usize a3, usize a4, usize a5);
+#define SYSCALL(num, name, ...) SyscallResult syscall_##name(usize, usize, usize, usize, usize, usize);
 #include <uapi/syscall_list.h>
 #undef SYSCALL
 
@@ -20,7 +20,7 @@ typedef struct
 
 static const SyscallTable syscall_table[] = {
 // Include them again, but now as table entry.
-#define SYSCALL(num, name) [num] = {.func = (SyscallFn)syscall_##name, .func_name = #name},
+#define SYSCALL(num, name, ...) [num] = {.func = (SyscallFn)syscall_##name, .func_name = #name},
 #include <uapi/syscall_list.h>
 #undef SYSCALL
 };

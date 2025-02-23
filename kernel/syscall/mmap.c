@@ -1,15 +1,10 @@
-// Syscalls for virtual memory management.
-
 #include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
-#include <menix/system/abi.h>
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
 
 #include <uapi/errno.h>
 
-// Maps memory to a virtual address.
-// Returns the start of new memory.
 SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usize offset)
 {
 	// If length is not given or if the hint addr is not page aligned.
@@ -85,41 +80,3 @@ SYSCALL_IMPL(mmap, VirtAddr hint, usize length, int prot, int flags, int fd, usi
 
 	return SYSCALL_OK(addr);
 }
-
-// Updates the permissions of an existing mappping.
-SYSCALL_IMPL(mprotect, VirtAddr addr, usize length, int prot)
-{
-	Process* proc = arch_current_cpu()->thread->parent;
-
-	VMProt vm_prot = 0;
-	if (prot & PROT_READ)
-		vm_prot |= VMProt_Read;
-	if (prot & PROT_WRITE)
-		vm_prot |= VMProt_Write;
-	if (prot & PROT_EXEC)
-		vm_prot |= VMProt_Execute;
-
-	for (usize i = 0; i < length; i += arch_page_size)
-	{
-		if (vm_protect(proc->page_map, addr + i, vm_prot, VMFlags_User) == false)
-			return SYSCALL_FAIL(MAP_FAILED, 0);
-	}
-
-	return SYSCALL_OK(0);
-}
-
-// Destroys an existing mapping.
-SYSCALL_IMPL(munmap, VirtAddr addr, usize length)
-{
-	Process* proc = arch_current_cpu()->thread->parent;
-
-	for (usize i = 0; i < length; i += arch_page_size)
-	{
-		if (vm_unmap(proc->page_map, addr + i) == false)
-			return SYSCALL_FAIL(MAP_FAILED, 0);
-	}
-
-	return SYSCALL_OK(0);
-}
-
-SYSCALL_STUB(mremap)
