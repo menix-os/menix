@@ -20,12 +20,12 @@ SYSCALL_IMPL(fork)
 
 // Terminates the current process.
 // `status`: The status code to return to the parent process.
-SYSCALL_IMPL(exit, u8 status)
+SYSCALL_IMPL(exit, int status)
 {
 	Process* process = arch_current_cpu()->thread->parent;
 	process->return_code = status;
 	proc_kill(process, false);
-	return SYSCALL_OK(0);
+	return SYSCALL_ERR(EFAULT);
 }
 
 // Forcefully terminates a process.
@@ -115,4 +115,8 @@ SYSCALL_STUB(sigtimedwait)
 
 SYSCALL_STUB(futex_wait)
 SYSCALL_STUB(futex_wake)
-SYSCALL_STUB(gettid)
+SYSCALL_IMPL(gettid)
+{
+	const usize val = arch_current_cpu()->thread->id;
+	return SYSCALL_OK(val);
+}

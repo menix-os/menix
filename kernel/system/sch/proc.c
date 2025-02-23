@@ -55,6 +55,17 @@ Process* proc_create(const char* name, ProcessState state, bool is_user, Process
 		proc->map_base = VM_MAP_BASE;
 	}
 
+	// TODO: Make a proper IO interface
+	FileDescriptor* desc = kzalloc(sizeof(FileDescriptor));
+	VfsNode* terminal = vfs_get_node(vfs_get_root(), "/dev/kmesg", true);
+	if (terminal)
+	{
+		desc->node = terminal;
+		proc->file_descs[0] = desc;
+		proc->file_descs[1] = desc;
+		proc->file_descs[2] = desc;
+	}
+
 	list_new(proc->threads, 0);
 	list_new(proc->children, 0);
 
@@ -238,23 +249,8 @@ void proc_kill(Process* proc, bool is_crash)
 
 	if (is_suicide)
 		arch_current_cpu()->thread = NULL;
-}
 
-FileDescriptor* proc_fd_to_ptr(Process* process, usize fd)
-{
-	kassert(process != NULL, "No process specified! This is a kernel bug.");
-
-	// Check if fd is within bounds.
-	if (fd >= ARRAY_SIZE(process->file_descs))
-		return NULL;
-
-	FileDescriptor* file_desc = NULL;
-	spin_lock_scope(&process->fd_lock, {
-		file_desc = process->file_descs[fd];
-		if (file_desc == NULL)
-			break;
-	});
-	return file_desc;
+	sch_arch_invoke();
 }
 
 void proc_setup(Process* proc, bool is_user)

@@ -385,10 +385,13 @@ void ktrace(Context* regs)
 	else
 		arch_dump_registers(regs);
 
-	StackFrame* fp = __builtin_frame_address(0);
+	StackFrame* fp = (StackFrame*)
+#ifdef __x86_64__
+	regs->rbp;
+#endif
 
 	// Print stack trace.
-	print_log("--- Stack trace (Most recent call first) ---\n");
+	print_log("--- Stack trace (most recent call first) ---\n");
 	for (usize i = 0; i < 32 && fp != NULL; fp = fp->prev, i++)
 	{
 		// Try to resolve the symbol name and offset.
@@ -403,7 +406,7 @@ void ktrace(Context* regs)
 		else if (fp->return_addr)
 			print_log("\t[%zu]\t0x%p <\?\?\?>\n", i, fp->return_addr);
 	}
-	print_log("--- End of Stack trace ---\n");
+	print_log("--- End of stack trace ---\n");
 }
 
 ATTR(noreturn) void panic()

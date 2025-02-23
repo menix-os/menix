@@ -5,6 +5,7 @@
 #include <menix/system/arch.h>
 #include <menix/system/archctl.h>
 #include <menix/system/sch/process.h>
+#include <menix/system/time/clock.h>
 
 #include <string.h>
 
@@ -40,5 +41,18 @@ SYSCALL_IMPL(archctl, usize operation, usize arg0, usize arg1)
 // Performs power control operations.
 SYSCALL_STUB(powerctl, usize operation, usize arg0, usize arg1)
 
-SYSCALL_STUB(readtimer)
-SYSCALL_STUB(savetls, VirtAddr addr)
+SYSCALL_IMPL(readtimer, usize clock, VirtAddr time)
+{
+	const usize val = clock_get_elapsed_ns();
+	struct timespec ts = {.tv_nsec = val, .tv_sec = val / 1000000000ULL};
+	vm_user_write(arch_current_cpu()->thread->parent, time, &ts, sizeof(ts));
+	return SYSCALL_OK(val);
+}
+
+SYSCALL_IMPL(savetls, VirtAddr addr)
+{
+#if defined(__x86_64__)
+	asm_wrmsr(MSR_FS_BASE, addr);
+#endif
+	return SYSCALL_OK(0);
+}

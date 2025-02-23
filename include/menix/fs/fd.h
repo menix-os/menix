@@ -4,16 +4,23 @@
 #include <menix/common.h>
 #include <menix/util/spin.h>
 
+typedef struct VfsNode VfsNode;
+
 typedef struct FileDescriptor
 {
-	struct Handle* handle;	  // Handle connected to this descriptor.
-	usize num_refs;			  // Amount of references to this descriptor.
-	usize offset;			  // Current offset into the file.
-	struct VfsNode* node;	  // The node that this descriptor is pointing to.
-	SpinLock lock;			  // Access lock.
+	int fd_num;		  // The file descriptor ID.
+	usize offset;	  // Current offset into the file.
+	VfsNode* node;	  // The node that this descriptor is pointing to.
+	SpinLock lock;	  // Access lock.
 } FileDescriptor;
 
 typedef struct Process Process;
 
-// Looks up a file descriptor number in a process and returns the corresponding data.
-FileDescriptor* fd_from_num(Process* proc, int fd);
+// Creates a new file descriptor for an VFS node in `proc`.
+FileDescriptor* fd_open(Process* proc, VfsNode* node);
+
+// Opens a file descriptor for the process.
+FileDescriptor* fd_get(Process* proc, int fd);
+
+// Closes a file descriptor for the process.
+bool fd_close(Process* proc, int fd);

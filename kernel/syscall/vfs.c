@@ -1,5 +1,6 @@
 #include <menix/common.h>
 #include <menix/fs/fd.h>
+#include <menix/fs/vfs.h>
 #include <menix/memory/vm.h>
 #include <menix/syscall/syscall.h>
 #include <menix/system/sch/process.h>
@@ -10,22 +11,23 @@
 // `fd`: The file descriptor to write to.
 // `buf`: The data to write.
 // `size`: The amount of data to write.
-SYSCALL_IMPL(write, u32 fd, VirtAddr buf, usize size)
+SYSCALL_IMPL(write, int fd, VirtAddr buf, usize size)
 {
 	if (size == 0 || buf == 0)
 		return SYSCALL_ERR(EINVAL);
 
 	Process* process = arch_current_cpu()->thread->parent;
 
-	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+	FileDescriptor* file_desc = fd_get(process, fd);
 	if (file_desc == NULL)
 		return SYSCALL_ERR(EBADF);
 
-	Handle* const handle = file_desc->handle;
-	if (handle == NULL)
-		return SYSCALL_ERR(ENOMEM);
-	if (handle->write == NULL)
-		return SYSCALL_ERR(ENOMEM);
+	VfsNode* const node = file_desc->node;
+	if (node == NULL)
+		return SYSCALL_ERR(ENOENT);
+	Handle* const handle = node->handle;
+	if (handle->read == NULL)
+		return SYSCALL_ERR(ENOSYS);
 
 	// Copy data from user.
 	void* kernel_buf = kmalloc(size);
@@ -44,20 +46,19 @@ SYSCALL_IMPL(write, u32 fd, VirtAddr buf, usize size)
 // `fd`: The file descriptor to read from.
 // `buf`: A buffer to write to.
 // `size`: The amount of data to read.
-SYSCALL_IMPL(read, u32 fd, VirtAddr buf, usize size)
+SYSCALL_IMPL(read, int fd, VirtAddr buf, usize size)
 {
 	if (size == 0 || buf == 0)
 		return SYSCALL_ERR(EINVAL);
 
 	Process* process = arch_current_cpu()->thread->parent;
 
-	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+	FileDescriptor* file_desc = fd_get(process, fd);
 	if (file_desc == NULL)
 		return SYSCALL_ERR(EBADF);
 
-	Handle* const handle = file_desc->handle;
-	if (handle == NULL)
-		return SYSCALL_ERR(ENOENT);
+	Handle* const handle = file_desc->node->handle;
+	// Check if we can read.
 	if (handle->read == NULL)
 		return SYSCALL_ERR(ENOSYS);
 
@@ -81,10 +82,10 @@ SYSCALL_IMPL(read, u32 fd, VirtAddr buf, usize size)
 // `size`: The amount of data to read.
 SYSCALL_IMPL(openat, int fd, VirtAddr path, int oflag, mode_t mode)
 {
-	Process* process = arch_current_cpu()->thread->parent;
-
 	if (path == 0)
 		return SYSCALL_ERR(EINVAL);
+
+	Process* process = arch_current_cpu()->thread->parent;
 
 	// Get parent descriptor.
 	VfsNode* parent = NULL;
@@ -92,7 +93,7 @@ SYSCALL_IMPL(openat, int fd, VirtAddr path, int oflag, mode_t mode)
 		parent = process->working_dir;
 	else
 	{
-		FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+		FileDescriptor* file_desc = fd_get(process, fd);
 		if (file_desc == NULL)
 			return SYSCALL_ERR(EBADF);
 
@@ -112,39 +113,27 @@ SYSCALL_IMPL(openat, int fd, VirtAddr path, int oflag, mode_t mode)
 	if (node == NULL)
 		return SYSCALL_ERR(ENOENT);
 
-	// The node was found, allocate a new file descriptor.
-	int last_fd = -1;
-	// Find a free fd number.
-	for (int i = 0; i < OPEN_MAX; i++)
-	{
-		if (process->file_descs[i] == NULL)
-		{
-			last_fd = i;
-			break;
-		}
-	}
+	FileDescriptor* new_fd = fd_open(process, node);
 
 	// We can't open any more files.
-	if (last_fd == -1)
+	if (new_fd == NULL)
 		return SYSCALL_ERR(ENFILE);
 
-	FileDescriptor* new_fd = kzalloc(sizeof(FileDescriptor));
-	new_fd->num_refs++;
-	new_fd->handle = node->handle;
-	process->file_descs[last_fd] = new_fd;
-
-	return SYSCALL_OK(last_fd);
+	return SYSCALL_OK(new_fd->fd_num);
 }
 
-SYSCALL_IMPL(stat, int fd, VirtAddr path, VirtAddr buf)
+SYSCALL_IMPL(stat, int fd, VirtAddr path, int flags, VirtAddr buf)
 {
+	if (buf == 0)
+		return SYSCALL_ERR(EINVAL);
+
 	Process* process = arch_current_cpu()->thread->parent;
 	VfsNode* node;
 
 	// If we want to stat a file descriptor.
 	if (fd != -1)
 	{
-		FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+		FileDescriptor* file_desc = fd_get(process, fd);
 		if (file_desc == NULL)
 			return SYSCALL_ERR(EBADF);
 
@@ -176,30 +165,28 @@ SYSCALL_IMPL(close, int fd)
 {
 	Process* process = arch_current_cpu()->thread->parent;
 
-	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
-	if (file_desc == NULL)
+	if (fd_close(process, fd) == false)
 		return SYSCALL_ERR(EBADF);
-
-	// If the file descriptor exists, lose the reference.
-	process->file_descs[fd] = NULL;
-
-	// Decrement the counter.
-	spin_lock_scope(&file_desc->lock, { file_desc->num_refs -= 1; });
 
 	return SYSCALL_OK(0);
 }
 
-SYSCALL_STUB(ioctl, u32 fd, u32 request, void* argument)
+SYSCALL_IMPL(ioctl, int fd, usize request, usize argument)
+{
+	// TODO
+	return SYSCALL_ERR(ENOSYS);
+}
 
 SYSCALL_IMPL(seek, int fd, isize offset, int whence)
 {
 	Process* process = arch_current_cpu()->thread->parent;
 
-	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+	FileDescriptor* file_desc = fd_get(process, fd);
 	if (file_desc == NULL)
 		return SYSCALL_ERR(EBADF);
 
-	// TODO: Check offset bounds.
+	const usize size = file_desc->node->handle->stat.st_size;
+
 	switch (whence)
 	{
 		case SEEK_SET:
@@ -214,7 +201,7 @@ SYSCALL_IMPL(seek, int fd, isize offset, int whence)
 		}
 		case SEEK_END:
 		{
-			file_desc->offset = file_desc->handle->stat.st_size + offset;
+			file_desc->offset = size + offset;
 			break;
 		}
 		default: return SYSCALL_ERR(EINVAL);
@@ -244,15 +231,15 @@ SYSCALL_IMPL(chdir, VirtAddr path)
 	return SYSCALL_OK(0);
 }
 
-SYSCALL_IMPL(fchdir, usize fd)
+SYSCALL_IMPL(fchdir, int fd)
 {
 	Process* process = arch_current_cpu()->thread->parent;
 
-	FileDescriptor* file_desc = proc_fd_to_ptr(process, fd);
+	FileDescriptor* file_desc = fd_get(process, fd);
 	if (file_desc == NULL)
 		return SYSCALL_ERR(EBADFD);
 
-	if (!S_ISDIR(file_desc->handle->stat.st_mode))
+	if (!S_ISDIR(file_desc->node->handle->stat.st_mode))
 		return SYSCALL_ERR(ENOTDIR);
 
 	process->working_dir = file_desc->node;
@@ -260,8 +247,52 @@ SYSCALL_IMPL(fchdir, usize fd)
 	return SYSCALL_OK(0);
 }
 
-SYSCALL_STUB(access)
-SYSCALL_STUB(faccessat)
+SYSCALL_IMPL(isatty, int fd)
+{
+	if (fd >= 0 && fd < 3)
+		return SYSCALL_OK(0);
+	return SYSCALL_OK(1);
+}
+
+SYSCALL_IMPL(faccessat, int dirfd, VirtAddr path, int mode, int flags)
+{
+	char* buf = kzalloc(PATH_MAX);
+	vm_user_read(arch_current_cpu()->thread->parent, buf, path, PATH_MAX);
+	// TODO
+	kfree(buf);
+	return SYSCALL_OK(0);
+}
+
+SYSCALL_IMPL(mkdirat, int fd, VirtAddr path, mode_t mode)
+{
+	if (path == 0)
+		return SYSCALL_ERR(ENOENT);
+
+	Process* proc = arch_current_cpu()->thread->parent;
+
+	// Try to get the relative directory.
+	VfsNode* at = NULL;
+	if (fd == AT_FDCWD)
+		at = proc->working_dir;
+	else
+	{
+		FileDescriptor* file = fd_get(proc, fd);
+		if (!file)
+			return SYSCALL_ERR(EBADF);
+		at = file->node;
+	}
+
+	// Read the file path from user mode.
+	char* buf = kzalloc(PATH_MAX);
+	vm_user_read(proc, buf, path, PATH_MAX);
+
+	VfsNode* result_node = vfs_node_add(at, buf, mode);
+	FileDescriptor* result_file = fd_open(proc, result_node);
+
+	kfree(buf);
+	return SYSCALL_OK(result_file->fd_num);
+}
+
 SYSCALL_STUB(chmodat)
 SYSCALL_STUB(chownat)
 SYSCALL_STUB(chroot)
@@ -270,9 +301,7 @@ SYSCALL_STUB(mount)
 SYSCALL_STUB(unlinkat)
 SYSCALL_STUB(readlinkat)
 SYSCALL_STUB(linkat)
-SYSCALL_STUB(mkdirat)
 SYSCALL_STUB(sync)
-SYSCALL_STUB(isatty)
 SYSCALL_STUB(fcntl)
 SYSCALL_STUB(readdir)
 SYSCALL_STUB(umask)

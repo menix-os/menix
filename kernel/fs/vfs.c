@@ -42,7 +42,7 @@ isize kmesg_read(Handle* self, FileDescriptor* fd, void* output_buffer, usize am
 	return amount;
 }
 
-isize kmesg_write(const void* data, usize amount)
+isize kmesg_write_direct(const void* data, usize amount)
 {
 	if (kmesg_len + amount > kmesg_cap)
 	{
@@ -57,9 +57,16 @@ isize kmesg_write(const void* data, usize amount)
 	kmesg_len += amount;
 	return amount;
 }
+i32 kprintf(const char* restrict fmt, ...);
+
+isize kmesg_write(Handle* self, FileDescriptor* fd, const void* buf, usize amount, off_t offset)
+{
+	return kprintf(buf, amount);
+}
 
 static Handle kmesg_driver = {
 	.read = kmesg_read,
+	.write = kmesg_write,
 };
 
 void vfs_init()
@@ -92,7 +99,7 @@ void vfs_init()
 
 	// Create /dev/kmesg.
 	devtmpfs_add_device(&kmesg_driver, "kmesg");
-	logger_register("kmesg", kmesg_write);
+	logger_register("kmesg", kmesg_write_direct);
 }
 
 VfsNode* vfs_get_root()

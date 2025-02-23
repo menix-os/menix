@@ -29,13 +29,13 @@ SyscallResult syscall_invoke(usize num, usize a0, usize a1, usize a2, usize a3, 
 {
 	// First argument contains the syscall number.
 	// Check if number is inside bounds.
-	if (num >= ARRAY_SIZE(syscall_table))
+	if (unlikely(num >= ARRAY_SIZE(syscall_table)))
 	{
 		print_log("Attempted to execute unrecognized syscall %u\n", num);
 		return SYSCALL_ERR(ENOSYS);
 	}
 
-	if (syscall_table[num].func == NULL)
+	if (unlikely(syscall_table[num].func == NULL))
 		return SYSCALL_ERR(ENOSYS);
 
 	// Execute the system call.

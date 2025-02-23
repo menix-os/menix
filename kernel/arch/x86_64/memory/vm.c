@@ -430,7 +430,7 @@ Context* interrupt_pf_handler(usize isr, Context* regs, void* data)
 
 	// If the current protection level wasn't 3, that means the page fault was
 	// caused by the supervisor! If this happens, we messed up big time!
-	if (regs->cs == offsetof(Gdt, kernel_code))
+	if (!BIT(regs->error, 2))
 	{
 		// If we can't recover, abort.
 		print_log("vm: Fatal page fault in kernel mode while trying to access 0x%p! (Error: 0x%zx, RIP: 0x%p)\n", cr2,

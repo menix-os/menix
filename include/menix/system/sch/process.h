@@ -91,6 +91,3 @@ usize proc_fork(Process* proc, Thread* thread);
 // `proc`: The process to kill.
 // `is_crash`: The reason for termination is a program crash.
 void proc_kill(Process* proc, bool is_crash);
-
-// Converts a file descriptor ID for the active process to a reference.
-FileDescriptor* proc_fd_to_ptr(Process* process, usize fd);
