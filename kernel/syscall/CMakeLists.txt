@@ -2,7 +2,6 @@
 
 target_sources(menix PUBLIC
 	syscall.c
-	stubs.c
 
 	archctl.c
 	chdir.c

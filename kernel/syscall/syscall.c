@@ -6,19 +6,19 @@
 
 #include <uapi/errno.h>
 
-// Include the syscalls once.
+// Include the syscalls once. Use weak linkage for stubs.
 #undef SYSCALL
-#define SYSCALL(num, name, ...) SyscallResult syscall_##name(usize, usize, usize, usize, usize, usize);
+#define SYSCALL(num, name, ...) [[gnu::weak]] SyscallResult syscall_##name(usize, usize, usize, usize, usize, usize);
 #include <uapi/syscall_list.h>
 #undef SYSCALL
 
-typedef struct
+struct SyscallTable
 {
 	SyscallFn func;
 	const char* func_name;
-} SyscallTable;
+};
 
-static const SyscallTable syscall_table[] = {
+static const struct SyscallTable syscall_table[] = {
 // Include them again, but now as table entry.
 #define SYSCALL(num, name, ...) [num] = {.func = (SyscallFn)syscall_##name, .func_name = #name},
 #include <uapi/syscall_list.h>
@@ -31,12 +31,16 @@ SyscallResult syscall_invoke(usize num, usize a0, usize a1, usize a2, usize a3, 
 	// Check if number is inside bounds.
 	if (unlikely(num >= ARRAY_SIZE(syscall_table)))
 	{
-		print_log("Attempted to execute unrecognized syscall %u\n", num);
+		print_log("User program called syscall %zu, but this is out of bounds!\n", num);
 		return SYSCALL_ERR(ENOSYS);
 	}
 
 	if (unlikely(syscall_table[num].func == NULL))
+	{
+		print_log("User program called syscall %zu (\"%s\"), but it is not implemented!\n", num,
+				  syscall_table[num].func_name);
 		return SYSCALL_ERR(ENOSYS);
+	}
 
 	// Execute the system call.
 	return syscall_table[num].func(a0, a1, a2, a3, a4, a5);
