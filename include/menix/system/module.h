@@ -13,7 +13,7 @@
 #endif
 
 // Defines a new module. Modules should use this at the end of their source to export the entry.
-#define MODULE ATTR(used, section(".mod")) static const Module this_module
+#define MODULE [[gnu::used, gnu::section(".mod")]] static const Module this_module
 
 // Add all module information that is provided by the build system.
 #define MODULE_META .author = MODULE_AUTHOR, .description = MODULE_DESCRIPTION
@@ -29,7 +29,7 @@ typedef i32 (*ModuleInitFn)(void);
 typedef void (*ModuleExitFn)(void);
 
 // Module metadata and init/exit hooks for loading modules.
-typedef struct ATTR(packed) ATTR(aligned(0x20))
+typedef struct [[gnu::packed, gnu::aligned(0x20)]]
 {
 	ModuleInitFn init;				  // Called to initialize the module. Should return 0 upon success.
 	ModuleExitFn exit;				  // Called to unload the module (Optional, as not every module can be unloaded).

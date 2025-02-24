@@ -16,7 +16,7 @@
 
 static BootInfo* info;
 
-ATTR(noreturn) void kernel_init(BootInfo* boot_info)
+[[noreturn]] void kernel_init(BootInfo* boot_info)
 {
 	info = boot_info;
 
@@ -75,7 +75,7 @@ ATTR(noreturn) void kernel_init(BootInfo* boot_info)
 		sch_arch_invoke();
 }
 
-ATTR(noreturn) void kernel_main()
+[[noreturn]] void kernel_main()
 {
 	// Call init program.
 	char* init_path = cmd_get_str("init", "/usr/sbin/init");
@@ -96,7 +96,7 @@ ATTR(noreturn) void kernel_main()
 		asm_pause();
 }
 
-ATTR(noreturn) void kernel_fini()
+[[noreturn]] void kernel_fini()
 {
 	// We're leaving user space, start printing stuff again.
 	fbcon_enable(true);

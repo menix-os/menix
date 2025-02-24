@@ -7,7 +7,7 @@
 
 #include <string.h>
 
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	char name[100];
 	char mode[8];

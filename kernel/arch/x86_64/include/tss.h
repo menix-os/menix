@@ -4,7 +4,7 @@
 
 #include <menix/common.h>
 
-typedef struct
+typedef struct [[gnu::packed, gnu::aligned(0x10)]]
 {
 	u32 reserved0;
 	u64 rsp0;
@@ -23,7 +23,7 @@ typedef struct
 	u32 reserved4;
 	u16 reserved5;
 	u16 iopb;
-} ATTR(packed) ATTR(aligned(0x10)) TaskStateSegment;
+} TaskStateSegment;
 
 // Initializes the TSS.
 void tss_init(TaskStateSegment* tss);

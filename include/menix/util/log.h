@@ -71,4 +71,4 @@ typedef struct Context Context;
 void ktrace(Context* regs);
 
 // Abort kernel execution.
-ATTR(noreturn) void panic();
+[[noreturn]] void panic();

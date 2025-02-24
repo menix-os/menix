@@ -19,7 +19,7 @@ extern usize arch_page_size;
 #endif
 
 // CPU-local information.
-typedef struct Cpu
+typedef struct [[gnu::aligned(arch_page_size)]] Cpu
 {
 	usize id;						  // Unique ID of this CPU.
 	usize kernel_stack;				  // Stack pointer for the kernel.
@@ -40,7 +40,7 @@ typedef struct Cpu
 #elif defined(__riscv) && (__riscv_xlen == 64)
 	u32 hart_id;	// Hart CPU ID.
 #endif
-} ATTR(aligned(arch_page_size)) CpuInfo;
+} CpuInfo;
 
 #define MAX_CPUS 1024
 
@@ -60,7 +60,7 @@ void arch_init_cpu(CpuInfo* cpu, CpuInfo* boot_cpu);
 bool arch_stop_cpu(usize id);
 
 // Halts all CPUs.
-ATTR(noreturn) void arch_stop();
+[[noreturn]] void arch_stop();
 
 // Writes all registers to the current output stream.
 void arch_dump_registers(Context* regs);

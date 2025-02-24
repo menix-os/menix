@@ -5,9 +5,6 @@
 #include <menix/util/types.h>
 #include <menix/util/units.h>
 
-// Attributes/Decorators
-#define ATTR(...) __attribute__((__VA_ARGS__))
-
 // Build time
 #define BUILD_TIME __TIME__ " " __DATE__
 
@@ -42,7 +39,7 @@
 #define parentof(parent_type, field) (offsetof(parent_type, field))
 
 // Variables reclaimed after boot.
-#define RECLAIM ATTR(section(".reclaim"))
+#define RECLAIM [[gnu::section(".reclaim")]]
 
 #define restrict __restrict
 

@@ -34,7 +34,7 @@ void sch_arch_update(CpuInfo* core, Thread* next)
 	asm_wrmsr(MSR_KERNEL_GS_BASE, next->gs_base);
 }
 
-ATTR(noreturn) void sch_arch_stop()
+[[noreturn]] void sch_arch_stop()
 {
 	asm_interrupt_enable();
 	apic_send_eoi();

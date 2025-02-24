@@ -33,7 +33,7 @@ typedef struct PciBus PciBus;
 typedef struct PciDevice PciDevice;
 typedef struct PciConfigSpace PciConfigSpace;
 
-struct ATTR(packed) PciConfigSpace
+struct [[gnu::packed]] PciConfigSpace
 {
 	u16 vendor, device;
 	u16 command, status;
@@ -41,9 +41,9 @@ struct ATTR(packed) PciConfigSpace
 	u8 cache_line_size, latency_timer, header_type, bist;
 
 	// Fields depending on the header type.
-	union ATTR(packed)
+	union [[gnu::packed]]
 	{
-		struct ATTR(packed)
+		struct [[gnu::packed]]
 		{
 			u32 bar[6];					   // Base addresses.
 			u32 cardbus_cis;			   // CardBus CIS pointer.
@@ -55,7 +55,7 @@ struct ATTR(packed) PciConfigSpace
 			u8 min_grant;				   // Burst period length (in 0.25 µs units).
 			u8 max_latency;				   // How often the device needs to access the PCI bus (in 0.25 µs units).
 		} generic;						   // Generic device (0)
-		struct ATTR(packed)
+		struct [[gnu::packed]]
 		{
 			u32 bar[2];								// Base addresses.
 			u8 bus_primary, bus_secondary;			// Bus numbers.

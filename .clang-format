@@ -91,4 +91,3 @@ KeepEmptyLinesAtTheStartOfBlocks: false
 AllowAllArgumentsOnNextLine: false
 AllowAllParametersOfDeclarationOnNextLine: false
 InsertNewlineAtEOF: true
-AttributeMacros: [ATTR]

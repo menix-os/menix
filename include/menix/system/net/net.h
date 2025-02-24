@@ -15,4 +15,4 @@ typedef struct
 	MacAddress src;	   // MAC source
 	u16 type;		   // Ethertype
 	u8 payload[];	   // 42-1500 bytes, followed by a 32-bit CRC.
-} ATTR(packed) EthernetFrame;
+} [[gnu::packed]] EthernetFrame;

@@ -35,7 +35,7 @@
 	}
 
 // GDT segment descriptor
-typedef struct
+typedef struct [[gnu::packed]]
 {
 	Bits limit0:16;	   // Limit[0..15]
 	Bits base0:24;	   // Base[0..23]
@@ -43,10 +43,10 @@ typedef struct
 	Bits limit1:4;	   // Limit[16..19]
 	Bits flags:4;	   // Flags
 	Bits base1:8;	   // Base[24..31]
-} ATTR(packed) GdtDesc;
+} GdtDesc;
 
 // Long mode GDT segment descriptor
-typedef struct
+typedef struct [[gnu::packed]]
 {
 	Bits limit0:16;	   // Limit[0..15]
 	Bits base0:24;	   // Base[0..23]
@@ -56,11 +56,11 @@ typedef struct
 	Bits base1:8;	   // Base[24..31]
 	Bits base2:32;	   // Base[32..63]
 	Bits reserved;	   // Reserved
-} ATTR(packed) GdtLongDesc;
+} GdtLongDesc;
 
 // These entries are ordered exactly like this because the SYSRET instruction
 // expects it.
-typedef struct
+typedef struct [[gnu::packed, gnu::aligned(8)]]
 {
 	GdtDesc null;			// Unused
 	GdtDesc kernel_code;	// Kernel CS
@@ -69,10 +69,10 @@ typedef struct
 	GdtDesc user_data;		// User DS
 	GdtDesc user_code64;	// 64-bit user CS
 	GdtLongDesc tss;		// Task state segment
-} ATTR(packed) ATTR(aligned(8)) Gdt;
+} Gdt;
 
 // GDT register
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u16 limit;	  // Should be set to the size of the GDT - 1.
 	Gdt* base;	  // Start of the GDT.

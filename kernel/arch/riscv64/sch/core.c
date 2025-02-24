@@ -23,7 +23,7 @@ void sch_arch_update(CpuInfo* core, Thread* next)
 	// TODO
 }
 
-ATTR(noreturn) void sch_arch_stop()
+[[noreturn]] void sch_arch_stop()
 {
 	asm_interrupt_enable();
 	while (true)

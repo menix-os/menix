@@ -18,14 +18,14 @@
 #include "limine.h"
 
 #define LIMINE_REQUEST(request, tag, rev) \
-	ATTR(used, section(".requests")) static volatile struct limine_##request request = { \
+	[[gnu::used, gnu::section(".requests")]] static volatile struct limine_##request request = { \
 		.id = tag, \
 		.revision = rev, \
 		.response = NULL, \
 	}
 
-ATTR(used, section(".requests_start_marker")) static volatile LIMINE_REQUESTS_START_MARKER;	   // Start requests
-ATTR(used, section(".requests")) static volatile LIMINE_BASE_REVISION(3);
+[[gnu::used, gnu::section(".requests_start_marker")]] static volatile LIMINE_REQUESTS_START_MARKER;	   // Start requests
+[[gnu::used, gnu::section(".requests")]] static volatile LIMINE_BASE_REVISION(3);
 
 LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST, 0);	 // Get memory map.
 LIMINE_REQUEST(hhdm_request, LIMINE_HHDM_REQUEST, 0);		 // Directly map 32-bit physical space.
@@ -36,7 +36,7 @@ LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);							 // Get all othe
 LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);								 // Get ACPI RSDP table if enabled.
 LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);									 // Get device tree blob if enabled.
 
-ATTR(used, section(".requests_end_marker")) static volatile LIMINE_REQUESTS_END_MARKER;	   // End requests
+[[gnu::used, gnu::section(".requests_end_marker")]] static volatile LIMINE_REQUESTS_END_MARKER;	   // End requests
 
 static FrameBuffer early_fb;
 

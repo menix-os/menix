@@ -304,7 +304,7 @@ typedef u32 Elf32_Off;
 
 // The file header is located at the beginning of the file, and is used to locate the other parts of the file.
 #if ARCH_BITS == 64
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u8 e_ident[EI_NIDENT];	  // ELF identification
 	u16 e_type;				  // Object file type
@@ -322,7 +322,7 @@ typedef struct ATTR(packed)
 	u16 e_shstrndx;			  // Section name string table index
 } Elf64_Hdr;
 #endif
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u8 e_ident[EI_NIDENT];	  // ELF identification
 	u16 e_type;				  // Object file type
@@ -342,7 +342,7 @@ typedef struct ATTR(packed)
 
 // Program header. Field structure is different between bit sizes.
 #if ARCH_BITS == 64
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u32 p_type;
 	u32 p_flags;
@@ -354,7 +354,7 @@ typedef struct ATTR(packed)
 	u64 p_align;
 } Elf64_Phdr;
 #endif
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u32 p_type;
 	Elf32_Off p_offset;
@@ -368,7 +368,7 @@ typedef struct ATTR(packed)
 
 // Section header
 #if ARCH_BITS == 64
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u32 sh_name;			// Section name
 	u32 sh_type;			// Section type
@@ -382,7 +382,7 @@ typedef struct ATTR(packed)
 	u64 sh_entsize;			// Size of entries, if section has table
 } Elf64_Shdr;
 #endif
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u32 sh_name;			// Section name
 	u32 sh_type;			// Section type
@@ -398,7 +398,7 @@ typedef struct ATTR(packed)
 
 // Symbol
 #if ARCH_BITS == 64
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u32 st_name;
 	u8 st_info;
@@ -408,7 +408,7 @@ typedef struct ATTR(packed)
 	u64 st_size;
 } Elf64_Sym;
 #endif
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u32 st_name;
 	Elf32_Addr st_value;
@@ -420,7 +420,7 @@ typedef struct ATTR(packed)
 
 // Dynamic entry
 #if ARCH_BITS == 64
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	i64 d_tag;
 	union
@@ -430,7 +430,7 @@ typedef struct ATTR(packed)
 	} d_un;
 } Elf64_Dyn;
 #endif
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	i32 r_offset;
 	union
@@ -442,13 +442,13 @@ typedef struct ATTR(packed)
 
 // Relocation
 #if ARCH_BITS == 64
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	Elf64_Addr r_offset;
 	u64 r_info;
 } Elf64_Rel;
 #endif
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	Elf32_Addr r_offset;
 	u32 r_info;
@@ -456,14 +456,14 @@ typedef struct ATTR(packed)
 
 // Relocation + addend
 #if ARCH_BITS == 64
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	Elf64_Addr r_offset;
 	u64 r_info;
 	i64 r_addend;
 } Elf64_Rela;
 #endif
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	Elf32_Addr r_offset;
 	u32 r_info;

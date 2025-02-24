@@ -34,11 +34,11 @@ typedef struct
 // Initializes the rest of the system after booting has finished.
 // This function can be called as soon as `kernel_early_init` has been called and `info` was filled completely.
 // After this call, `info` may be destroyed.
-ATTR(noreturn) void kernel_init(BootInfo* info);
+[[noreturn]] void kernel_init(BootInfo* info);
 
 // This is the main kernel function.
 // Gets called after platform initialization has finished.
-ATTR(noreturn) void kernel_main();
+[[noreturn]] void kernel_main();
 
 // Kernel shutdown function.
-ATTR(noreturn) void kernel_fini();
+[[noreturn]] void kernel_fini();

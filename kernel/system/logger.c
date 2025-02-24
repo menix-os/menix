@@ -366,7 +366,7 @@ void kmesg(const char* fmt, ...)
 	spin_unlock(&kmesg_lock);
 }
 
-typedef struct ATTR(packed) StackFrame
+typedef struct [[gnu::packed]] StackFrame
 {
 	struct StackFrame* prev;	// The inner frame.
 	void* return_addr;			// The address this frame returns to.
@@ -409,7 +409,7 @@ void ktrace(Context* regs)
 	print_log("--- End of stack trace ---\n");
 }
 
-ATTR(noreturn) void panic()
+[[noreturn]] void panic()
 {
 	print_error("Panic was triggered! Stopping machine.\n");
 	arch_stop();

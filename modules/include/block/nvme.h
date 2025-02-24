@@ -22,7 +22,7 @@
 // Submission Queue Entry (4.1)
 typedef struct
 {
-	struct ATTR(packed)
+	struct [[gnu::packed]]
 	{
 		u8 opc;			 // Opcode
 		Bits fuse:2;	 // Fused Operation
@@ -46,7 +46,7 @@ typedef struct
 			u32 cdw14;	  // Command Dword 14
 			u32 cdw15;	  // Command Dword 15
 		};
-		struct ATTR(packed)
+		struct [[gnu::packed]]
 		{
 			u8 cns;		  // Controller or Namespace Structure
 			u8 _0;		  // Reserved
@@ -57,7 +57,7 @@ typedef struct
 static_assert(sizeof(NvmeSQEntry) == 64);
 
 // Completion Queue Entry (4.2)
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u32 dw0;	   // Command Specific Dword 0
 	u32 dw1;	   // Command Specific Dword 1
@@ -185,7 +185,7 @@ static_assert(sizeof(NvmeIdentifyController) == 0x1000);
 #define NVME_CAP_CSS_IOCSS	 (1 << 6)
 #define NVME_CAP_CSS_NOIOCSS (1 << 7)
 
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	Bits mqes:16;	 // Maximum Queue Entries Supported
 	Bits cqr:1;		 // Contiguous Queues Required
@@ -208,7 +208,7 @@ typedef struct ATTR(packed)
 } NvmeControllerCap;
 static_assert(sizeof(NvmeControllerCap) == 8);
 
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	Bits en:1;	  // Enabled
 	Bits _0:3;	  // Reserved
@@ -224,7 +224,7 @@ typedef struct ATTR(packed)
 static_assert(sizeof(NvmeControllerConfig) == 4);
 
 // Controller Properties (3.1.4)
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	NvmeControllerCap cap;		// Controller Capabilities
 	u32 vs;						// Version

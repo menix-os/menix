@@ -4,12 +4,12 @@
 
 #include <menix/common.h>
 
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u8 bytes[18];
 } EdidDetailedTiming;
 
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	// Header
 	char header[8];

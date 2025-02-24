@@ -15,7 +15,7 @@
 
 static SpinLock cpu_lock = {0};
 
-ATTR(aligned(0x1000)) CpuInfo per_cpu_data[MAX_CPUS];
+[[gnu::aligned(0x1000)]] CpuInfo per_cpu_data[MAX_CPUS];
 
 // Assembly stub for syscall via SYSCALL/SYSRET.
 extern void arch_syscall_internal(void);
@@ -146,7 +146,7 @@ void arch_init(BootInfo* info)
 	arch_init_cpu(&per_cpu_data[0], &per_cpu_data[0]);
 }
 
-ATTR(noreturn) void arch_stop()
+[[noreturn]] void arch_stop()
 {
 	asm_interrupt_disable();
 	while (true)

@@ -12,7 +12,7 @@
 #define IDT_TYPE(priv, gate) ((1 << 7) | (((priv) & 0x3) << 0x5) | ((gate) & 0xF))
 
 // IDT Interrupt Descriptor
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u16 base_0_15;
 	u16 selector;
@@ -33,7 +33,7 @@ typedef struct ATTR(packed)
 static_assert(sizeof(IdtDesc) == 16);
 
 // IDT Register emulation so it can be accessed from C.
-typedef struct ATTR(packed)
+typedef struct [[gnu::packed]]
 {
 	u16 limit;
 	IdtDesc* base;

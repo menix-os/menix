@@ -4,16 +4,16 @@
 #include <menix/util/list.h>
 
 // MADT entry types
-typedef struct
+typedef struct [[gnu::packed]]
 {
 	u8 type;
 	u8 length;
 	u8 acpi_id;
 	u8 lapic_id;
 	u32 flags;
-} ATTR(packed) MadtLApic;
+} MadtLApic;
 
-typedef struct
+typedef struct [[gnu::packed]]
 {
 	u8 type;
 	u8 length;
@@ -21,9 +21,9 @@ typedef struct
 	u8 reserved;
 	u32 ioapic_addr;
 	u32 gsi_base;
-} ATTR(packed) MadtIoApic;
+} MadtIoApic;
 
-typedef struct
+typedef struct [[gnu::packed]]
 {
 	u8 type;
 	u8 length;
@@ -31,24 +31,24 @@ typedef struct
 	u8 irq_source;
 	u32 gsi;
 	u16 flags;
-} ATTR(packed) MadtIso;
+} MadtIso;
 
-typedef struct
+typedef struct [[gnu::packed]]
 {
 	u8 type;
 	u8 length;
 	u8 acpi_id;
 	u16 flags;
 	u8 lint;
-} ATTR(packed) MadtNmi;
+} MadtNmi;
 
-typedef struct
+typedef struct [[gnu::packed]]
 {
 	u8 type;
 	u8 length;
 	u16 reserved;
 	u64 lapic_addr;
-} ATTR(packed) MadtLApicAddr;
+} MadtLApicAddr;
 
 typedef List(MadtLApic*) MadtLApicList;
 typedef List(MadtIoApic*) MadtIoApicList;
