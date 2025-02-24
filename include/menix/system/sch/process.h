@@ -57,6 +57,9 @@ typedef struct Process
 
 #define PROC_USER_INTERP_BASE 0x0000060000000000
 
+// The kernel process.
+extern Process* proc_kernel;
+
 // Creates a new process. Returns a reference to the newly created process.
 // `name`: Name of the process.
 // `state`: Which state the process should be initialized with.

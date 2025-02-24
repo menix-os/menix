@@ -12,6 +12,8 @@
 #include <io.h>
 #include <pic.h>
 
+#include "menix/util/log.h"
+
 static PhysAddr lapic_addr = 0;
 static bool has_x2apic = 0;
 u32 apic_ticks_in_10ms = 0;
@@ -70,6 +72,7 @@ void lapic_init(usize cpu_id)
 	else
 	{
 		// TODO
+		print_error("x86_64: No X2APIC found, this is currently unsupported!\n");
 		return;
 	}
 
@@ -115,7 +118,7 @@ void apic_send_eoi()
 	lapic_write(0xB0, 0);
 }
 
-Context* timer_handler(usize isr, Context* regs, void* data)
+Context* timer_handler(usize isr, Context* regs)
 {
 	Context* new_context = sch_reschedule(regs);
 	apic_send_eoi();

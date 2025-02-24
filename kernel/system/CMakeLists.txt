@@ -3,7 +3,6 @@
 target_sources(menix PUBLIC
 	device.c
 	elf.c
-	interrupts.c
 	module.c
 	logger.c
 )
@@ -11,6 +10,7 @@ target_sources(menix PUBLIC
 add_subdirectory(acpi)
 add_subdirectory(bus)
 add_subdirectory(dst)
+add_subdirectory(irq)
 add_subdirectory(net)
 add_subdirectory(sch)
 add_subdirectory(time)

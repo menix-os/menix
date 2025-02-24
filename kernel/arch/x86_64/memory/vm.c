@@ -439,10 +439,12 @@ Context* interrupt_pf_handler(usize isr, Context* regs, void* data)
 		panic();
 	}
 
+	CpuInfo* info = arch_current_cpu();
+
 	// TODO: Handle user page fault.
-	if (arch_current_cpu())
+	if (info)
 	{
-		Process* proc = arch_current_cpu()->thread->parent;
+		Process* proc = info->thread->parent;
 
 		// If nothing can make the process recover, we have to put it out of its misery.
 		proc_kill(proc, true);

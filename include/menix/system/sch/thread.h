@@ -49,7 +49,10 @@ void thread_set_errno(usize errno);
 
 // Creates a new thread in a process.
 // `parent`: The parent process of the new thread.
-Thread* thread_create(Process* parent);
+Thread* thread_new(Process* parent);
+
+// Creates a new kernel thread.
+Thread* thread_create_kernel(Process* parent, VirtAddr start);
 
 // Sets up the context of a user thread.
 // `target`: The thread to set up.

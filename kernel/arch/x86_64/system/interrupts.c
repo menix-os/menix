@@ -8,7 +8,7 @@
 #include <idt.h>
 #include <interrupts.h>
 
-Context* interrupt_ud_handler(usize isr, Context* regs, void* data)
+Context* interrupt_ud_handler(usize isr, Context* regs)
 {
 	// Make sure we're in user mode, otherwise we have to crash.
 	print_log("Invalid opcode at 0x%zx on core %zu!\n", regs->rip, arch_current_cpu()->id);
@@ -19,7 +19,7 @@ Context* interrupt_ud_handler(usize isr, Context* regs, void* data)
 	return regs;
 }
 
-Context* interrupt_debug_handler(usize isr, Context* regs, void* data)
+Context* interrupt_debug_handler(usize isr, Context* regs)
 {
 	// We use this exception just to print the current registers, so no abort.
 	arch_dump_registers(regs);
@@ -28,7 +28,7 @@ Context* interrupt_debug_handler(usize isr, Context* regs, void* data)
 }
 
 // Handles the syscall interrupt. Also referenced by system/arch.s
-Context* syscall_handler(usize isr, Context* regs, void* data)
+Context* syscall_handler(usize isr, Context* regs)
 {
 	// Save the registers.
 	CpuInfo* const core = arch_current_cpu();

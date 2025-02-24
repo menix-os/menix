@@ -7,11 +7,15 @@
 
 extern Process* proc_list;
 extern Process* hanging_proc_list;
-
 extern Thread* thread_list;
 extern Thread* hanging_thread_list;
-
 extern Thread* sleeping_thread_list;
+
+// Halts preemption of the current thread by the scheduler.
+void sch_stop_preemption();
+
+// Continues preemption of the current thread.
+void sch_start_preemption();
 
 // Initializes the scheduler.
 void sch_init(VirtAddr entry_point);

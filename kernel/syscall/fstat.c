@@ -1,5 +1,6 @@
 #include <menix/syscall/syscall.h>
 #include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
 
 SYSCALL_IMPL(fstat, int fd, VirtAddr path, int flags, VirtAddr buf)
 {
@@ -14,14 +15,18 @@ SYSCALL_IMPL(fstat, int fd, VirtAddr path, int flags, VirtAddr buf)
 	{
 		FileDescriptor* file_desc = fd_get(process, fd);
 		if (file_desc == NULL)
+		{
 			return SYSCALL_ERR(EBADF);
+		}
 
 		node = file_desc->node;
 	}
 	else
 	{
 		if (path == 0)
+		{
 			return SYSCALL_ERR(EINVAL);
+		}
 
 		char* kernel_path = kmalloc(PATH_MAX);
 		vm_user_read(process, kernel_path, path, PATH_MAX);
@@ -31,7 +36,9 @@ SYSCALL_IMPL(fstat, int fd, VirtAddr path, int flags, VirtAddr buf)
 	}
 
 	if (node == NULL)
+	{
 		return SYSCALL_ERR(ENOENT);
+	}
 
 	vm_user_write(process, buf, &node->handle->stat, sizeof(struct stat));
 

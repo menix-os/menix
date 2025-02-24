@@ -24,6 +24,8 @@ static usize pid_counter = 0;
 
 ProcessList dead_processes;
 
+Process* proc_kernel = NULL;
+
 Process* proc_create(const char* name, ProcessState state, bool is_user, Process* parent)
 {
 	spin_lock(&proc_lock);
@@ -135,7 +137,7 @@ bool proc_create_elf(const char* name, const char* path, char** argv, char** env
 	proc->working_dir = node->parent;
 	proc->map_base = VM_USER_MAP_BASE;
 
-	Thread* thread = thread_create(proc);
+	Thread* thread = thread_new(proc);
 	proc->elf_info = info;
 	thread_setup(thread, entry_point, argv, envp, is_user);
 

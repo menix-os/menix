@@ -37,6 +37,8 @@ static BootInfo* info;
 
 	module_load_kernel_syms(info->kernel_file);
 
+	sch_init((VirtAddr)kernel_main);
+
 	// Initialize virtual file system.
 	vfs_init();
 
@@ -69,7 +71,6 @@ static BootInfo* info;
 	module_init();
 
 	print_log("boot: Initialization complete, handing over to scheduler.\n");
-	sch_init((VirtAddr)kernel_main);
 
 	while (true)
 		sch_arch_invoke();

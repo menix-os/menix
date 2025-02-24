@@ -5,6 +5,7 @@
 #include <menix/common.h>
 
 #include <gdt.h>
+#include <idt.h>
 #include <tss.h>
 
 // CPUID Leaf 1 ECX

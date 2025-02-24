@@ -5,6 +5,7 @@
 #include <menix/memory/vm.h>
 #include <menix/system/arch.h>
 #include <menix/system/sch/process.h>
+#include <menix/system/sch/scheduler.h>
 #include <menix/system/sch/thread.h>
 
 #include <gdt.h>
@@ -77,7 +78,8 @@ void thread_arch_setup(Thread* target, VirtAddr start, bool is_user, VirtAddr st
 void thread_arch_destroy(Thread* thread)
 {
 	kfree((void*)(thread->kernel_stack - VM_KERNEL_STACK_SIZE));
-	pm_free(thread->saved_fpu - pm_get_phys_base(), ROUND_UP(arch_current_cpu()->fpu_size, arch_page_size));
+	CpuInfo* info = arch_current_cpu();
+	pm_free(thread->saved_fpu - pm_get_phys_base(), ROUND_UP(info->fpu_size, arch_page_size));
 }
 
 void thread_arch_fork(Thread* forked, Thread* original)
@@ -85,11 +87,12 @@ void thread_arch_fork(Thread* forked, Thread* original)
 	forked->fs_base = original->fs_base;
 	forked->gs_base = original->gs_base;
 
-	// Allocate FPU memory.
-	PhysAddr fpu_pages = pm_alloc(ROUND_UP(arch_current_cpu()->fpu_size, vm_get_page_size(VMLevel_Small)));
-	forked->saved_fpu = pm_get_phys_base() + fpu_pages;
+	CpuInfo* cpu = arch_current_cpu();
 
-	memcpy(forked->saved_fpu, original->saved_fpu, arch_current_cpu()->fpu_size);
+	// Allocate FPU memory.
+	PhysAddr fpu_pages = pm_alloc(ROUND_UP(cpu->fpu_size, vm_get_page_size(VMLevel_Small)));
+	forked->saved_fpu = pm_get_phys_base() + fpu_pages;
+	memcpy(forked->saved_fpu, original->saved_fpu, cpu->fpu_size);
 
 	// Return SYSCALL_OK(0) to the forked syscall process.
 	forked->registers.rax = 0;

@@ -90,8 +90,8 @@ arch_int_\+:
 	mov		$\+,	%rdi		/* Load the ISR as first argument */
 	mov		%rsp,	%rsi		/* Load the Context* as second argument. */
 	xor		%rbp,	%rbp
-	.extern int_handler
-	call	int_handler
+	.extern idt_dispatcher
+	call	idt_dispatcher
 	mov		%rax,	%rsp		/* int_handler returns a pointer to the new context. */
 	pop_all_regs
 	swapgs_if_necessary

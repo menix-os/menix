@@ -24,7 +24,7 @@ void thread_set_errno(usize errno)
 		t->errno = errno;
 }
 
-Thread* thread_create(Process* parent)
+Thread* thread_new(Process* parent)
 {
 	spin_lock(&thread_lock);
 
@@ -44,6 +44,16 @@ Thread* thread_create(Process* parent)
 
 	spin_unlock(&thread_lock);
 	return thread;
+}
+
+Thread* thread_create_kernel(Process* parent, VirtAddr start)
+{
+	print_log("thread: Creating new kernel thread for process \"%s\"\n", parent->name);
+	Thread* result = thread_new(parent);
+
+	thread_arch_setup(result, start, false, 0);
+
+	return result;
 }
 
 void thread_setup(Thread* target, VirtAddr start, char** argv, char** envp, bool is_user)

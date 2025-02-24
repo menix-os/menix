@@ -288,13 +288,6 @@ uacpi_status uacpi_kernel_handle_firmware_request(uacpi_firmware_request*)
 	return UACPI_STATUS_UNIMPLEMENTED;
 }
 
-static Context* irq_handler_wrapper(usize isr, Context* context, void* data)
-{
-	void** frame = (void**)data;
-	((uacpi_interrupt_handler)frame[0])(frame[1]);
-	return context;
-}
-
 uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interrupt_handler handler, uacpi_handle ctx,
 													uacpi_handle* out_irq_handle)
 {
@@ -302,7 +295,7 @@ uacpi_status uacpi_kernel_install_interrupt_handler(uacpi_u32 irq, uacpi_interru
 	context[0] = handler;
 	context[1] = ctx;
 
-	isr_register_handler(arch_current_cpu()->id, irq + 32, irq_handler_wrapper, context);
+	// isr_register_handler(arch_current_cpu()->id, irq + 32, irq_handler_wrapper, context);
 	*out_irq_handle = context;
 	return UACPI_STATUS_OK;
 }

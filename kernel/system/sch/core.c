@@ -5,6 +5,7 @@
 #include <menix/system/sch/process.h>
 #include <menix/system/sch/scheduler.h>
 #include <menix/system/sch/thread.h>
+#include <menix/util/log.h>
 #include <menix/util/spin.h>
 
 Process* proc_list = NULL;
@@ -17,10 +18,18 @@ Thread* sleeping_thread_list = NULL;
 void sch_init(VirtAddr entry_point)
 {
 	// Create the first process for kernel tasks (PID 0).
-	Process* kernel_proc = proc_create("kernel", ProcessState_Ready, false, NULL);
-	Thread* kernel_thread = thread_create(kernel_proc);
-	thread_arch_setup(kernel_thread, entry_point, false, 0);
-	sch_arch_invoke();
+	proc_kernel = proc_create("kernel", ProcessState_Ready, false, NULL);
+	thread_create_kernel(proc_kernel, entry_point);
+}
+
+void sch_start_preemption()
+{
+	// TODO
+}
+
+void sch_stop_preemption()
+{
+	// TODO
 }
 
 Thread* sch_next(Thread* list)

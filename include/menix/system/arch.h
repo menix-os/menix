@@ -15,28 +15,28 @@
 #ifdef ARCH_HAS_DYNAMIC_PAGE_SIZE
 extern usize arch_page_size;
 #else
-#define arch_page_size ((usize)(0x1000))
+#define arch_page_size ((usize)(ARCH_DEFAULT_PAGE_SIZE))
 #endif
 
 // CPU-local information.
-typedef struct [[gnu::aligned(arch_page_size)]] Cpu
+typedef struct [[gnu::aligned(ARCH_DEFAULT_PAGE_SIZE)]] CpuInfo
 {
-	usize id;						  // Unique ID of this CPU.
-	usize kernel_stack;				  // Stack pointer for the kernel.
-	usize user_stack;				  // Stack pointer for the user space.
-	struct Thread* thread;			  // Current thread running on this CPU.
-	usize ticks_active;				  // The amount of ticks the running thread has been active.
-	bool is_present;				  // If the CPU is present.
-	InterruptFn irq_handlers[256];	  // IRQ handlers.
-	void* irq_data[256];			  // IRQ context to pass along.
+	usize id;				  // Unique ID of this CPU.
+	usize kernel_stack;		  // Stack pointer for the kernel.
+	usize user_stack;		  // Stack pointer for the user space.
+	struct Thread* thread;	  // Current thread running on this CPU.
+	usize ticks_active;		  // The amount of ticks the running thread has been active.
+	bool is_present;		  // If the CPU is present.
 
 #ifdef __x86_64__
-	Gdt gdt;
-	TaskStateSegment tss;
-	u32 lapic_id;					   // Local APIC ID.
-	usize fpu_size;					   // Size of the FPU in bytes.
-	void (*fpu_save)(void* dst);	   // Function to call when saving the FPU state.
-	void (*fpu_restore)(void* dst);	   // Function to call when restoring the FPU state.
+	Gdt gdt;								  // Global Descriptor Table.
+	TaskStateSegment tss;					  // Task state segment.
+	IdtCallbackFn idt_callbacks[IDT_SIZE];	  // IDT handlers.
+	Irq idt_to_irq_map[IDT_SIZE];			  // ISR to IRQ mapping.
+	u32 lapic_id;							  // Local APIC ID.
+	usize fpu_size;							  // Size of the FPU in bytes.
+	void (*fpu_save)(void* dst);			  // Function to call when saving the FPU state.
+	void (*fpu_restore)(void* dst);			  // Function to call when restoring the FPU state.
 #elif defined(__riscv) && (__riscv_xlen == 64)
 	u32 hart_id;	// Hart CPU ID.
 #endif
@@ -65,7 +65,8 @@ bool arch_stop_cpu(usize id);
 // Writes all registers to the current output stream.
 void arch_dump_registers(Context* regs);
 
-// Gets processor metadata.
+// Gets processor local information.
+// ! Extremely unsafe to call directly, 99% of the time you want to call sch_acquire_percpu()!
 CpuInfo* arch_current_cpu();
 
 typedef enum : usize
