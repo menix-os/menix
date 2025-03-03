@@ -1,0 +1,8 @@
+[package]
+name = "portal"
+version = "0.0.0"
+edition = "2024"
+
+[features]
+default = []
+kernel = []

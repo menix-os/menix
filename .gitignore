@@ -1,0 +1,14 @@
+# IDE Files
+.vscode/*
+.idea/*
+.cache/*
+
+# Rust files
+*target/
+*Cargo.lock
+
+# Meson
+build/
+
+# Allow debug config
+!.vscode/launch.json

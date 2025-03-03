@@ -1,0 +1,14 @@
+[workspace]
+resolver = "2"
+members = ["kernel", "servers/*"]
+
+[profile.dev]
+panic = "abort"
+debug = true
+
+[profile.release]
+panic = "abort"
+opt-level = "z"
+debug = false
+overflow-checks = false
+strip = true
