@@ -12,6 +12,7 @@
 	"dynamic-linking": true,
 	"code-model": "kernel",
 	"features": "-mmx,-sse,-sse2,+soft-float",
+	"rustc-abi": "x86-softfloat",
 	"panic-strategy": "abort",
 	"executables": true,
 	"disable-redzone": true,
