@@ -1,6 +1,12 @@
-# The Menix Operating System
+# Menix
 
-A Lightweight Microkernel-based OS
+Menix is a modern, lightweight, pragmatic, asynchronous 64-bit microkernel
+
+## Contributing
+
+Contributions are _always_ welcome!
+Please read the **[contributing guide](docs/src/contributing.md)** first.
+Then open an issue or pull request and submit your changes!
 
 ## Getting started
 
@@ -9,11 +15,23 @@ A Lightweight Microkernel-based OS
 > If you want to get a bootable image, you might want to check out
 > **https://github.com/menix-os/bootstrap** instead.
 
-Follow the **[build instructions](doc/src/building.md)**.
+### Building the kernel
+The following commmand will build the kernel:
+```sh
+cargo +nightly build --release \
+    --target toolchain/x86_64.json \
+    --manifest-path kernel/Cargo.toml
+```
 
-## Contributing
+### Building the servers
+The following command will build all servers:
+```sh
+cargo +nightly build --release \
+    --target toolchain/x86_64.json \
+    --manifest-path servers/Cargo.toml
+```
 
-Contributions are _always_ welcome!
-First, please read the **[contributing guide](doc/src/contributing.md)** to make sure
-your changes fit the rest of the project.
-Open an issue or pull request with the appropriate template and submit your changes.
+### Debugging
+
+There's a CodeLLDB script you can use to debug the kernel with LLDB/VS Code.
+It assumes you have built the kernel in-tree, in debug mode.

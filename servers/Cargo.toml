@@ -1,6 +1,6 @@
 [workspace]
-resolver = "2"
-members = ["kernel", "servers/*"]
+resolver = "3"
+members = ["bootd"]
 
 [profile.dev]
 panic = "abort"

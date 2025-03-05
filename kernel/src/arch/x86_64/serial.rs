@@ -1,7 +1,7 @@
 // Serial I/O
 
 use super::asm::write8;
-use crate::generic::log::{KERNEL_LOGGER, LoggerSink};
+use crate::generic::log::{GLOBAL_LOGGERS, Logger, LoggerSink};
 use alloc::boxed::Box;
 
 /// Serial port
@@ -30,9 +30,13 @@ impl LoggerSink for SerialLogger {
             unsafe { write8(COM1_BASE + DATA_REG, *ch) };
         }
     }
+
+    fn name(&self) -> &'static str {
+        "com1"
+    }
 }
 
 pub fn init() {
-    KERNEL_LOGGER.lock().add_sink(Box::new(SerialLogger));
+    Logger::add_sink(Box::new(SerialLogger));
     print!("serial: Initialized early serial output.\n");
 }

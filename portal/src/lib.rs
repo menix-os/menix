@@ -1,4 +1,7 @@
 #![no_std]
 
-pub mod internal;
-pub mod logging;
+pub mod error;
+pub mod syscall;
+
+#[cfg(feature = "user")]
+pub mod user;

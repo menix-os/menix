@@ -1,12 +1,10 @@
 use crate::{
     arch::VirtAddr,
-    generic::{
-        error::Error,
-        virt::{GenericPageMap, VmFlags, VmProt},
-    },
+    generic::virt::{GenericPageMap, VmFlags, VmProt},
 };
 use bitflags::bitflags;
 use core::arch::asm;
+use portal::error::Error;
 use spin::Mutex;
 
 /// Masks only the address bits of a virtual address.

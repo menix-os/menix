@@ -1,14 +1,17 @@
 // Panic handler.
 
-use super::log::KERNEL_LOGGER;
+use super::log::GLOBAL_LOGGERS;
 use core::panic::PanicInfo;
 
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {
     // Force unlock output in cases like panics during printing.
-    unsafe { KERNEL_LOGGER.force_unlock() };
+    unsafe { GLOBAL_LOGGERS.force_unlock() };
 
-    print!("\x1b[0;31mpanic: Kernel panic - Environment is unsound!\x1b[0m\n");
+    print!(
+        "\x1b[0;31m{}\x1b[0m\n", // Print in Red
+        "panic: Kernel panic - Environment is unsound!"
+    );
 
     if let Some(message) = info.message().as_str() {
         print!("panic: \"{}\"\n", message);

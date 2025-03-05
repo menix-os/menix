@@ -3,7 +3,7 @@
 #![no_std]
 #![no_main]
 
-use super::BootInfo;
+use super::{BootFile, BootInfo, init};
 use crate::{
     arch::{PhysAddr, VirtAddr},
     generic::phys::{PhysMemory, PhysMemoryUsage},
@@ -52,7 +52,7 @@ pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn _start() -> ! {
-    super::early_init();
+    init::early_init();
 
     // Make sure the stack size request was respected by the bootloader.
     // We might not be able to boot otherwise.
@@ -87,7 +87,7 @@ unsafe extern "C" fn _start() -> ! {
     // Get kernel physical and virtual base.
     let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
 
-    super::memory_init(
+    super::init::memory_init(
         &mut memmap_buf[0..entries.len()],
         HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr,
         (kernel_addr.physical_base(), kernel_addr.virtual_base()),
@@ -109,7 +109,10 @@ unsafe extern "C" fn _start() -> ! {
         }
     };
 
-    super::init(&mut info);
+    // Get all modules.
+    let mut file_buf = [BootFile::default(); 32];
+
+    super::init::init(&mut info);
 
     loop {}
 }

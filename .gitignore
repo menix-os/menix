@@ -1,7 +1,7 @@
 # IDE Files
-.vscode/*
-.idea/*
-.cache/*
+.vscode/
+.idea/
+.cache/
 
 # Rust files
 *target/
@@ -9,9 +9,6 @@
 
 # xbstrap
 *.xbstrap
-
-# Meson
-build/
 
 # Allow debug config
 !.vscode/launch.json

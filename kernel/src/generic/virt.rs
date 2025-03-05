@@ -1,6 +1,6 @@
-use super::error::Error;
 use crate::arch::{PhysAddr, VirtAddr};
 use bitflags::bitflags;
+use portal::error::Error;
 
 // User constants
 const USER_STACK_SIZE: usize = 0x200000;

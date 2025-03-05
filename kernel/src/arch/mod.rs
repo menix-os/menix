@@ -1,6 +1,5 @@
 use crate::boot::BootInfo;
 use crate::generic::schedule;
-use crate::generic::schedule::PreemptionGuard;
 use alloc::boxed::Box;
 use alloc::sync::Arc;
 

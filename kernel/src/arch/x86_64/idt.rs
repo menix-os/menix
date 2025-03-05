@@ -1,8 +1,8 @@
 use super::gdt::Gdt;
 use super::interrupts::*;
 use crate::arch::{
-    x86_64::asm::{self, interrupt_disable, interrupt_enable},
     VirtAddr,
+    x86_64::asm::{self, interrupt_disable, interrupt_enable},
 };
 use core::mem::offset_of;
 use seq_macro::seq;
