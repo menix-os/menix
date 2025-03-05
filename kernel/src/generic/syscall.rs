@@ -11,8 +11,9 @@ pub fn invoke(
     a3: usize,
     a4: usize,
     a5: usize,
-) -> usize {
-    let mut result = 0;
+) -> (usize, usize) {
+    let mut result_val = 0;
+    let mut result_err = 0;
 
     match num {
         syscall::numbers::NULL => print!("NULL syscall invoked\n"),
@@ -23,8 +24,8 @@ pub fn invoke(
             // };
             // GLOBAL_LOGGERS.lock().write_str(buffer).unwrap();
         }
-        _ => print!("Unknown syscall requested by user program"),
+        _ => print!("Unknown syscall requested by user program\n"),
     }
 
-    return result;
+    return (result_val, result_err);
 }

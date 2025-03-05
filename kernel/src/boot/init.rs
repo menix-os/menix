@@ -45,12 +45,12 @@ pub fn memory_init(
 pub fn init(info: &mut BootInfo) {
     print!("Menix {}\n", env!("CARGO_PKG_VERSION"));
 
-    arch::init(info);
-
     match info.command_line {
         Some(x) => print!("boot: Command line: \"{x}\"\n"),
         None => print!("boot: Command line is empty.\n"),
     }
+
+    arch::init(info);
 
     // Load all files.
     if let Some(files) = info.files {

@@ -1,3 +1,6 @@
+#[repr(usize)]
 pub enum Error {
-    ArgumentError,
+    BadArgument,
+    NotFound,
+    AlreadyExists,
 }

@@ -116,7 +116,7 @@ pub struct ElfPhdr {
 pub fn load_from_memory(map: &mut impl GenericPageMap, data: &[u8]) -> Result<(), Error> {
     // Check ELF for validity.
     if data[0..=3] != ELF_MAG {
-        return Err(Error::ArgumentError);
+        return Err(Error::BadArgument);
     }
 
     return Ok(());

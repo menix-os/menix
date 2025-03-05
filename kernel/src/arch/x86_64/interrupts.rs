@@ -28,7 +28,7 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mu
 unsafe extern "C" fn syscall_handler(context: *mut Context) {
     unsafe {
         // Arguments use the SYSV C ABI.
-        (*context).rax = syscall::invoke(
+        let result = syscall::invoke(
             (*context).rax as usize,
             (*context).rdi as usize,
             (*context).rsi as usize,
@@ -36,7 +36,9 @@ unsafe extern "C" fn syscall_handler(context: *mut Context) {
             (*context).r10 as usize,
             (*context).r8 as usize,
             (*context).r9 as usize,
-        ) as u64
+        );
+        (*context).rax = result.0 as u64;
+        (*context).rdx = result.1 as u64;
     }
 }
 

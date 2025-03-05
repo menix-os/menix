@@ -4,6 +4,7 @@ use core::alloc::{GlobalAlloc, Layout};
 use core::arch::asm;
 use core::panic::PanicInfo;
 
+pub mod channel;
 pub mod logging;
 pub mod memory;
 pub mod thread;
@@ -35,7 +36,7 @@ fn do_syscall(
             out("rcx") _, // clobbered by syscall
             out("r11") _, // clobbered by syscall
             lateout("rax") ret_val,
-            lateout("rdi") ret_err,
+            lateout("rdx") ret_err,
         );
     }
 
@@ -44,7 +45,7 @@ fn do_syscall(
 
 #[panic_handler]
 fn panic_handler(_info: &PanicInfo) -> ! {
-    logging::log("PANIC in server!\n");
+    logging::log("PANIC!\n");
     thread::exit();
 }
 
