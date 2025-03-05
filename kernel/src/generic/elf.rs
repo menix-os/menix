@@ -13,12 +13,21 @@ const EI_PAD: usize = 9; // Start of padding bytes
 const EI_NIDENT: usize = 16; // Size of e_ident[]
 
 // ELF Identification Type
-const ELFCLASS32: usize = 1;
-const ELFCLASS64: usize = 2;
-const ELFCLASSNUM: usize = 3;
-const ELFDATA2LSB: usize = 1;
-const ELFDATA2MSB: usize = 2;
-const ELFDATANUM: usize = 3;
+const ELFCLASS32: u8 = 1;
+const ELFCLASS64: u8 = 2;
+const ELFCLASSNUM: u8 = 3;
+const ELFDATA2LSB: u8 = 1;
+const ELFDATA2MSB: u8 = 2;
+const ELFDATANUM: u8 = 3;
+
+#[cfg(target_arch = "x86_64")]
+const EM_CURRENT: u16 = 0x3E;
+#[cfg(target_arch = "aarch64")]
+const EM_CURRENT: u16 = 0xB7;
+#[cfg(target_arch = "riscv64")]
+const EM_CURRENT: u16 = 0xF3;
+#[cfg(target_arch = "loongarch64")]
+const EM_CURRENT: u16 = 0x102;
 
 #[repr(u8)]
 pub enum ElfVersion {
@@ -83,20 +92,34 @@ pub type ElfOff = usize;
 /// ELF header
 #[repr(C, packed)]
 struct ElfHdr {
-    e_ident: [u8; EI_NIDENT], // ELF identification
-    e_type: u16,              // Object file type
-    e_machine: u16,           // Machine type
-    e_version: u32,           // Object file version
-    e_entry: ElfAddr,         // Entry point address
-    e_phoff: ElfOff,          // Program header offset
-    e_shoff: ElfOff,          // Section header offset
-    e_flags: u32,             // Processor-specific flags
-    e_ehsize: u16,            // ELF header size
-    e_phentsize: u16,         // Size of program header entry
-    e_phnum: u16,             // Number of program header entries
-    e_shentsize: u16,         // Size of section header entry
-    e_shnum: u16,             // Number of section header entries
-    e_shstrndx: u16,          // Section name string table index
+    /// ELF identification
+    e_ident: [u8; EI_NIDENT],
+    /// Object file type
+    e_type: u16,
+    /// Machine type
+    e_machine: u16,
+    /// Object file version
+    e_version: u32,
+    /// Entry point address
+    e_entry: ElfAddr,
+    /// Program header offset
+    e_phoff: ElfOff,
+    /// Section header offset
+    e_shoff: ElfOff,
+    /// Processor-specific flags
+    e_flags: u32,
+    /// ELF header size
+    e_ehsize: u16,
+    /// Size of program header entry
+    e_phentsize: u16,
+    /// Number of program header entries
+    e_phnum: u16,
+    /// Size of section header entry
+    e_shentsize: u16,
+    /// Number of section header entries
+    e_shnum: u16,
+    /// Section name string table index
+    e_shstrndx: u16,
 }
 assert_size!(ElfHdr, 64);
 
@@ -114,10 +137,48 @@ pub struct ElfPhdr {
 
 /// Loads a raw ELF executable from memory into a given page map.
 pub fn load_from_memory(map: &mut impl GenericPageMap, data: &[u8]) -> Result<(), Error> {
-    // Check ELF for validity.
-    if data[0..=3] != ELF_MAG {
-        return Err(Error::BadArgument);
+    let elf_hdr: ElfHdr = unsafe { core::ptr::read(data.as_ptr() as *const _) };
+
+    // Check ELF magic.
+    if elf_hdr.e_ident[0..4] != ELF_MAG {
+        return Err(Error::InvalidContent);
     }
+
+    // We only support 64-bit.
+    if elf_hdr.e_ident[EI_CLASS] != ELFCLASS64 {
+        return Err(Error::InvalidContent);
+    }
+
+    // Check endianness.
+    #[cfg(target_endian = "little")]
+    if elf_hdr.e_ident[EI_DATA] != ELFDATA2LSB {
+        return Err(Error::InvalidContent);
+    }
+    #[cfg(target_endian = "big")]
+    if elf_hdr.e_ident[EI_DATA] != ELFDATA2MSB {
+        return Err(Error::InvalidContent);
+    }
+
+    if elf_hdr.e_ident[EI_VERSION] != ElfVersion::Current as u8 {
+        return Err(Error::InvalidContent);
+    }
+
+    // Check ABI, we don't care about ABIVERSION.
+    if elf_hdr.e_ident[EI_OSABI] != ElfOsAbi::SysV as u8 {
+        return Err(Error::InvalidContent);
+    }
+
+    // Check executable type. We don't support relocatable files.
+    if elf_hdr.e_type != ElfEt::Exec as u16 {
+        return Err(Error::InvalidContent);
+    }
+
+    // Check machine type. Only load executables for this machine.
+    if elf_hdr.e_machine != EM_CURRENT {
+        return Err(Error::InvalidContent);
+    }
+
+    // TODO: Evaluate PHDRs.
 
     return Ok(());
 }

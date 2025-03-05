@@ -19,9 +19,9 @@ pub fn create(name: &str) -> Result<ChannelHandle, Error> {
         0,
     );
 
-    // TODO: Read err instead of returning only BadArgument.
+    // TODO: Read err instead of returning only InvalidArgument.
     if err != 0 {
-        return Err(Error::BadArgument);
+        return Err(Error::InvalidArgument);
     }
 
     return Ok(val as ChannelHandle);
