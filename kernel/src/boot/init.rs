@@ -1,5 +1,7 @@
 // Kernel initialization.
 
+use core::arch::asm;
+
 use super::BootInfo;
 use crate::{
     arch::{self, PerCpu, PhysAddr, VirtAddr},
@@ -7,6 +9,7 @@ use crate::{
         self,
         log::{self, KernelLogger, Logger, LoggerSink},
         phys::{PhysManager, PhysMemory},
+        virt::{self, PageTable, VmFlags},
     },
 };
 use alloc::{boxed::Box, string::String, vec::Vec};
@@ -26,18 +29,21 @@ pub fn early_init() {
 pub fn memory_init(
     memory_map: &mut [PhysMemory],
     identity_base: VirtAddr,
-    kernel_addr: (PhysAddr, VirtAddr),
+    kernel_phys: PhysAddr,
+    kernel_virt: VirtAddr,
 ) {
     PhysManager::init(memory_map, identity_base);
 
     // From now on, we can save logs in memory.
-    Logger::add_sink(Box::new(KernelLogger));
+    //Logger::add_sink(Box::new(KernelLogger));
 
     print!("boot: Memory map provided by bootloder:\n");
     print!("{:^16} {:^16} {}\n", "Address", "Length", "Usage");
     memory_map
         .iter()
         .for_each(|x| print!("{:>16x} {:>16x} {:?}\n", x.address, x.length, x.usage));
+
+    virt::init(kernel_phys, kernel_virt);
 }
 
 /// Called after all info from the bootloader has been collected.

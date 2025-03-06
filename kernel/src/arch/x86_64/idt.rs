@@ -39,7 +39,7 @@ pub fn init() {
 
         // Set all gates to their respective handlers.
         seq!(N in 0..256 {
-            idt.routines[N] = IdtEntry::new(interrupt_stub~N as u64, 0, IdtIsrType::Interrupt);
+            idt.routines[N] = IdtEntry::new(interrupt_stub~N as VirtAddr, 0, IdtIsrType::Interrupt);
         });
 
         // Load the global table into the IDTR.

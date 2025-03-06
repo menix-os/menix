@@ -38,7 +38,8 @@ pub use internal::get_page_size;
 pub use internal::init;
 pub use internal::init_cpu;
 pub use internal::scheduler::Context;
-pub use internal::virt::PageMap;
+pub use internal::virt::PageTableEntry;
+pub use internal::virt::set_page_table;
 
 /// Represents a physical address. It can't be directly read from or written to.
 pub use internal::PhysAddr;

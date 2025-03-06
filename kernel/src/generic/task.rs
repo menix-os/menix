@@ -1,6 +1,6 @@
 use alloc::boxed::Box;
 
-use crate::arch::{Context, PageMap};
+use crate::arch::{Context, PageTableEntry};
 
 pub enum TaskState {
     /// Ready to run.

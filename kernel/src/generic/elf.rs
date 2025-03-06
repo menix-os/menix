@@ -1,4 +1,4 @@
-use super::virt::GenericPageMap;
+use super::virt::PageTable;
 use bitflags::bitflags;
 use portal::error::Error;
 
@@ -136,7 +136,7 @@ pub struct ElfPhdr {
 }
 
 /// Loads a raw ELF executable from memory into a given page map.
-pub fn load_from_memory(map: &mut impl GenericPageMap, data: &[u8]) -> Result<(), Error> {
+pub fn load_from_memory<const K: bool>(map: &mut PageTable<K>, data: &[u8]) -> Result<(), Error> {
     let elf_hdr: ElfHdr = unsafe { core::ptr::read(data.as_ptr() as *const _) };
 
     // Check ELF magic.

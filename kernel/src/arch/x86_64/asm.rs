@@ -6,14 +6,6 @@ use super::idt::{IDT_SIZE, IdtRegister};
 use core::arch::x86_64::__cpuid_count;
 use core::arch::{asm, global_asm};
 
-/// Wrapper for the `lgdt` instruction.
-/// Only changing the GDT on its own is technically unsafe.
-pub unsafe fn lgdt(gdt: &GdtRegister) {
-    unsafe {
-        asm!("lgdt [{0}]", in(reg) gdt);
-    }
-}
-
 /// Wrapper for the `lidt` instruction.
 /// Only changing the IDT on its own is technically unsafe.
 pub unsafe fn lidt(idt: &IdtRegister) {

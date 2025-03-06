@@ -8,7 +8,10 @@ use core::{
 };
 use spin::Mutex;
 
-use crate::{arch, generic::misc::align_up};
+use crate::{
+    arch::{self, PhysAddr},
+    generic::misc::align_up,
+};
 
 use super::phys::PhysManager;
 
@@ -44,7 +47,7 @@ impl Slab {
     fn init(&self) {
         unsafe {
             // Allocate memory for this slab.
-            let mut head = PhysManager::phys_base().byte_add(PhysManager::alloc(1) as usize);
+            let mut head = PhysManager::direct_access(PhysManager::alloc(1));
 
             // Calculate the amount of bytes we need to skip in order to be able to store a reference to the slab.
             let offset = align_up(size_of::<SlabHeader>(), self.ent_size);
@@ -131,7 +134,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
 
         unsafe {
             // Convert the physical address to a pointer.
-            let ret = PhysManager::phys_base().add(mem as usize);
+            let ret = PhysManager::direct_access(mem as PhysAddr);
 
             // Write metadata into the first page.
             let info = ret as *mut SlabInfo;

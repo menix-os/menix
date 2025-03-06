@@ -82,7 +82,7 @@ impl PhysManager<'_> {
             }
 
             // Record the last byte of the current region if its address is the highest yet.
-            let region_end = entry.address + entry.length as u64;
+            let region_end = entry.address + entry.length as PhysAddr;
             if region_end > highest {
                 highest = region_end;
             }
@@ -111,7 +111,7 @@ impl PhysManager<'_> {
                 // The region where the bitmap is stored is inaccessible now.
                 // We could mark an entire entry as used, but that would be extremely wasteful.
                 // map_size is definitely page-aligned at this point.
-                entry.address += map_size as u64;
+                entry.address += map_size as PhysAddr;
                 entry.length -= map_size;
                 break;
             }
@@ -183,7 +183,7 @@ impl PhysManager<'_> {
     pub fn alloc_zeroed(num_pages: usize) -> PhysAddr {
         let addr = Self::alloc(num_pages);
         unsafe {
-            write_bytes(addr as *mut u8, 0, arch::get_page_size());
+            write_bytes(Self::direct_access(addr), 0, arch::get_page_size());
         };
         return addr;
     }
@@ -205,9 +205,9 @@ impl PhysManager<'_> {
         }
     }
 
-    pub fn phys_base() -> *mut u8 {
+    pub unsafe fn direct_access(address: PhysAddr) -> *mut u8 {
         unsafe {
-            return PMM.lock().phys_base as *mut u8;
+            return (PMM.lock().phys_base + address) as *mut u8;
         }
     }
 }

@@ -154,78 +154,77 @@ impl GdtLongDesc {
 }
 
 pub fn init() {
+    // Allocate a new GDT.
+    let gdt = Gdt {
+        null: GdtDesc::new(0, 0, GdtAccess::None, GdtFlags::None),
+        kernel_code: GdtDesc::new(
+            0xFFFFF,
+            0,
+            GdtAccess::Present
+                | GdtAccess::Kernel
+                | GdtAccess::Segment
+                | GdtAccess::Executable
+                | GdtAccess::ReadWrite
+                | GdtAccess::Accessed,
+            GdtFlags::Granularity | GdtFlags::LongMode,
+        ),
+        kernel_data: GdtDesc::new(
+            0xFFFFF,
+            0,
+            GdtAccess::Present
+                | GdtAccess::Kernel
+                | GdtAccess::Segment
+                | GdtAccess::ReadWrite
+                | GdtAccess::Accessed,
+            GdtFlags::Granularity | GdtFlags::LongMode,
+        ),
+        user_code: GdtDesc::new(
+            0xFFFFF,
+            0,
+            GdtAccess::Present | GdtAccess::User | GdtAccess::Segment | GdtAccess::ReadWrite,
+            GdtFlags::Granularity | GdtFlags::ProtMode,
+        ),
+        user_data: GdtDesc::new(
+            0xFFFFF,
+            0,
+            GdtAccess::Present | GdtAccess::User | GdtAccess::Segment | GdtAccess::ReadWrite,
+            GdtFlags::Granularity | GdtFlags::LongMode,
+        ),
+        user_code64: GdtDesc::new(
+            0xFFFFF,
+            0,
+            GdtAccess::Present
+                | GdtAccess::User
+                | GdtAccess::Segment
+                | GdtAccess::Executable
+                | GdtAccess::ReadWrite,
+            GdtFlags::Granularity | GdtFlags::LongMode,
+        ),
+        tss: GdtLongDesc::new(
+            0xFFFFF,
+            &raw const TSS_STORAGE as u64,
+            GdtAccess::Present | GdtAccess::Kernel | GdtAccess::Executable | GdtAccess::Accessed,
+            GdtFlags::None,
+        ),
+    };
+
+    // Initialize the TSS.
+    tss::init();
+
+    // Save the GDT.
     unsafe {
-        // Allocate a new GDT.
-        let gdt = Gdt {
-            null: GdtDesc::new(0, 0, GdtAccess::None, GdtFlags::None),
-            kernel_code: GdtDesc::new(
-                0xFFFFF,
-                0,
-                GdtAccess::Present
-                    | GdtAccess::Kernel
-                    | GdtAccess::Segment
-                    | GdtAccess::Executable
-                    | GdtAccess::ReadWrite
-                    | GdtAccess::Accessed,
-                GdtFlags::Granularity | GdtFlags::LongMode,
-            ),
-            kernel_data: GdtDesc::new(
-                0xFFFFF,
-                0,
-                GdtAccess::Present
-                    | GdtAccess::Kernel
-                    | GdtAccess::Segment
-                    | GdtAccess::ReadWrite
-                    | GdtAccess::Accessed,
-                GdtFlags::Granularity | GdtFlags::LongMode,
-            ),
-            user_code: GdtDesc::new(
-                0xFFFFF,
-                0,
-                GdtAccess::Present | GdtAccess::User | GdtAccess::Segment | GdtAccess::ReadWrite,
-                GdtFlags::Granularity | GdtFlags::ProtMode,
-            ),
-            user_data: GdtDesc::new(
-                0xFFFFF,
-                0,
-                GdtAccess::Present | GdtAccess::User | GdtAccess::Segment | GdtAccess::ReadWrite,
-                GdtFlags::Granularity | GdtFlags::LongMode,
-            ),
-            user_code64: GdtDesc::new(
-                0xFFFFF,
-                0,
-                GdtAccess::Present
-                    | GdtAccess::User
-                    | GdtAccess::Segment
-                    | GdtAccess::Executable
-                    | GdtAccess::ReadWrite,
-                GdtFlags::Granularity | GdtFlags::LongMode,
-            ),
-            tss: GdtLongDesc::new(
-                0xFFFFF,
-                &raw const TSS_STORAGE as u64,
-                GdtAccess::Present
-                    | GdtAccess::Kernel
-                    | GdtAccess::Executable
-                    | GdtAccess::Accessed,
-                GdtFlags::None,
-            ),
-        };
-
-        // Initialize the TSS.
-        tss::init();
-
-        // Save the GDT.
         GDT_TABLE = gdt;
+    }
 
-        // Construct a register to hold the GDT base and limit.
-        let gdtr = GdtRegister {
-            limit: (size_of::<Gdt>() - 1) as u16,
-            base: &raw const GDT_TABLE,
-        };
+    // Construct a register to hold the GDT base and limit.
+    let gdtr = GdtRegister {
+        limit: (size_of::<Gdt>() - 1) as u16,
+        base: &raw const GDT_TABLE,
+    };
 
+    unsafe {
         // Load the table into the register.
-        asm::lgdt(&gdtr);
+        asm!("lgdt [{0}]", in(reg) &gdtr);
 
         // Flush and reload the segment registers.
         asm!(

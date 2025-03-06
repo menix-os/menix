@@ -1,4 +1,5 @@
 #[repr(usize)]
+#[derive(Debug)]
 pub enum Error {
     /// One or more parameters are not valid.
     InvalidArgument,

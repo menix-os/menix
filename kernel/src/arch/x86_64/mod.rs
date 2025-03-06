@@ -12,8 +12,8 @@ pub mod serial;
 pub mod tss;
 pub mod virt;
 
-pub type PhysAddr = u64;
-pub type VirtAddr = u64;
+pub type PhysAddr = usize;
+pub type VirtAddr = usize;
 
 pub fn early_init() {
     serial::init();
@@ -21,9 +21,7 @@ pub fn early_init() {
     idt::init();
 }
 
-pub fn init(info: &mut BootInfo) {
-    todo!();
-}
+pub fn init(info: &mut BootInfo) {}
 
 /// Initializes a single processor.
 /// `target`: The processor to initialize.

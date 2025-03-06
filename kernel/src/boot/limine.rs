@@ -90,7 +90,8 @@ unsafe extern "C" fn _start() -> ! {
     super::init::memory_init(
         &mut memmap_buf[0..entries.len()],
         HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr,
-        (kernel_addr.physical_base(), kernel_addr.virtual_base()),
+        kernel_addr.physical_base() as PhysAddr,
+        kernel_addr.virtual_base() as VirtAddr,
     );
 
     // Convert the command line from bytes to UTF-8 if there is any.
