@@ -2,7 +2,6 @@
 
 PHDRS
 {
-	headers	PT_LOAD		FILEHDR PHDRS;
 	text	PT_LOAD		FLAGS(5);
 	rodata	PT_LOAD		FLAGS(4);
 	data	PT_LOAD		FLAGS(6);
@@ -11,7 +10,7 @@ PHDRS
 
 SECTIONS
 {
-	. = 0xFFFFFFFF80000000 + SIZEOF_HEADERS;
+	. = 0xFFFFFFFF80000000;
 	LD_KERNEL_START = .;
 
 	/* Code */

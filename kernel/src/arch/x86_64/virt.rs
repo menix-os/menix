@@ -13,10 +13,22 @@ pub struct PageTableEntry {
     inner: PhysAddr,
 }
 
+impl core::fmt::Debug for PageTableEntry {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let flags = PageFlags::from_bits_truncate(self.inner);
+        f.debug_struct("PageTableEntry")
+            .field("address", &self.address())
+            .field("flags", &flags)
+            .finish()
+    }
+}
+
 /// Masks only the address bits of a PTE.
 const ADDR_MASK: PhysAddr = 0x000FFFFFFFFFF000;
 
 bitflags! {
+    #[repr(transparent)]
+    #[derive(Debug)]
     pub struct PageFlags: PhysAddr {
         const None = 0;
         const Present = 1 << 0;

@@ -1,7 +1,7 @@
-use core::arch::asm;
+use core::{arch::asm, ptr::slice_from_raw_parts};
 
 use super::{misc::align_up, phys::PhysManager};
-use crate::arch::{self, PageTableEntry, PhysAddr, VirtAddr, get_page_size};
+use crate::arch::{self, Context, PageTableEntry, PhysAddr, VirtAddr};
 use alloc::boxed::Box;
 use bitflags::bitflags;
 use portal::error::Error;
@@ -20,6 +20,7 @@ const MODULE_BASE: usize = 0xFFFFB0000000000;
 
 bitflags! {
     /// Page protection flags.
+    #[derive(Copy, Clone)]
     pub struct VmFlags: usize {
         const None = 0x00;
         /// Page can be read from.
@@ -49,12 +50,23 @@ impl<const K: bool> PageTable<K> {
 
     /// Gets the page table entry pointed to by `virt`.
     /// Allocates new levels if necessary and requested.
+    /// `target_level`: The level to get for the PTE. Use 0 if you're unsure.
     /// `length`: The amount of bytes this PTE should be able to fit. This helps allocate more efficient entries.
-    pub fn get_pte(&self, virt: VirtAddr, allocate: bool) -> Option<&mut PageTableEntry> {
+    pub fn get_pte(
+        &self,
+        virt: VirtAddr,
+        allocate: bool,
+        target_level: usize,
+    ) -> Option<&mut PageTableEntry> {
         let mut head = self.head.lock();
 
         let mut current_head = *head;
         let mut index = 0;
+        let mut do_break = false;
+
+        if target_level >= PageTableEntry::get_levels() - 1 {
+            return None;
+        }
 
         // Traverse the page table (from highest to lowest level).
         for level in (0..PageTableEntry::get_levels()).rev() {
@@ -70,7 +82,7 @@ impl<const K: bool> PageTable<K> {
             index = (virt >> addr_shift) & addr_bits;
 
             // The last level is used to access the actual PTE, so break the loop then.
-            if level == 0 {
+            if level <= target_level || do_break {
                 break;
             }
 
@@ -84,12 +96,21 @@ impl<const K: bool> PageTable<K> {
                     | if !K { VmFlags::User } else { VmFlags::None };
 
                 if (*pte).is_present() {
+                    // If this PTE is a large page, it already contains the final address. Don't continue.
                     if (*pte).is_large() {
                         pte_flags |= VmFlags::Large;
-                        break;
+
+                        // If the caller wanted to go further than this, tell them that it's not possible.
+                        if level != target_level {
+                            return None;
+                        }
+
+                        do_break = true;
                     } else {
+                        // If the PTE is not large, go one level deeper.
                         current_head = (*pte).address();
                     }
+                    *pte = PageTableEntry::new((*pte).address(), pte_flags);
                 } else {
                     // PTE isn't present, we have to allocate a new level.
                     if !allocate {
@@ -115,9 +136,35 @@ impl<const K: bool> PageTable<K> {
         virt: VirtAddr,
         phys: PhysAddr,
         flags: VmFlags,
+        level: usize,
     ) -> Result<(), Error> {
-        let pte = self.get_pte(virt, true).unwrap();
-        *pte = PageTableEntry::new(phys, flags);
+        let pte = self.get_pte(virt, true, level).ok_or(Error::NotFound)?;
+        *pte = PageTableEntry::new(
+            phys,
+            flags
+                | if level != 0 {
+                    VmFlags::Large
+                } else {
+                    VmFlags::None
+                },
+        );
+        return Ok(());
+    }
+
+    /// Maps a range of consecutive memory in this address space.
+    pub fn map_range(
+        &mut self,
+        virt: VirtAddr,
+        phys: PhysAddr,
+        flags: VmFlags,
+        level: usize,
+        length: usize,
+    ) -> Result<(), Error> {
+        let step =
+            1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
+        for offset in (0..length).step_by(step) {
+            self.map_single(virt + offset, phys + offset, flags, level)?;
+        }
         return Ok(());
     }
 
@@ -127,8 +174,8 @@ impl<const K: bool> PageTable<K> {
     }
 
     /// Checks if the address (may be unaligned) is mapped in this address space.
-    pub fn is_mapped(&self, virt: VirtAddr) -> bool {
-        let pte = self.get_pte(virt, false);
+    pub fn is_mapped(&self, virt: VirtAddr, level: usize) -> bool {
+        let pte = self.get_pte(virt, false, level);
         match pte {
             Some(x) => x.is_present(),
             None => {
@@ -145,55 +192,61 @@ pub fn init(kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
     let mut table = PageTable::<true>::new();
 
     unsafe {
-        let text_start = (&LD_TEXT_START as *const u8) as VirtAddr;
-        let text_end = (&LD_TEXT_END as *const u8) as VirtAddr;
-        let rodata_start = (&LD_RODATA_START as *const u8) as VirtAddr;
-        let rodata_end = (&LD_RODATA_END as *const u8) as VirtAddr;
-        let data_start = (&LD_DATA_START as *const u8) as VirtAddr;
-        let data_end = (&LD_DATA_END as *const u8) as VirtAddr;
-        let offset = (&LD_KERNEL_START as *const u8) as VirtAddr;
+        let text_start = &raw const LD_TEXT_START as VirtAddr;
+        let text_end = &raw const LD_TEXT_END as VirtAddr;
+        let rodata_start = &raw const LD_RODATA_START as VirtAddr;
+        let rodata_end = &raw const LD_RODATA_END as VirtAddr;
+        let data_start = &raw const LD_DATA_START as VirtAddr;
+        let data_end = &raw const LD_DATA_END as VirtAddr;
+        let kernel_start = &raw const LD_KERNEL_START as VirtAddr;
 
-        for virt in (text_start..text_end).step_by(get_page_size()) {
-            table
-                .map_single(
-                    virt,
-                    virt - offset + kernel_phys,
-                    VmFlags::Read | VmFlags::Exec,
-                )
-                .expect("Unable to map the text segment!");
-        }
+        table
+            .map_range(
+                text_start,
+                text_start - kernel_start + kernel_phys,
+                VmFlags::Read | VmFlags::Exec,
+                0,
+                text_end - text_start,
+            )
+            .expect("Unable to map the text segment");
 
-        for virt in (rodata_start..rodata_end).step_by(get_page_size()) {
-            table
-                .map_single(virt, virt - offset + kernel_phys, VmFlags::Read)
-                .expect("Unable to map the rodata segment!");
-        }
+        table
+            .map_range(
+                rodata_start,
+                rodata_start - kernel_start + kernel_phys,
+                VmFlags::Read,
+                0,
+                rodata_end - rodata_start,
+            )
+            .expect("Unable to map the rodata segment");
 
-        for virt in (data_start..data_end).step_by(get_page_size()) {
-            table
-                .map_single(
-                    virt,
-                    virt - offset + kernel_phys,
-                    VmFlags::Read | VmFlags::Write,
-                )
-                .expect("Unable to map the data segment!");
-        }
+        table
+            .map_range(
+                data_start,
+                data_start - kernel_start + kernel_phys,
+                VmFlags::Read | VmFlags::Write,
+                0,
+                data_end - data_start,
+            )
+            .expect("Unable to map the data segment");
 
-        // TODO: Needs large page support.
-        for virt in (0x0..0x10000000).step_by(get_page_size()) {
-            table
-                .map_single(
-                    0xffff800000000000 + virt,
-                    virt,
-                    VmFlags::Read | VmFlags::Write,
-                )
-                .expect("Unable to map the HHDM!");
-        }
+        table
+            .map_range(
+                0xffff800000000000,
+                0,
+                VmFlags::Read | VmFlags::Write,
+                2,
+                0x1_0000_0000,
+            )
+            .expect("Unable to map identity region");
 
+        // Activate the new page table.
         arch::set_page_table(&table);
 
-        let mut table_opt = KERNEL_TABLE.lock();
-        *table_opt = Some(table);
+        print!("virt: Switched to own page table.\n");
+
+        let mut kernel_table = KERNEL_TABLE.lock();
+        *kernel_table = Some(table);
     }
 }
 
@@ -207,4 +260,9 @@ unsafe extern "C" {
     unsafe static LD_RODATA_END: u8;
     unsafe static LD_DATA_START: u8;
     unsafe static LD_DATA_END: u8;
+}
+
+pub fn page_fault_handler(context: *mut Context) {
+    dbg!(context);
+    loop {}
 }

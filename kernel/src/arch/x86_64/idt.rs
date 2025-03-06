@@ -18,6 +18,7 @@ pub struct IdtRegister {
 }
 
 #[derive(Debug)]
+#[repr(align(0x1000))]
 pub struct InterruptDescriptorTable {
     routines: [IdtEntry; IDT_SIZE],
 }

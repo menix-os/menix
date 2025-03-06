@@ -41,7 +41,3 @@ pub fn current_cpu() -> usize {
         return cpu;
     }
 }
-
-pub fn get_page_size() -> usize {
-    0x1000
-}

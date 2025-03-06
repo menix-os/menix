@@ -4,6 +4,7 @@ use super::{consts::CPL_USER, gdt::Gdt};
 use crate::generic::syscall;
 use crate::{
     arch::{Context, PerCpu},
+    generic::virt::page_fault_handler,
     pop_all_regs, push_all_regs, swapgs_if_necessary,
 };
 use core::{
@@ -16,7 +17,7 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mu
     print!("Got interrupt {isr}!\n");
     unsafe {
         match (*context).isr {
-            // Legacy syscall invocation.
+            0x0E => page_fault_handler(context),
             0x80 => syscall_handler(context),
             _ => (),
         };

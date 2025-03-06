@@ -34,7 +34,6 @@ mod internal {
 // Re-export architecture specific types and functions to make sure they exist.
 pub use internal::current_cpu;
 pub use internal::early_init;
-pub use internal::get_page_size;
 pub use internal::init;
 pub use internal::init_cpu;
 pub use internal::scheduler::Context;

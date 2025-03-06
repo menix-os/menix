@@ -13,9 +13,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
         "panic: Kernel panic - Environment is unsound!"
     );
 
-    if let Some(message) = info.message().as_str() {
-        print!("panic: \"{}\"\n", message);
-    }
+    print!("panic: {}\n", info.message());
 
     if let Some(location) = info.location() {
         print!("panic: at {}\n", location);

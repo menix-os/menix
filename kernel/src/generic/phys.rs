@@ -3,7 +3,7 @@ use core::ptr::write_bytes;
 use spin::Mutex;
 
 use crate::{
-    arch::{self, PhysAddr, VirtAddr},
+    arch::{self, PageTableEntry, PhysAddr, VirtAddr},
     generic::{bitmap::BitMap, misc::align_up},
 };
 
@@ -69,8 +69,6 @@ static PMM: Mutex<PhysManager> = Mutex::new(PhysManager {
 impl PhysManager<'_> {
     /// Initializes the physical memory manager. Prior to this call, there may not be any heap allocations!
     pub fn init(memory_map: &mut [PhysMemory], identity_base: VirtAddr) {
-        debug_assert!(identity_base != 0, "HHDM identity base was NULL!");
-
         let mut pmm: spin::MutexGuard<'_, PhysManager<'_>> = PMM.lock();
         pmm.phys_base = identity_base;
 
@@ -89,7 +87,7 @@ impl PhysManager<'_> {
         }
 
         // How big the bit map needs to be to store a bit for each pages.
-        let page_size = arch::get_page_size();
+        let page_size = 1 << PageTableEntry::get_page_bits();
         let map_size;
         unsafe {
             pmm.num_pages = highest as usize / page_size;
@@ -163,7 +161,7 @@ impl PhysManager<'_> {
 
             // Record the last page so future allocations can be more efficient.
             self.last_page = i + amount;
-            return (i * arch::get_page_size()) as PhysAddr;
+            return (i * (1 << PageTableEntry::get_page_bits())) as PhysAddr;
         }
         return 0;
     }
@@ -183,14 +181,18 @@ impl PhysManager<'_> {
     pub fn alloc_zeroed(num_pages: usize) -> PhysAddr {
         let addr = Self::alloc(num_pages);
         unsafe {
-            write_bytes(Self::direct_access(addr), 0, arch::get_page_size());
+            write_bytes(
+                Self::direct_access(addr),
+                0,
+                1 << PageTableEntry::get_page_bits(),
+            );
         };
         return addr;
     }
 
     pub fn free(addr: PhysAddr, num_pages: usize) {
         let mut allocator = PMM.lock();
-        let addr = (addr as usize / arch::get_page_size());
+        let addr = (addr as usize >> PageTableEntry::get_page_bits());
 
         // Check if all pages in the given space are used. If not, that means the values given are gibberish.
         for i in addr..(addr + num_pages) {
