@@ -3,8 +3,6 @@ use crate::{
     generic::phys::{PhysManager, PhysMemory},
 };
 
-pub mod init;
-
 // Boot method selection. Limine is the default method.
 #[cfg(all(
     feature = "boot_limine",

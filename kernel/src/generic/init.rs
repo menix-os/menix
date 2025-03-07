@@ -1,10 +1,8 @@
 // Kernel initialization.
 
-use core::arch::asm;
-
-use super::BootInfo;
 use crate::{
     arch::{self, PerCpu, PhysAddr, VirtAddr},
+    boot::BootInfo,
     generic::{
         self,
         log::{self, KernelLogger, Logger, LoggerSink},
@@ -13,6 +11,7 @@ use crate::{
     },
 };
 use alloc::{boxed::Box, string::String, vec::Vec};
+use core::arch::asm;
 
 // The boot process is split into 3 stages.
 // - `early_init`: Very early calls that don't need dynamic memory allocations.

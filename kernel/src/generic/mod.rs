@@ -1,6 +1,7 @@
 pub mod bitmap;
 pub mod clock;
 pub mod elf;
+pub mod init;
 pub mod log;
 pub mod misc;
 pub mod panic;

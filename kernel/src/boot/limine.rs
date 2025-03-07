@@ -3,10 +3,13 @@
 #![no_std]
 #![no_main]
 
-use super::{BootFile, BootInfo, init};
+use super::{BootFile, BootInfo};
 use crate::{
     arch::{PhysAddr, VirtAddr},
-    generic::phys::{PhysMemory, PhysMemoryUsage},
+    generic::{
+        init,
+        phys::{PhysMemory, PhysMemoryUsage},
+    },
 };
 use core::str;
 use limine::{BaseRevision, memory_map::EntryType, request::*};
@@ -87,7 +90,7 @@ unsafe extern "C" fn _start() -> ! {
     // Get kernel physical and virtual base.
     let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
 
-    super::init::memory_init(
+    init::memory_init(
         &mut memmap_buf[0..entries.len()],
         HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr,
         kernel_addr.physical_base() as PhysAddr,
@@ -113,7 +116,7 @@ unsafe extern "C" fn _start() -> ! {
     // Get all modules.
     let mut file_buf = [BootFile::default(); 32];
 
-    super::init::init(&mut info);
+    init::init(&mut info);
 
     loop {}
 }
