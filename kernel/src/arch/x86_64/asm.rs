@@ -6,26 +6,20 @@ use super::idt::{IDT_SIZE, IdtRegister};
 use core::arch::x86_64::__cpuid_count;
 use core::arch::{asm, global_asm};
 
-/// Wrapper for the `lidt` instruction.
-/// Only changing the IDT on its own is technically unsafe.
-pub unsafe fn lidt(idt: &IdtRegister) {
-    unsafe {
-        asm!("lidt [{0}]", in(reg) idt);
-    }
-}
-
 /// Wrapper for the `cpuid` instruction.
-pub fn cpuid(a: &mut usize, b: &mut usize, c: &mut usize, d: &mut usize) {
+#[inline]
+pub fn cpuid(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32) {
     unsafe {
-        let result = __cpuid_count(*c as u32, *a as u32);
-        *a = result.eax as usize;
-        *b = result.ebx as usize;
-        *c = result.ecx as usize;
-        *d = result.edx as usize;
+        let result = __cpuid_count(*c, *a);
+        *a = result.eax;
+        *b = result.ebx;
+        *c = result.ecx;
+        *d = result.edx;
     }
 }
 
 /// Writes an unsigned 64-bit value to a model-specific register.
+#[inline]
 pub fn wrmsr(msr: u32, value: u64) {
     unsafe {
         let eax = value as u32;
@@ -35,6 +29,7 @@ pub fn wrmsr(msr: u32, value: u64) {
 }
 
 /// Writes an unsigned 64-bit value to the model-specific XCR register.
+#[inline]
 pub fn wrxcr(msr: u32, value: u64) {
     unsafe {
         let eax = value as u32;
@@ -44,17 +39,19 @@ pub fn wrxcr(msr: u32, value: u64) {
 }
 
 /// Reads an unsigned 64-bit value from a model-specific register.
+#[inline]
 pub fn rdmsr(msr: u32) -> u64 {
     unsafe {
         let eax: u32;
         let edx: u32;
-        asm!("wrmsr", out("eax") eax, out("edx") edx, in("ecx") msr);
+        asm!("rdmsr", out("eax") eax, out("edx") edx, in("ecx") msr);
         return (eax as u64) | ((edx as u64) << 32);
     }
 }
 
 /// Saves the FPU state to a 512-byte region of memory using FXSAVE.
 /// Pointer must be 16-byte aligned.
+#[inline]
 pub fn fxsave(memory: *mut u8) {
     unsafe {
         asm! ("fxsave [{0}]", in(reg) memory);

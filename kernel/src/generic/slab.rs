@@ -1,5 +1,9 @@
 // Slab allocator
 
+use crate::{
+    arch::{self, PhysAddr, virt::PageTableEntry},
+    generic::misc::align_up,
+};
 use core::{
     alloc::{GlobalAlloc, Layout},
     mem::size_of,
@@ -7,11 +11,6 @@ use core::{
     ptr::{null, null_mut, write_bytes},
 };
 use spin::Mutex;
-
-use crate::{
-    arch::{self, PageTableEntry, PhysAddr},
-    generic::misc::align_up,
-};
 
 use super::phys::PhysManager;
 
@@ -47,7 +46,8 @@ impl Slab {
     fn init(&self) {
         unsafe {
             // Allocate memory for this slab.
-            let mut head = PhysManager::direct_access(PhysManager::alloc(1));
+            let mem = PhysManager::alloc(1).expect("Out of memory");
+            let mut head = PhysManager::direct_access(mem);
 
             // Calculate the amount of bytes we need to skip in order to be able to store a reference to the slab.
             let offset = align_up(size_of::<SlabHeader>(), self.ent_size);
@@ -127,22 +127,20 @@ unsafe impl GlobalAlloc for SlabAllocator {
         let num_pages = align_up(layout.size(), page_size) / page_size;
 
         // Allocate the pages plus an additional page for metadata.
-        let mem = PhysManager::alloc(num_pages + 1);
-        if mem == 0 {
-            return null_mut();
-        }
+        match PhysManager::alloc(num_pages + 1) {
+            Some(mem) => unsafe {
+                // Convert the physical address to a pointer.
+                let ret = PhysManager::direct_access(mem as PhysAddr);
 
-        unsafe {
-            // Convert the physical address to a pointer.
-            let ret = PhysManager::direct_access(mem as PhysAddr);
+                // Write metadata into the first page.
+                let info = ret as *mut SlabInfo;
+                (*info).num_pages = num_pages;
+                (*info).size = layout.size();
 
-            // Write metadata into the first page.
-            let info = ret as *mut SlabInfo;
-            (*info).num_pages = num_pages;
-            (*info).size = layout.size();
-
-            // Skip the metadata and return the next one.
-            return ret.byte_add(page_size);
+                // Skip the metadata and return the next one.
+                return ret.byte_add(page_size);
+            },
+            None => return null_mut(),
         }
     }
 

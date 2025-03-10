@@ -3,7 +3,7 @@ use core::ptr::write_bytes;
 use spin::Mutex;
 
 use crate::{
-    arch::{self, PageTableEntry, PhysAddr, VirtAddr},
+    arch::{self, PhysAddr, VirtAddr, virt::PageTableEntry},
     generic::{bitmap::BitMap, misc::align_up},
 };
 
@@ -139,7 +139,7 @@ impl PhysManager<'_> {
     }
 
     /// Attempts to find `amount` free, consecutive pages, starting at page `start`.
-    pub fn get_free_pages(&mut self, amount: usize, start: usize) -> PhysAddr {
+    pub fn get_free_pages(&mut self, amount: usize, start: usize) -> Option<PhysAddr> {
         for i in start..self.num_pages {
             // Loop until we find a free page.
             if self.bit_map.get(i).unwrap() {
@@ -161,25 +161,27 @@ impl PhysManager<'_> {
 
             // Record the last page so future allocations can be more efficient.
             self.last_page = i + amount;
-            return (i * (1 << PageTableEntry::get_page_bits())) as PhysAddr;
+            return Some((i * (1 << PageTableEntry::get_page_bits())) as PhysAddr);
         }
-        return 0;
+
+        // Out of memory.
+        return None;
     }
 
-    pub fn alloc(num_pages: usize) -> PhysAddr {
+    pub fn alloc(num_pages: usize) -> Option<PhysAddr> {
         let mut allocator = PMM.lock();
         let last = allocator.last_page;
 
         // Try to find a matching region of physical memory.
-        let mem = allocator.get_free_pages(num_pages, last);
+        let mem = allocator.get_free_pages(num_pages, last)?;
 
         // Mark the pages as allocated here too.
         allocator.num_free_pages -= num_pages;
-        return mem;
+        return Some(mem);
     }
 
-    pub fn alloc_zeroed(num_pages: usize) -> PhysAddr {
-        let addr = Self::alloc(num_pages);
+    pub fn alloc_zeroed(num_pages: usize) -> Option<PhysAddr> {
+        let addr = Self::alloc(num_pages)?;
         unsafe {
             write_bytes(
                 Self::direct_access(addr),
@@ -187,7 +189,19 @@ impl PhysManager<'_> {
                 1 << PageTableEntry::get_page_bits(),
             );
         };
-        return addr;
+        return Some(addr);
+    }
+
+    pub fn alloc_bytes(bytes: usize) -> Option<PhysAddr> {
+        let addr = Self::alloc((bytes / (1 << PageTableEntry::get_page_bits())) + 1)?;
+        unsafe {
+            write_bytes(
+                Self::direct_access(addr),
+                0,
+                1 << PageTableEntry::get_page_bits(),
+            );
+        };
+        return Some(addr);
     }
 
     pub fn free(addr: PhysAddr, num_pages: usize) {

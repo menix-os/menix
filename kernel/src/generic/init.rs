@@ -1,17 +1,18 @@
 // Kernel initialization.
 
 use crate::{
-    arch::{self, PerCpu, PhysAddr, VirtAddr},
+    arch::{self, PhysAddr, VirtAddr},
     boot::BootInfo,
+    firmware,
     generic::{
-        self,
-        log::{self, KernelLogger, Logger, LoggerSink},
+        elf,
         phys::{PhysManager, PhysMemory},
-        virt::{self, PageTable, VmFlags},
+        task::Task,
+        virt::{self, PageTable},
     },
 };
-use alloc::{boxed::Box, string::String, vec::Vec};
-use core::arch::asm;
+use alloc::sync::Arc;
+use spin::RwLock;
 
 // The boot process is split into 3 stages.
 // - `early_init`: Very early calls that don't need dynamic memory allocations.
@@ -20,7 +21,7 @@ use core::arch::asm;
 
 /// Called as the very first thing during boot. Initializes very basic I/O and temporary features.
 pub fn early_init() {
-    arch::early_init();
+    arch::init::early_init();
 }
 
 /// Called as soon as a memory map is available.
@@ -48,24 +49,28 @@ pub fn memory_init(
 /// Called after all info from the bootloader has been collected.
 /// Initializes all subsystems and starts all servers.
 pub fn init(info: &mut BootInfo) {
-    print!("Menix {}\n", env!("CARGO_PKG_VERSION"));
+    print!("boot: Menix v{}\n", env!("CARGO_PKG_VERSION"));
 
     match info.command_line {
         Some(x) => print!("boot: Command line: \"{x}\"\n"),
         None => print!("boot: Command line is empty.\n"),
     }
 
-    arch::init(info);
+    firmware::init(info);
+    arch::init::init(info);
 
     // Load all files.
     if let Some(files) = info.files {
-        print!("boot: Got {} loadable files.\n", files.len());
         for file in files {
-            // let thread = Thread::new(file.path, );
-            // elf::load_from_memory(thread.page_map, file.data);
-            //
+            print!("boot: Loading \"{}\"\n", file.path);
+
+            let mut table = Arc::new(RwLock::new(PageTable::new(false)));
+            let mut task = Task::new(table);
+            if let Err(x) = elf::load_from_memory(&mut task, file.data) {
+                print!("boot: Failed to load \"{}\": {:?}\n", file.path, x);
+            };
         }
     }
 
-    todo!();
+    print!("boot: Entering user space...\n");
 }

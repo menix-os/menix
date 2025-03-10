@@ -1,7 +1,11 @@
-use alloc::boxed::Box;
+use crate::arch::{schedule::Context, virt::PageTableEntry};
+use alloc::{boxed::Box, rc::Rc, sync::Arc};
+use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
+use spin::{Mutex, RwLock};
 
-use crate::arch::{Context, PageTableEntry};
+use super::virt::PageTable;
 
+#[derive(Clone, Copy, Debug)]
 pub enum TaskState {
     /// Ready to run.
     Ready,
@@ -14,20 +18,28 @@ pub enum TaskState {
 }
 
 /// Represents the atomic scheduling structure.
+#[derive(Debug)]
 pub struct Task {
-    next: Option<Box<Task>>,
+    /// Unique identifier
+    pub id: usize,
+    /// The corresponding page table.
+    pub page_table: Arc<RwLock<PageTable>>,
     /// The saved context of a thread while the thread is not running.
-    context: Context,
+    pub context: Context,
     /// The current state of the thread.
-    state: TaskState,
+    pub state: TaskState,
 }
 
+/// Global counter to provide new task IDs.
+static TASK_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
 impl Task {
-    pub fn new() -> Self {
+    pub fn new(page_table: Arc<RwLock<PageTable>>) -> Self {
         return Self {
-            next: None,
+            id: TASK_ID_COUNTER.fetch_add(1, Relaxed),
             context: Context::default(),
             state: TaskState::Ready,
+            page_table,
         };
     }
 }

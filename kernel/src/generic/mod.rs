@@ -1,10 +1,13 @@
 pub mod bitmap;
+pub mod channel;
 pub mod clock;
+pub mod cmdline;
 pub mod elf;
 pub mod init;
 pub mod log;
 pub mod misc;
 pub mod panic;
+pub mod percpu;
 pub mod phys;
 pub mod schedule;
 pub mod slab;

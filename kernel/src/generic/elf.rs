@@ -1,6 +1,17 @@
-use super::virt::PageTable;
+use crate::arch;
+
+use super::{
+    phys::PhysManager,
+    task::Task,
+    virt::{PageTable, VmFlags},
+};
 use bitflags::bitflags;
+use bytemuck::{Pod, Zeroable};
+use core::ptr::slice_from_raw_parts;
 use portal::error::Error;
+
+pub type ElfAddr = usize;
+pub type ElfOff = usize;
 
 // ELF Header Identification
 const ELF_MAG: [u8; 4] = [0x7F, 'E' as u8, 'L' as u8, 'F' as u8];
@@ -56,41 +67,33 @@ pub enum ElfEt {
     Core = 4,
 }
 
-/// Program Header Type
-#[repr(u32)]
-pub enum ElfPt {
-    /// Do nothing with this
-    Null = 0x00000000,
-    /// Load and map into memory
-    Load = 0x00000001,
-    /// Dynamic segment
-    Dynamic = 0x00000002,
-    /// Interpreter path
-    Interp = 0x00000003,
-    /// Note
-    Note = 0x00000004,
-    /// Shared library
-    Shlib = 0x00000005,
-    /// Program headers
-    Phdr = 0x00000006,
-    /// Thread-local storage
-    Tls = 0x00000007,
-}
+/// Load and map into memory
+const PT_LOAD: u32 = 0x00000001;
+/// Dynamic segment
+const PT_DYNAMIC: u32 = 0x00000002;
 
 // Program Header Flags
-bitflags! {
-    pub struct ElfPf: u8 {
-        const Execute = 0x01;
-        const Write = 0x02;
-        const Read = 0x04;
-    }
-}
+const PF_EXECUTE: u32 = 0x01;
+const PF_WRITE: u32 = 0x02;
+const PF_READ: u32 = 0x04;
 
-pub type ElfAddr = usize;
-pub type ElfOff = usize;
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct ElfPhdr {
+    p_type: u32,
+    p_flags: u32,
+    p_offset: ElfOff,
+    p_vaddr: ElfAddr,
+    p_paddr: ElfAddr,
+    p_filesz: u64,
+    p_memsz: u64,
+    p_align: u64,
+}
+assert_size!(ElfPhdr, 56);
 
 /// ELF header
-#[repr(C, packed)]
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
 struct ElfHdr {
     /// ELF identification
     e_ident: [u8; EI_NIDENT],
@@ -123,21 +126,10 @@ struct ElfHdr {
 }
 assert_size!(ElfHdr, 64);
 
-#[repr(C, packed)]
-pub struct ElfPhdr {
-    p_type: u32,
-    p_flags: u32,
-    p_offset: ElfOff,
-    p_vaddr: ElfAddr,
-    p_paddr: ElfAddr,
-    p_filesz: u64,
-    p_memsz: u64,
-    p_align: u64,
-}
-
-/// Loads a raw ELF executable from memory into a given page map.
-pub fn load_from_memory<const K: bool>(map: &mut PageTable<K>, data: &[u8]) -> Result<(), Error> {
-    let elf_hdr: ElfHdr = unsafe { core::ptr::read(data.as_ptr() as *const _) };
+/// Loads an ELF executable from memory for a task.
+pub fn load_from_memory(task: &mut Task, data: &[u8]) -> Result<(), Error> {
+    let elf_hdr: &ElfHdr = bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()])
+        .expect("Couldn't read the ELF header");
 
     // Check ELF magic.
     if elf_hdr.e_ident[0..4] != ELF_MAG {
@@ -178,7 +170,43 @@ pub fn load_from_memory<const K: bool>(map: &mut PageTable<K>, data: &[u8]) -> R
         return Err(Error::InvalidContent);
     }
 
-    // TODO: Evaluate PHDRs.
+    // We can be certain that this is an ELF for us.
+    // Start by evaluating the program headers.
+    let phdrs: &[ElfPhdr] = bytemuck::try_cast_slice(
+        &data[elf_hdr.e_phoff..(elf_hdr.e_phoff + elf_hdr.e_phnum as usize * size_of::<ElfPhdr>())],
+    )
+    .expect("Couldn't read the program headers");
 
+    for phdr in phdrs {
+        match phdr.p_type {
+            // Load the segment into memory.
+            PT_LOAD => {
+                // Convert the flags to our format.
+                let mut flags = VmFlags::None;
+                if phdr.p_flags & PF_EXECUTE != 0 {
+                    flags |= VmFlags::Exec;
+                }
+                if phdr.p_flags & PF_READ != 0 {
+                    flags |= VmFlags::Read;
+                }
+                if phdr.p_flags & PF_WRITE != 0 {
+                    flags |= VmFlags::Write;
+                }
+
+                let phys = PhysManager::alloc_bytes(phdr.p_memsz as usize).expect("Out of memory");
+                task.page_table.write().map_range(
+                    phdr.p_vaddr,
+                    phys,
+                    flags,
+                    0,
+                    phdr.p_memsz as usize,
+                )?;
+            }
+            // Unknown or unhandled type. Do nothing.
+            _ => (),
+        }
+    }
+
+    task.context.set_ip(elf_hdr.e_entry);
     return Ok(());
 }

@@ -1,12 +1,10 @@
 use seq_macro::seq;
 
+use super::schedule::Context;
 use super::{consts::CPL_USER, gdt::Gdt};
+use crate::generic::percpu::PerCpu;
 use crate::generic::syscall;
-use crate::{
-    arch::{Context, PerCpu},
-    generic::virt::page_fault_handler,
-    pop_all_regs, push_all_regs, swapgs_if_necessary,
-};
+use crate::{generic::virt::page_fault_handler, pop_all_regs, push_all_regs, swapgs_if_necessary};
 use core::{
     arch::{asm, global_asm, naked_asm},
     mem::offset_of,
@@ -14,12 +12,14 @@ use core::{
 
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
 unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mut Context {
-    print!("Got interrupt {isr}!\n");
     unsafe {
         match (*context).isr {
             0x0E => page_fault_handler(context),
             0x80 => syscall_handler(context),
-            _ => (),
+            _ => {
+                print!("Got interrupt {isr}!\n");
+                loop {}
+            }
         };
     }
     return context;
@@ -45,7 +45,7 @@ unsafe extern "C" fn syscall_handler(context: *mut Context) {
 
 /// Handles a syscall via AMD64 syscall/sysret instructions.
 #[naked]
-unsafe extern "C" fn amd64_syscall_stub() {
+pub unsafe extern "C" fn amd64_syscall_stub() {
     unsafe {
         naked_asm!(
             "cli",                        // Disable interrupts.

@@ -1,9 +1,7 @@
 use super::gdt::Gdt;
 use super::interrupts::*;
-use crate::arch::{
-    VirtAddr,
-    x86_64::asm::{self, interrupt_disable, interrupt_enable},
-};
+use crate::arch::{VirtAddr, x86_64::asm};
+use core::arch::asm;
 use core::mem::offset_of;
 use seq_macro::seq;
 use spin::Mutex;
@@ -31,10 +29,10 @@ impl InterruptDescriptorTable {
     }
 }
 
-/// Loads the ISRs into memory and sets the IDT as the active one.
+/// Loads the ISRs into the static table.
 pub fn init() {
     unsafe {
-        interrupt_disable();
+        asm::interrupt_disable();
         // Create a new table.
         let mut idt = IDT_TABLE.lock();
 
@@ -42,14 +40,18 @@ pub fn init() {
         seq!(N in 0..256 {
             idt.routines[N] = IdtEntry::new(interrupt_stub~N as VirtAddr, 0, IdtIsrType::Interrupt);
         });
+    }
+}
 
-        // Load the global table into the IDTR.
-        let idtr = IdtRegister {
-            limit: (size_of::<InterruptDescriptorTable>() - 1) as u16,
-            base: (&*idt),
-        };
-        asm::lidt(&idtr);
-        interrupt_enable();
+/// Sets the IDT on this CPU.
+pub fn set_idt() {
+    let idt = IDT_TABLE.lock();
+    let idtr = IdtRegister {
+        limit: (size_of::<InterruptDescriptorTable>() - 1) as u16,
+        base: (&*idt),
+    };
+    unsafe {
+        asm!("lidt [{0}]", in(reg) &idtr);
     }
 }
 

@@ -1,8 +1,3 @@
-use crate::boot::BootInfo;
-use crate::generic::schedule;
-use alloc::boxed::Box;
-use alloc::sync::Arc;
-
 #[cfg(target_arch = "x86_64")]
 pub mod x86_64;
 #[cfg(target_arch = "x86_64")]
@@ -31,14 +26,12 @@ mod internal {
     pub use super::loongarch64::*;
 }
 
-// Re-export architecture specific types and functions to make sure they exist.
-pub use internal::current_cpu;
-pub use internal::early_init;
+// Re-export only parts of the architecture implementation.
 pub use internal::init;
-pub use internal::init_cpu;
-pub use internal::scheduler::Context;
-pub use internal::virt::PageTableEntry;
-pub use internal::virt::set_page_table;
+pub use internal::interrupts;
+pub use internal::percpu;
+pub use internal::schedule;
+pub use internal::virt;
 
 /// Represents a physical address. It can't be directly read from or written to.
 pub use internal::PhysAddr;
@@ -46,23 +39,3 @@ pub use internal::PhysAddr;
 /// Note: Not the same as a pointer. A `VirtAddr` might point into another
 /// process's memory that is not mapped in the kernel.
 pub use internal::VirtAddr;
-
-// TODO
-pub struct Thread {}
-
-/// Processor-local information.
-#[repr(C, align(0x10))]
-pub struct PerCpu {
-    /// Unique identifier of this CPU.
-    pub id: usize,
-    /// Stack pointer for kernel mode.
-    pub kernel_stack: VirtAddr,
-    /// Stack pointer for user mode.
-    pub user_stack: VirtAddr,
-    /// Current thread running on this CPU.
-    pub thread: Option<Arc<Thread>>,
-    /// Amount of ticks the current thread has been running for.
-    pub ticks_active: usize,
-    /// Whether this CPU is enabled.
-    pub enabled: bool,
-}

@@ -1,3 +1,5 @@
+use super::VirtAddr;
+
 /// Registers which are saved and restored during a context switch or interrupt.
 #[repr(C, packed)]
 #[derive(Clone, Debug, Default)]
@@ -27,4 +29,14 @@ pub struct Context {
     pub rflags: u64,
     pub rsp: u64,
     pub ss: u64,
+}
+
+impl Context {
+    pub fn set_stack(&mut self, addr: VirtAddr) {
+        self.rsp = addr as u64;
+    }
+
+    pub fn set_ip(&mut self, addr: VirtAddr) {
+        self.rip = addr as u64;
+    }
 }

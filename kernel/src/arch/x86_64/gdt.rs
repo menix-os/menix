@@ -1,13 +1,15 @@
 use super::asm::{interrupt_disable, interrupt_enable};
 use super::consts::{CPL_KERNEL, CPL_USER};
-use super::tss::{self, TSS_STORAGE, TaskStateSegment};
+use super::tss::{self, TaskStateSegment};
 use crate::arch::{VirtAddr, x86_64::asm};
 use bitflags::bitflags;
+use core::arch::asm;
 use core::mem::offset_of;
 
 /// Global Descriptor Table.
 /// These entries are ordered exactly like this because the SYSRET instruction expects it.
 #[repr(C, packed)]
+#[derive(Debug)]
 pub struct Gdt {
     /// Unused
     pub null: GdtDesc,
@@ -26,7 +28,7 @@ pub struct Gdt {
 }
 
 impl Gdt {
-    const fn new() -> Self {
+    pub const fn new() -> Self {
         Self {
             null: GdtDesc::empty(),
             kernel_code: GdtDesc::empty(),
@@ -153,9 +155,15 @@ impl GdtLongDesc {
     }
 }
 
-pub fn init() {
-    // Allocate a new GDT.
-    let gdt = Gdt {
+#[repr(C, packed)]
+pub struct GdtRegister {
+    limit: u16,
+    base: *const Gdt,
+}
+
+pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
+    // Might be overkill. Who cares?
+    *gdt = Gdt {
         null: GdtDesc::new(0, 0, GdtAccess::None, GdtFlags::None),
         kernel_code: GdtDesc::new(
             0xFFFFF,
@@ -202,24 +210,19 @@ pub fn init() {
         ),
         tss: GdtLongDesc::new(
             0xFFFFF,
-            &raw const TSS_STORAGE as u64,
+            &raw const tss as u64,
             GdtAccess::Present | GdtAccess::Kernel | GdtAccess::Executable | GdtAccess::Accessed,
             GdtFlags::None,
         ),
     };
 
     // Initialize the TSS.
-    tss::init();
-
-    // Save the GDT.
-    unsafe {
-        GDT_TABLE = gdt;
-    }
+    tss::init(tss);
 
     // Construct a register to hold the GDT base and limit.
     let gdtr = GdtRegister {
         limit: (size_of::<Gdt>() - 1) as u16,
-        base: &raw const GDT_TABLE,
+        base: gdt,
     };
 
     unsafe {
@@ -245,11 +248,3 @@ pub fn init() {
         );
     }
 }
-
-#[repr(C, packed)]
-pub struct GdtRegister {
-    limit: u16,
-    base: *const Gdt,
-}
-
-static mut GDT_TABLE: Gdt = Gdt::new();

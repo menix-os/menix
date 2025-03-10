@@ -3,6 +3,7 @@
 use core::mem::size_of;
 
 #[repr(C, packed)]
+#[derive(Debug)]
 pub struct TaskStateSegment {
     reserved0: u32,
     rsp0: u64,
@@ -47,13 +48,9 @@ impl TaskStateSegment {
     }
 }
 
-pub fn init() {
-    unsafe {
-        TSS_STORAGE.rsp0 = 0;
-        TSS_STORAGE.rsp1 = 0;
-        TSS_STORAGE.rsp2 = 0;
-        TSS_STORAGE.iopb = size_of::<TaskStateSegment>() as u16;
-    }
+pub fn init(tss: &mut TaskStateSegment) {
+    tss.rsp0 = 0;
+    tss.rsp1 = 0;
+    tss.rsp2 = 0;
+    tss.iopb = size_of::<TaskStateSegment>() as u16;
 }
-
-pub static mut TSS_STORAGE: TaskStateSegment = TaskStateSegment::new();

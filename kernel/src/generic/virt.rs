@@ -1,9 +1,8 @@
-use core::{arch::asm, ptr::slice_from_raw_parts};
-
 use super::{misc::align_up, phys::PhysManager};
-use crate::arch::{self, Context, PageTableEntry, PhysAddr, VirtAddr};
+use crate::arch::{self, PhysAddr, VirtAddr, schedule::Context, virt::PageTableEntry};
 use alloc::boxed::Box;
 use bitflags::bitflags;
+use core::{arch::asm, ptr::slice_from_raw_parts};
 use portal::error::Error;
 use spin::Mutex;
 
@@ -37,14 +36,20 @@ bitflags! {
 }
 
 /// Represents a virtual address space.
-pub struct PageTable<const K: bool> {
+#[derive(Debug)]
+pub struct PageTable {
     pub head: Mutex<PhysAddr>,
+    pub is_user: bool,
 }
 
-impl<const K: bool> PageTable<K> {
-    pub fn new() -> Self {
+impl PageTable {
+    pub fn new(is_user: bool) -> Self {
         return Self {
-            head: Mutex::new(PhysManager::alloc_zeroed(1)),
+            head: Mutex::new(
+                PhysManager::alloc_zeroed(1)
+                    .expect("Can't allocate a new page table, out of memory"),
+            ),
+            is_user,
         };
     }
 
@@ -93,7 +98,11 @@ impl<const K: bool> PageTable<K> {
                 let mut pte_flags = VmFlags::Read
                     | VmFlags::Write
                     | VmFlags::Exec
-                    | if !K { VmFlags::User } else { VmFlags::None };
+                    | if !self.is_user {
+                        VmFlags::User
+                    } else {
+                        VmFlags::None
+                    };
 
                 if (*pte).is_present() {
                     // If this PTE is a large page, it already contains the final address. Don't continue.
@@ -117,7 +126,7 @@ impl<const K: bool> PageTable<K> {
                         return None;
                     }
 
-                    let next_head = PhysManager::alloc_zeroed(1);
+                    let next_head = PhysManager::alloc_zeroed(1)?;
                     *pte = PageTableEntry::new(next_head, pte_flags);
                     current_head = next_head;
                 }
@@ -185,11 +194,11 @@ impl<const K: bool> PageTable<K> {
     }
 }
 
-pub static KERNEL_TABLE: Mutex<Option<PageTable<true>>> = Mutex::new(None);
+pub static KERNEL_TABLE: Mutex<Option<PageTable>> = Mutex::new(None);
 
 /// Initialize the kernel page table and switch to it.
 pub fn init(kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
-    let mut table = PageTable::<true>::new();
+    let mut table = PageTable::new(true);
 
     unsafe {
         let text_start = &raw const LD_TEXT_START as VirtAddr;
@@ -241,9 +250,7 @@ pub fn init(kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
             .expect("Unable to map identity region");
 
         // Activate the new page table.
-        arch::set_page_table(&table);
-
-        print!("virt: Switched to own page table.\n");
+        arch::virt::set_page_table(&table);
 
         let mut kernel_table = KERNEL_TABLE.lock();
         *kernel_table = Some(table);

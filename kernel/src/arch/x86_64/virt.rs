@@ -101,9 +101,9 @@ fn flush_tlb(addr: VirtAddr) {
     }
 }
 
-pub unsafe fn set_page_table<const K: bool>(page_table: &PageTable<K>) {
+pub unsafe fn set_page_table(page_table: &PageTable) {
+    let table = *page_table.head.lock();
     unsafe {
-        let table = *page_table.head.lock();
         asm!("mov cr3, {addr}", addr = in(reg) table);
     }
 }

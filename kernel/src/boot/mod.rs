@@ -1,5 +1,5 @@
 use crate::{
-    arch::{self, PerCpu, PhysAddr, VirtAddr},
+    arch::{self, PhysAddr, VirtAddr},
     generic::phys::{PhysManager, PhysMemory},
 };
 
@@ -20,10 +20,10 @@ pub mod limine;
 pub struct BootInfo<'a> {
     /// Kernel command line.
     pub command_line: Option<&'a str>,
-
     /// Base address of the RSDT/XSDT ACPI table.
-    pub rsdp_addr: PhysAddr,
-
+    pub rsdp_addr: Option<PhysAddr>,
+    /// Base address of a flattened device tree in memory.
+    pub fdt_addr: Option<*const u8>,
     /// Files given to the bootloader.
     pub files: Option<&'a [BootFile<'a>]>,
 }
