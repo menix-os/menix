@@ -14,7 +14,7 @@ use core::{
 unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mut Context {
     unsafe {
         match (*context).isr {
-            0x0E => page_fault_handler(context),
+            0x0E => page_fault_handler(context.as_ref().unwrap()),
             0x80 => syscall_handler(context),
             _ => {
                 print!("Got interrupt {isr}!\n");

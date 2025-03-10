@@ -26,7 +26,7 @@ mod internal {
     pub use super::loongarch64::*;
 }
 
-// Re-export only parts of the architecture implementation.
+// Re-export only parts of the architecture implementation that get called by generic code.
 pub use internal::init;
 pub use internal::interrupts;
 pub use internal::percpu;

@@ -194,7 +194,7 @@ impl PageTable {
     }
 }
 
-pub static KERNEL_TABLE: Mutex<Option<PageTable>> = Mutex::new(None);
+pub static KERNEL_PAGE_TABLE: Mutex<Option<PageTable>> = Mutex::new(None);
 
 /// Initialize the kernel page table and switch to it.
 pub fn init(kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
@@ -241,18 +241,18 @@ pub fn init(kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
 
         table
             .map_range(
-                0xffff800000000000,
+                PageTableEntry::get_hhdm_addr(),
                 0,
                 VmFlags::Read | VmFlags::Write,
-                2,
-                0x1_0000_0000,
+                PageTableEntry::get_hhdm_level(),
+                PageTableEntry::get_hhdm_size(),
             )
             .expect("Unable to map identity region");
 
         // Activate the new page table.
         arch::virt::set_page_table(&table);
 
-        let mut kernel_table = KERNEL_TABLE.lock();
+        let mut kernel_table = KERNEL_PAGE_TABLE.lock();
         *kernel_table = Some(table);
     }
 }
@@ -269,7 +269,10 @@ unsafe extern "C" {
     unsafe static LD_DATA_END: u8;
 }
 
-pub fn page_fault_handler(context: *mut Context) {
-    dbg!(context);
+pub fn page_fault_handler(context: &Context) {
+    print!("virt: Got a page fault!\n");
+    let (mut ip, mut addr) = (0, 0);
+    arch::virt::page_fault_handler(context, &mut ip, &mut addr);
+    print!("virt: IP: {}, Address: {}\n", ip, addr);
     loop {}
 }

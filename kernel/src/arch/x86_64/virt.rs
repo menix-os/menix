@@ -1,4 +1,4 @@
-use super::PhysAddr;
+use super::{PhysAddr, schedule::Context};
 use crate::{
     arch::VirtAddr,
     generic::virt::{PageTable, VmFlags},
@@ -92,6 +92,18 @@ impl PageTableEntry {
     pub const fn get_page_bits() -> usize {
         return 12;
     }
+
+    pub const fn get_hhdm_addr() -> usize {
+        return 0xffff_8000_0000_0000;
+    }
+
+    pub const fn get_hhdm_size() -> usize {
+        return 0x0000_0100_0000_0000;
+    }
+
+    pub const fn get_hhdm_level() -> usize {
+        return 2;
+    }
 }
 
 /// Invalidates a TLB entry cache.
@@ -106,4 +118,12 @@ pub unsafe fn set_page_table(page_table: &PageTable) {
     unsafe {
         asm!("mov cr3, {addr}", addr = in(reg) table);
     }
+}
+
+/// Gets the page fault IP and accessed address.
+pub fn page_fault_handler(context: &Context, ip: &mut VirtAddr, addr: &mut VirtAddr) {
+    let mut cr2 = 0usize;
+    unsafe { asm!("mov {cr2}, cr2", cr2 = out(reg) cr2) };
+    *ip = cr2;
+    *addr = context.rip as usize;
 }

@@ -2,7 +2,7 @@ use super::VirtAddr;
 
 /// Registers which are saved and restored during a context switch or interrupt.
 #[repr(C, packed)]
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default)]
 pub struct Context {
     pub r15: u64,
     pub r14: u64,
