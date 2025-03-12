@@ -2,7 +2,8 @@
 
 use super::task::Task;
 use crate::arch::{self, VirtAddr, percpu::ArchPerCpu};
-use alloc::{sync::Arc, vec::Vec};
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use core::sync::atomic::{AtomicUsize, Ordering};
 use spin::Mutex;
 
 /// Processor-local information.
@@ -26,16 +27,14 @@ pub struct PerCpu {
     pub arch: ArchPerCpu,
 }
 
-static PER_CPU_DATA: Mutex<Vec<PerCpu>> = Mutex::new(Vec::new());
+static CPU_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 /// Initializes the current processor.
 pub fn setup_cpu() {
-    let mut per_cpu = PER_CPU_DATA.lock();
-
-    let next_id = per_cpu.len();
+    let next_id = CPU_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
     print!("percpu: Initializing CPU {}.\n", next_id);
 
-    let mut cpu = PerCpu {
+    let mut cpu = Box::new(PerCpu {
         id: next_id,
         kernel_stack: 0,
         user_stack: 0,
@@ -43,15 +42,10 @@ pub fn setup_cpu() {
         ticks_active: 0,
         enabled: true,
         arch: ArchPerCpu::new(),
-    };
+    });
 
     // Some fields are not generic, initialize them too.
-    arch::percpu::setup_cpu(&mut cpu);
+    arch::percpu::setup_cpu(cpu);
 
-    per_cpu.push(cpu);
-    print!(
-        "percpu: CPU {} is active. Total {} CPUs.\n",
-        next_id,
-        per_cpu.len()
-    );
+    print!("percpu: CPU {} is active.\n", next_id);
 }

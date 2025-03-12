@@ -6,15 +6,24 @@ use super::idt::{IDT_SIZE, IdtRegister};
 use core::arch::x86_64::__cpuid_count;
 use core::arch::{asm, global_asm};
 
+pub struct CpuIdResult {
+    pub eax: u32,
+    pub ebx: u32,
+    pub ecx: u32,
+    pub edx: u32,
+}
+
 /// Wrapper for the `cpuid` instruction.
 #[inline]
-pub fn cpuid(a: &mut u32, b: &mut u32, c: &mut u32, d: &mut u32) {
+pub fn cpuid(leaf: u32, sub_leaf: u32) -> CpuIdResult {
     unsafe {
-        let result = __cpuid_count(*c, *a);
-        *a = result.eax;
-        *b = result.ebx;
-        *c = result.ecx;
-        *d = result.edx;
+        let result = __cpuid_count(leaf, sub_leaf);
+        return CpuIdResult {
+            eax: result.eax,
+            ebx: result.ebx,
+            ecx: result.ecx,
+            edx: result.edx,
+        };
     }
 }
 
@@ -49,12 +58,31 @@ pub fn rdmsr(msr: u32) -> u64 {
     }
 }
 
-/// Saves the FPU state to a 512-byte region of memory using FXSAVE.
-/// Pointer must be 16-byte aligned.
 #[inline]
 pub fn fxsave(memory: *mut u8) {
     unsafe {
         asm! ("fxsave [{0}]", in(reg) memory);
+    }
+}
+
+#[inline]
+pub fn fxrstor(memory: *const u8) {
+    unsafe {
+        asm! ("fxrstor [{0}]", in(reg) memory);
+    }
+}
+
+#[inline]
+pub fn xsave(memory: *mut u8) {
+    unsafe {
+        asm! ("xsave [{0}]", in(reg) memory);
+    }
+}
+
+#[inline]
+pub fn xrstor(memory: *const u8) {
+    unsafe {
+        asm! ("xrstor [{0}]", in(reg) memory);
     }
 }
 

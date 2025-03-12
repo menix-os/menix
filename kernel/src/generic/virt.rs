@@ -98,7 +98,7 @@ impl PageTable {
                 let mut pte_flags = VmFlags::Read
                     | VmFlags::Write
                     | VmFlags::Exec
-                    | if !self.is_user {
+                    | if self.is_user {
                         VmFlags::User
                     } else {
                         VmFlags::None
@@ -198,7 +198,7 @@ pub static KERNEL_PAGE_TABLE: Mutex<Option<PageTable>> = Mutex::new(None);
 
 /// Initialize the kernel page table and switch to it.
 pub fn init(kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
-    let mut table = PageTable::new(true);
+    let mut table = PageTable::new(false);
 
     unsafe {
         let text_start = &raw const LD_TEXT_START as VirtAddr;
@@ -270,9 +270,13 @@ unsafe extern "C" {
 }
 
 pub fn page_fault_handler(context: &Context) {
-    print!("virt: Got a page fault!\n");
     let (mut ip, mut addr) = (0, 0);
-    arch::virt::page_fault_handler(context, &mut ip, &mut addr);
+    if arch::virt::page_fault_handler(context, &mut ip, &mut addr) {
+        // TODO: Send SIGSEGV.
+        return;
+    }
+
+    print!("virt: Kernel caused a page fault!\n");
     print!("virt: IP: {}, Address: {}\n", ip, addr);
     loop {}
 }

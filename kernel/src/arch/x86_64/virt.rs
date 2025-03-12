@@ -1,4 +1,4 @@
-use super::{PhysAddr, schedule::Context};
+use super::{PhysAddr, consts, schedule::Context};
 use crate::{
     arch::VirtAddr,
     generic::virt::{PageTable, VmFlags},
@@ -121,9 +121,12 @@ pub unsafe fn set_page_table(page_table: &PageTable) {
 }
 
 /// Gets the page fault IP and accessed address.
-pub fn page_fault_handler(context: &Context, ip: &mut VirtAddr, addr: &mut VirtAddr) {
+/// Returns true if the page fault was caused by the user.
+pub fn page_fault_handler(context: &Context, ip: &mut VirtAddr, addr: &mut VirtAddr) -> bool {
     let mut cr2 = 0usize;
     unsafe { asm!("mov {cr2}, cr2", cr2 = out(reg) cr2) };
     *ip = cr2;
     *addr = context.rip as usize;
+
+    return context.cs & consts::CPL_USER as u64 == consts::CPL_USER as u64;
 }
