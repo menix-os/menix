@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["bootd", "posixd"]
+members = []
 
 [profile.dev]
 panic = "abort"

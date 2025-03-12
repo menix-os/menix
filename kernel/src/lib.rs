@@ -1,5 +1,4 @@
 #![no_std]
-#![no_main]
 #![allow(unused)]
 #![feature(negative_impls)]
 #![feature(naked_functions)]
@@ -11,5 +10,4 @@ pub mod macros;
 
 pub mod arch;
 pub mod boot;
-pub mod firmware;
 pub mod generic;

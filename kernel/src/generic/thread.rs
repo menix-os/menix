@@ -19,11 +19,9 @@ pub enum TaskState {
 
 /// Represents the atomic scheduling structure.
 #[derive(Debug)]
-pub struct Task {
+pub struct Thread {
     /// Unique identifier
     pub id: usize,
-    /// The corresponding page table.
-    pub page_table: Arc<RwLock<PageTable>>,
     /// The saved context of a thread while the thread is not running.
     pub context: Context,
     /// The current state of the thread.
@@ -31,15 +29,14 @@ pub struct Task {
 }
 
 /// Global counter to provide new task IDs.
-static TASK_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+static THREAD_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-impl Task {
-    pub fn new(page_table: Arc<RwLock<PageTable>>) -> Self {
+impl Thread {
+    pub fn new() -> Self {
         return Self {
-            id: TASK_ID_COUNTER.fetch_add(1, Relaxed),
+            id: THREAD_ID_COUNTER.fetch_add(1, Relaxed),
             context: Context::default(),
             state: TaskState::Ready,
-            page_table,
         };
     }
 }

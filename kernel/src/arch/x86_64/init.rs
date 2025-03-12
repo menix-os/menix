@@ -1,5 +1,5 @@
 use crate::{boot::BootInfo, generic::percpu::PerCpu};
-use core::arch::asm;
+use core::{arch::asm, mem::offset_of, sync::atomic::AtomicPtr};
 
 pub fn early_init() {
     super::serial::init();
@@ -7,16 +7,3 @@ pub fn early_init() {
 }
 
 pub fn init(info: &mut BootInfo) {}
-
-/// Returns the ID of this CPU.
-pub fn current_cpu() -> usize {
-    unsafe {
-        let cpu: usize;
-        asm!(
-            "mov {0}, gs:[0]",
-            out(reg) cpu,
-            options(nostack, preserves_flags),
-        );
-        return cpu;
-    }
-}

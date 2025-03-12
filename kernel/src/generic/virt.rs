@@ -1,21 +1,20 @@
-use super::{misc::align_up, phys::PhysManager};
+use super::{errno::Errno, misc::align_up, phys::PhysManager};
 use crate::arch::{self, PhysAddr, VirtAddr, schedule::Context, virt::PageTableEntry};
-use alloc::boxed::Box;
+use alloc::{boxed::Box, vec::Vec};
 use bitflags::bitflags;
 use core::{arch::asm, ptr::slice_from_raw_parts};
-use portal::error::Error;
 use spin::Mutex;
 
 // User constants
-const USER_STACK_SIZE: usize = 0x200000;
-const USER_STACK_BASE: usize = 0x00007F0000000000;
-const USER_MAP_BASE: usize = 0x0000600000000000;
+pub const USER_STACK_SIZE: usize = 0x200000;
+pub const USER_STACK_BASE: usize = 0x00007F0000000000;
+pub const USER_MAP_BASE: usize = 0x0000600000000000;
 
 // Kernel constants
-const KERNEL_STACK_SIZE: usize = 0x20000;
-const MAP_BASE: usize = 0xFFFF90000000000;
-const MEMORY_BASE: usize = 0xFFFFA0000000000;
-const MODULE_BASE: usize = 0xFFFFB0000000000;
+pub const KERNEL_STACK_SIZE: usize = 0x20000;
+pub const MAP_BASE: usize = 0xFFFF90000000000;
+pub const MEMORY_BASE: usize = 0xFFFFA0000000000;
+pub const MODULE_BASE: usize = 0xFFFFB0000000000;
 
 bitflags! {
     /// Page protection flags.
@@ -35,11 +34,19 @@ bitflags! {
     }
 }
 
+#[derive(Debug)]
+pub struct VirtualMapping {
+    pub virt: VirtAddr,
+    pub phys: PhysAddr,
+    pub size: usize,
+}
+
 /// Represents a virtual address space.
 #[derive(Debug)]
 pub struct PageTable {
     pub head: Mutex<PhysAddr>,
     pub is_user: bool,
+    pub mappings: Vec<VirtualMapping>,
 }
 
 impl PageTable {
@@ -50,6 +57,7 @@ impl PageTable {
                     .expect("Can't allocate a new page table, out of memory"),
             ),
             is_user,
+            mappings: Vec::new(),
         };
     }
 
@@ -146,8 +154,8 @@ impl PageTable {
         phys: PhysAddr,
         flags: VmFlags,
         level: usize,
-    ) -> Result<(), Error> {
-        let pte = self.get_pte(virt, true, level).ok_or(Error::NotFound)?;
+    ) -> Result<(), Errno> {
+        let pte = self.get_pte(virt, true, level).ok_or(Errno::ENOMEM)?;
         *pte = PageTableEntry::new(
             phys,
             flags
@@ -168,7 +176,7 @@ impl PageTable {
         flags: VmFlags,
         level: usize,
         length: usize,
-    ) -> Result<(), Error> {
+    ) -> Result<(), Errno> {
         let step =
             1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
         for offset in (0..length).step_by(step) {
@@ -178,7 +186,7 @@ impl PageTable {
     }
 
     /// Unmaps a page from this address space.
-    pub fn unmap(&mut self, virt: VirtAddr) -> Result<(), Error> {
+    pub fn unmap(&mut self, virt: VirtAddr) -> Result<(), Errno> {
         Ok(())
     }
 

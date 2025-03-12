@@ -5,7 +5,6 @@ use crate::{
 };
 use bitflags::bitflags;
 use core::arch::asm;
-use portal::error::Error;
 use spin::Mutex;
 
 #[repr(transparent)]
