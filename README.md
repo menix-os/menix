@@ -10,19 +10,9 @@ Menix is a modern, lightweight, pragmatic, asynchronous, modular 64-bit kernel.
 > **https://github.com/menix-os/bootstrap** instead.
 
 ### Building the kernel
-The following commmand will build the kernel:
+The following commmand will build the kernel and all drivers:
 ```sh
-cargo +nightly build --release \
-    --target toolchain/x86_64.json \
-    --manifest-path kernel/Cargo.toml
-```
-
-### Building the drivers
-The following command will build all drivers:
-```sh
-cargo +nightly build --release \
-    --target toolchain/x86_64.json \
-    --manifest-path drivers/Cargo.toml
+cargo +nightly build --release --target toolchain/x86_64.json
 ```
 
 ### Debugging

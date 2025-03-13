@@ -10,7 +10,6 @@ PHDRS
 
 SECTIONS
 {
-	. = 0xFFFFFFFF80000000;
 	LD_KERNEL_START = .;
 
 	/* Code */

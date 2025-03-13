@@ -21,14 +21,3 @@ bytemuck = { version = "1.22.0", features = ["derive"] }
 default = ["boot_limine"]
 
 boot_limine = ["dep:limine"]
-
-[profile.dev]
-panic = "abort"
-debug = true
-
-[profile.release]
-panic = "abort"
-opt-level = "z"
-debug = false
-overflow-checks = false
-strip = true

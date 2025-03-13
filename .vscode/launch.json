@@ -6,7 +6,7 @@
 			"request": "launch",
 			"name": "Debug x86_64",
 			"targetCreateCommands": [
-				"target create ${workspaceFolder}/kernel/target/x86_64/debug/menix"
+				"target create ${workspaceFolder}/target/x86_64/debug/libmenix.so"
 			],
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"
