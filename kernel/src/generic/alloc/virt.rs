@@ -1,8 +1,8 @@
-use super::{errno::Errno, misc::align_up, phys::PhysManager};
+use super::phys;
 use crate::arch::{self, PhysAddr, VirtAddr, schedule::Context, virt::PageTableEntry};
-use alloc::{boxed::Box, vec::Vec};
+use crate::generic::errno::Errno;
+use alloc::vec::Vec;
 use bitflags::bitflags;
-use core::{arch::asm, ptr::slice_from_raw_parts};
 use spin::Mutex;
 
 // User constants
@@ -37,7 +37,6 @@ bitflags! {
 #[derive(Debug)]
 pub struct VirtualMapping {
     pub virt: VirtAddr,
-    pub phys: PhysAddr,
     pub size: usize,
 }
 
@@ -53,8 +52,7 @@ impl PageTable {
     pub fn new(is_user: bool) -> Self {
         return Self {
             head: Mutex::new(
-                PhysManager::alloc_zeroed(1)
-                    .expect("Can't allocate a new page table, out of memory"),
+                phys::alloc_zeroed(1).expect("Can't allocate a new page table, out of memory"),
             ),
             is_user,
             mappings: Vec::new(),
@@ -100,8 +98,7 @@ impl PageTable {
             }
 
             unsafe {
-                let pte =
-                    (PhysManager::direct_access(current_head) as *mut PageTableEntry).add(index);
+                let pte = (phys::direct_access(current_head) as *mut PageTableEntry).add(index);
 
                 let mut pte_flags = VmFlags::Read
                     | VmFlags::Write
@@ -134,7 +131,7 @@ impl PageTable {
                         return None;
                     }
 
-                    let next_head = PhysManager::alloc_zeroed(1)?;
+                    let next_head = phys::alloc_zeroed(1)?;
                     *pte = PageTableEntry::new(next_head, pte_flags);
                     current_head = next_head;
                 }
@@ -142,9 +139,22 @@ impl PageTable {
         }
 
         unsafe {
-            let pte = (PhysManager::direct_access(current_head) as *mut PageTableEntry).add(index);
+            let pte = (phys::direct_access(current_head) as *mut PageTableEntry).add(index);
             return Some(pte.as_mut().unwrap());
         }
+    }
+
+    /// Appends a mapping to the list of mapped addresses in this space.
+    fn insert_mapping(&mut self, new_mapping: VirtualMapping) {
+        // Check if the new mapping is virtually contigious.
+        // If it is, don't allocate a new mapping, but rather update the existing entry.
+        for map in &mut self.mappings {
+            if map.virt + map.size == new_mapping.virt {
+                map.size += new_mapping.size;
+                return;
+            }
+        }
+        self.mappings.push(new_mapping);
     }
 
     /// Maps a single page in this address space.
@@ -165,6 +175,10 @@ impl PageTable {
                     VmFlags::None
                 },
         );
+        self.insert_mapping(VirtualMapping {
+            virt,
+            size: 1 << (PageTableEntry::get_page_bits() + PageTableEntry::get_level_bits() * level),
+        });
         return Ok(());
     }
 
@@ -200,6 +214,9 @@ impl PageTable {
             }
         }
     }
+
+    /// Maps physical memory to any location in virtual address space.
+    pub fn map_memory(&mut self, phys: PhysAddr, flags: VmFlags, level: usize, length: usize) {}
 }
 
 pub static KERNEL_PAGE_TABLE: Mutex<Option<PageTable>> = Mutex::new(None);

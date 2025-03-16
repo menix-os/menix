@@ -10,6 +10,8 @@ PHDRS
 
 SECTIONS
 {
+	/* Default to -2G if KASLR is off */
+	. = 0xffffffff80000000;
 	LD_KERNEL_START = .;
 
 	/* Code */

@@ -4,8 +4,11 @@ use super::{
     idt,
     tss::TaskStateSegment,
 };
-use crate::generic::{percpu::PerCpu, schedule::Scheduler};
-use crate::{arch::x86_64::asm::cpuid, generic::thread::Thread};
+use crate::{arch::x86_64::asm::cpuid, generic::sched::thread::Thread};
+use crate::{
+    arch::x86_64::tsc::{self, TscClock},
+    generic::{clock, percpu::PerCpu, sched::Scheduler},
+};
 use alloc::{boxed::Box, sync::Arc};
 use core::mem::offset_of;
 use core::{arch::asm, ffi::CStr};
@@ -45,7 +48,8 @@ impl ArchPerCpu {
 
 impl PerCpu {
     /// Returns the per-CPU data of this CPU.
-    /// Note: Accessing this data directly is inherently unsafe without first disabling preemption!
+    ///
+    /// Safety: Accessing this data directly is inherently unsafe without first disabling preemption!
     pub unsafe fn get_per_cpu() -> *mut PerCpu {
         unsafe {
             let cpu: *mut PerCpu;
@@ -60,7 +64,6 @@ impl PerCpu {
 
     /// Returns a reference to the currently running scheduler.
     pub fn get_scheduler() -> *const Scheduler {
-        // In order for this to be safe, this read must be atomic.
         unsafe {
             let scheduler: *const Scheduler;
             asm!(
@@ -79,26 +82,28 @@ impl PerCpu {
         {
             let m = cpuid(0, 0);
             let manufacturer = [m.ebx, m.edx, m.ecx, 0];
-            print!("percpu: Manufacturer = \"{}\"\n", unsafe {
-                CStr::from_bytes_until_nul(bytemuck::cast_slice(&manufacturer))
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-            });
-
-            let n0 = cpuid(0x8000_0002, 0);
-            let n1 = cpuid(0x8000_0003, 0);
-            let n2 = cpuid(0x8000_0004, 0);
+            let (n0, n1, n2) = (
+                cpuid(0x8000_0002, 0),
+                cpuid(0x8000_0003, 0),
+                cpuid(0x8000_0004, 0),
+            );
             let cpu_name = [
                 n0.eax, n0.ebx, n0.ecx, n0.edx, n1.eax, n1.ebx, n1.ecx, n1.edx, n2.eax, n2.ebx,
                 n2.ecx, n2.edx, 0,
             ];
-            print!("percpu: CPU Name = \"{}\"\n", unsafe {
-                CStr::from_bytes_until_nul(bytemuck::cast_slice(&cpu_name))
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-            });
+            unsafe {
+                print!(
+                    "percpu: {}, {}\n",
+                    CStr::from_bytes_until_nul(bytemuck::cast_slice(&manufacturer))
+                        .unwrap()
+                        .to_str()
+                        .unwrap(),
+                    CStr::from_bytes_until_nul(bytemuck::cast_slice(&cpu_name))
+                        .unwrap()
+                        .to_str()
+                        .unwrap()
+                );
+            }
         }
 
         // Load a GDT and TSS.
@@ -107,8 +112,6 @@ impl PerCpu {
         // Load the IDT.
         // Note: The IDT itself is global, but still needs to be loaded for each CPU.
         idt::set_idt();
-
-        // Mask the legacy PIC.
 
         // Enable the `syscall` extension.
         let msr = asm::rdmsr(consts::MSR_EFER);
@@ -128,30 +131,29 @@ impl PerCpu {
         // Set the flag mask to everything except the second bit (always has to be enabled).
         asm::wrmsr(consts::MSR_SFMASK, (!2u32) as u64);
 
-        print!("percpu: Enabling features:\n");
-
         // Now, start manipulating the control registers.
         let mut cr0 = 0usize;
         unsafe { asm!("mov {cr0}, cr0", cr0 = out(reg) cr0) };
         let mut cr4 = 0usize;
         unsafe { asm!("mov {cr4}, cr4", cr4 = out(reg) cr4) };
 
-        // Enable SSE.
-        cr0 &= !consts::CR0_EM; // Clear EM bit.
-        cr0 |= consts::CR0_MP;
-        cr4 |= consts::CR4_OSFXSR | consts::CR4_OSXMMEXCPT;
-        print!("percpu: + SSE\n");
-
-        // Collect all relevant CPUID infos.
+        // Collect all relevant CPUIDs.
         let cpuid1 = cpuid(1, 0);
         let cpuid7 = cpuid(7, 0);
         let cpuid13 = cpuid(13, 0);
 
+        // Enable SSE.
+        cr0 &= !consts::CR0_EM; // Clear EM bit.
+        cr0 |= consts::CR0_MP;
+        cr4 |= consts::CR4_OSFXSR | consts::CR4_OSXMMEXCPT;
+
+        print!("percpu: Enabling features:\n");
+
         // XSAVE
         if cpuid1.ecx & consts::CPUID_1C_XSAVE as u32 != 0 {
-            print!("percpu: + XSAVE\n");
             cr4 |= consts::CR4_OSXSAVE | consts::CR4_OSFXSR | consts::CR4_OSXMMEXCPT;
             unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
+            print!("percpu: + XSAVE\n");
 
             let mut xcr0 = 0u64;
             xcr0 |= 3;
@@ -194,22 +196,31 @@ impl PerCpu {
             print!("percpu: + SMAP\n");
         }
 
-        if cpuid7.ebx & consts::CPUID_7B_FSGSBASE as u32 != 0 {
-            cr4 |= consts::CR4_FSGSBASE;
-            print!("percpu: + FSGSBASE\n");
+        if cpuid1.edx & consts::CPUID_1D_TSC as u32 != 0 && tsc::setup() {
+            clock::switch(Box::new(super::tsc::TscClock));
+            cr4 |= consts::CR4_TSD;
+            print!("percpu: + RDTSC\n");
         }
 
         // Write back the modified control register values.
         unsafe { asm!("mov cr0, {cr0}", cr0 = in(reg) cr0) };
         unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
 
+        // FSGSBASE is NOT optional for us.
+        assert!(
+            cpuid7.ebx & consts::CPUID_7B_FSGSBASE as u32 != 0,
+            "FSGSBASE is required for the kernel to function, but the bit wasn't set"
+        );
+        cr4 |= consts::CR4_FSGSBASE;
+
         // Set FSGSBASE contents.
-        if cpuid7.ebx & consts::CPUID_7B_FSGSBASE as u32 != 0 {
-            // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
-            asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
-            // We will save a reference to this struct in GS_BASE.
-            asm::wrmsr(consts::MSR_GS_BASE, self as *mut PerCpu as u64);
-            asm::wrmsr(consts::MSR_FS_BASE, 0);
-        }
+        // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
+        asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
+        // We will save a reference to this struct in GS_BASE.
+        asm::wrmsr(consts::MSR_GS_BASE, self as *mut PerCpu as u64);
+        asm::wrmsr(consts::MSR_FS_BASE, 0);
+
+        // TODO: Mask the legacy PIC.
+        // TODO: Setup LAPIC.
     }
 }

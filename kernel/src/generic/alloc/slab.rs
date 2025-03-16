@@ -1,5 +1,6 @@
 // Slab allocator
 
+use super::phys;
 use crate::{
     arch::{self, PhysAddr, virt::PageTableEntry},
     generic::misc::align_up,
@@ -11,8 +12,6 @@ use core::{
     ptr::{null, null_mut, write_bytes},
 };
 use spin::Mutex;
-
-use super::phys::PhysManager;
 
 #[derive(Debug)]
 struct Slab {
@@ -46,8 +45,8 @@ impl Slab {
     fn init(&self) {
         unsafe {
             // Allocate memory for this slab.
-            let mem = PhysManager::alloc(1).expect("Out of memory");
-            let mut head = PhysManager::direct_access(mem);
+            let mem = phys::alloc(1).expect("Out of memory");
+            let mut head = phys::direct_access(mem);
 
             // Calculate the amount of bytes we need to skip in order to be able to store a reference to the slab.
             let offset = align_up(size_of::<SlabHeader>(), self.ent_size);
@@ -127,10 +126,10 @@ unsafe impl GlobalAlloc for SlabAllocator {
         let num_pages = align_up(layout.size(), page_size) / page_size;
 
         // Allocate the pages plus an additional page for metadata.
-        match PhysManager::alloc(num_pages + 1) {
+        match phys::alloc(num_pages + 1) {
             Some(mem) => unsafe {
                 // Convert the physical address to a pointer.
-                let ret = PhysManager::direct_access(mem as PhysAddr);
+                let ret = phys::direct_access(mem as PhysAddr);
 
                 // Write metadata into the first page.
                 let info = ret as *mut SlabInfo;

@@ -11,3 +11,5 @@ pub mod macros;
 pub mod arch;
 pub mod boot;
 pub mod generic;
+
+pub const MENIX_VERSION: &str = env!("CARGO_PKG_VERSION");

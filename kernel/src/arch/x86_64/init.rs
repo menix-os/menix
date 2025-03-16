@@ -1,5 +1,4 @@
-use crate::{boot::BootInfo, generic::percpu::PerCpu};
-use core::{arch::asm, mem::offset_of, sync::atomic::AtomicPtr};
+use crate::boot::BootInfo;
 
 pub fn early_init() {
     super::serial::init();

@@ -1,19 +1,12 @@
 // Per-CPU data structures.
 
-use super::{schedule::Scheduler, thread::Thread};
-use crate::{
-    arch::{self, VirtAddr, percpu::ArchPerCpu},
-    generic::{
-        phys::{self, PhysManager},
-        virt,
-    },
-};
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use super::sched::Scheduler;
+use crate::arch::{VirtAddr, percpu::ArchPerCpu};
+use alloc::boxed::Box;
 use core::{
     ptr::null_mut,
     sync::atomic::{AtomicPtr, AtomicUsize, Ordering},
 };
-use spin::Mutex;
 
 /// Processor-local information.
 #[repr(C, align(0x10))]
@@ -63,5 +56,5 @@ pub fn setup_cpu() {
     // Some fields are not generic, initialize them too.
     PerCpu::arch_setup_cpu(cpu);
 
-    print!("percpu: CPU {} is active.\n", next_id);
+    print!("percpu: Initialized CPU {}.\n", next_id);
 }

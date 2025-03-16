@@ -7,6 +7,7 @@ pub mod interrupts;
 pub mod percpu;
 pub mod schedule;
 pub mod serial;
+pub mod tsc;
 pub mod tss;
 pub mod virt;
 

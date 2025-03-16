@@ -59,6 +59,16 @@ pub fn rdmsr(msr: u32) -> u64 {
 }
 
 #[inline]
+pub fn rdtsc() -> u64 {
+    unsafe {
+        let eax: u32;
+        let edx: u32;
+        asm!("rdtsc", out("eax") eax, out("edx") edx);
+        return (eax as u64) | ((edx as u64) << 32);
+    }
+}
+
+#[inline]
 pub fn fxsave(memory: *mut u8) {
     unsafe {
         asm! ("fxsave [{0}]", in(reg) memory);

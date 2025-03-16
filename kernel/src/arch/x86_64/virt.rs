@@ -1,7 +1,7 @@
 use super::{PhysAddr, consts, schedule::Context};
 use crate::{
     arch::VirtAddr,
-    generic::virt::{PageTable, VmFlags},
+    generic::alloc::virt::{PageTable, VmFlags},
 };
 use bitflags::bitflags;
 use core::arch::asm;

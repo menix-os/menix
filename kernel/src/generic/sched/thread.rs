@@ -1,9 +1,6 @@
-use crate::arch::{schedule::Context, virt::PageTableEntry};
-use alloc::{boxed::Box, rc::Rc, sync::Arc};
+use crate::arch::{VirtAddr, schedule::Context};
+use alloc::sync::Arc;
 use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
-use spin::{Mutex, RwLock};
-
-use super::virt::PageTable;
 
 #[derive(Clone, Copy, Debug)]
 pub enum TaskState {
@@ -20,6 +17,7 @@ pub enum TaskState {
 /// Represents the atomic scheduling structure.
 #[derive(Debug)]
 pub struct Thread {
+    next: Option<Arc<Thread>>,
     /// Unique identifier
     pub id: usize,
     /// The saved context of a thread while the thread is not running.
@@ -34,9 +32,18 @@ static THREAD_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 impl Thread {
     pub fn new() -> Self {
         return Self {
+            next: None,
             id: THREAD_ID_COUNTER.fetch_add(1, Relaxed),
             context: Context::default(),
             state: TaskState::Ready,
         };
+    }
+
+    /// Creates a new thread ready for execution.
+    pub fn new_exec(entry_point: VirtAddr, stack: VirtAddr) -> Self {
+        let mut result = Self::new();
+        result.context.set_ip(entry_point);
+        result.context.set_stack(stack);
+        return result;
     }
 }

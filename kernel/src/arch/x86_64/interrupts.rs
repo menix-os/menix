@@ -1,14 +1,14 @@
-use seq_macro::seq;
-
+use super::consts::CPL_USER;
 use super::schedule::Context;
-use super::{consts::CPL_USER, gdt::Gdt};
+use crate::arch::x86_64::gdt::Gdt;
 use crate::generic::percpu::PerCpu;
 use crate::generic::syscall;
-use crate::{generic::virt::page_fault_handler, pop_all_regs, push_all_regs, swapgs_if_necessary};
-use core::{
-    arch::{asm, global_asm, naked_asm},
-    mem::offset_of,
+use crate::{
+    generic::alloc::virt::page_fault_handler, pop_all_regs, push_all_regs, swapgs_if_necessary,
 };
+use core::arch::naked_asm;
+use core::mem::offset_of;
+use seq_macro::seq;
 
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
 unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mut Context {

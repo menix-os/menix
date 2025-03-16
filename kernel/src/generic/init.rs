@@ -4,15 +4,15 @@ use crate::{
     arch::{self, PhysAddr, VirtAddr},
     boot::BootInfo,
     generic::{
-        self, elf,
-        log::{KernelLogger, Logger},
-        phys::{PhysManager, PhysMemory},
-        thread::Thread,
-        virt::{self, PageTable},
+        self,
+        alloc::{
+            phys::{self, PhysMemory},
+            virt,
+        },
+        sched::thread::Thread,
     },
 };
-use alloc::{boxed::Box, sync::Arc};
-use spin::RwLock;
+use alloc::boxed::Box;
 
 // The boot process is split into 3 stages.
 // - `early_init`: Very early calls that don't need dynamic memory allocations.
@@ -32,11 +32,7 @@ pub(crate) fn memory_init(
     kernel_phys: PhysAddr,
     kernel_virt: VirtAddr,
 ) {
-    PhysManager::init(memory_map, identity_base);
-
-    // From now on, we can save logs in memory.
-    // TODO: Deadlocks
-    // Logger::add_sink(Box::new(KernelLogger));
+    phys::init(memory_map, identity_base);
 
     print!("boot: Memory map provided by bootloder:\n");
     print!("{:^16} {:^16} {}\n", "Address", "Length", "Usage");
@@ -50,10 +46,7 @@ pub(crate) fn memory_init(
 /// Called after all info from the bootloader has been collected.
 /// Initializes all subsystems and starts all servers.
 pub(crate) fn init(info: &mut BootInfo) {
-    print!(
-        "Menix v{}\n",
-        env!("CARGO_PKG_VERSION", "0 (Not built with cargo)")
-    );
+    print!("Menix {}\n", crate::MENIX_VERSION);
 
     match info.command_line {
         Some(x) => print!("boot: Command line: \"{x}\"\n"),
@@ -75,6 +68,6 @@ pub(crate) fn init(info: &mut BootInfo) {
 
     // Load init.
     // TODO:
-
     // let init = Process::from_elf(init_path);
+    todo!();
 }

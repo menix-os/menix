@@ -62,7 +62,8 @@ impl LoggerSink for KernelLogger {
     }
 
     fn write(&mut self, input: &[u8]) {
-        KERNEL_LOGGER.lock().extend_from_slice(input);
+        let mut logger = KERNEL_LOGGER.lock();
+        logger.extend_from_slice(input);
     }
 }
 

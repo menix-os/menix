@@ -1,11 +1,11 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-use super::{
+use super::thread::Thread;
+use crate::generic::{
+    alloc::phys,
+    alloc::virt::{PageTable, VmFlags},
     elf::{self, ElfHdr, ElfPhdr},
     errno::Errno,
-    phys::PhysManager,
-    thread::Thread,
-    virt::{PageTable, VmFlags},
 };
 use alloc::vec::Vec;
 
@@ -100,7 +100,7 @@ impl Process {
                         flags |= VmFlags::Write;
                     }
 
-                    let phys = match PhysManager::alloc_bytes(phdr.p_memsz as usize) {
+                    let phys = match phys::alloc_bytes(phdr.p_memsz as usize) {
                         Some(x) => x,
                         None => return Err(Errno::ENOMEM),
                     };

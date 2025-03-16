@@ -9,7 +9,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
     unsafe { GLOBAL_LOGGERS.force_unlock() };
 
     print!(
-        "\x1b[0;31m{}\x1b[0m\n", // Print in Red
+        "\x1b[1;31m{}\x1b[0m\n", // Print in Red
         "panic: Kernel panic - Environment is unsound!"
     );
 
