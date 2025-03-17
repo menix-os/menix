@@ -4,14 +4,13 @@ use super::{
     idt,
     tss::TaskStateSegment,
 };
-use crate::{arch::x86_64::asm::cpuid, generic::sched::thread::Thread};
+use crate::{arch::x86_64::asm::cpuid, generic::clock::ClockSource};
 use crate::{
     arch::x86_64::tsc::{self, TscClock},
     generic::{clock, percpu::PerCpu, sched::Scheduler},
 };
-use alloc::{boxed::Box, sync::Arc};
-use core::mem::offset_of;
-use core::{arch::asm, ffi::CStr};
+use alloc::boxed::Box;
+use core::{arch::asm, ffi::CStr, mem::offset_of};
 
 #[derive(Debug)]
 #[repr(align(0x10))]
@@ -196,10 +195,14 @@ impl PerCpu {
             print!("percpu: + SMAP\n");
         }
 
-        if cpuid1.edx & consts::CPUID_1D_TSC as u32 != 0 && tsc::setup() {
-            clock::switch(Box::new(super::tsc::TscClock));
-            cr4 |= consts::CR4_TSD;
-            print!("percpu: + RDTSC\n");
+        if cpuid1.edx & consts::CPUID_1D_TSC as u32 != 0 {
+            match clock::switch(Box::new(super::tsc::TscClock)) {
+                Ok(x) => {
+                    cr4 |= consts::CR4_TSD;
+                    print!("percpu: + TSC\n");
+                }
+                Err(x) => warn!("percpu: Unable to setup TSC: {:?}\n", x),
+            }
         }
 
         // Write back the modified control register values.

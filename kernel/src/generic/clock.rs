@@ -12,13 +12,16 @@ pub trait ClockSource: Send {
 
     /// Gets the elapsed nanoseconds since initialization of this timer.
     fn get_elapsed_ns(&self) -> usize;
+
+    fn setup(&mut self) -> Result<(), ClockError>;
 }
 
-pub struct Clock {
-    /// The active clock source.
-    current: Option<Box<dyn ClockSource>>,
-    /// An offset to add to the read counter.
-    counter_base: usize,
+#[derive(Debug)]
+pub enum ClockError {
+    LowerPriority,
+    Unavailable,
+    InvalidConfiguration,
+    UnableToCalibrate,
 }
 
 /// Gets the elapsed nanoseconds since initialization of this timer.
@@ -31,29 +34,26 @@ pub fn get_elapsed() -> usize {
 }
 
 /// Switches to a new clock source if it is of higher priority.
-pub fn switch(mut new_source: Box<dyn ClockSource>) {
-    let clock = CLOCK.lock();
-    match &clock.current {
-        Some(x) => {
-            let prio = x.get_priority();
-            if new_source.get_priority() > prio {
-                drop(clock);
-                force_switch(new_source);
-            }
+pub fn switch(mut new_source: Box<dyn ClockSource>) -> Result<(), ClockError> {
+    // Determine if we should make the switch.
+    if let Some(x) = &CLOCK.lock().current {
+        let prio = x.get_priority();
+        if new_source.get_priority() > prio {
+            Ok(())
+        } else {
+            Err(ClockError::LowerPriority)
         }
-        None => {
-            drop(clock);
-            force_switch(new_source);
-        }
-    }
-}
+    } else {
+        Ok(())
+    }?;
 
-/// Forcefully switches to a new clock source.
-fn force_switch(mut new_source: Box<dyn ClockSource>) {
     print!(
         "clock: Switching to clock source \"{}\"\n",
         new_source.name()
     );
+
+    new_source.setup()?;
+
     // Save the current counter.
     let elapsed = get_elapsed();
     let mut clock = CLOCK.lock();
@@ -61,6 +61,7 @@ fn force_switch(mut new_source: Box<dyn ClockSource>) {
 
     new_source.reset();
     clock.current = Some(new_source);
+    return Ok(());
 }
 
 pub fn has_clock() -> bool {
@@ -71,6 +72,13 @@ pub fn has_clock() -> bool {
 pub fn wait_ns(time: usize) {
     let target = get_elapsed() + time;
     while get_elapsed() < target {}
+}
+
+struct Clock {
+    /// The active clock source.
+    current: Option<Box<dyn ClockSource>>,
+    /// An offset to add to the read counter.
+    counter_base: usize,
 }
 
 static CLOCK: Mutex<Clock> = Mutex::new(Clock {

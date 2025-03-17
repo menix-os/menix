@@ -1,14 +1,15 @@
-pub mod asm;
-pub mod consts;
-pub mod gdt;
-pub mod idt;
+mod asm;
+mod consts;
+mod gdt;
+mod idt;
 pub mod init;
 pub mod interrupts;
+mod kvmclock;
 pub mod percpu;
 pub mod schedule;
-pub mod serial;
-pub mod tsc;
-pub mod tss;
+mod serial;
+mod tsc;
+mod tss;
 pub mod virt;
 
 pub type PhysAddr = usize;
