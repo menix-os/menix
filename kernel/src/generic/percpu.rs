@@ -56,5 +56,5 @@ pub fn setup_cpu() {
     // Some fields are not generic, initialize them too.
     PerCpu::arch_setup_cpu(cpu);
 
-    print!("percpu: Initialized CPU {}.\n", next_id);
+    success!("percpu: Initialized CPU {}.\n", next_id);
 }
