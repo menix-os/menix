@@ -1,6 +1,5 @@
 use super::asm::{interrupt_disable, interrupt_enable};
 use super::consts::{CPL_KERNEL, CPL_USER};
-use super::tss::{self, TaskStateSegment};
 use crate::arch::{VirtAddr, x86_64::asm};
 use bitflags::bitflags;
 use core::arch::asm;
@@ -126,6 +125,13 @@ pub struct GdtLongDesc {
     reserved: u32,
 }
 
+#[repr(u8)]
+pub enum GdtLongType {
+    Ldt = 0x2,
+    TssAvailable = 0x9,
+    TssBusy = 0xB,
+}
+
 impl GdtLongDesc {
     const fn empty() -> Self {
         Self {
@@ -141,12 +147,18 @@ impl GdtLongDesc {
     }
 
     /// Encode a new GDT descriptor
-    const fn new(limit: u32, base: u64, access: GdtAccess, flags: GdtFlags) -> Self {
+    const fn new(
+        limit: u32,
+        base: u64,
+        access: GdtAccess,
+        long_type: GdtLongType,
+        flags: GdtFlags,
+    ) -> Self {
         Self {
             limit0: limit as u16,
             base0: base as u16,
             base1: (base >> 16) as u8,
-            access: access.bits(),
+            access: access.bits() | long_type as u8,
             limit1_flags: ((flags.bits() << 4) & 0xF0) | (((limit >> 16) as u8) & 0x0F),
             base2: (base >> 24) as u8,
             base3: (base >> 32) as u32,
@@ -159,6 +171,55 @@ impl GdtLongDesc {
 pub struct GdtRegister {
     limit: u16,
     base: *const Gdt,
+}
+
+use core::mem::size_of;
+
+#[repr(C, packed)]
+#[derive(Debug)]
+pub struct TaskStateSegment {
+    reserved0: u32,
+    pub rsp0: u64,
+    pub rsp1: u64,
+    pub rsp2: u64,
+    reserved1: u32,
+    reserved2: u32,
+    pub ist1: u64,
+    pub ist2: u64,
+    pub ist3: u64,
+    pub ist4: u64,
+    pub ist5: u64,
+    pub ist6: u64,
+    pub ist7: u64,
+    reserved3: u32,
+    reserved4: u32,
+    reserved5: u16,
+    iopb: u16,
+}
+assert_size!(TaskStateSegment, 0x68);
+
+impl TaskStateSegment {
+    pub const fn new() -> Self {
+        Self {
+            reserved0: 0,
+            rsp0: 0,
+            rsp1: 0,
+            rsp2: 0,
+            reserved1: 0,
+            reserved2: 0,
+            ist1: 0,
+            ist2: 0,
+            ist3: 0,
+            ist4: 0,
+            ist5: 0,
+            ist6: 0,
+            ist7: 0,
+            reserved3: 0,
+            reserved4: 0,
+            reserved5: 0,
+            iopb: size_of::<TaskStateSegment>() as u16,
+        }
+    }
 }
 
 pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
@@ -209,15 +270,17 @@ pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
             GdtFlags::Granularity | GdtFlags::LongMode,
         ),
         tss: GdtLongDesc::new(
-            0xFFFFF,
+            size_of::<TaskStateSegment>() as u32,
             &raw const tss as u64,
-            GdtAccess::Present | GdtAccess::Kernel | GdtAccess::Executable | GdtAccess::Accessed,
+            GdtAccess::Present | GdtAccess::Kernel,
+            GdtLongType::TssAvailable,
             GdtFlags::None,
         ),
     };
 
-    // Initialize the TSS.
-    tss::init(tss);
+    // TODO: Allocate a stack for the TSS.
+    // tss.rsp0 = ;
+    // tss.ist1 = ;
 
     // Construct a register to hold the GDT base and limit.
     let gdtr = GdtRegister {
@@ -245,6 +308,14 @@ pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
             code_seg = const offset_of!(Gdt, kernel_code),
             data_seg = const offset_of!(Gdt, kernel_data),
             lateout("rax") _ // (R)AX was modified.
+        );
+
+        // Load the TSS.
+        asm!(
+            "mov ax, {offset}",
+            "ltr ax",
+            offset = const offset_of!(Gdt, tss) as u16,
+            lateout("rax") _
         );
     }
 }

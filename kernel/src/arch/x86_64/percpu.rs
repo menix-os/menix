@@ -1,34 +1,42 @@
 use super::{
     asm, consts,
-    gdt::{self, Gdt},
+    gdt::{self, Gdt, TaskStateSegment},
     idt,
-    tss::TaskStateSegment,
 };
-use crate::{arch::x86_64::asm::cpuid, generic::clock::ClockSource};
+use crate::{
+    arch::x86_64::asm::cpuid,
+    generic::{interrupts::IrqHandlerFn, sched::thread::Thread},
+};
 use crate::{
     arch::x86_64::tsc::{self, TscClock},
-    generic::{clock, percpu::PerCpu, sched::Scheduler},
+    generic::{clock, percpu::PerCpu},
 };
 use alloc::boxed::Box;
-use core::{arch::asm, ffi::CStr, mem::offset_of};
+use core::{arch::asm, ffi::CStr, mem::offset_of, ptr::null_mut};
 
 #[derive(Debug)]
-#[repr(align(0x10))]
+#[repr(C)]
 pub struct ArchPerCpu {
     /// Processor local Global Descriptor Table.
     /// The GDT refers to a different TSS every time, so unlike the IDT it has to exist for each processor.
-    gdt: Gdt,
-    tss: TaskStateSegment,
+    pub gdt: Gdt,
+    pub tss: TaskStateSegment,
+    /// Callback functions to handle a given interrupt.
+    pub irq_handlers: [Option<IrqHandlerFn>; 256],
+    /// A map of ISRs to IRQs.
+    pub irq_map: [usize; 256],
+    /// Context passed to an IRQ handler.
+    pub irq_ctx: [*mut u8; 256],
     /// The Local APIC ID.
-    lapic_id: u64,
+    pub lapic_id: u64,
     /// Size of the FPU.
-    fpu_size: usize,
+    pub fpu_size: usize,
     /// Function called to save the FPU context.
-    fpu_save: fn(memory: *mut u8),
+    pub fpu_save: fn(memory: *mut u8),
     /// Function called to restore the FPU context.
-    fpu_restore: fn(memory: *const u8),
+    pub fpu_restore: fn(memory: *const u8),
     /// If this CPU supports the STAC/CLAC instructions.
-    can_smap: bool,
+    pub can_smap: bool,
 }
 
 impl ArchPerCpu {
@@ -36,6 +44,9 @@ impl ArchPerCpu {
         Self {
             gdt: Gdt::new(),
             tss: TaskStateSegment::new(),
+            irq_handlers: [None; 256],
+            irq_map: [0; 256],
+            irq_ctx: [null_mut(); 256],
             lapic_id: 0,
             fpu_size: 512,
             fpu_save: asm::fxsave,
@@ -49,7 +60,7 @@ impl PerCpu {
     /// Returns the per-CPU data of this CPU.
     ///
     /// Safety: Accessing this data directly is inherently unsafe without first disabling preemption!
-    pub unsafe fn get_per_cpu() -> *mut PerCpu {
+    pub unsafe fn get_per_cpu() -> &'static mut PerCpu {
         unsafe {
             let cpu: *mut PerCpu;
             asm!(
@@ -57,21 +68,21 @@ impl PerCpu {
                 cpu = out(reg) cpu,
                 options(nostack, preserves_flags),
             );
-            return cpu;
+            return cpu.as_mut().unwrap();
         }
     }
 
-    /// Returns a reference to the currently running scheduler.
-    pub fn get_scheduler() -> *const Scheduler {
+    /// Returns a reference to the currently running thread.
+    pub fn get_thread() -> *mut Thread {
         unsafe {
-            let scheduler: *const Scheduler;
+            let thread: *mut Thread;
             asm!(
-                "mov {scheduler}, gs:[{scheduler_offset}]",
-                scheduler = out(reg) scheduler,
-                scheduler_offset = const offset_of!(PerCpu, scheduler),
+                "mov {thread}, gs:[{thread_off}]",
+                thread = out(reg) thread,
+                thread_off = const offset_of!(PerCpu, thread),
                 options(nostack, preserves_flags),
             );
-            return scheduler;
+            return thread;
         }
     }
 

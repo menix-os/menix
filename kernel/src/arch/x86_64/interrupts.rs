@@ -1,4 +1,5 @@
 use super::consts::CPL_USER;
+use super::percpu;
 use super::schedule::Context;
 use crate::arch::x86_64::gdt::Gdt;
 use crate::generic::percpu::PerCpu;
@@ -13,12 +14,15 @@ use seq_macro::seq;
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
 unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mut Context {
     unsafe {
-        match (*context).isr {
+        match (*context).isr as u8 {
             0x0E => page_fault_handler(context.as_ref().unwrap()),
             0x80 => syscall_handler(context),
-            _ => {
-                print!("Got interrupt {isr}!\n");
-                loop {}
+            isr => {
+                let cpu = &PerCpu::get_per_cpu().arch;
+                match cpu.irq_handlers[isr as usize] {
+                    Some(x) => x(cpu.irq_map[isr as usize], cpu.irq_ctx[isr as usize]),
+                    None => panic!("Got an unhandled interrupt {}!", isr),
+                };
             }
         };
     }

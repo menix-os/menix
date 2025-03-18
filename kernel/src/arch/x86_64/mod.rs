@@ -9,7 +9,6 @@ pub mod percpu;
 pub mod schedule;
 mod serial;
 mod tsc;
-mod tss;
 pub mod virt;
 
 pub type PhysAddr = usize;

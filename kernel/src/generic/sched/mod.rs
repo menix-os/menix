@@ -1,7 +1,7 @@
-use alloc::{boxed::Box, sync::Arc};
-use thread::Thread;
-
 use crate::arch::schedule::Context;
+use alloc::sync::Arc;
+use core::sync::atomic::AtomicUsize;
+use thread::Thread;
 
 pub mod process;
 pub mod thread;
@@ -10,6 +10,9 @@ pub mod thread;
 pub struct Scheduler {
     /// Determines if this scheduler should be allowed to preempt the currently running task.
     do_preempt: bool,
+    /// Amount of ticks the current thread has been running for.
+    ticks_active: AtomicUsize,
+    /// The active thread on this scheduler instance.
     thread: Option<Arc<Thread>>,
 }
 
@@ -33,6 +36,7 @@ impl Scheduler {
 
     pub fn reschedule<'a>(&mut self, mut context: &'a Context) -> &'a Context {
         self.preempt_off();
+        // TODO: Reschedule
         self.preempt_on();
         return context;
     }

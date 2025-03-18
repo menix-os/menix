@@ -8,6 +8,7 @@ pub mod fb;
 pub mod firmware;
 pub mod fs;
 pub mod init;
+pub mod interrupts;
 pub mod log;
 pub mod misc;
 pub mod module;

@@ -1,31 +1,30 @@
 // Per-CPU data structures.
 
-use super::sched::Scheduler;
+use super::sched::thread::Thread;
 use crate::arch::{VirtAddr, percpu::ArchPerCpu};
-use alloc::boxed::Box;
+use alloc::{boxed::Box, sync::Arc};
 use core::{
     ptr::null_mut,
-    sync::atomic::{AtomicPtr, AtomicUsize, Ordering},
+    sync::atomic::{AtomicUsize, Ordering},
 };
+use spin::RwLock;
 
 /// Processor-local information.
-#[repr(C, align(0x10))]
+#[repr(C)]
 #[derive(Debug)]
 pub struct PerCpu {
     /// A pointer to this structure.
     pub ptr: *mut PerCpu,
     /// The ID of this CPU.
     pub id: usize,
-    /// Current thread running on this CPU.
-    pub scheduler: AtomicPtr<Scheduler>,
-    /// Stack pointer for kernel mode.
-    pub kernel_stack: *mut u8,
-    /// Stack pointer for user mode. Don't use directly.
+    /// Stack pointer for kernel mode. Only used for task switching.
+    pub kernel_stack: VirtAddr,
+    /// Stack pointer for user mode.
     pub user_stack: VirtAddr,
-    /// Amount of ticks the current thread has been running for.
-    pub ticks_active: AtomicUsize,
     /// Whether this CPU is enabled.
     pub enabled: bool,
+    /// Current thread running on this CPU.
+    pub thread: Option<Arc<RwLock<Thread>>>,
 
     /// Architecture-specific fields.
     pub arch: ArchPerCpu,
@@ -38,16 +37,13 @@ pub fn setup_cpu() {
     let next_id = CPU_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
     print!("percpu: Initializing CPU {}.\n", next_id);
 
-    // TODO: Allocate a kernel stack.
-
     let mut cpu = Box::leak(Box::new(PerCpu {
-        id: next_id,
         ptr: null_mut(),
-        scheduler: AtomicPtr::new(null_mut()),
-        kernel_stack: null_mut(),
+        id: next_id,
+        kernel_stack: 0,
         user_stack: 0,
-        ticks_active: AtomicUsize::new(0),
         enabled: true,
+        thread: None,
         arch: ArchPerCpu::new(),
     }));
 

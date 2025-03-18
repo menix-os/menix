@@ -43,6 +43,7 @@ impl ClockSource for TscClock {
         // If we have no timer (yet), the only way we can calibrate the TSC is if CPUID gives us the frequency.
         // On a normal system, this should usually never be called and is a last resort
         // since at this point we have at least the HPET timer.
+        // TODO: Also check invariant bit in CPUID.
         else if let Some(c) = cpuid {
             print!("tsc: Calibrating using CPUID 0x15.\n");
             if c.ecx != 0 && c.ebx != 0 && c.eax != 0 {
