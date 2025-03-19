@@ -2,8 +2,8 @@ use crate::{
     arch::VirtAddr,
     generic::{alloc::virt, elf},
 };
-use alloc::vec::Vec;
-use core::ffi::CStr;
+use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String};
+use core::{ffi::CStr, slice};
 use spin::Mutex;
 
 #[repr(C, packed)]
@@ -15,11 +15,11 @@ pub struct Module {
     pub num_dependencies: usize,
 }
 
-static SYMBOL_TABLE: Mutex<Vec<elf::ElfSym>> = Mutex::new(Vec::new());
+static SYMBOL_TABLE: Mutex<BTreeMap<String, elf::ElfSym>> = Mutex::new(BTreeMap::new());
 
 /// Sets up the module system.
 pub fn init() {
-    let dynsym_start = &raw const virt::LD_DYNSYM_START as *const elf::ElfSym;
+    let dynsym_start = &raw const virt::LD_DYNSYM_START;
     let dynsym_end = &raw const virt::LD_DYNSYM_END;
     let dynstr_start = &raw const virt::LD_DYNSTR_START;
     let dynstr_end = &raw const virt::LD_DYNSTR_END;
@@ -27,12 +27,27 @@ pub fn init() {
     // Add all kernel symbols to a table so we can perform dynamic linking.
     {
         let mut symbol_table = SYMBOL_TABLE.lock();
-        for symbol_idx in 0..(dynsym_end as VirtAddr - dynsym_start as VirtAddr) {
-            let symbol = unsafe { dynsym_start.add(symbol_idx) };
-            let s = unsafe { CStr::from_ptr(dynstr_start.add((*symbol).st_name as usize)) };
-            if let Ok(x) = s.to_str() {
-                if x.len() > 0 {
-                    // TODO: Add symbol
+        let symbols = unsafe {
+            slice::from_raw_parts(
+                dynsym_start as *const elf::ElfSym,
+                (dynsym_end as VirtAddr - dynsym_start as VirtAddr) / size_of::<elf::ElfSym>(),
+            )
+        };
+        let strings = unsafe {
+            slice::from_raw_parts(
+                dynstr_start,
+                dynstr_end as VirtAddr - dynstr_start as VirtAddr,
+            )
+        };
+
+        let mut idx = 0;
+        for sym in symbols {
+            let name = unsafe { CStr::from_bytes_until_nul(&strings[(*sym).st_name as usize..]) };
+            if let Ok(x) = name {
+                if let Ok(s) = x.to_str() {
+                    if s.len() > 0 {
+                        assert!(symbol_table.insert(s.to_owned(), *sym).is_none());
+                    }
                 }
             }
         }

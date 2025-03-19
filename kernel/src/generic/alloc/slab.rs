@@ -1,15 +1,17 @@
 // Slab allocator
 
-use super::phys;
+use super::{
+    phys,
+    virt::{self, KERNEL_PAGE_TABLE},
+};
 use crate::{
-    arch::{self, PhysAddr, virt::PageTableEntry},
-    generic::misc::align_up,
+    arch::{PhysAddr, VirtAddr, virt::PageTableEntry},
+    generic::misc::{align_down, align_up},
 };
 use core::{
     alloc::{GlobalAlloc, Layout},
     mem::size_of,
-    ops::Deref,
-    ptr::{null, null_mut, write_bytes},
+    ptr::{null_mut, write_bytes},
 };
 use spin::Mutex;
 
@@ -17,10 +19,10 @@ use spin::Mutex;
 struct Slab {
     /// Size of one entry.
     ent_size: usize,
-
-    head: Mutex<Option<usize>>,
+    head: Mutex<Option<VirtAddr>>,
 }
 
+#[repr(transparent)]
 struct SlabHeader {
     slab: *const Slab,
 }
@@ -44,23 +46,21 @@ impl Slab {
     /// Initializes a slab.
     fn init(&self) {
         unsafe {
-            // Allocate memory for this slab.
-            let mem = phys::alloc(1).expect("Out of memory");
-            let mut head = phys::direct_access(mem);
-
             // Calculate the amount of bytes we need to skip in order to be able to store a reference to the slab.
             let offset = align_up(size_of::<SlabHeader>(), self.ent_size);
             // That also means we need to deduct that amount here.
             let available_size = (1 << PageTableEntry::get_page_bits()) - offset;
 
+            // Allocate memory for this slab.
+            let mem = phys::alloc(1).expect("Out of memory");
+            let mut head = phys::direct_access(mem) as *mut *mut u8;
+
             // Get a reference to the start of the buffer.
             let ptr = head as *mut SlabHeader;
             // In that first entry, record a pointer to the head.
             (*ptr).slab = &raw const *self;
-            // Offset the start of the entries.
-            head = head.byte_add(offset) as *mut u8;
             // Now save that start to the slab.
-            *self.head.lock() = Some(head as usize);
+            *self.head.lock() = Some(head.byte_add(offset) as VirtAddr);
 
             let arr = head as *mut *mut u8;
             let max = available_size / self.ent_size - 1;
@@ -74,27 +74,21 @@ impl Slab {
     }
 
     fn alloc(&self) -> *mut u8 {
-        let mut head = self.head.lock();
         // Initialize the slab if not done already.
-        if head.is_none() {
-            drop(head);
+        if self.head.lock().is_none() {
             self.init();
         }
 
-        head = self.head.lock();
-        let old_free = head.unwrap() as *mut *mut u8;
-        unsafe {
-            *head = Some(*old_free as usize);
-            write_bytes(old_free, 0, self.ent_size);
+        {
+            let mut head = self.head.lock();
+            let old_free = head.unwrap() as *mut *mut u8;
+            unsafe {
+                *head = Some((*old_free) as VirtAddr);
+                write_bytes(old_free, 0, self.ent_size);
+            }
+            return old_free as *mut u8;
         }
-
-        return old_free as *mut u8;
     }
-}
-
-#[repr(C, align(4096))]
-struct SlabAllocator {
-    slabs: [Slab; 8],
 }
 
 fn find_size(size: usize) -> Option<&'static Slab> {
@@ -117,7 +111,8 @@ unsafe impl GlobalAlloc for SlabAllocator {
         let slab = find_size(layout.size());
         if let Some(s) = slab {
             // The allocation fits within our defined slabs.
-            return s.alloc();
+            // TODO: The actual slab allocation is broken.
+            //return s.alloc();
         }
 
         // The allocation won't fit within our defined slabs.
@@ -144,15 +139,38 @@ unsafe impl GlobalAlloc for SlabAllocator {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        // TODO: do deallocation
+        if ptr == null_mut() {
+            return;
+        }
+
+        if ptr as VirtAddr == align_down(ptr as VirtAddr, 1 << PageTableEntry::get_page_bits()) {
+            unsafe {
+                let info = ptr.sub(1 << PageTableEntry::get_page_bits()) as *mut SlabInfo;
+                phys::free(
+                    info as VirtAddr - PageTableEntry::get_hhdm_addr(),
+                    (*info).num_pages,
+                );
+            }
+        } else {
+            unsafe {
+                let header = align_down(ptr as VirtAddr, 1 << PageTableEntry::get_page_bits())
+                    as *mut SlabHeader;
+                // TODO:
+                //(*(*header).slab).free();
+            }
+        }
     }
+}
+
+#[repr(C, align(4096))]
+struct SlabAllocator {
+    slabs: [Slab; 8],
 }
 
 // Register the slab allocator as the global allocator.
 #[global_allocator]
 static SLAB_ALLOCATOR: SlabAllocator = SlabAllocator {
     slabs: [
-        Slab::new(8),
         Slab::new(16),
         Slab::new(32),
         Slab::new(64),
@@ -160,5 +178,6 @@ static SLAB_ALLOCATOR: SlabAllocator = SlabAllocator {
         Slab::new(256),
         Slab::new(512),
         Slab::new(1024),
+        Slab::new(2048),
     ],
 };

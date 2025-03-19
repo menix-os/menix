@@ -296,8 +296,8 @@ unsafe extern "C" {
     pub unsafe static LD_DATA_END: u8;
     pub unsafe static LD_DYNSYM_START: u8;
     pub unsafe static LD_DYNSYM_END: u8;
-    pub unsafe static LD_DYNSTR_START: i8;
-    pub unsafe static LD_DYNSTR_END: i8;
+    pub unsafe static LD_DYNSTR_START: u8;
+    pub unsafe static LD_DYNSTR_END: u8;
 }
 
 /// Abstract information about a page fault.

@@ -125,8 +125,8 @@ pub fn page_fault_handler(context: *const Context) -> *const Context {
 
         let info = PageFaultInfo {
             is_user: (*context).cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
-            ip: cr2,
-            addr: (*context).rip as usize,
+            ip: (*context).rip as usize,
+            addr: cr2,
         };
         return virt::page_fault_handler(context.as_ref().unwrap(), &info);
     }
