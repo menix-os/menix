@@ -1,12 +1,11 @@
 use super::consts::CPL_USER;
 use super::percpu;
 use super::schedule::Context;
+use super::virt::page_fault_handler;
 use crate::arch::x86_64::gdt::Gdt;
 use crate::generic::percpu::PerCpu;
 use crate::generic::syscall;
-use crate::{
-    generic::alloc::virt::page_fault_handler, pop_all_regs, push_all_regs, swapgs_if_necessary,
-};
+use crate::{pop_all_regs, push_all_regs, swapgs_if_necessary};
 use core::arch::naked_asm;
 use core::mem::offset_of;
 use seq_macro::seq;
@@ -15,7 +14,7 @@ use seq_macro::seq;
 unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mut Context {
     unsafe {
         match (*context).isr as u8 {
-            0x0E => page_fault_handler(context.as_ref().unwrap()),
+            0x0E => _ = page_fault_handler(context),
             0x80 => syscall_handler(context),
             isr => {
                 let cpu = &PerCpu::get_per_cpu().arch;
@@ -118,7 +117,7 @@ unsafe extern "C" fn interrupt_stub_internal() {
         naked_asm!(
             push_all_regs!(),           // Push all general purpose registers.
             "xor rbp, rbp",             // Zero out the base pointer since we can't trust it.
-            "mov rdi, [rsp + 0x78]",    // Load the function.
+            "mov rdi, [rsp + 0x78]",    // Load the ISR value we pushed in the stub.
             "mov rsi, rsp",             // Load the `*mut Context` as second argument.
             "call {interrupt_handler}", // Call interrupt handler.
             "mov rsp, rax",             // Restore the returned `*mut Context`.

@@ -15,8 +15,7 @@ SECTIONS
 	LD_KERNEL_START = .;
 
 	/* Code */
-	.text ALIGN(CONSTANT(MAXPAGESIZE)):
-	{
+	.text ALIGN(CONSTANT(MAXPAGESIZE)) : {
 	LD_TEXT_START = .;
 		KEEP(*(.boot.init))
 		KEEP(*(.boot))
@@ -27,12 +26,24 @@ SECTIONS
 		*(.fini)
 		*(.plt)
 		*(.plt.*)
-	LD_TEXT_END = .;
 	} :text
 
+	.dynsym : {
+		LD_DYNSYM_START = .;
+		*(.dynsym)
+		LD_DYNSYM_END = .;
+	} :text
+
+	.dynstr : {
+		LD_DYNSTR_START = .;
+		*(.dynstr)
+		LD_DYNSTR_END = .;
+	} :text
+
+	LD_TEXT_END = .;
+
 	/* Read-only data */
-	.rodata ALIGN(CONSTANT(MAXPAGESIZE)):
-	{
+	.rodata ALIGN(CONSTANT(MAXPAGESIZE)) : {
 	LD_RODATA_START = .;
 		*(.rodata)
 		*(.rodata.*)
@@ -41,24 +52,21 @@ SECTIONS
 	} :rodata
 
 	/* Read-Write data */
-	.data ALIGN(CONSTANT(MAXPAGESIZE)):
-	{
+	.data ALIGN(CONSTANT(MAXPAGESIZE)) : {
 	LD_DATA_START = .;
 		*(.data)
 		*(.data.*)
 	} :data
 
 	/* Zero-initialized memory */
-	.bss ALIGN(CONSTANT(MAXPAGESIZE)):
-	{
+	.bss ALIGN(CONSTANT(MAXPAGESIZE)) : {
 		*(.*bss)
 		*(.*bss.*)
 		*(COMMON)
 	} :data
 
 	/* Dynamic tags */
-	.dynamic :
-	{
+	.dynamic : {
 		*(.dynamic)
 	LD_DATA_END = .;
 	} :data :dynamic

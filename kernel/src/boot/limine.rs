@@ -43,7 +43,7 @@ pub static HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 pub static KERNEL_ADDR_REQUEST: ExecutableAddressRequest = ExecutableAddressRequest::new();
 
 #[unsafe(link_section = ".boot")]
-pub static KERNEL_FILE_REQUEST: ExecutableFileRequest = ExecutableFileRequest::new();
+pub static COMMAND_LINE_REQUEST: ExecutableCmdlineRequest = ExecutableCmdlineRequest::new();
 
 #[unsafe(link_section = ".boot")]
 pub static FRAMEBUFFER_REQUEST: FramebufferRequest = FramebufferRequest::new();
@@ -108,7 +108,7 @@ unsafe extern "C" fn _start() -> ! {
 
         // Convert the command line from bytes to UTF-8 if there is any.
         info.command_line = {
-            let line_buf = KERNEL_FILE_REQUEST.get_response().unwrap().file().string();
+            let line_buf = COMMAND_LINE_REQUEST.get_response().unwrap().cmdline();
             match line_buf.count_bytes() {
                 0 => None,
                 1.. => Some(line_buf.to_str().expect("Command line was not valid UTF-8")),

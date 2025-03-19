@@ -1,3 +1,5 @@
+use core::ffi::CStr;
+
 use super::phys;
 use crate::arch::{self, PhysAddr, VirtAddr, schedule::Context, virt::PageTableEntry};
 use crate::generic::errno::Errno;
@@ -284,24 +286,40 @@ pub fn init(kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
 
 // Symbols defined in the linker script so we can map ourselves in our page table.
 unsafe extern "C" {
-    unsafe static LD_KERNEL_START: u8;
-    unsafe static LD_KERNEL_END: u8;
-    unsafe static LD_TEXT_START: u8;
-    unsafe static LD_TEXT_END: u8;
-    unsafe static LD_RODATA_START: u8;
-    unsafe static LD_RODATA_END: u8;
-    unsafe static LD_DATA_START: u8;
-    unsafe static LD_DATA_END: u8;
+    pub unsafe static LD_KERNEL_START: u8;
+    pub unsafe static LD_KERNEL_END: u8;
+    pub unsafe static LD_TEXT_START: u8;
+    pub unsafe static LD_TEXT_END: u8;
+    pub unsafe static LD_RODATA_START: u8;
+    pub unsafe static LD_RODATA_END: u8;
+    pub unsafe static LD_DATA_START: u8;
+    pub unsafe static LD_DATA_END: u8;
+    pub unsafe static LD_DYNSYM_START: u8;
+    pub unsafe static LD_DYNSYM_END: u8;
+    pub unsafe static LD_DYNSTR_START: i8;
+    pub unsafe static LD_DYNSTR_END: i8;
 }
 
-pub fn page_fault_handler(context: &Context) {
-    let (mut ip, mut addr) = (0, 0);
-    if arch::virt::page_fault_handler(context, &mut ip, &mut addr) {
+/// Abstract information about a page fault.
+pub struct PageFaultInfo {
+    /// Fault caused by the user.
+    pub is_user: bool,
+    /// The instruction pointer address.
+    pub ip: VirtAddr,
+    /// The address that was attempted to access.
+    pub addr: VirtAddr,
+}
+
+/// Generic page fault handler. May reschedule and return a different context.
+pub fn page_fault_handler<'a>(context: &'a Context, info: &PageFaultInfo) -> &'a Context {
+    if info.is_user {
         // TODO: Send SIGSEGV.
-        return;
+        return context;
     }
 
-    print!("virt: Kernel caused a page fault!\n");
-    print!("virt: IP: {}, Address: {}\n", ip, addr);
+    panic!(
+        "Kernel caused an unrecoverable page fault! IP: {:#x}, Address: {:#x}",
+        info.ip, info.addr
+    );
     loop {}
 }

@@ -1,11 +1,10 @@
 use super::{PhysAddr, consts, schedule::Context};
 use crate::{
     arch::VirtAddr,
-    generic::alloc::virt::{PageTable, VmFlags},
+    generic::alloc::virt::{self, PageFaultInfo, PageTable, VmFlags},
 };
 use bitflags::bitflags;
 use core::arch::asm;
-use spin::Mutex;
 
 #[repr(transparent)]
 pub struct PageTableEntry {
@@ -119,13 +118,16 @@ pub unsafe fn set_page_table(page_table: &PageTable) {
     }
 }
 
-/// Gets the page fault IP and accessed address.
-/// Returns true if the page fault was caused by the user.
-pub fn page_fault_handler(context: &Context, ip: &mut VirtAddr, addr: &mut VirtAddr) -> bool {
+pub fn page_fault_handler(context: *const Context) -> *const Context {
     let mut cr2 = 0usize;
-    unsafe { asm!("mov {cr2}, cr2", cr2 = out(reg) cr2) };
-    *ip = cr2;
-    *addr = context.rip as usize;
+    unsafe {
+        asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
 
-    return context.cs & consts::CPL_USER as u64 == consts::CPL_USER as u64;
+        let info = PageFaultInfo {
+            is_user: (*context).cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
+            ip: cr2,
+            addr: (*context).rip as usize,
+        };
+        return virt::page_fault_handler(context.as_ref().unwrap(), &info);
+    }
 }

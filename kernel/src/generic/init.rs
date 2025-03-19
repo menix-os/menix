@@ -55,6 +55,7 @@ pub(crate) fn init(info: &mut BootInfo) {
 
     generic::firmware::init(info);
     arch::init::init(info);
+    generic::module::init();
 
     // Load all modules.
     if let Some(files) = info.files {

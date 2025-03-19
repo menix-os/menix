@@ -1,11 +1,16 @@
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 use super::thread::Thread;
-use crate::generic::{
-    alloc::phys,
-    alloc::virt::{PageTable, VmFlags},
-    elf::{self, ElfHdr, ElfPhdr},
-    errno::Errno,
+use crate::{
+    arch::VirtAddr,
+    generic::{
+        alloc::{
+            phys,
+            virt::{PageTable, VmFlags},
+        },
+        elf::{self, ElfHdr, ElfPhdr},
+        errno::Errno,
+    },
 };
 use alloc::vec::Vec;
 
@@ -77,8 +82,8 @@ impl Process {
 
         // Start by evaluating the program headers.
         let phdrs: &[ElfPhdr] = match bytemuck::try_cast_slice(
-            &data[elf_hdr.e_phoff
-                ..(elf_hdr.e_phoff + elf_hdr.e_phnum as usize * size_of::<ElfPhdr>())],
+            &data[elf_hdr.e_phoff as usize
+                ..(elf_hdr.e_phoff as usize + elf_hdr.e_phnum as usize * size_of::<ElfPhdr>())],
         ) {
             Ok(x) => x,
             Err(x) => return Err(Errno::EINVAL),
@@ -106,7 +111,7 @@ impl Process {
                     };
 
                     result.page_table.map_range(
-                        phdr.p_vaddr,
+                        phdr.p_vaddr as VirtAddr,
                         phys,
                         flags,
                         0,
@@ -118,7 +123,7 @@ impl Process {
             }
         }
 
-        main_thread.context.set_ip(elf_hdr.e_entry);
+        main_thread.context.set_ip(elf_hdr.e_entry as VirtAddr);
 
         result.threads.push(main_thread);
         return Ok(result);
