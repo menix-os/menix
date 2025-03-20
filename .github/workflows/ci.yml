@@ -15,7 +15,7 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@nightly
         with:
-          components: clippy
+          components: clippy rust-src
 
       - run: cargo build
       - run: cargo fmt --check
