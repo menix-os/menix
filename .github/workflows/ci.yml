@@ -4,15 +4,10 @@ on:
   pull_request:
     types: [opened, synchronize]
 
-env:
-  CARGO_TERM_COLOR: always
-
 jobs:
-  build_and_test:
-    name: Rust project - latest
+  build_and_check:
+    name: Rust CI
     runs-on: ubuntu-latest
-    env:
-      RUNNER_TOOL_CACHE: /toolcache
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,5 +18,4 @@ jobs:
           components: clippy
 
       - run: cargo build
-
       - run: cargo fmt --check
