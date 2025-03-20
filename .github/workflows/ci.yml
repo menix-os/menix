@@ -1,0 +1,27 @@
+name: Cargo Build & Test & Lint & Format
+
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_test:
+    name: Rust project - latest
+    runs-on: ubuntu-latest
+    env:
+      RUNNER_TOOL_CACHE: /toolcache
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: dtolnay/rust-toolchain@nightly
+        with:
+          components: clippy
+
+      - run: cargo build
+
+      - run: cargo fmt --check
