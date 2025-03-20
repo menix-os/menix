@@ -1,5 +1,6 @@
 #![no_std]
 #![allow(unused)]
+#![allow(clippy::needless_return)]
 #![feature(negative_impls)]
 #![feature(naked_functions)]
 extern crate alloc;
