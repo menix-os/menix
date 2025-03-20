@@ -61,9 +61,8 @@ pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 unsafe extern "C" fn _start() -> ! {
     init::early_init();
 
-    match BOOTLODAER_REQUEST.get_response() {
-        Some(x) => print!("boot: Loaded by {} {}\n", x.name(), x.version()),
-        None => {}
+    if let Some(x) = BOOTLODAER_REQUEST.get_response() {
+        print!("boot: Loaded by {} {}\n", x.name(), x.version())
     };
 
     // Make sure the stack size request was respected by the bootloader.
@@ -115,15 +114,9 @@ unsafe extern "C" fn _start() -> ! {
             }
         };
 
-        info.rsdp_addr = match RSDP_REQUEST.get_response() {
-            Some(x) => Some(x.address() as PhysAddr),
-            None => None,
-        };
+        info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| x.address() as PhysAddr);
 
-        info.fdt_addr = match DTB_REQUEST.get_response() {
-            Some(x) => Some(x.dtb_ptr() as *const u8),
-            None => None,
-        };
+        info.fdt_addr = DTB_REQUEST.get_response().map(|x| x.dtb_ptr() as *const u8);
 
         // Get all modules.
         let mut file_buf = Vec::new();
@@ -147,5 +140,5 @@ unsafe extern "C" fn _start() -> ! {
         init::init(&mut info);
     }
 
-    loop {}
+    unreachable!();
 }

@@ -39,6 +39,12 @@ pub struct ArchPerCpu {
     pub can_smap: bool,
 }
 
+impl Default for ArchPerCpu {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ArchPerCpu {
     pub fn new() -> Self {
         Self {
@@ -58,8 +64,8 @@ impl ArchPerCpu {
 
 impl PerCpu {
     /// Returns the per-CPU data of this CPU.
-    ///
-    /// Safety: Accessing this data directly is inherently unsafe without first disabling preemption!
+    /// # Safety
+    /// Accessing this data directly is inherently unsafe without first disabling preemption!
     pub unsafe fn get_per_cpu() -> &'static mut PerCpu {
         unsafe {
             let cpu: *mut PerCpu;
@@ -136,7 +142,7 @@ impl PerCpu {
         // Set syscall entry point.
         asm::wrmsr(
             consts::MSR_LSTAR,
-            super::interrupts::amd64_syscall_stub as u64,
+            super::interrupts::amd64_syscall_stub as usize as u64,
         );
         // Set the flag mask to everything except the second bit (always has to be enabled).
         asm::wrmsr(consts::MSR_SFMASK, (!2u32) as u64);
@@ -236,5 +242,12 @@ impl PerCpu {
 
         // TODO: Mask the legacy PIC.
         // TODO: Setup LAPIC.
+    }
+}
+
+pub fn stop_all() -> ! {
+    // TODO: This only halts the current CPU.
+    loop {
+        unsafe { asm!("cli", "hlt") };
     }
 }

@@ -26,6 +26,12 @@ pub struct Gdt {
     pub tss: GdtLongDesc,
 }
 
+impl Default for Gdt {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Gdt {
     pub const fn new() -> Self {
         Self {
@@ -197,6 +203,12 @@ pub struct TaskStateSegment {
     iopb: u16,
 }
 assert_size!(TaskStateSegment, 0x68);
+
+impl Default for TaskStateSegment {
+    fn default() -> Self {
+        Self::new()
+    }
+}
 
 impl TaskStateSegment {
     pub const fn new() -> Self {

@@ -1,13 +1,19 @@
+use core::alloc::Layout;
 use core::ffi::CStr;
+use core::str::FromStr;
 
 use crate::arch::{self, PhysAddr, VirtAddr, schedule::Context, virt::PageTableEntry};
 use crate::generic::errno::Errno;
-use crate::generic::memory;
+use crate::generic::{memory, percpu};
+use alloc::alloc::alloc_zeroed;
 use alloc::boxed::Box;
 use alloc::slice;
+use alloc::string::String;
 use alloc::vec::Vec;
 use bitflags::bitflags;
 use spin::Mutex;
+
+use super::memory::PageAlloc;
 
 // User constants
 pub const USER_STACK_SIZE: usize = 0x200000;
@@ -56,7 +62,7 @@ const PAGE_TABLE_SIZE: usize = (1 << PageTableEntry::get_page_bits()) / size_of:
 /// Represents a virtual address space.
 #[derive(Debug)]
 pub struct PageTable {
-    pub head: Mutex<Box<[PageTableEntry; PAGE_TABLE_SIZE]>>,
+    pub head: Mutex<Box<[PageTableEntry; PAGE_TABLE_SIZE], PageAlloc>>,
     pub is_user: bool,
     pub mappings: Vec<VirtualMapping>,
 }
@@ -64,8 +70,9 @@ pub struct PageTable {
 impl PageTable {
     pub fn new(is_user: bool) -> Self {
         return Self {
-            head: Mutex::new(Box::new(
-                [PageTableEntry::new(0, VmFlags::None); PAGE_TABLE_SIZE],
+            head: Mutex::new(Box::new_in(
+                [PageTableEntry::empty(); PAGE_TABLE_SIZE],
+                PageAlloc,
             )),
             is_user,
             mappings: Vec::new(),
@@ -145,12 +152,14 @@ impl PageTable {
                         return Err(VirtMapError::NeedAllocation);
                     }
 
-                    let next_head = Box::leak(Box::new(
-                        [PageTableEntry::new(0, VmFlags::None); PAGE_TABLE_SIZE],
+                    let next_head = Box::leak(Box::new_in(
+                        [PageTableEntry::empty(); PAGE_TABLE_SIZE],
+                        PageAlloc,
                     ))
                     .as_mut_ptr();
+                    // ptr::byte_sub() doesn't allow taking higher half addresses because it doesn't fit in an isize.
                     *pte = PageTableEntry::new(
-                        next_head.byte_sub(PageTableEntry::get_hhdm_addr()) as PhysAddr,
+                        next_head as VirtAddr - PageTableEntry::get_hhdm_addr(),
                         pte_flags,
                     );
                     current_head = next_head;
@@ -188,6 +197,7 @@ impl PageTable {
         level: usize,
     ) -> Result<(), VirtMapError> {
         let pte = self.get_pte(virt, true, level)?;
+
         *pte = PageTableEntry::new(
             phys,
             flags
@@ -215,6 +225,7 @@ impl PageTable {
     ) -> Result<(), VirtMapError> {
         let step =
             1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
+
         for offset in (0..length).step_by(step) {
             self.map_single(virt + offset, phys + offset, flags, level)?;
         }
@@ -265,6 +276,7 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
                 text_end - text_start,
             )
             .expect("Unable to map the text segment");
+        print!("virt: Mapped text segment.\n");
 
         table
             .map_range(
@@ -275,6 +287,7 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
                 rodata_end - rodata_start,
             )
             .expect("Unable to map the rodata segment");
+        print!("virt: Mapped rodata segment.\n");
 
         table
             .map_range(
@@ -285,6 +298,7 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
                 data_end - data_start,
             )
             .expect("Unable to map the data segment");
+        print!("virt: Mapped data segment.\n");
 
         table
             .map_range(
@@ -295,6 +309,7 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
                 PageTableEntry::get_hhdm_size(),
             )
             .expect("Unable to map identity region");
+        print!("virt: Mapped identity region.\n");
 
         // Activate the new page table.
         arch::virt::set_page_table(&table);
@@ -343,5 +358,4 @@ pub fn page_fault_handler<'a>(context: &'a Context, info: &PageFaultInfo) -> &'a
         "Kernel caused an unrecoverable page fault! IP: {:#x}, Address: {:#x}",
         info.ip, info.addr
     );
-    loop {}
 }

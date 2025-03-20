@@ -42,10 +42,10 @@ pub fn init() {
 
         let mut idx = 0;
         for sym in symbols {
-            let name = unsafe { CStr::from_bytes_until_nul(&strings[(*sym).st_name as usize..]) };
+            let name = unsafe { CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]) };
             if let Ok(x) = name {
                 if let Ok(s) = x.to_str() {
-                    if s.len() > 0 {
+                    if !s.is_empty() {
                         assert!(symbol_table.insert(s.to_owned(), *sym).is_none());
                     }
                 }

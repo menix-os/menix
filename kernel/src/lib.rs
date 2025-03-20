@@ -3,6 +3,8 @@
 #![allow(clippy::needless_return)]
 #![feature(negative_impls)]
 #![feature(naked_functions)]
+#![feature(allocator_api)]
+
 extern crate alloc;
 extern crate core;
 

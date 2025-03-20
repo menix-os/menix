@@ -1,7 +1,7 @@
 // Per-CPU data structures.
 
 use super::sched::thread::Thread;
-use crate::arch::{VirtAddr, percpu::ArchPerCpu};
+use crate::arch::{self, VirtAddr, percpu::ArchPerCpu};
 use alloc::{boxed::Box, sync::Arc};
 use core::{
     ptr::null_mut,
@@ -50,7 +50,12 @@ pub fn setup_cpu() {
     cpu.ptr = cpu;
 
     // Some fields are not generic, initialize them too.
-    PerCpu::arch_setup_cpu(cpu);
+    cpu.arch_setup_cpu();
 
     print!("percpu: Initialized CPU {}.\n", next_id);
+}
+
+/// Stops all CPUs immediately.
+pub fn stop_all() -> ! {
+    arch::percpu::stop_all();
 }

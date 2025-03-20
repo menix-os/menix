@@ -2,7 +2,11 @@ use crate::{
     arch::{PhysAddr, VirtAddr, virt::PageTableEntry},
     generic::misc::align_up,
 };
-use core::ptr::write_bytes;
+use alloc::alloc::{AllocError, Allocator};
+use core::{
+    alloc::Layout,
+    ptr::{NonNull, null, write_bytes},
+};
 use spin::Mutex;
 use talc::{ClaimOnOom, Span, Talc, Talck};
 
@@ -53,20 +57,54 @@ static ALLOCATOR: Talck<spin::Mutex<()>, ClaimOnOom> = Talc::new(unsafe {
 })
 .lock();
 
+/// Allocates data that is aligned on page boundaries.
+pub struct PageAlloc;
+unsafe impl Allocator for PageAlloc {
+    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
+        ALLOCATOR.allocate(
+            layout
+                .align_to(1 << PageTableEntry::get_page_bits())
+                .unwrap(),
+        )
+    }
+    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
+        unsafe {
+            ALLOCATOR.deallocate(
+                ptr,
+                layout
+                    .align_to(1 << PageTableEntry::get_page_bits())
+                    .unwrap(),
+            )
+        }
+    }
+}
+
 /// Initializes the physical memory manager.
 /// `temp_base`: A temporary base address which can be used to directly access physical memory.
 pub fn init(memory_map: &mut [PhysMemory], temp_base: VirtAddr) {
     let mut alloc = ALLOCATOR.lock();
     for region in memory_map {
         if region.usage == PhysMemoryUsage::Free {
-            print!("memory: Claiming memory region {:?}\n", region);
-            unsafe {
+            let actual = unsafe {
                 alloc.claim(Span::from_base_size(
                     (region.address + temp_base) as *mut u8,
                     region.length,
-                ));
+                ))
+            };
+
+            match actual {
+                Ok(x) => {
+                    if let Some((start, end)) = x.get_base_acme() {
+                        print!(
+                            "memory: Claimed memory region [{:p} - {:p}] ({:#x} bytes)\n",
+                            start,
+                            end,
+                            x.size()
+                        );
+                    }
+                }
+                Err(_) => todo!(),
             }
-            print!("memory: Claimed region {:?}\n", region);
         }
     }
     print!("memory: Initialized memory allocator.\n");

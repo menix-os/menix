@@ -46,6 +46,10 @@ bitflags! {
 }
 
 impl PageTableEntry {
+    pub const fn empty() -> Self {
+        return Self { inner: 0 };
+    }
+
     pub const fn new(address: PhysAddr, flags: VmFlags) -> Self {
         let mut result = (address & ADDR_MASK) | PageFlags::Present.bits();
 
@@ -66,6 +70,10 @@ impl PageTableEntry {
         }
 
         return Self { inner: result };
+    }
+
+    pub const fn inner(&self) -> usize {
+        return self.inner;
     }
 
     pub fn is_present(&self) -> bool {
@@ -115,11 +123,11 @@ fn flush_tlb(addr: VirtAddr) {
 pub unsafe fn set_page_table(page_table: &PageTable) {
     let table = page_table.head.lock().as_ptr();
     unsafe {
-        asm!("mov cr3, {addr}", addr = in(reg) table.byte_sub(PageTableEntry::get_hhdm_addr()));
+        asm!("mov cr3, {addr}", addr = in(reg) table as VirtAddr - PageTableEntry::get_hhdm_addr());
     }
 }
 
-pub fn page_fault_handler(context: *const Context) -> *const Context {
+pub unsafe fn page_fault_handler(context: *const Context) -> *const Context {
     let mut cr2 = 0usize;
     unsafe {
         asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);

@@ -1,6 +1,7 @@
 // Panic handler.
 
 use super::log::GLOBAL_LOGGERS;
+use crate::generic::percpu;
 use core::panic::PanicInfo;
 
 #[panic_handler]
@@ -17,5 +18,5 @@ fn panic_handler(info: &PanicInfo) -> ! {
 
     // TODO: Send signal to all processors to stop execution.
 
-    loop {}
+    percpu::stop_all();
 }

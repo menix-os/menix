@@ -29,6 +29,12 @@ pub struct Thread {
 /// Global counter to provide new task IDs.
 static THREAD_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
+impl Default for Thread {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Thread {
     pub fn new() -> Self {
         return Self {

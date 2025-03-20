@@ -47,6 +47,8 @@ unsafe extern "C" fn syscall_handler(context: *mut Context) {
 }
 
 /// Handles a syscall via AMD64 syscall/sysret instructions.
+/// # Safety
+/// Assumes that a valid stack is ready in the PerCpu block at this point.
 #[naked]
 pub unsafe extern "C" fn amd64_syscall_stub() {
     unsafe {

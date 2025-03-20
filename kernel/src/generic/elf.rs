@@ -2,7 +2,7 @@ use crate::arch;
 use bytemuck::{Pod, Zeroable};
 
 // ELF Header Identification
-pub const ELF_MAG: [u8; 4] = [0x7F, 'E' as u8, 'L' as u8, 'F' as u8];
+pub const ELF_MAG: [u8; 4] = [0x7F, b'E', b'L', b'F'];
 pub const EI_CLASS: usize = 4; // File class
 pub const EI_DATA: usize = 5; // Data encoding
 pub const EI_VERSION: usize = 6; // File version
