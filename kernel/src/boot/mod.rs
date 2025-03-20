@@ -1,6 +1,6 @@
 use crate::{
     arch::{self, PhysAddr, VirtAddr},
-    generic::alloc::phys::PhysMemory,
+    generic::memory::PhysMemory,
 };
 
 // Boot method selection. Limine is the default method.

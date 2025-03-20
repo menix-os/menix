@@ -7,8 +7,8 @@ use super::{BootFile, BootInfo};
 use crate::{
     arch::{PhysAddr, VirtAddr},
     generic::{
-        alloc::phys::{PhysMemory, PhysMemoryUsage},
         init,
+        memory::{PhysMemory, PhysMemoryUsage},
     },
 };
 use alloc::vec::Vec;

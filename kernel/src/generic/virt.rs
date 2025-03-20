@@ -1,8 +1,10 @@
 use core::ffi::CStr;
 
-use super::phys;
 use crate::arch::{self, PhysAddr, VirtAddr, schedule::Context, virt::PageTableEntry};
 use crate::generic::errno::Errno;
+use crate::generic::memory;
+use alloc::boxed::Box;
+use alloc::slice;
 use alloc::vec::Vec;
 use bitflags::bitflags;
 use spin::Mutex;
@@ -42,10 +44,19 @@ pub struct VirtualMapping {
     pub size: usize,
 }
 
+#[derive(Debug)]
+pub enum VirtMapError {
+    PageTableEntryMissing,
+    LevelOutOfRange,
+    NeedAllocation,
+}
+
+const PAGE_TABLE_SIZE: usize = (1 << PageTableEntry::get_page_bits()) / size_of::<PageTableEntry>();
+
 /// Represents a virtual address space.
 #[derive(Debug)]
 pub struct PageTable {
-    pub head: Mutex<PhysAddr>,
+    pub head: Mutex<Box<[PageTableEntry; PAGE_TABLE_SIZE]>>,
     pub is_user: bool,
     pub mappings: Vec<VirtualMapping>,
 }
@@ -53,9 +64,9 @@ pub struct PageTable {
 impl PageTable {
     pub fn new(is_user: bool) -> Self {
         return Self {
-            head: Mutex::new(
-                phys::alloc_zeroed(1).expect("Can't allocate a new page table, out of memory"),
-            ),
+            head: Mutex::new(Box::new(
+                [PageTableEntry::new(0, VmFlags::None); PAGE_TABLE_SIZE],
+            )),
             is_user,
             mappings: Vec::new(),
         };
@@ -70,15 +81,15 @@ impl PageTable {
         virt: VirtAddr,
         allocate: bool,
         target_level: usize,
-    ) -> Option<&mut PageTableEntry> {
+    ) -> Result<&mut PageTableEntry, VirtMapError> {
         let mut head = self.head.lock();
 
-        let mut current_head = *head;
+        let mut current_head = head.as_mut_ptr();
         let mut index = 0;
         let mut do_break = false;
 
         if target_level >= PageTableEntry::get_levels() - 1 {
-            return None;
+            return Err(VirtMapError::LevelOutOfRange);
         }
 
         // Traverse the page table (from highest to lowest level).
@@ -100,7 +111,7 @@ impl PageTable {
             }
 
             unsafe {
-                let pte = (phys::direct_access(current_head) as *mut PageTableEntry).add(index);
+                let pte = current_head.add(index);
 
                 let mut pte_flags = VmFlags::Read
                     | VmFlags::Write
@@ -118,31 +129,40 @@ impl PageTable {
 
                         // If the caller wanted to go further than this, tell them that it's not possible.
                         if level != target_level {
-                            return None;
+                            return Err(VirtMapError::LevelOutOfRange);
                         }
 
                         do_break = true;
                     } else {
                         // If the PTE is not large, go one level deeper.
-                        current_head = (*pte).address();
+                        current_head = ((*pte).address() + PageTableEntry::get_hhdm_addr())
+                            as *mut PageTableEntry;
                     }
                     *pte = PageTableEntry::new((*pte).address(), pte_flags);
                 } else {
                     // PTE isn't present, we have to allocate a new level.
                     if !allocate {
-                        return None;
+                        return Err(VirtMapError::NeedAllocation);
                     }
 
-                    let next_head = phys::alloc_zeroed(1)?;
-                    *pte = PageTableEntry::new(next_head, pte_flags);
+                    let next_head = Box::leak(Box::new(
+                        [PageTableEntry::new(0, VmFlags::None); PAGE_TABLE_SIZE],
+                    ))
+                    .as_mut_ptr();
+                    *pte = PageTableEntry::new(
+                        next_head.byte_sub(PageTableEntry::get_hhdm_addr()) as PhysAddr,
+                        pte_flags,
+                    );
                     current_head = next_head;
                 }
             }
         }
 
         unsafe {
-            let pte = (phys::direct_access(current_head) as *mut PageTableEntry).add(index);
-            return Some(pte.as_mut().unwrap());
+            return current_head
+                .add(index)
+                .as_mut()
+                .ok_or(VirtMapError::PageTableEntryMissing);
         }
     }
 
@@ -166,8 +186,8 @@ impl PageTable {
         phys: PhysAddr,
         flags: VmFlags,
         level: usize,
-    ) -> Result<(), Errno> {
-        let pte = self.get_pte(virt, true, level).ok_or(Errno::ENOMEM)?;
+    ) -> Result<(), VirtMapError> {
+        let pte = self.get_pte(virt, true, level)?;
         *pte = PageTableEntry::new(
             phys,
             flags
@@ -192,7 +212,7 @@ impl PageTable {
         flags: VmFlags,
         level: usize,
         length: usize,
-    ) -> Result<(), Errno> {
+    ) -> Result<(), VirtMapError> {
         let step =
             1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
         for offset in (0..length).step_by(step) {
@@ -202,7 +222,7 @@ impl PageTable {
     }
 
     /// Unmaps a page from this address space.
-    pub fn unmap(&mut self, virt: VirtAddr) -> Result<(), Errno> {
+    pub fn unmap(&mut self, virt: VirtAddr) -> Result<(), VirtMapError> {
         Ok(())
     }
 
@@ -210,8 +230,8 @@ impl PageTable {
     pub fn is_mapped(&self, virt: VirtAddr, level: usize) -> bool {
         let pte = self.get_pte(virt, false, level);
         match pte {
-            Some(x) => x.is_present(),
-            None => {
+            Ok(x) => x.is_present(),
+            Err(_) => {
                 return false;
             }
         }
@@ -224,7 +244,7 @@ impl PageTable {
 pub static KERNEL_PAGE_TABLE: Mutex<Option<PageTable>> = Mutex::new(None);
 
 /// Initialize the kernel page table and switch to it.
-pub fn init(kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
+pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
     let mut table = PageTable::new(false);
 
     unsafe {
@@ -281,6 +301,8 @@ pub fn init(kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
 
         let mut kernel_table = KERNEL_PAGE_TABLE.lock();
         *kernel_table = Some(table);
+
+        print!("virt: Switched to kernel page map.\n");
     }
 }
 

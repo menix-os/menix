@@ -1,5 +1,3 @@
-pub mod alloc;
-pub mod bitmap;
 pub mod clock;
 pub mod cmdline;
 pub mod elf;
@@ -10,9 +8,11 @@ pub mod fs;
 pub mod init;
 pub mod interrupts;
 pub mod log;
+pub mod memory;
 pub mod misc;
 pub mod module;
 pub mod panic;
 pub mod percpu;
 pub mod sched;
 pub mod syscall;
+pub mod virt;

@@ -1,6 +1,6 @@
 use crate::{
     arch::VirtAddr,
-    generic::{alloc::virt, elf},
+    generic::{elf, virt},
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String};
 use core::{ffi::CStr, slice};

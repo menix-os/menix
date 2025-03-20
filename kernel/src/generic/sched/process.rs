@@ -1,15 +1,16 @@
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{
+    error::Error,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 use super::thread::Thread;
 use crate::{
     arch::VirtAddr,
+    generic::memory,
     generic::{
-        alloc::{
-            phys,
-            virt::{PageTable, VmFlags},
-        },
         elf::{self, ElfHdr, ElfPhdr},
         errno::Errno,
+        virt::{PageTable, VmFlags},
     },
 };
 use alloc::vec::Vec;
@@ -105,10 +106,8 @@ impl Process {
                         flags |= VmFlags::Write;
                     }
 
-                    let phys = match phys::alloc_bytes(phdr.p_memsz as usize) {
-                        Some(x) => x,
-                        None => return Err(Errno::ENOMEM),
-                    };
+                    // TODO: Allocate memory.
+                    let phys = todo!();
 
                     result.page_table.map_range(
                         phdr.p_vaddr as VirtAddr,
@@ -116,7 +115,7 @@ impl Process {
                         flags,
                         0,
                         phdr.p_memsz as usize,
-                    )?;
+                    );
                 }
                 // Unknown or unhandled type. Do nothing.
                 _ => (),

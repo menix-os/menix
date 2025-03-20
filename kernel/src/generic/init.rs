@@ -5,11 +5,9 @@ use crate::{
     boot::BootInfo,
     generic::{
         self,
-        alloc::{
-            phys::{self, PhysMemory},
-            virt,
-        },
+        memory::{self, PhysMemory},
         sched::thread::Thread,
+        virt,
     },
 };
 use alloc::boxed::Box;
@@ -28,19 +26,18 @@ pub(crate) fn early_init() {
 /// All code ran after this stage can use dynamic allocations.
 pub(crate) fn memory_init(
     memory_map: &mut [PhysMemory],
-    identity_base: VirtAddr,
+    temp_hhdm: VirtAddr,
     kernel_phys: PhysAddr,
     kernel_virt: VirtAddr,
 ) {
-    phys::init(memory_map, identity_base);
-
     print!("boot: Memory map provided by bootloder:\n");
     print!("{:^16} {:^16} {}\n", "Address", "Length", "Usage");
     memory_map
         .iter()
         .for_each(|x| print!("{:>16x} {:>16x} {:?}\n", x.address, x.length, x.usage));
 
-    virt::init(kernel_phys, kernel_virt);
+    memory::init(memory_map, temp_hhdm);
+    virt::init(temp_hhdm, kernel_phys, kernel_virt);
 }
 
 /// Called after all info from the bootloader has been collected.

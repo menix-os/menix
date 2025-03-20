@@ -1,12 +1,13 @@
 use super::{PhysAddr, consts, schedule::Context};
 use crate::{
     arch::VirtAddr,
-    generic::alloc::virt::{self, PageFaultInfo, PageTable, VmFlags},
+    generic::virt::{self, PageFaultInfo, PageTable, VmFlags},
 };
 use bitflags::bitflags;
 use core::arch::asm;
 
 #[repr(transparent)]
+#[derive(Clone, Copy)]
 pub struct PageTableEntry {
     inner: PhysAddr,
 }
@@ -45,7 +46,7 @@ bitflags! {
 }
 
 impl PageTableEntry {
-    pub fn new(address: PhysAddr, flags: VmFlags) -> Self {
+    pub const fn new(address: PhysAddr, flags: VmFlags) -> Self {
         let mut result = (address & ADDR_MASK) | PageFlags::Present.bits();
 
         if flags.contains(VmFlags::User) {
@@ -112,9 +113,9 @@ fn flush_tlb(addr: VirtAddr) {
 }
 
 pub unsafe fn set_page_table(page_table: &PageTable) {
-    let table = *page_table.head.lock();
+    let table = page_table.head.lock().as_ptr();
     unsafe {
-        asm!("mov cr3, {addr}", addr = in(reg) table);
+        asm!("mov cr3, {addr}", addr = in(reg) table.byte_sub(PageTableEntry::get_hhdm_addr()));
     }
 }
 
