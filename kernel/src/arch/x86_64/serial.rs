@@ -38,5 +38,4 @@ impl LoggerSink for SerialLogger {
 
 pub fn init() {
     Logger::add_sink(Box::new(SerialLogger));
-    print!("serial: Initialized early serial output.\n");
 }

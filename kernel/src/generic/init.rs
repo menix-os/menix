@@ -6,7 +6,6 @@ use crate::{
     generic::{
         self,
         memory::{self, PhysMemory},
-        sched::thread::Thread,
         virt,
     },
 };
@@ -62,7 +61,7 @@ pub(crate) fn init(info: &mut BootInfo) {
         }
     }
 
-    print!("boot: Starting init\n");
+    print!("boot: Starting init...\n");
 
     // Load init.
     // TODO:
