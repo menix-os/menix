@@ -30,18 +30,13 @@ bitflags! {
     #[derive(Debug)]
     pub struct PageFlags: PhysAddr {
         const None = 0;
-        const Present = 1 << 0;
-        const ReadWrite = 1 << 1;
-        const UserMode = 1 << 2;
-        const WriteThrough = 1 << 3;
-        const CacheDisable = 1 << 4;
-        const Accessed = 1 << 5;
-        const Dirty = 1 << 6;
-        const Size = 1 << 7;
-        const Global = 1 << 8;
-        const Available = 1 << 9;
-        const AttributeTable = 1 << 10;
-        const ExecuteDisable = 1 << 63;
+        const Valid = 1 << 0;
+        const Read = 1 << 1;
+        const Write = 1 << 2;
+        const Execute = 1 << 3;
+        const User = 1 << 4;
+        const Global = 1 << 5;
+        const Large = 1 << 8;
     }
 }
 
@@ -51,22 +46,32 @@ impl PageTableEntry {
     }
 
     pub const fn new(address: PhysAddr, flags: VmFlags) -> Self {
-        let mut result = (address & ADDR_MASK) | PageFlags::Present.bits();
+        let mut result = address & ADDR_MASK;
 
         if flags.contains(VmFlags::User) {
-            result |= PageFlags::UserMode.bits();
+            result |= PageFlags::User.bits();
         }
 
-        if flags.contains(VmFlags::Write) {
-            result |= PageFlags::ReadWrite.bits();
+        if !flags.contains(VmFlags::Directory) {
+            if flags.contains(VmFlags::Read) {
+                result |= PageFlags::Read.bits();
+            }
+
+            if flags.contains(VmFlags::Write) {
+                result |= PageFlags::Write.bits();
+            }
+
+            if !flags.contains(VmFlags::Exec) {
+                result |= PageFlags::Execute.bits();
+            }
         }
 
-        if !flags.contains(VmFlags::Exec) {
-            result |= PageFlags::ExecuteDisable.bits();
-        }
-
-        if flags.contains(VmFlags::Large) {
-            result |= PageFlags::Size.bits();
+        if !flags.contains(VmFlags::Large) {
+            assert!(
+                !flags.contains(VmFlags::Directory),
+                "Large pages can't be directories"
+            );
+            result |= PageFlags::Large.bits();
         }
 
         return Self { inner: result };
@@ -77,11 +82,11 @@ impl PageTableEntry {
     }
 
     pub fn is_present(&self) -> bool {
-        return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Present);
+        return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Valid);
     }
 
     pub fn is_large(&self) -> bool {
-        return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Size);
+        return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Large);
     }
 
     pub fn address(&self) -> PhysAddr {
@@ -125,8 +130,15 @@ enum SatpMode {
 
 pub unsafe fn set_page_table(page_table: &PageTable) {
     let table = page_table.head.lock().as_ptr();
+
+    let mode = SatpMode::Sv48 as u64;
+    let asid = 0u64;
+    let ppn = (table as VirtAddr - PageTableEntry::get_hhdm_addr()) as u64;
+
+    let satp = ((mode & 0xf) << 60) | ((asid & 0xff) << 44) | ((ppn >> 12) & 0xf_ffff_ffff_ffff);
+
     unsafe {
-        asm!("csrw satp, {addr}", addr = in(reg) table as VirtAddr - PageTableEntry::get_hhdm_addr());
+        asm!("csrw satp, {addr}", addr = in(reg) satp);
     }
 }
 

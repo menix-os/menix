@@ -30,17 +30,19 @@ bitflags! {
     /// Page protection flags.
     #[derive(Copy, Clone)]
     pub struct VmFlags: usize {
-        const None = 0x00;
+        const None = 0;
         /// Page can be read from.
-        const Read = 0x01;
+        const Read = 1 << 0;
         /// Page can be written to.
-        const Write = 0x02;
+        const Write = 1 << 1;
         /// Page has executable code.
-        const Exec = 0x04;
+        const Exec = 1 << 2;
         /// Page can be accessed by the user.
-        const User = 0x08;
+        const User = 1 << 3;
         /// Page is a large page.
-        const Large = 0x10;
+        const Large = 1 << 4;
+        /// Page is a directory to the next level.
+        const Directory = 1 << 5;
     }
 }
 
@@ -120,9 +122,7 @@ impl PageTable {
             unsafe {
                 let pte = current_head.add(index);
 
-                let mut pte_flags = VmFlags::Read
-                    | VmFlags::Write
-                    | VmFlags::Exec
+                let mut pte_flags = VmFlags::Directory
                     | if self.is_user {
                         VmFlags::User
                     } else {

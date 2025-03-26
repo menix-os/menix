@@ -53,6 +53,10 @@ impl PageTableEntry {
     pub const fn new(address: PhysAddr, flags: VmFlags) -> Self {
         let mut result = (address & ADDR_MASK) | PageFlags::Present.bits();
 
+        if flags.contains(VmFlags::Directory) {
+            result |= PageFlags::ReadWrite.bits();
+        }
+
         if flags.contains(VmFlags::User) {
             result |= PageFlags::UserMode.bits();
         }
