@@ -48,6 +48,7 @@ SECTIONS
 		*(.rodata)
 		*(.rodata.*)
 		*(.got)
+		*(.got.*)
 	LD_RODATA_END = .;
 	} :rodata
 

@@ -52,6 +52,7 @@ pub const PT_NOTE: u32 = 0x00000004;
 pub const PT_SHLIB: u32 = 0x00000005;
 pub const PT_PHDR: u32 = 0x00000006;
 pub const PT_TLS: u32 = 0x00000007;
+pub const PT_MODULE: u32 = 0x60000000;
 
 // Program Header Flags
 pub const PF_EXECUTE: u32 = 0x01;

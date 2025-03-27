@@ -3,17 +3,8 @@ use crate::{
     generic::{elf, virt},
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String};
-use core::{ffi::CStr, slice};
+use core::{ffi::CStr, ptr::null, slice};
 use spin::Mutex;
-
-#[repr(C, packed)]
-pub struct Module {
-    pub init: fn() -> i32,
-    pub exit: Option<fn() -> i32>,
-    pub name: [u8; 64],
-    pub description: [u8; 64],
-    pub num_dependencies: usize,
-}
 
 static SYMBOL_TABLE: Mutex<BTreeMap<String, elf::ElfSym>> = Mutex::new(BTreeMap::new());
 
@@ -61,3 +52,20 @@ pub fn init() {
 
 /// Loads a module from file.
 pub fn load() {}
+
+#[macro_export]
+macro_rules! module {
+    ($name: expr, $desc: expr, $author: expr) => {
+        #[unsafe(link_section = ".mod.name")]
+        #[used]
+        static MODULE_NAME: [u8; $name.len()] = *$name;
+
+        #[unsafe(link_section = ".mod.desc")]
+        #[used]
+        static MODULE_DESC: [u8; $desc.len()] = *$desc;
+
+        #[unsafe(link_section = ".mod.author")]
+        #[used]
+        static MODULE_AUTHOR: [u8; $author.len()] = *$author;
+    };
+}
