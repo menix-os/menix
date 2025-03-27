@@ -53,24 +53,24 @@ impl PageTableEntry {
     pub const fn new(address: PhysAddr, flags: VmFlags) -> Self {
         let mut result = (address & ADDR_MASK) | PageFlags::Present.bits();
 
-        if flags.contains(VmFlags::Directory) {
-            result |= PageFlags::ReadWrite.bits();
-        }
-
         if flags.contains(VmFlags::User) {
             result |= PageFlags::UserMode.bits();
         }
 
-        if flags.contains(VmFlags::Write) {
+        if flags.contains(VmFlags::Directory) {
             result |= PageFlags::ReadWrite.bits();
-        }
+        } else {
+            if flags.contains(VmFlags::Write) {
+                result |= PageFlags::ReadWrite.bits();
+            }
 
-        if !flags.contains(VmFlags::Exec) {
-            result |= PageFlags::ExecuteDisable.bits();
-        }
+            if !flags.contains(VmFlags::Exec) {
+                result |= PageFlags::ExecuteDisable.bits();
+            }
 
-        if flags.contains(VmFlags::Large) {
-            result |= PageFlags::Size.bits();
+            if flags.contains(VmFlags::Large) {
+                result |= PageFlags::Size.bits();
+            }
         }
 
         return Self { inner: result };
