@@ -6,7 +6,8 @@
 			"request": "launch",
 			"name": "Debug x86_64",
 			"targetCreateCommands": [
-				"target create ${workspaceFolder}/target/x86_64/debug/libmenix.so"
+				"target create ${workspaceFolder}/../../build-x86_64/system-root/boot/menix-debug",
+				"settings set target.source-map /var/bootstrap-menix/src/sources/menix ${workspaceFolder}"
 			],
 			"processCreateCommands": [
 				"gdb-remote localhost:1234"
