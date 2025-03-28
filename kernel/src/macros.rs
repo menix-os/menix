@@ -4,8 +4,8 @@ macro_rules! print {
         use core::fmt::Write;
         let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
 		let current_time = $crate::generic::clock::get_elapsed();
-		writer.write_fmt(format_args!("[{:5}.{:06}] ", current_time / 1000000000, (current_time / 1000) % 1000000)).unwrap();
-		writer.write_fmt(format_args!($($arg)*)).unwrap();
+		_ = writer.write_fmt(format_args!("[{:5}.{:06}] ", current_time / 1000000000, (current_time / 1000) % 1000000));
+		_ = writer.write_fmt(format_args!($($arg)*));
     });
 }
 
@@ -15,9 +15,9 @@ macro_rules! warn {
         use core::fmt::Write;
         let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
 		let current_time = $crate::generic::clock::get_elapsed();
-		writer.write_fmt(format_args!("[{:5}.{:06}] \x1b[1;33m", current_time / 1000000000, (current_time / 1000) % 1000000)).unwrap();
-		writer.write_fmt(format_args!($($arg)*)).unwrap();
-		writer.write_str("\x1b[0m");
+		_ = writer.write_fmt(format_args!("[{:5}.{:06}] \x1b[1;33m", current_time / 1000000000, (current_time / 1000) % 1000000));
+		_ = writer.write_fmt(format_args!($($arg)*));
+		_ = writer.write_str("\x1b[0m");
     });
 }
 
@@ -27,9 +27,9 @@ macro_rules! error {
         use core::fmt::Write;
         let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
 		let current_time = $crate::generic::clock::get_elapsed();
-		writer.write_fmt(format_args!("[{:5}.{:06}] \x1b[1;31m", current_time / 1000000000, (current_time / 1000) % 1000000)).unwrap();
-		writer.write_fmt(format_args!($($arg)*)).unwrap();
-		writer.write_str("\x1b[0m");
+		_ = writer.write_fmt(format_args!("[{:5}.{:06}] \x1b[1;31m", current_time / 1000000000, (current_time / 1000) % 1000000));
+		_ = writer.write_fmt(format_args!($($arg)*));
+		_ = writer.write_str("\x1b[0m");
     });
 }
 
@@ -39,8 +39,8 @@ macro_rules! dbg {
         use core::fmt::Write;
         let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
 		let current_time = $crate::generic::clock::get_elapsed();
-		writer.write_fmt(format_args!("[{:5}.{:06}] ", current_time / 1000000000, (current_time / 1000) % 1000000)).unwrap();
-		writer.write_fmt(format_args!("{:#?}\n", $($arg)*)).unwrap();
+		_ = writer.write_fmt(format_args!("[{:5}.{:06}] ", current_time / 1000000000, (current_time / 1000) % 1000000));
+		_ = writer.write_fmt(format_args!("{:#?}\n", $($arg)*));
     });
 }
 
