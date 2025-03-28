@@ -131,7 +131,7 @@ impl PageTable {
 
                 if (*pte).is_present() {
                     // If this PTE is a large page, it already contains the final address. Don't continue.
-                    if (*pte).is_large() {
+                    if !(*pte).is_directory() {
                         pte_flags |= VmFlags::Large;
 
                         // If the caller wanted to go further than this, tell them that it's not possible.

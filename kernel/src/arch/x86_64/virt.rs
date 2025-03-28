@@ -84,8 +84,8 @@ impl PageTableEntry {
         return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Present);
     }
 
-    pub fn is_large(&self) -> bool {
-        return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Size);
+    pub fn is_directory(&self) -> bool {
+        return !PageFlags::from_bits_retain(self.inner).contains(PageFlags::Size);
     }
 
     pub fn address(&self) -> PhysAddr {

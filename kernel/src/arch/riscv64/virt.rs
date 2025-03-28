@@ -36,7 +36,6 @@ bitflags! {
         const Execute = 1 << 3;
         const User = 1 << 4;
         const Global = 1 << 5;
-        const Large = 1 << 8;
     }
 }
 
@@ -46,7 +45,7 @@ impl PageTableEntry {
     }
 
     pub const fn new(address: PhysAddr, flags: VmFlags) -> Self {
-        let mut result = address & ADDR_MASK;
+        let mut result = address & ADDR_MASK | PageFlags::Valid.bits();
 
         if flags.contains(VmFlags::User) {
             result |= PageFlags::User.bits();
@@ -61,17 +60,9 @@ impl PageTableEntry {
                 result |= PageFlags::Write.bits();
             }
 
-            if !flags.contains(VmFlags::Exec) {
+            if flags.contains(VmFlags::Exec) {
                 result |= PageFlags::Execute.bits();
             }
-        }
-
-        if !flags.contains(VmFlags::Large) {
-            assert!(
-                !flags.contains(VmFlags::Directory),
-                "Large pages can't be directories"
-            );
-            result |= PageFlags::Large.bits();
         }
 
         return Self { inner: result };
@@ -85,8 +76,9 @@ impl PageTableEntry {
         return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Valid);
     }
 
-    pub fn is_large(&self) -> bool {
-        return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Large);
+    pub fn is_directory(&self) -> bool {
+        return !PageFlags::from_bits_retain(self.inner)
+            .contains(PageFlags::Read | PageFlags::Write | PageFlags::Execute);
     }
 
     pub fn address(&self) -> PhysAddr {
