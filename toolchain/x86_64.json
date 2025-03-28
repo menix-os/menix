@@ -17,5 +17,7 @@
 	"executables": true,
 	"disable-redzone": true,
 	"emit-debug-gdb-scripts": true,
-	"frame-pointer": "always"
+	"frame-pointer": "always",
+	"dll-prefix": "",
+	"dll-suffix": ".kso"
 }

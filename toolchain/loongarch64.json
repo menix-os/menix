@@ -13,5 +13,7 @@
 	"relocation-model": "pic",
 	"target-pointer-width": "64",
 	"position-independent-executables": true,
-	"dynamic-linking": true
+	"dynamic-linking": true,
+	"dll-prefix": "",
+	"dll-suffix": ".kso"
 }

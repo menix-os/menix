@@ -1,10 +1,13 @@
 #![no_std]
 
-pub use menix;
 use menix::{module, print};
 
-module!(b"example", b"Example description", b"John Doe");
+module!(
+    "Example module which prints \"Hello World\" to the log",
+    "John Doe",
+    main
+);
 
-pub extern "C" fn _start() {
-    print!("Hello from the example!\n");
+pub fn main() {
+    print!("Hello, world!\n");
 }

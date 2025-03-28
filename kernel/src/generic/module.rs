@@ -55,17 +55,51 @@ pub fn load() {}
 
 #[macro_export]
 macro_rules! module {
-    ($name: expr, $desc: expr, $author: expr) => {
-        #[unsafe(link_section = ".mod.name")]
+    ($desc: expr, $auth: expr, $entry: ident) => {
+        const MODULE_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+        #[unsafe(link_section = ".mod.vers")]
         #[used]
-        static MODULE_NAME: [u8; $name.len()] = *$name;
+        static MODULE_VERS: [u8; MODULE_VERSION.len()] = {
+            let mut buf = [0u8; MODULE_VERSION.len()];
+            let src = MODULE_VERSION.as_bytes();
+            let mut idx = 0;
+            while idx < src.len() {
+                buf[idx] = src[idx];
+                idx += 1;
+            }
+            buf
+        };
 
         #[unsafe(link_section = ".mod.desc")]
         #[used]
-        static MODULE_DESC: [u8; $desc.len()] = *$desc;
+        static MODULE_DESC: [u8; $desc.len()] = {
+            let mut buf = [0u8; $desc.len()];
+            let src = $desc.as_bytes();
+            let mut idx = 0;
+            while idx < src.len() {
+                buf[idx] = src[idx];
+                idx += 1;
+            }
+            buf
+        };
 
-        #[unsafe(link_section = ".mod.author")]
+        #[unsafe(link_section = ".mod.auth")]
         #[used]
-        static MODULE_AUTHOR: [u8; $author.len()] = *$author;
+        static MODULE_AUTH: [u8; $auth.len()] = {
+            let mut buf = [0u8; $auth.len()];
+            let src = $auth.as_bytes();
+            let mut idx = 0;
+            while idx < src.len() {
+                buf[idx] = src[idx];
+                idx += 1;
+            }
+            buf
+        };
+
+        #[unsafe(no_mangle)]
+        unsafe extern "C" fn _start() {
+            $entry();
+        }
     };
 }

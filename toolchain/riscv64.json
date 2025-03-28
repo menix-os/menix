@@ -15,5 +15,7 @@
 	"max-atomic-width": 64,
 	"os": "none",
 	"position-independent-executables": true,
-	"target-pointer-width": "64"
+	"target-pointer-width": "64",
+	"dll-prefix": "",
+	"dll-suffix": ".kso"
 }
