@@ -1,6 +1,8 @@
 use crate::generic::log::GLOBAL_LOGGERS;
 use core::{fmt::Write, ptr::slice_from_raw_parts};
 
+use super::errno::Errno;
+
 const EXIT: usize = 0;
 const UNAME: usize = 1;
 const SAVE_TLS: usize = 2;
@@ -89,10 +91,7 @@ pub fn invoke(
     a4: usize,
     a5: usize,
 ) -> (usize, usize) {
-    let mut result_val = 0;
-    let mut result_err = 0;
-
-    match num {
+    let result: Result<usize, Errno> = match num {
         EXIT => todo!(),
         UNAME => todo!(),
         SAVE_TLS => todo!(),
@@ -170,11 +169,17 @@ pub fn invoke(
         SETHOSTNAME => todo!(),
         SCHED_SET_AFFINITY => todo!(),
         SCHED_GET_AFFINITY => todo!(),
-        _ => print!(
-            "syscall: Unknown syscall 0x{:016x} requested by user program\n",
-            num
-        ),
-    }
+        _ => {
+            print!(
+                "syscall: Unknown syscall {:#x} requested by user program\n",
+                num
+            );
+            Err(Errno::ENOSYS)
+        }
+    };
 
-    return (result_val, result_err);
+    match result {
+        Ok(x) => return (x as usize, 0),
+        Err(x) => return (0, x as usize),
+    }
 }

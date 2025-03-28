@@ -11,7 +11,7 @@ use alloc::slice;
 use alloc::string::String;
 use alloc::vec::Vec;
 use bitflags::bitflags;
-use spin::Mutex;
+use spin::{Mutex, RwLock};
 
 use super::memory::PageAlloc;
 
@@ -64,18 +64,26 @@ const PAGE_TABLE_SIZE: usize = (1 << PageTableEntry::get_page_bits()) / size_of:
 /// Represents a virtual address space.
 #[derive(Debug)]
 pub struct PageTable {
-    pub head: Mutex<Box<[PageTableEntry; PAGE_TABLE_SIZE], PageAlloc>>,
+    pub head: Mutex<Option<Box<[PageTableEntry; PAGE_TABLE_SIZE], PageAlloc>>>,
     pub is_user: bool,
     pub mappings: Vec<VirtualMapping>,
 }
 
 impl PageTable {
+    const fn new_empty(is_user: bool) -> Self {
+        return Self {
+            head: Mutex::new(None),
+            is_user,
+            mappings: Vec::new(),
+        };
+    }
+
     pub fn new(is_user: bool) -> Self {
         return Self {
-            head: Mutex::new(Box::new_in(
+            head: Mutex::new(Some(Box::new_in(
                 [PageTableEntry::empty(); PAGE_TABLE_SIZE],
                 PageAlloc,
-            )),
+            ))),
             is_user,
             mappings: Vec::new(),
         };
@@ -92,6 +100,10 @@ impl PageTable {
         target_level: usize,
     ) -> Result<&mut PageTableEntry, VirtMapError> {
         let mut head = self.head.lock();
+        let mut head = match &mut *head {
+            Some(x) => x,
+            None => &mut Box::new_in([PageTableEntry::empty(); PAGE_TABLE_SIZE], PageAlloc),
+        };
 
         let mut current_head = head.as_mut_ptr();
         let mut index = 0;
@@ -237,6 +249,11 @@ impl PageTable {
         Ok(())
     }
 
+    /// Unmaps a range from this address space.
+    pub fn unmap_range(&mut self, virt: VirtAddr, len: usize) -> Result<(), VirtMapError> {
+        Ok(())
+    }
+
     /// Checks if the address (may be unaligned) is mapped in this address space.
     pub fn is_mapped(&self, virt: VirtAddr, level: usize) -> bool {
         let pte = self.get_pte(virt, false, level);
@@ -249,10 +266,19 @@ impl PageTable {
     }
 
     /// Maps physical memory to any location in virtual address space.
-    pub fn map_memory(&mut self, phys: PhysAddr, flags: VmFlags, level: usize, length: usize) {}
+    pub fn map_memory(
+        &mut self,
+        phys: PhysAddr,
+        flags: VmFlags,
+        level: usize,
+        length: usize,
+    ) -> *mut u8 {
+        // Get next free memory region.
+        todo!();
+    }
 }
 
-pub static KERNEL_PAGE_TABLE: Mutex<Option<PageTable>> = Mutex::new(None);
+pub static KERNEL_PAGE_TABLE: RwLock<PageTable> = RwLock::new(PageTable::new_empty(false));
 
 /// Initialize the kernel page table and switch to it.
 pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
@@ -314,8 +340,8 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
         // Activate the new page table.
         arch::virt::set_page_table(&table);
 
-        let mut kernel_table = KERNEL_PAGE_TABLE.lock();
-        *kernel_table = Some(table);
+        let mut kernel_table = KERNEL_PAGE_TABLE.write();
+        *kernel_table = table;
 
         print!("virt: Switched to kernel page map.\n");
     }

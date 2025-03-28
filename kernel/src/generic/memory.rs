@@ -1,12 +1,6 @@
-use crate::{
-    arch::{PhysAddr, VirtAddr, virt::PageTableEntry},
-    generic::misc::align_up,
-};
+use crate::arch::{PhysAddr, VirtAddr, virt::PageTableEntry};
 use alloc::alloc::{AllocError, Allocator};
-use core::{
-    alloc::Layout,
-    ptr::{NonNull, null, write_bytes},
-};
+use core::{alloc::Layout, ptr::NonNull};
 use spin::Mutex;
 use talc::{ClaimOnOom, Span, Talc, Talck};
 
