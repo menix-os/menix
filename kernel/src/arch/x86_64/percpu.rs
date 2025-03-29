@@ -135,9 +135,8 @@ impl PerCpu {
         // Bits 32-47 are kernel segment base, Bits 48-63 are user segment base. Lower 32 bits (EIP) are unused.
         asm::wrmsr(
             consts::MSR_STAR,
-            ((offset_of!(Gdt, kernel_code))
-                | ((offset_of!(Gdt, user_code) | consts::CPL_USER as usize) << 16) << 32)
-                as u64,
+            ((offset_of!(Gdt, user_code) | consts::CPL_USER as usize) as u64) << 48
+                | (offset_of!(Gdt, kernel_code) as u64) << 32,
         );
         // Set syscall entry point.
         asm::wrmsr(
