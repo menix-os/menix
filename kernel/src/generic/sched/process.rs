@@ -10,7 +10,7 @@ use crate::{
     generic::{
         elf::{self, ElfHdr, ElfPhdr},
         errno::Errno,
-        virt::{PageTable, VmFlags},
+        memory::virt::{PageTable, VmFlags},
     },
 };
 use alloc::vec::Vec;

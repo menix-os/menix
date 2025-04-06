@@ -1,7 +1,7 @@
 use super::{PhysAddr, schedule::Context};
 use crate::{
     arch::VirtAddr,
-    generic::virt::{self, PageFaultInfo, PageTable, VmFlags},
+    generic::memory::virt::{self, PageFaultInfo, PageTable, VmFlags},
 };
 use bitflags::bitflags;
 use core::arch::asm;
@@ -121,7 +121,12 @@ enum SatpMode {
 }
 
 pub unsafe fn set_page_table(page_table: &PageTable) {
-    let table = page_table.head.lock().as_ptr();
+    let table = page_table
+        .head
+        .lock()
+        .as_ref()
+        .expect("Page table should have been allocated")
+        .as_ptr();
 
     let mode = SatpMode::Sv48 as u64;
     let asid = 0u64;

@@ -1,6 +1,6 @@
 use crate::{
     arch::VirtAddr,
-    generic::{elf, virt},
+    generic::{elf, memory::virt},
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String};
 use core::{ffi::CStr, ptr::null, slice};
@@ -50,7 +50,7 @@ pub fn init() {
     );
 }
 
-/// Loads a module from file.
+/// Loads a module from an ELF in memory.
 pub fn load() {}
 
 #[macro_export]

@@ -4,6 +4,9 @@
 #![feature(negative_impls)]
 #![feature(naked_functions)]
 #![feature(allocator_api)]
+// Needed for volatile memmove
+#![allow(internal_features)]
+#![feature(core_intrinsics)]
 
 extern crate alloc;
 extern crate core;

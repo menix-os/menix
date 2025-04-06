@@ -4,9 +4,8 @@ use crate::{
     arch::{self, PhysAddr, VirtAddr},
     boot::BootInfo,
     generic::{
-        self,
-        memory::{self, PhysMemory},
-        virt,
+        self, fbcon,
+        memory::{self, PhysMemory, virt},
     },
 };
 use alloc::boxed::Box;
@@ -52,6 +51,11 @@ pub(crate) fn init(info: &mut BootInfo) {
     generic::firmware::init(info);
     arch::init::init(info);
     generic::module::init();
+
+    if let Some(x) = &info.frame_buffer {
+        fbcon::init(x.clone());
+        print!("boot: Initialized framebuffer.\n");
+    }
 
     // Load all modules.
     if let Some(files) = info.files {

@@ -1,7 +1,7 @@
 use super::{PhysAddr, consts, schedule::Context};
 use crate::{
     arch::VirtAddr,
-    generic::virt::{self, PageFaultInfo, PageTable, VmFlags},
+    generic::memory::virt::{self, PageFaultInfo, PageTable, VmFlags},
 };
 use bitflags::bitflags;
 use core::arch::asm;
@@ -76,7 +76,7 @@ impl PageTableEntry {
         return Self { inner: result };
     }
 
-    pub const fn inner(&self) -> usize {
+    pub const fn inner(&self) -> PhysAddr {
         return self.inner;
     }
 
@@ -104,7 +104,7 @@ impl PageTableEntry {
         return 12;
     }
 
-    pub const fn get_hhdm_addr() -> usize {
+    pub const fn get_hhdm_addr() -> VirtAddr {
         return 0xffff_8000_0000_0000;
     }
 
@@ -143,8 +143,8 @@ pub unsafe fn page_fault_handler(context: *const Context) -> *const Context {
 
         let info = PageFaultInfo {
             is_user: (*context).cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
-            ip: (*context).rip as usize,
-            addr: cr2,
+            ip: (*context).rip as VirtAddr,
+            addr: cr2 as VirtAddr,
         };
         return virt::page_fault_handler(context.as_ref().unwrap(), &info);
     }

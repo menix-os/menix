@@ -4,6 +4,8 @@ use core::{alloc::Layout, ptr::NonNull};
 use spin::Mutex;
 use talc::{ClaimOnOom, Span, Talc, Talck};
 
+pub mod virt;
+
 /// Describes how a memory region is used.
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 pub enum PhysMemoryUsage {
@@ -78,27 +80,29 @@ unsafe impl Allocator for PageAlloc {
 pub fn init(memory_map: &mut [PhysMemory], temp_base: VirtAddr) {
     let mut alloc = ALLOCATOR.lock();
     for region in memory_map {
-        if region.usage == PhysMemoryUsage::Free {
-            let actual = unsafe {
-                alloc.claim(Span::from_base_size(
-                    (region.address + temp_base) as *mut u8,
-                    region.length,
-                ))
-            };
+        if region.usage != PhysMemoryUsage::Free {
+            continue;
+        }
 
-            match actual {
-                Ok(x) => {
-                    if let Some((start, end)) = x.get_base_acme() {
-                        print!(
-                            "memory: Claimed memory region [{:p} - {:p}] ({:#x} bytes)\n",
-                            start,
-                            end,
-                            x.size()
-                        );
-                    }
+        let actual = unsafe {
+            alloc.claim(Span::from_base_size(
+                (region.address + temp_base) as *mut u8,
+                region.length,
+            ))
+        };
+
+        match actual {
+            Ok(x) => {
+                if let Some((start, end)) = x.get_base_acme() {
+                    print!(
+                        "memory: Claimed memory region [{:p} - {:p}] ({:#x} bytes)\n",
+                        start,
+                        end,
+                        x.size()
+                    );
                 }
-                Err(_) => todo!(),
             }
+            Err(_) => todo!(),
         }
     }
     print!("memory: Initialized memory allocator.\n");

@@ -1,3 +1,5 @@
+pub mod primitive;
+
 /// Aligns a value to the next higher multiple of `alignment`.
 pub const fn align_up(value: usize, alignment: usize) -> usize {
     return value.div_ceil(alignment) * alignment;

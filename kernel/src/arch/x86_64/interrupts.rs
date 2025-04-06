@@ -32,6 +32,7 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mu
 unsafe extern "C" fn syscall_handler(context: *mut Context) {
     unsafe {
         // Arguments use the SYSV C ABI.
+        // Except for a3, since RCX is needed for sysret, we need a different register.
         let result = syscall::invoke(
             (*context).rax as usize,
             (*context).rdi as usize,
@@ -88,7 +89,7 @@ pub unsafe extern "C" fn amd64_syscall_stub() {
 // Interrupt stub generation.
 
 // There are some interrupts which generate an error code on the stack, while others do not.
-// We fix this by just pushing 0 for those that don't generate an error code.
+// We normalize this by just pushing 0 for those that don't generate an error code.
 seq! { N in 0..256 {
     #[naked]
     pub(crate) unsafe extern "C" fn interrupt_stub~N() {

@@ -1,19 +1,13 @@
-use core::alloc::Layout;
-use core::ffi::CStr;
-use core::str::FromStr;
-
+use super::PageAlloc;
 use crate::arch::{self, PhysAddr, VirtAddr, schedule::Context, virt::PageTableEntry};
-use crate::generic::errno::Errno;
-use crate::generic::{memory, percpu};
-use alloc::alloc::alloc_zeroed;
 use alloc::boxed::Box;
-use alloc::slice;
-use alloc::string::String;
 use alloc::vec::Vec;
 use bitflags::bitflags;
+use core::{
+    marker::PhantomData,
+    ops::{Add, Deref},
+};
 use spin::{Mutex, RwLock};
-
-use super::memory::PageAlloc;
 
 // User constants
 pub const USER_STACK_SIZE: usize = 0x200000;
@@ -273,8 +267,9 @@ impl PageTable {
         level: usize,
         length: usize,
     ) -> *mut u8 {
-        // Get next free memory region.
-        todo!();
+        // TODO: Get next free memory region.
+        warn!("map_memory is todo, returning HHDM memory.\n");
+        return (PageTableEntry::get_hhdm_addr() + phys) as *mut u8;
     }
 }
 
@@ -344,6 +339,36 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
         *kernel_table = table;
 
         print!("virt: Switched to kernel page map.\n");
+    }
+}
+
+/// Wraps a *T from a different address space.
+pub struct ForeignPtr<'a, T> {
+    page_table: &'a PageTable,
+    addr: VirtAddr,
+    _p: PhantomData<T>,
+}
+
+impl<'a, T> ForeignPtr<'a, T> {
+    pub const fn new(page_table: &'a PageTable, addr: VirtAddr) -> Self {
+        Self {
+            page_table,
+            addr,
+            _p: PhantomData,
+        }
+    }
+
+    /// Gets the numeric value of this pointer.
+    pub const fn value(&self) -> VirtAddr {
+        return self.addr;
+    }
+}
+
+impl<'a, T> Deref for ForeignPtr<'a, T> {
+    type Target = T;
+
+    fn deref(&self) -> &Self::Target {
+        todo!()
     }
 }
 

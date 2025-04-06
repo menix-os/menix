@@ -7,6 +7,7 @@ use super::{BootFile, BootInfo};
 use crate::{
     arch::{PhysAddr, VirtAddr},
     generic::{
+        fbcon::{FbColorBits, FrameBuffer},
         init,
         memory::{PhysMemory, PhysMemoryUsage},
     },
@@ -28,7 +29,7 @@ pub static BASE_REVISION: BaseRevision = BaseRevision::new();
 pub static END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
 
 #[unsafe(link_section = ".boot")]
-pub static BOOTLODAER_REQUEST: BootloaderInfoRequest = BootloaderInfoRequest::new();
+pub static BOOTLOADER_REQUEST: BootloaderInfoRequest = BootloaderInfoRequest::new();
 
 #[unsafe(link_section = ".boot")]
 pub static STACK_SIZE: StackSizeRequest = StackSizeRequest::new().with_size(256 * 1024); // We want 256 KiB of stack.
@@ -61,8 +62,12 @@ pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 unsafe extern "C" fn _start() -> ! {
     init::early_init();
 
-    if let Some(x) = BOOTLODAER_REQUEST.get_response() {
-        print!("boot: Loaded by {} {}\n", x.name(), x.version())
+    if let Some(x) = BOOTLOADER_REQUEST.get_response() {
+        print!(
+            "boot: Booting with Limine protocol by {} {}\n",
+            x.name(),
+            x.version()
+        )
     };
 
     // Make sure the stack size request was respected by the bootloader.
@@ -120,8 +125,8 @@ unsafe extern "C" fn _start() -> ! {
 
         // Get all modules.
         let mut file_buf = Vec::new();
-        if let Some(reponse) = MODULE_REQUEST.get_response() {
-            for file in reponse.modules() {
+        if let Some(response) = MODULE_REQUEST.get_response() {
+            for file in response.modules() {
                 file_buf.push(BootFile {
                     data: unsafe {
                         slice_from_raw_parts(file.addr(), file.size() as usize)
@@ -135,6 +140,30 @@ unsafe extern "C" fn _start() -> ! {
                 });
             }
             info.files = Some(&file_buf);
+        }
+
+        if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
+            if let Some(fb) = response.framebuffers().next() {
+                info.frame_buffer = Some(FrameBuffer {
+                    screen: fb.addr(),
+                    width: fb.width() as usize,
+                    height: fb.height() as usize,
+                    pitch: fb.pitch() as usize,
+                    cpp: fb.bpp() as usize / 8,
+                    red: FbColorBits {
+                        offset: fb.red_mask_shift(),
+                        size: fb.red_mask_size(),
+                    },
+                    green: FbColorBits {
+                        offset: fb.green_mask_shift(),
+                        size: fb.green_mask_size(),
+                    },
+                    blue: FbColorBits {
+                        offset: fb.blue_mask_shift(),
+                        size: fb.blue_mask_size(),
+                    },
+                });
+            }
         }
 
         init::init(&mut info);

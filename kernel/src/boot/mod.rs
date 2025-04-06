@@ -1,6 +1,6 @@
 use crate::{
     arch::{self, PhysAddr, VirtAddr},
-    generic::memory::PhysMemory,
+    generic::{fbcon::FrameBuffer, memory::PhysMemory},
 };
 
 // Boot method selection. Limine is the default method.
@@ -24,6 +24,8 @@ pub struct BootInfo<'a> {
     pub rsdp_addr: Option<PhysAddr>,
     /// Base address of a flattened device tree in memory.
     pub fdt_addr: Option<*const u8>,
+    /// A framebuffer.
+    pub frame_buffer: Option<FrameBuffer>,
     /// Files given to the bootloader.
     pub files: Option<&'a [BootFile<'a>]>,
 }
