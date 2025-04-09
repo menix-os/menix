@@ -7,7 +7,10 @@ use crate::{
     boot::BootInfo,
     generic::{
         elf,
-        memory::virt::{self, KERNEL_PAGE_TABLE},
+        memory::{
+            PageAlloc,
+            virt::{self, KERNEL_PAGE_TABLE},
+        },
     },
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, format, string::String, vec::Vec};
@@ -85,21 +88,25 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
     let elf_hdr: &ElfHdr = bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()])
         .map_err(|_| ModuleLoadError::InvalidData)?;
 
-    // Check ELF magic.
     if elf_hdr.e_ident[0..4] != elf::ELF_MAG {
         return Err(ModuleLoadError::InvalidData);
     }
 
-    // We only support 64-bit.
+    #[cfg(target_pointer_width = "32")]
+    if elf_hdr.e_ident[elf::EI_CLASS] != elf::ELFCLASS32 {
+        return Err(ModuleLoadError::InvalidData);
+    }
+
+    #[cfg(target_pointer_width = "64")]
     if elf_hdr.e_ident[elf::EI_CLASS] != elf::ELFCLASS64 {
         return Err(ModuleLoadError::InvalidData);
     }
 
-    // Check endianness.
     #[cfg(target_endian = "little")]
     if elf_hdr.e_ident[elf::EI_DATA] != elf::ELFDATA2LSB {
         return Err(ModuleLoadError::InvalidData);
     }
+
     #[cfg(target_endian = "big")]
     if elf_hdr.e_ident[EI_DATA] != ELFDATA2MSB {
         return Err(ModuleLoadError::InvalidData);
@@ -109,12 +116,10 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
         return Err(ModuleLoadError::InvalidData);
     }
 
-    // Check ABI, we don't care about ABIVERSION.
     if elf_hdr.e_ident[elf::EI_OSABI] != elf::ELFOSABI_SYSV {
         return Err(ModuleLoadError::InvalidData);
     }
 
-    // Check machine type. Only load executables for this machine.
     if elf_hdr.e_machine != elf::EM_CURRENT {
         return Err(ModuleLoadError::InvalidData);
     }
@@ -150,7 +155,10 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                     flags |= VmFlags::Write;
                 }
 
-                // TODO
+                let mut memory = Vec::new_in(PageAlloc);
+                memory.resize(phdr.p_memsz as usize, 0u8);
+
+                if load_base == 0 {}
             }
             elf::PT_MODVERS => {
                 info.version = str::from_utf8(
@@ -181,16 +189,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
         }
     }
 
-    print!(
-        "module: Loaded {} at {:#x}: version = {}, args = {}\n",
-        name,
-        load_base,
-        info.version,
-        match cmd {
-            Some(x) => x,
-            None => "n/a",
-        }
-    );
+    print!("module: Loaded {} at {:#x}\n", name, load_base);
 
     return Ok(());
 }

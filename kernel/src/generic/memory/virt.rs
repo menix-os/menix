@@ -1,12 +1,9 @@
 use super::PageAlloc;
-use crate::arch::{self, PhysAddr, VirtAddr, irq::InterruptFrame, page::PageTableEntry};
-use alloc::boxed::Box;
+use crate::arch::{self, PhysAddr, VirtAddr, page::PageTableEntry};
 use alloc::vec::Vec;
+use alloc::{boxed::Box, sync::Arc};
 use bitflags::bitflags;
-use core::{
-    marker::PhantomData,
-    ops::{Add, Deref},
-};
+use core::{marker::PhantomData, ops::Deref};
 use spin::{Mutex, RwLock};
 
 // User constants
@@ -342,14 +339,14 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
 }
 
 /// Wraps a *T from a different address space.
-pub struct ForeignPtr<'a, T> {
-    page_table: &'a PageTable,
+pub struct ForeignPtr<T> {
+    page_table: Arc<PageTable>,
     addr: VirtAddr,
     _p: PhantomData<T>,
 }
 
-impl<'a, T> ForeignPtr<'a, T> {
-    pub const fn new(page_table: &'a PageTable, addr: VirtAddr) -> Self {
+impl<T> ForeignPtr<T> {
+    pub const fn new(page_table: Arc<PageTable>, addr: VirtAddr) -> Self {
         Self {
             page_table,
             addr,
@@ -363,7 +360,7 @@ impl<'a, T> ForeignPtr<'a, T> {
     }
 }
 
-impl<'a, T> Deref for ForeignPtr<'a, T> {
+impl<T> Deref for ForeignPtr<T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
