@@ -1,15 +1,33 @@
-use crate::{
-    arch::VirtAddr,
-    generic::{elf, memory::virt},
+use super::{
+    elf::{ElfHdr, ElfPhdr},
+    memory::virt::VmFlags,
 };
-use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String};
-use core::{ffi::CStr, ptr::null, slice};
-use spin::Mutex;
+use crate::{
+    arch::{PhysAddr, VirtAddr},
+    boot::BootInfo,
+    generic::{
+        elf,
+        memory::virt::{self, KERNEL_PAGE_TABLE},
+    },
+};
+use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, format, string::String, vec::Vec};
+use core::{ffi::CStr, slice};
+use spin::{Mutex, RwLock};
 
-static SYMBOL_TABLE: Mutex<BTreeMap<String, elf::ElfSym>> = Mutex::new(BTreeMap::new());
+static SYMBOL_TABLE: RwLock<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>> =
+    RwLock::new(BTreeMap::new());
+static MODULE_TABLE: RwLock<BTreeMap<String, ModuleInfo>> = RwLock::new(BTreeMap::new());
+
+/// Stores metadata about a module.
+pub struct ModuleInfo {
+    version: String,
+    description: String,
+    author: String,
+    mappings: Vec<(PhysAddr, VirtAddr, usize, VmFlags)>,
+}
 
 /// Sets up the module system.
-pub fn init() {
+pub fn init(info: &mut BootInfo) {
     let dynsym_start = &raw const virt::LD_DYNSYM_START;
     let dynsym_end = &raw const virt::LD_DYNSYM_END;
     let dynstr_start = &raw const virt::LD_DYNSTR_START;
@@ -17,7 +35,6 @@ pub fn init() {
 
     // Add all kernel symbols to a table so we can perform dynamic linking.
     {
-        let mut symbol_table = SYMBOL_TABLE.lock();
         let symbols = unsafe {
             slice::from_raw_parts(
                 dynsym_start as *const elf::ElfSym,
@@ -31,27 +48,134 @@ pub fn init() {
             )
         };
 
+        let mut symbol_table = SYMBOL_TABLE.write();
         let mut idx = 0;
         for sym in symbols {
             let name = unsafe { CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]) };
             if let Ok(x) = name {
                 if let Ok(s) = x.to_str() {
                     if !s.is_empty() {
-                        assert!(symbol_table.insert(s.to_owned(), *sym).is_none());
+                        assert!(symbol_table.insert(s.to_owned(), (*sym, None)).is_none());
                     }
                 }
             }
         }
+        print!(
+            "module: Registered {} kernel symbols.\n",
+            symbol_table.len()
+        );
     }
 
-    print!(
-        "module: Registered {} kernel symbols.\n",
-        SYMBOL_TABLE.lock().len()
-    );
+    // Load all modules provided by the bootloader.
+    if let Some(files) = info.files {
+        for file in files {
+            print!(
+                "module: Loading \"{}\" with arguments: \"{}\"\n",
+                file.name,
+                if let Some(cmd) = file.command_line {
+                    cmd
+                } else {
+                    ""
+                }
+            );
+        }
+    }
+}
+
+pub enum ModuleLoadError {
+    InvalidData,
+    InvalidVersion,
 }
 
 /// Loads a module from an ELF in memory.
-pub fn load() {}
+pub fn load(data: &[u8]) -> Result<(), ModuleLoadError> {
+    let elf_hdr: &ElfHdr = bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()])
+        .map_err(|_| ModuleLoadError::InvalidData)?;
+
+    // Check ELF magic.
+    if elf_hdr.e_ident[0..4] != elf::ELF_MAG {
+        return Err(ModuleLoadError::InvalidData);
+    }
+
+    // We only support 64-bit.
+    if elf_hdr.e_ident[elf::EI_CLASS] != elf::ELFCLASS64 {
+        return Err(ModuleLoadError::InvalidData);
+    }
+
+    // Check endianness.
+    #[cfg(target_endian = "little")]
+    if elf_hdr.e_ident[elf::EI_DATA] != elf::ELFDATA2LSB {
+        return Err(ModuleLoadError::InvalidData);
+    }
+    #[cfg(target_endian = "big")]
+    if elf_hdr.e_ident[EI_DATA] != ELFDATA2MSB {
+        return Err(ModuleLoadError::InvalidData);
+    }
+
+    if elf_hdr.e_ident[elf::EI_VERSION] != elf::EV_CURRENT {
+        return Err(ModuleLoadError::InvalidData);
+    }
+
+    // Check ABI, we don't care about ABIVERSION.
+    if elf_hdr.e_ident[elf::EI_OSABI] != elf::ELFOSABI_SYSV {
+        return Err(ModuleLoadError::InvalidData);
+    }
+
+    // Check machine type. Only load executables for this machine.
+    if elf_hdr.e_machine != elf::EM_CURRENT {
+        return Err(ModuleLoadError::InvalidData);
+    }
+
+    // Start by evaluating the program headers.
+    let phdrs: &[ElfPhdr] = bytemuck::try_cast_slice(
+        &data[elf_hdr.e_phoff as usize
+            ..(elf_hdr.e_phoff as usize + elf_hdr.e_phnum as usize * size_of::<ElfPhdr>())],
+    )
+    .map_err(|_| ModuleLoadError::InvalidData)?;
+
+    let mut load_base = 0;
+    let mut info = ModuleInfo {
+        version: String::new(),
+        description: String::new(),
+        author: String::new(),
+        mappings: Vec::new(),
+    };
+
+    for phdr in phdrs {
+        match phdr.p_type {
+            // Load the segment into memory.
+            elf::PT_LOAD => {
+                // Convert the flags to our format.
+                let mut flags = VmFlags::None;
+                if phdr.p_flags & elf::PF_EXECUTE != 0 {
+                    flags |= VmFlags::Exec;
+                }
+                if phdr.p_flags & elf::PF_READ != 0 {
+                    flags |= VmFlags::Read;
+                }
+                if phdr.p_flags & elf::PF_WRITE != 0 {
+                    flags |= VmFlags::Write;
+                }
+
+                todo!();
+            }
+            elf::PT_MODVERS => {
+                info.version = str::from_utf8(
+                    &data
+                        [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
+                )
+                .map_err(|x| ModuleLoadError::InvalidVersion)?
+                .to_owned();
+            }
+            elf::PT_MODAUTH => {}
+            elf::PT_MODDESC => {}
+            // Unknown or unhandled type. Do nothing.
+            _ => (),
+        }
+    }
+
+    return Ok(());
+}
 
 #[macro_export]
 macro_rules! module {

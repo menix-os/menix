@@ -6,7 +6,7 @@ pub mod fbcon;
 pub mod firmware;
 pub mod fs;
 pub mod init;
-pub mod interrupts;
+pub mod irq;
 pub mod log;
 pub mod memory;
 pub mod misc;

@@ -1,4 +1,4 @@
-use crate::arch::{VirtAddr, schedule::Context};
+use crate::arch::{VirtAddr, irq::InterruptFrame};
 use alloc::sync::Arc;
 use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 
@@ -21,7 +21,7 @@ pub struct Thread {
     /// Unique identifier
     pub id: usize,
     /// The saved context of a thread while the thread is not running.
-    pub context: Context,
+    pub context: InterruptFrame,
     /// The current state of the thread.
     pub state: TaskState,
 }
@@ -40,7 +40,7 @@ impl Thread {
         return Self {
             next: None,
             id: THREAD_ID_COUNTER.fetch_add(1, Relaxed),
-            context: Context::default(),
+            context: InterruptFrame::default(),
             state: TaskState::Ready,
         };
     }

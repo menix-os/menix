@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["drivers/*", "kernel"]
+members = ["bindings/*", "drivers/*", "kernel"]
 
 [profile.dev]
 panic = "abort"

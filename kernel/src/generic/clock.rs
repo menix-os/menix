@@ -16,12 +16,16 @@ pub trait ClockSource: Send {
     fn setup(&mut self) -> Result<(), ClockError>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum ClockError {
+    /// The clock source has a lesser priority.
     LowerPriority,
+    /// The clock source is unavailable.
     Unavailable,
+    /// The clock source is not sane.
     InvalidConfiguration,
-    UnableToCalibrate,
+    /// The clock source could not be calibrated.
+    UnableToSetup,
 }
 
 /// Gets the elapsed nanoseconds since initialization of this timer.

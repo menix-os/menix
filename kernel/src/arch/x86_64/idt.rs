@@ -1,5 +1,5 @@
 use super::gdt::Gdt;
-use super::interrupts::*;
+use super::irq::*;
 use crate::arch::{VirtAddr, x86_64::asm};
 use core::arch::asm;
 use core::mem::offset_of;

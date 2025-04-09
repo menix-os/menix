@@ -1,4 +1,4 @@
-use crate::arch::schedule::Context;
+use crate::arch::irq::InterruptFrame;
 use alloc::sync::Arc;
 use core::sync::atomic::AtomicUsize;
 use thread::Thread;
@@ -34,7 +34,7 @@ impl Scheduler {
         }
     }
 
-    pub fn reschedule<'a>(&mut self, mut context: &'a Context) -> &'a Context {
+    pub fn reschedule<'a>(&mut self, mut context: &'a InterruptFrame) -> &'a InterruptFrame {
         self.preempt_off();
         // TODO: Reschedule
         self.preempt_on();

@@ -16,8 +16,8 @@ impl ClockSource for TscClock {
     }
 
     fn get_priority(&self) -> u8 {
-        // Prefer the TSC over other timers.
-        return 255;
+        // Never prefer the TSC over other timers.
+        return 0;
     }
 
     fn get_elapsed_ns(&self) -> usize {
@@ -54,7 +54,7 @@ impl ClockSource for TscClock {
         }
         // We tried.
         else {
-            return Err(ClockError::UnableToCalibrate);
+            return Err(ClockError::UnableToSetup);
         };
 
         print!("tsc: Timer frequency is {freq} Hz.\n");

@@ -1,5 +1,10 @@
 // Kernel initialization.
 
+// The boot process is split into 3 stages.
+// - `early_init`: Very early calls that don't need dynamic memory allocations.
+// - `memory_init`: Calls to evaluate the memory map and setup allocators.
+// - `init`: Calls to initialize the rest of the kernel.
+
 use crate::{
     arch::{self, PhysAddr, VirtAddr},
     boot::BootInfo,
@@ -9,11 +14,6 @@ use crate::{
     },
 };
 use alloc::boxed::Box;
-
-// The boot process is split into 3 stages.
-// - `early_init`: Very early calls that don't need dynamic memory allocations.
-// - `memory_init`: Calls to evaluate the memory map and setup allocators.
-// - `init`: Calls to initialize the rest of the kernel.
 
 /// Called as the very first thing during boot. Initializes very basic I/O and temporary features.
 pub(crate) fn early_init() {
@@ -28,12 +28,6 @@ pub(crate) fn memory_init(
     kernel_phys: PhysAddr,
     kernel_virt: VirtAddr,
 ) {
-    print!("boot: Memory map provided by bootloder:\n");
-    print!("{:^16} {:^16} {}\n", "Address", "Length", "Usage");
-    memory_map
-        .iter()
-        .for_each(|x| print!("{:>16x} {:>16x} {:?}\n", x.address, x.length, x.usage));
-
     memory::init(memory_map, temp_hhdm);
     virt::init(temp_hhdm, kernel_phys, kernel_virt);
 }
@@ -41,6 +35,11 @@ pub(crate) fn memory_init(
 /// Called after all info from the bootloader has been collected.
 /// Initializes all subsystems and starts all servers.
 pub(crate) fn init(info: &mut BootInfo) {
+    if let Some(x) = &info.frame_buffer {
+        fbcon::init(x.clone());
+        print!("boot: Initialized framebuffer.\n");
+    }
+
     print!("Menix {}\n", crate::MENIX_VERSION);
 
     match info.command_line {
@@ -50,25 +49,12 @@ pub(crate) fn init(info: &mut BootInfo) {
 
     generic::firmware::init(info);
     arch::init::init(info);
-    generic::module::init();
-
-    if let Some(x) = &info.frame_buffer {
-        fbcon::init(x.clone());
-        print!("boot: Initialized framebuffer.\n");
-    }
-
-    // Load all modules.
-    if let Some(files) = info.files {
-        for file in files {
-            print!("boot: Loading module \"{}\"\n", file.path);
-            // TODO: Load the modules :^)
-        }
-    }
+    generic::module::init(info);
 
     print!("boot: Starting init...\n");
 
     // Load init.
     // TODO:
     // let init = Process::from_elf(init_path);
-    todo!();
+    todo!("Load init");
 }

@@ -1,5 +1,5 @@
 use super::PageAlloc;
-use crate::arch::{self, PhysAddr, VirtAddr, schedule::Context, virt::PageTableEntry};
+use crate::arch::{self, PhysAddr, VirtAddr, irq::InterruptFrame, page::PageTableEntry};
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bitflags::bitflags;
@@ -22,7 +22,7 @@ pub const MODULE_BASE: usize = 0xFFFFB0000000000;
 
 bitflags! {
     /// Page protection flags.
-    #[derive(Copy, Clone)]
+    #[derive(Debug, Copy, Clone)]
     pub struct VmFlags: usize {
         const None = 0;
         /// Page can be read from.
@@ -268,7 +268,6 @@ impl PageTable {
         length: usize,
     ) -> *mut u8 {
         // TODO: Get next free memory region.
-        warn!("map_memory is todo, returning HHDM memory.\n");
         return (PageTableEntry::get_hhdm_addr() + phys) as *mut u8;
     }
 }
@@ -333,7 +332,7 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
         print!("virt: Mapped identity region.\n");
 
         // Activate the new page table.
-        arch::virt::set_page_table(&table);
+        arch::page::set_page_table(&table);
 
         let mut kernel_table = KERNEL_PAGE_TABLE.write();
         *kernel_table = table;
@@ -386,27 +385,4 @@ unsafe extern "C" {
     pub unsafe static LD_DYNSYM_END: u8;
     pub unsafe static LD_DYNSTR_START: u8;
     pub unsafe static LD_DYNSTR_END: u8;
-}
-
-/// Abstract information about a page fault.
-pub struct PageFaultInfo {
-    /// Fault caused by the user.
-    pub is_user: bool,
-    /// The instruction pointer address.
-    pub ip: VirtAddr,
-    /// The address that was attempted to access.
-    pub addr: VirtAddr,
-}
-
-/// Generic page fault handler. May reschedule and return a different context.
-pub fn page_fault_handler<'a>(context: &'a Context, info: &PageFaultInfo) -> &'a Context {
-    if info.is_user {
-        // TODO: Send SIGSEGV.
-        return context;
-    }
-
-    panic!(
-        "Kernel caused an unrecoverable page fault! IP: {:#x}, Address: {:#x}",
-        info.ip, info.addr
-    );
 }

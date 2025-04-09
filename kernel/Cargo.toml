@@ -17,6 +17,7 @@ seq-macro = "0.3.6"
 spin = "0.10.0"
 bytemuck = { version = "1.22.0", features = ["derive"] }
 talc = "4.4.2"
+uacpi = { path = "../bindings/uacpi" }
 
 [features]
 default = ["boot_limine"]

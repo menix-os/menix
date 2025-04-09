@@ -34,5 +34,6 @@ pub struct BootInfo<'a> {
 #[derive(Default, Clone, Copy, Debug)]
 pub struct BootFile<'a> {
     pub data: &'a [u8],
-    pub path: &'a str,
+    pub name: &'a str,
+    pub command_line: Option<&'a str>,
 }

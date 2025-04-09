@@ -27,11 +27,11 @@ mod internal {
 }
 
 // Re-export only parts of the architecture implementation that get called by generic code.
+pub use internal::firmware;
 pub use internal::init;
-pub use internal::interrupts;
+pub use internal::irq;
+pub use internal::page;
 pub use internal::percpu;
-pub use internal::schedule;
-pub use internal::virt;
 
 /// Represents a physical address. It can't be directly read from or written to.
 pub use internal::PhysAddr;

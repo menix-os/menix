@@ -1,9 +1,10 @@
-use crate::arch::{PhysAddr, VirtAddr, virt::PageTableEntry};
+use crate::arch::{PhysAddr, VirtAddr, page::PageTableEntry};
 use alloc::alloc::{AllocError, Allocator};
 use core::{alloc::Layout, ptr::NonNull};
 use spin::Mutex;
 use talc::{ClaimOnOom, Span, Talc, Talck};
 
+pub mod page;
 pub mod virt;
 
 /// Describes how a memory region is used.
@@ -46,7 +47,7 @@ impl PhysMemory {
 pub static EARLY_MEMORY: [u8; 0x10000] = [0u8; 0x10000];
 
 #[global_allocator]
-static ALLOCATOR: Talck<spin::Mutex<()>, ClaimOnOom> = Talc::new(unsafe {
+pub static ALLOCATOR: Talck<spin::Mutex<()>, ClaimOnOom> = Talc::new(unsafe {
     ClaimOnOom::new(Span::from_array(
         core::ptr::addr_of!(EARLY_MEMORY).cast_mut(),
     ))

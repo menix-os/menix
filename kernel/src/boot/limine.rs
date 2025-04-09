@@ -133,10 +133,9 @@ unsafe extern "C" fn _start() -> ! {
                             .as_ref()
                             .unwrap()
                     },
-                    path: file
-                        .path()
-                        .to_str()
-                        .expect("A file path was not valid UTF-8"),
+                    // Split off any parts of the path that come before the actual file name.
+                    name: file.path().to_str().unwrap().rsplit_once('/').unwrap().1,
+                    command_line: file.string().to_str().ok(),
                 });
             }
             info.files = Some(&file_buf);

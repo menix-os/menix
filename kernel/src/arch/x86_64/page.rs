@@ -1,7 +1,10 @@
-use super::{PhysAddr, consts, schedule::Context};
+use super::{PhysAddr, consts, irq::InterruptFrame};
 use crate::{
     arch::VirtAddr,
-    generic::memory::virt::{self, PageFaultInfo, PageTable, VmFlags},
+    generic::memory::{
+        page::{self, PageFaultInfo, PageFaultKind},
+        virt::{self, PageTable, VmFlags},
+    },
 };
 use bitflags::bitflags;
 use core::arch::asm;
@@ -136,16 +139,19 @@ pub unsafe fn set_page_table(page_table: &PageTable) {
     }
 }
 
-pub unsafe fn page_fault_handler(context: *const Context) -> *const Context {
+pub unsafe fn page_fault_handler(context: *const InterruptFrame) -> *const InterruptFrame {
     let mut cr2 = 0usize;
     unsafe {
         asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
 
         let info = PageFaultInfo {
-            is_user: (*context).cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
+            caused_by_user: (*context).cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
             ip: (*context).rip as VirtAddr,
             addr: cr2 as VirtAddr,
+            kind: match (*context).error {
+                _ => PageFaultKind::Unknown,
+            },
         };
-        return virt::page_fault_handler(context.as_ref().unwrap(), &info);
+        return page::page_fault_handler(context.as_ref().unwrap(), &info);
     }
 }

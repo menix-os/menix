@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     arch::x86_64::asm::cpuid,
-    generic::{interrupts::IrqHandlerFn, sched::thread::Thread},
+    generic::{clock::ClockError, irq::IrqHandlerFn, sched::thread::Thread},
 };
 use crate::{
     arch::x86_64::tsc::{self, TscClock},
@@ -141,7 +141,7 @@ impl PerCpu {
         // Set syscall entry point.
         asm::wrmsr(
             consts::MSR_LSTAR,
-            super::interrupts::amd64_syscall_stub as usize as u64,
+            super::irq::amd64_syscall_stub as usize as u64,
         );
         // Set the flag mask to everything except the second bit (always has to be enabled).
         asm::wrmsr(consts::MSR_SFMASK, (!2u32) as u64);
@@ -156,6 +156,7 @@ impl PerCpu {
         let cpuid1 = cpuid(1, 0);
         let cpuid7 = cpuid(7, 0);
         let cpuid13 = cpuid(13, 0);
+        let cpuid8000_0007 = cpuid(0x8000_0007, 0);
 
         // Enable SSE.
         cr0 &= !consts::CR0_EM; // Clear EM bit.
@@ -211,13 +212,16 @@ impl PerCpu {
             print!("percpu: + SMAP\n");
         }
 
-        if cpuid1.edx & consts::CPUID_1D_TSC as u32 != 0 {
+        // Check if the TSC exists and is also invariant.
+        if cpuid1.edx & consts::CPUID_1D_TSC as u32 != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
             match clock::switch(Box::new(super::tsc::TscClock)) {
                 Ok(x) => {
                     cr4 |= consts::CR4_TSD;
                     print!("percpu: + TSC\n");
                 }
-                Err(x) => warn!("percpu: Unable to setup TSC: {:?}\n", x),
+                Err(x) => {
+                    warn!("percpu: Unable to setup TSC: {:?}\n", x)
+                }
             }
         }
 

@@ -1,20 +1,65 @@
+use seq_macro::seq;
+
 use super::consts::CPL_USER;
-use super::percpu;
-use super::schedule::Context;
-use super::virt::page_fault_handler;
+use crate::arch;
 use crate::arch::x86_64::gdt::Gdt;
 use crate::generic::percpu::PerCpu;
 use crate::generic::syscall;
 use crate::{pop_all_regs, push_all_regs, swapgs_if_necessary};
 use core::arch::naked_asm;
 use core::mem::offset_of;
-use seq_macro::seq;
+
+use super::VirtAddr;
+
+/// Registers which are saved and restored during a context switch or interrupt.
+#[repr(C, packed)]
+#[derive(Clone, Copy, Debug, Default)]
+pub struct InterruptFrame {
+    pub r15: u64,
+    pub r14: u64,
+    pub r13: u64,
+    pub r12: u64,
+    pub r11: u64,
+    pub r10: u64,
+    pub r9: u64,
+    pub r8: u64,
+    pub rsi: u64,
+    pub rdi: u64,
+    pub rbp: u64,
+    pub rdx: u64,
+    pub rcx: u64,
+    pub rbx: u64,
+    pub rax: u64,
+    // Pushed onto the stack by the interrupt handler stubs.
+    pub isr: u64,
+    // Pushed onto the stack by the CPU if the interrupt has an error code.
+    pub error: u64,
+    // Pushed onto the stack by the CPU during an interrupt.
+    pub rip: u64,
+    pub cs: u64,
+    pub rflags: u64,
+    pub rsp: u64,
+    pub ss: u64,
+}
+
+impl InterruptFrame {
+    pub fn set_stack(&mut self, addr: VirtAddr) {
+        self.rsp = addr as u64;
+    }
+
+    pub fn set_ip(&mut self, addr: VirtAddr) {
+        self.rip = addr as u64;
+    }
+}
 
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
-unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mut Context {
+unsafe extern "C" fn interrupt_handler(
+    isr: usize,
+    context: *mut InterruptFrame,
+) -> *mut InterruptFrame {
     unsafe {
         match (*context).isr as u8 {
-            0x0E => _ = page_fault_handler(context),
+            0x0E => _ = arch::page::page_fault_handler(context),
             0x80 => syscall_handler(context),
             isr => {
                 let cpu = &PerCpu::get_per_cpu().arch;
@@ -29,7 +74,7 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut Context) -> *mu
 }
 
 /// Invoked by either the interrupt or syscall stub.
-unsafe extern "C" fn syscall_handler(context: *mut Context) {
+unsafe extern "C" fn syscall_handler(context: *mut InterruptFrame) {
     unsafe {
         // Arguments use the SYSV C ABI.
         // Except for a3, since RCX is needed for sysret, we need a different register.
@@ -128,7 +173,7 @@ unsafe extern "C" fn interrupt_stub_internal() {
             "add rsp, 0x10",            // Skip .error and .isr fields.
             swapgs_if_necessary!(),     // Change GS back if we came from user mode.
             "iretq",                    // Leave.
-            interrupt_handler = sym interrupt_handler
+            interrupt_handler = sym arch::irq::interrupt_handler
         );
     }
 }
