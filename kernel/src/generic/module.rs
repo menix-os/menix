@@ -19,6 +19,7 @@ static SYMBOL_TABLE: RwLock<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>
 static MODULE_TABLE: RwLock<BTreeMap<String, ModuleInfo>> = RwLock::new(BTreeMap::new());
 
 /// Stores metadata about a module.
+#[derive(Debug)]
 pub struct ModuleInfo {
     version: String,
     description: String,
@@ -69,15 +70,7 @@ pub fn init(info: &mut BootInfo) {
     // Load all modules provided by the bootloader.
     if let Some(files) = info.files {
         for file in files {
-            print!(
-                "module: Loading \"{}\" with arguments: \"{}\"\n",
-                file.name,
-                if let Some(cmd) = file.command_line {
-                    cmd
-                } else {
-                    ""
-                }
-            );
+            load(file.name, file.command_line, file.data);
         }
     }
 }
@@ -88,7 +81,7 @@ pub enum ModuleLoadError {
 }
 
 /// Loads a module from an ELF in memory.
-pub fn load(data: &[u8]) -> Result<(), ModuleLoadError> {
+pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoadError> {
     let elf_hdr: &ElfHdr = bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()])
         .map_err(|_| ModuleLoadError::InvalidData)?;
 
@@ -133,7 +126,7 @@ pub fn load(data: &[u8]) -> Result<(), ModuleLoadError> {
     )
     .map_err(|_| ModuleLoadError::InvalidData)?;
 
-    let mut load_base = 0;
+    let mut load_base = 0; // TODO
     let mut info = ModuleInfo {
         version: String::new(),
         description: String::new(),
@@ -157,7 +150,7 @@ pub fn load(data: &[u8]) -> Result<(), ModuleLoadError> {
                     flags |= VmFlags::Write;
                 }
 
-                todo!();
+                // TODO
             }
             elf::PT_MODVERS => {
                 info.version = str::from_utf8(
@@ -167,12 +160,37 @@ pub fn load(data: &[u8]) -> Result<(), ModuleLoadError> {
                 .map_err(|x| ModuleLoadError::InvalidVersion)?
                 .to_owned();
             }
-            elf::PT_MODAUTH => {}
-            elf::PT_MODDESC => {}
+            elf::PT_MODAUTH => {
+                info.author = str::from_utf8(
+                    &data
+                        [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
+                )
+                .map_err(|x| ModuleLoadError::InvalidVersion)?
+                .to_owned();
+            }
+            elf::PT_MODDESC => {
+                info.description = str::from_utf8(
+                    &data
+                        [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
+                )
+                .map_err(|x| ModuleLoadError::InvalidVersion)?
+                .to_owned();
+            }
             // Unknown or unhandled type. Do nothing.
             _ => (),
         }
     }
+
+    print!(
+        "module: Loaded {} at {:#x}: version = {}, args = {}\n",
+        name,
+        load_base,
+        info.version,
+        match cmd {
+            Some(x) => x,
+            None => "n/a",
+        }
+    );
 
     return Ok(());
 }

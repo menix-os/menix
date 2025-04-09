@@ -64,7 +64,7 @@ unsafe extern "C" fn _start() -> ! {
 
     if let Some(x) = BOOTLOADER_REQUEST.get_response() {
         print!(
-            "boot: Booting with Limine protocol by {} {}\n",
+            "boot: Booting with Limine protocol, loaded by {} {}\n",
             x.name(),
             x.version()
         )
@@ -135,7 +135,17 @@ unsafe extern "C" fn _start() -> ! {
                     },
                     // Split off any parts of the path that come before the actual file name.
                     name: file.path().to_str().unwrap().rsplit_once('/').unwrap().1,
-                    command_line: file.string().to_str().ok(),
+                    command_line: {
+                        let line_buf = file.string();
+                        match line_buf.count_bytes() {
+                            0 => None,
+                            1.. => Some(
+                                line_buf
+                                    .to_str()
+                                    .expect("Module command line was not valid UTF-8"),
+                            ),
+                        }
+                    },
                 });
             }
             info.files = Some(&file_buf);
