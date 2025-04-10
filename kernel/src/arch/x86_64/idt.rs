@@ -12,16 +12,16 @@ pub const IDT_SIZE: usize = 256;
 #[repr(C, packed)]
 pub struct IdtRegister {
     limit: u16,
-    base: *const InterruptDescriptorTable,
+    base: *const Idt,
 }
 
 #[derive(Debug)]
 #[repr(align(0x1000))]
-pub struct InterruptDescriptorTable {
+pub struct Idt {
     routines: [IdtEntry; IDT_SIZE],
 }
 
-impl InterruptDescriptorTable {
+impl Idt {
     pub const fn new() -> Self {
         Self {
             routines: [IdtEntry::empty(); IDT_SIZE],
@@ -47,7 +47,7 @@ pub fn init() {
 pub fn set_idt() {
     let idt = IDT_TABLE.lock();
     let idtr = IdtRegister {
-        limit: (size_of::<InterruptDescriptorTable>() - 1) as u16,
+        limit: (size_of::<Idt>() - 1) as u16,
         base: (&*idt),
     };
     unsafe {
@@ -56,7 +56,7 @@ pub fn set_idt() {
 }
 
 /// Global storage for the interrupt descriptor table.
-static IDT_TABLE: Mutex<InterruptDescriptorTable> = Mutex::new(InterruptDescriptorTable::new());
+static IDT_TABLE: Mutex<Idt> = Mutex::new(Idt::new());
 
 /// Stores an interrupt service routines (ISR) handler which gets invoked during an interrupt.
 #[repr(C, packed)]

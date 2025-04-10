@@ -9,7 +9,7 @@ use crate::{
     arch::{self, PhysAddr, VirtAddr},
     boot::BootInfo,
     generic::{
-        self, fbcon,
+        self, clock, fbcon,
         memory::{self, PhysMemory, virt},
     },
 };

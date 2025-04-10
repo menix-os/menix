@@ -3,7 +3,6 @@ use alloc::sync::Arc;
 use core::sync::atomic::AtomicUsize;
 use thread::Thread;
 
-pub mod process;
 pub mod thread;
 
 /// An instance of a scheduler. Each CPU has one instance running to coordinate thead management.

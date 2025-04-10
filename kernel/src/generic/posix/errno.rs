@@ -1,3 +1,6 @@
+/// Encapsulates an Errno value as a result.
+pub type EResult<T> = Result<T, Errno>;
+
 #[derive(Debug)]
 pub enum Errno {
     EPERM = 1,

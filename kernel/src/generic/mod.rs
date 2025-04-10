@@ -1,10 +1,8 @@
 pub mod clock;
 pub mod cmdline;
 pub mod elf;
-pub mod errno;
 pub mod fbcon;
 pub mod firmware;
-pub mod fs;
 pub mod init;
 pub mod irq;
 pub mod log;
@@ -13,5 +11,6 @@ pub mod misc;
 pub mod module;
 pub mod panic;
 pub mod percpu;
+pub mod posix;
 pub mod sched;
 pub mod syscall;

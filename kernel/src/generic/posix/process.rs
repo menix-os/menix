@@ -3,14 +3,13 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-use super::thread::Thread;
+use crate::generic::sched::thread::Thread;
 use crate::{
     arch::VirtAddr,
-    generic::memory,
     generic::{
         elf::{self, ElfHdr, ElfPhdr},
-        errno::Errno,
         memory::virt::{PageTable, VmFlags},
+        posix::errno::Errno,
     },
 };
 use alloc::vec::Vec;

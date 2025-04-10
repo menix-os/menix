@@ -3,18 +3,6 @@ use crate::{
     generic::{fbcon::FrameBuffer, memory::PhysMemory},
 };
 
-// Boot method selection. Limine is the default method.
-#[cfg(all(
-    feature = "boot_limine",
-    any(
-        target_arch = "x86_64",
-        target_arch = "aarch64",
-        target_arch = "riscv64",
-        target_arch = "loongarch64"
-    )
-))]
-pub mod limine;
-
 /// Information passed from the bootloader. Memory is reclaimed after initialization.
 #[derive(Default, Debug)]
 pub struct BootInfo<'a> {
@@ -37,3 +25,15 @@ pub struct BootFile<'a> {
     pub name: &'a str,
     pub command_line: Option<&'a str>,
 }
+
+// Boot method selection. Limine is the default method.
+#[cfg(all(
+    feature = "boot_limine",
+    any(
+        target_arch = "x86_64",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+        target_arch = "loongarch64"
+    )
+))]
+pub mod limine;
