@@ -19,4 +19,4 @@ jobs:
       - name: Initialize submodules
         run: git submodule update --init --recursive
       - name: Run format check
-        run: cargo fmt --check
+        run: cargo fmt --check --target ${{matrix.arch}}-kernel.json
