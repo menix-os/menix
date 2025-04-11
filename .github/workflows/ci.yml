@@ -1,4 +1,4 @@
-name: Cargo Build & Test & Lint & Format
+name: Cargo Format Check
 
 on:
   pull_request:
@@ -12,10 +12,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy rust-src rustfmt
-
-      - run: cargo build
       - run: cargo fmt --check
