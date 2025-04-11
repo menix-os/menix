@@ -26,9 +26,11 @@ impl ClockSource for TscClock {
 
     fn setup(&mut self) -> Result<(), ClockError> {
         // Check if we have the TSC info leaf.
-        let cpuid = match asm::cpuid(0x8000_0000, 0).eax >= 0x15 {
-            true => Some(asm::cpuid(0x15, 0)),
-            false => None,
+        let cpuid = unsafe {
+            match asm::cpuid(0x8000_0000, 0).eax >= 0x15 {
+                true => Some(asm::cpuid(0x15, 0)),
+                false => None,
+            }
         };
 
         // First, always try using another known good clock to calibrate.
