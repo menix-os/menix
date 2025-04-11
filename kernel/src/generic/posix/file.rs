@@ -1,43 +1,55 @@
 use super::errno::{EResult, Errno};
 use crate::generic::memory::virt::ForeignPtr;
 
-pub struct File {
-    ops: FileOps,
-}
-
 /// Operations that can be performed on a file.
-#[derive(Default, Debug)]
-pub struct FileOps {
+pub trait FileOps {
     /// Reads from the file into a buffer.
     /// Returns actual bytes read.
-    read: Option<fn(file: &mut File, buffer: &mut [u8]) -> EResult<usize>>,
+    fn read(&mut self, buffer: &mut [u8]) -> EResult<usize> {
+        Err(Errno::EINVAL)
+    }
 
     /// Writes a buffer to the file.
     /// Returns actual bytes written.
-    write: Option<fn(file: &mut File, buffer: &[u8]) -> EResult<usize>>,
+    fn write(&mut self, buffer: &[u8]) -> EResult<usize> {
+        Err(Errno::EINVAL)
+    }
 
     /// Reads from the file, starting at `offset`, into a buffer.
     /// Returns actual bytes read.
-    pread: Option<fn(file: &mut File, buffer: &mut [u8], offset: isize) -> EResult<usize>>,
+    fn pread(&mut self, buffer: &mut [u8], offset: isize) -> EResult<usize> {
+        Err(Errno::EINVAL)
+    }
 
     /// Writes a buffer to the file, starting at `offset`.
     /// Returns actual bytes written.
-    pwrite: Option<fn(file: &mut File, buffer: &[u8], offset: isize) -> EResult<usize>>,
+    fn pwrite(&mut self, buffer: &[u8], offset: isize) -> EResult<usize> {
+        Err(Errno::EINVAL)
+    }
 
     /// Seeks inside the file, relative to the start of the file.
     /// Returns the new absolute offset.
-    seek_set: Option<fn(file: &mut File, offset: isize) -> EResult<usize>>,
+    fn seek_set(&mut self, offset: isize) -> EResult<usize> {
+        Err(Errno::EINVAL)
+    }
 
     /// Seeks inside the file, relative to the current position.
     /// Returns the new absolute offset.
-    seek_cur: Option<fn(file: &mut File, offset: isize) -> EResult<usize>>,
+    fn seek_cur(&mut self, offset: isize) -> EResult<usize> {
+        Err(Errno::EINVAL)
+    }
 
     /// Seeks inside the file, relative to the end of the file.
     /// Returns the new absolute offset.
-    seek_end: Option<fn(file: &mut File, offset: isize) -> EResult<usize>>,
+    fn seek_end(&mut self, offset: isize) -> EResult<usize> {
+        Err(Errno::EINVAL)
+    }
 
     /// Performs a generic ioctl operation on the file.
     /// Returns a status code.
-    ioctl: Option<fn(file: &mut File, request: usize, arg: ForeignPtr<u8>) -> EResult<usize>>,
+    fn ioctl(&mut self, request: usize, arg: ForeignPtr<u8>) -> EResult<usize> {
+        Err(Errno::EINVAL)
+    }
+
     // TODO: Add the rest of the operations.
 }
