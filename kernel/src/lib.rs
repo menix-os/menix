@@ -7,6 +7,7 @@
 // Needed for volatile memmove
 #![allow(internal_features)]
 #![feature(core_intrinsics)]
+#![feature(new_zeroed_alloc)]
 
 extern crate alloc;
 extern crate core;

@@ -1,15 +1,17 @@
 [workspace]
 resolver = "3"
-members = ["bindings/*", "drivers/*", "kernel"]
+members = ["kernel", "bindings/*", "drivers/*/*"]
 
+# Debug build. Still somewhat optimized.
 [profile.dev]
 panic = "abort"
+opt-level = 1
 debug = true
 strip = false
 
 [profile.release]
 panic = "abort"
-opt-level = "z"
+opt-level = 3
 debug = false
 overflow-checks = false
 strip = true

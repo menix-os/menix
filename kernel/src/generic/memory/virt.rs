@@ -264,6 +264,10 @@ impl PageTable {
         level: usize,
         length: usize,
     ) -> *mut u8 {
+        assert_eq!(
+            self.is_user, false,
+            "map_memory may not be called on a user page"
+        );
         // TODO: Get next free memory region.
         return (PageTableEntry::get_hhdm_addr() + phys) as *mut u8;
     }

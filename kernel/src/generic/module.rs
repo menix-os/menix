@@ -73,14 +73,18 @@ pub fn init(info: &mut BootInfo) {
     // Load all modules provided by the bootloader.
     if let Some(files) = info.files {
         for file in files {
-            load(file.name, file.command_line, file.data);
+            print!("module: Loading \"{}\"\n", file.name);
+            if let Err(x) = load(file.name, file.command_line, file.data) {
+                print!("module: Failed to load module: {:?}\n", x);
+            }
         }
     }
 }
 
+#[derive(Debug)]
 pub enum ModuleLoadError {
     InvalidData,
-    InvalidVersion,
+    BrokenModuleInfo,
 }
 
 /// Loads a module from an ELF in memory.
@@ -139,6 +143,19 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
         mappings: Vec::new(),
     };
 
+    // Variables read from the dynamic segment.
+    let mut dt_strtab = None;
+    let mut dt_strsz = None;
+    let mut dt_symtab = None;
+    let mut dt_rela = None;
+    let mut dt_relasz = None;
+    let mut dt_relaent = None;
+    let mut dt_pltrelsz = None;
+    let mut dt_jmprel = None;
+    let mut dt_init_array = None;
+    let mut dt_init_arraysz = None;
+    let mut dt_needed = Vec::new();
+
     for phdr in phdrs {
         match phdr.p_type {
             // Load the segment into memory.
@@ -158,14 +175,42 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                 let mut memory = Vec::new_in(PageAlloc);
                 memory.resize(phdr.p_memsz as usize, 0u8);
 
-                if load_base == 0 {}
+                if load_base == 0 {
+                    load_base = memory.as_ptr() as VirtAddr;
+                }
+
+                Vec::leak(memory);
+            }
+            elf::PT_DYNAMIC => {
+                let dyntab: &[elf::ElfDyn] = bytemuck::try_cast_slice(
+                    &data[phdr.p_offset as usize..(phdr.p_offset + phdr.p_filesz) as usize],
+                )
+                .map_err(|_| ModuleLoadError::InvalidData)?;
+
+                for entry in dyntab {
+                    match entry.d_tag as u32 {
+                        elf::DT_STRTAB => dt_strtab = Some(entry.d_val),
+                        elf::DT_SYMTAB => dt_symtab = Some(entry.d_val),
+                        elf::DT_STRSZ => dt_strsz = Some(entry.d_val),
+                        elf::DT_RELA => dt_rela = Some(entry.d_val),
+                        elf::DT_RELASZ => dt_relasz = Some(entry.d_val),
+                        elf::DT_RELAENT => dt_relaent = Some(entry.d_val),
+                        elf::DT_PLTRELSZ => dt_pltrelsz = Some(entry.d_val),
+                        elf::DT_JMPREL => dt_jmprel = Some(entry.d_val),
+                        elf::DT_INIT_ARRAY => dt_init_array = Some(entry.d_val),
+                        elf::DT_INIT_ARRAYSZ => dt_init_arraysz = Some(entry.d_val),
+                        elf::DT_NEEDED => dt_needed.push(entry.d_val),
+                        elf::DT_NULL => break,
+                        _ => (),
+                    }
+                }
             }
             elf::PT_MODVERS => {
                 info.version = str::from_utf8(
                     &data
                         [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
                 )
-                .map_err(|x| ModuleLoadError::InvalidVersion)?
+                .map_err(|x| ModuleLoadError::BrokenModuleInfo)?
                 .to_owned();
             }
             elf::PT_MODAUTH => {
@@ -173,7 +218,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                     &data
                         [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
                 )
-                .map_err(|x| ModuleLoadError::InvalidVersion)?
+                .map_err(|x| ModuleLoadError::BrokenModuleInfo)?
                 .to_owned();
             }
             elf::PT_MODDESC => {
@@ -181,7 +226,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                     &data
                         [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
                 )
-                .map_err(|x| ModuleLoadError::InvalidVersion)?
+                .map_err(|x| ModuleLoadError::BrokenModuleInfo)?
                 .to_owned();
             }
             // Unknown or unhandled type. Do nothing.
@@ -189,7 +234,43 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
         }
     }
 
-    print!("module: Loaded {} at {:#x}\n", name, load_base);
+    // Fix up addresses to offsets in the binary without having to map them in memory.
+    let fix_addr = |opt: &mut Option<u64>| {
+        if let Some(x) = opt {
+            for phdr in phdrs {
+                if phdr.p_vaddr <= *x && phdr.p_vaddr + phdr.p_filesz > *x {
+                    *x -= phdr.p_vaddr;
+                    *x += phdr.p_offset;
+                }
+            }
+        }
+    };
+
+    fix_addr(&mut dt_strtab);
+    fix_addr(&mut dt_symtab);
+    fix_addr(&mut dt_rela);
+    fix_addr(&mut dt_jmprel);
+    fix_addr(&mut dt_init_array);
+
+    let dependencies = dt_needed
+        .as_slice()
+        .iter()
+        .map(|x| {
+            CStr::from_bytes_until_nul(&data[(dt_strtab.unwrap() + *x) as usize..])
+                .unwrap()
+                .to_str()
+                .unwrap()
+        })
+        // "menix.kso" is the kernel itself. We don't actually have to load that :)
+        //.filter(|x| *x != "menix.kso")
+        .collect::<Vec<_>>();
+
+    print!("module: Loaded module \"{}\":\n", name);
+    print!("module:   Base Address | {:#x}\n", load_base);
+    print!("module:   Description  | {}\n", info.description);
+    print!("module:   Version      | {}\n", info.version);
+    print!("module:   Author(s)    | {}\n", info.author);
+    print!("module:   Dependencies | {:?}\n", dependencies);
 
     return Ok(());
 }
@@ -239,7 +320,7 @@ macro_rules! module {
         };
 
         #[unsafe(no_mangle)]
-        unsafe extern "C" fn _start() {
+        unsafe extern "C" fn _start(args: *const u8) {
             $entry();
         }
     };

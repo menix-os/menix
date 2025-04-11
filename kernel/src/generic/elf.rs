@@ -1,5 +1,5 @@
 use crate::arch;
-use bytemuck::{Pod, Zeroable};
+use bytemuck::{AnyBitPattern, Pod, Zeroable};
 
 // ELF Header Identification
 pub const ELF_MAG: [u8; 4] = [0x7F, b'E', b'L', b'F'];
@@ -164,14 +164,14 @@ assert_size!(ElfPhdr, 56);
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 #[cfg(target_pointer_width = "32")]
 pub struct ElfPhdr {
-    p_type: u32,
-    p_offset: ElfOff,
-    p_vaddr: ElfAddr,
-    p_paddr: ElfAddr,
-    p_filesz: u32,
-    p_memsz: u32,
-    p_flags: u32,
-    p_align: u32,
+    pub p_type: u32,
+    pub p_offset: ElfOff,
+    pub p_vaddr: ElfAddr,
+    pub p_paddr: ElfAddr,
+    pub p_filesz: u32,
+    pub p_memsz: u32,
+    pub p_flags: u32,
+    pub p_align: u32,
 }
 #[cfg(target_pointer_width = "32")]
 assert_size!(ElfPhdr, 32);
@@ -192,12 +192,28 @@ pub struct ElfSym {
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
 #[cfg(target_pointer_width = "32")]
 pub struct ElfSym {
-    st_name: u32,
-    st_value: ElfAddr,
-    st_size: u32,
-    st_info: u8,
-    st_other: u8,
-    st_shndx: u16,
+    pub st_name: u32,
+    pub st_value: ElfAddr,
+    pub st_size: u32,
+    pub st_info: u8,
+    pub st_other: u8,
+    pub st_shndx: u16,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[cfg(target_pointer_width = "64")]
+pub struct ElfDyn {
+    pub d_tag: i64,
+    pub d_val: u64,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[cfg(target_pointer_width = "32")]
+pub struct ElfDyn {
+    pub d_tag: i32,
+    pub d_val: u32,
 }
 
 /// ELF header

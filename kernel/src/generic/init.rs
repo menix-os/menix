@@ -35,12 +35,12 @@ pub(crate) fn memory_init(
 /// Called after all info from the bootloader has been collected.
 /// Initializes all subsystems and starts all servers.
 pub(crate) fn init(info: &mut BootInfo) {
+    print!("Menix {}\n", crate::MENIX_VERSION);
+
     if let Some(x) = &info.frame_buffer {
         fbcon::init(x.clone());
         print!("boot: Initialized framebuffer.\n");
     }
-
-    print!("Menix {}\n", crate::MENIX_VERSION);
 
     match info.command_line {
         Some(x) => print!("boot: Command line: \"{x}\"\n"),

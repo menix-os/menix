@@ -2,3 +2,6 @@
 mtime-on-use = true
 build-std = ["core", "alloc"]
 build-std-features = ["compiler-builtins-mem"]
+
+[build]
+rustflags = "-C prefer-dynamic=yes"

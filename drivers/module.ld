@@ -63,22 +63,23 @@ SECTIONS
 		*(COMMON)
 	} :data
 
+	.dynsym : {
+		*(.dynsym)
+	} :data
+
+	.dynstr : {
+		*(.dynstr)
+	} :data
+
+	.rela.dyn : {
+		*(.rela.dyn)
+	} :data
+
 	/* Dynamic tags */
 	.dynamic : {
 		*(.dynamic)
 	} :data :dynamic
 
-	.dynsym : {
-		*(.dynsym)
-	} :dynamic
-
-	.dynstr : {
-		*(.dynstr)
-	} :dynamic
-
-	.rela.dyn : {
-		*(.rela.dyn)
-	} :dynamic
 
 	/DISCARD/ :
 	{
