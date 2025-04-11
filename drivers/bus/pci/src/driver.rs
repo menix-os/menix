@@ -81,41 +81,35 @@ impl PciVariant {
         }
     }
 
-    pub const fn id(self, vendor: u16, device: u16) -> Self {
-        let mut result = self;
-        result.vendor = Some(vendor);
-        result.device = Some(device);
-        return result;
+    pub const fn id(mut self, vendor: u16, device: u16) -> Self {
+        self.vendor = Some(vendor);
+        self.device = Some(device);
+        return self;
     }
 
-    pub const fn sub_id(self, sub_vendor: u16, sub_device: u16) -> Self {
-        let mut result = self;
-        result.sub_vendor = Some(sub_vendor);
-        result.sub_device = Some(sub_device);
-        return result;
+    pub const fn sub_id(mut self, sub_vendor: u16, sub_device: u16) -> Self {
+        self.sub_vendor = Some(sub_vendor);
+        self.sub_device = Some(sub_device);
+        return self;
     }
 
-    pub const fn class(self, class: u8) -> Self {
-        let mut result = self;
-        result.class = Some(class);
-        return result;
+    pub const fn class(mut self, class: u8) -> Self {
+        self.class = Some(class);
+        return self;
     }
 
-    pub const fn sub_class(self, sub_class: u8) -> Self {
-        let mut result = self;
-        result.sub_class = Some(sub_class);
-        return result;
+    pub const fn sub_class(mut self, sub_class: u8) -> Self {
+        self.sub_class = Some(sub_class);
+        return self;
     }
 
-    pub const fn function(self, prog_if: u8) -> Self {
-        let mut result = self;
-        result.prog_if = Some(prog_if);
-        return result;
+    pub const fn function(mut self, prog_if: u8) -> Self {
+        self.prog_if = Some(prog_if);
+        return self;
     }
 
-    pub const fn with_data(self, data: usize) -> Self {
-        let mut result = self;
-        result.data = data;
-        return result;
+    pub const fn with_data(mut self, data: usize) -> Self {
+        self.data = data;
+        return self;
     }
 }
