@@ -1,6 +1,6 @@
 #![no_std]
 
-use menix::{module, print};
+use menix::{generic::cmdline::CmdLine, module, print};
 
 module!(
     "Example module which prints \"Hello World\" to the log",
@@ -8,6 +8,6 @@ module!(
     main
 );
 
-pub fn main() {
+pub fn main(_args: CmdLine) {
     print!("Hello, world!\n");
 }

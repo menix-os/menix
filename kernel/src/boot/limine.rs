@@ -12,8 +12,8 @@ use crate::{
         memory::{PhysMemory, PhysMemoryUsage},
     },
 };
-use alloc::vec::Vec;
-use core::{ptr::slice_from_raw_parts, str};
+use alloc::{borrow::ToOwned, vec::Vec};
+use core::ptr::slice_from_raw_parts;
 use limine::{BaseRevision, memory_map::EntryType, request::*};
 
 #[used]
@@ -107,76 +107,93 @@ unsafe extern "C" fn _start() -> ! {
         );
     }
 
-    {
-        let mut info = BootInfo::default();
+    let mut info = BootInfo::default();
 
-        // Convert the command line from bytes to UTF-8 if there is any.
-        info.command_line = {
-            let line_buf = COMMAND_LINE_REQUEST.get_response().unwrap().cmdline();
-            match line_buf.count_bytes() {
-                0 => None,
-                1.. => Some(line_buf.to_str().expect("Command line was not valid UTF-8")),
-            }
-        };
-
-        info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| x.address() as PhysAddr);
-
-        info.fdt_addr = DTB_REQUEST.get_response().map(|x| x.dtb_ptr() as *const u8);
-
-        // Get all modules.
-        let mut file_buf = Vec::new();
-        if let Some(response) = MODULE_REQUEST.get_response() {
-            for file in response.modules() {
-                file_buf.push(BootFile {
-                    data: unsafe {
-                        slice_from_raw_parts(file.addr(), file.size() as usize)
-                            .as_ref()
-                            .unwrap()
-                    },
-                    // Split off any parts of the path that come before the actual file name.
-                    name: file.path().to_str().unwrap().rsplit_once('/').unwrap().1,
-                    command_line: {
-                        let line_buf = file.string();
-                        match line_buf.count_bytes() {
-                            0 => None,
-                            1.. => Some(
-                                line_buf
-                                    .to_str()
-                                    .expect("Module command line was not valid UTF-8"),
-                            ),
-                        }
-                    },
-                });
-            }
-            info.files = Some(&file_buf);
+    // Convert the command line from bytes to UTF-8 if there is any.
+    info.command_line = {
+        let line_buf = COMMAND_LINE_REQUEST.get_response().unwrap().cmdline();
+        match line_buf.count_bytes() {
+            0 => None,
+            1.. => Some(
+                line_buf
+                    .to_str()
+                    .expect("Command line was not valid UTF-8")
+                    .to_owned(),
+            ),
         }
+    };
 
-        if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
-            if let Some(fb) = response.framebuffers().next() {
-                info.frame_buffer = Some(FrameBuffer {
-                    screen: fb.addr(),
-                    width: fb.width() as usize,
-                    height: fb.height() as usize,
-                    pitch: fb.pitch() as usize,
-                    cpp: fb.bpp() as usize / 8,
-                    red: FbColorBits {
-                        offset: fb.red_mask_shift(),
-                        size: fb.red_mask_size(),
-                    },
-                    green: FbColorBits {
-                        offset: fb.green_mask_shift(),
-                        size: fb.green_mask_size(),
-                    },
-                    blue: FbColorBits {
-                        offset: fb.blue_mask_shift(),
-                        size: fb.blue_mask_size(),
-                    },
-                });
-            }
+    // The RSDP is a physical address.
+    info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| x.address() as PhysAddr);
+
+    // The FDT is a virtual address.
+    info.fdt_addr = DTB_REQUEST.get_response().map(|x| {
+        ((x.dtb_ptr() as VirtAddr) - HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr)
+            as PhysAddr
+    });
+
+    // Get all modules.
+    let mut file_buf = Vec::new();
+    if let Some(response) = MODULE_REQUEST.get_response() {
+        for file in response.modules() {
+            file_buf.push(BootFile {
+                data: unsafe { slice_from_raw_parts(file.addr(), file.size() as usize).as_ref() }
+                    .unwrap()
+                    .to_owned()
+                    .into(),
+                // Split off any parts of the path that come before the actual file name.
+                name: file
+                    .path()
+                    .to_str()
+                    .unwrap()
+                    .rsplit_once('/')
+                    .unwrap()
+                    .1
+                    .to_owned(),
+                command_line: {
+                    let line_buf = file.string();
+                    match line_buf.count_bytes() {
+                        0 => None,
+                        1.. => Some(
+                            line_buf
+                                .to_str()
+                                .expect("Module command line was not valid UTF-8")
+                                .to_owned(),
+                        ),
+                    }
+                },
+            });
         }
-
-        init::init(&mut info);
+        info.files = Some(file_buf);
     }
+
+    if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
+        if let Some(fb) = response.framebuffers().next() {
+            info.frame_buffer = Some(FrameBuffer {
+                screen: fb.addr(),
+                width: fb.width() as usize,
+                height: fb.height() as usize,
+                pitch: fb.pitch() as usize,
+                cpp: fb.bpp() as usize / 8,
+                red: FbColorBits {
+                    offset: fb.red_mask_shift(),
+                    size: fb.red_mask_size(),
+                },
+                green: FbColorBits {
+                    offset: fb.green_mask_shift(),
+                    size: fb.green_mask_size(),
+                },
+                blue: FbColorBits {
+                    offset: fb.blue_mask_shift(),
+                    size: fb.blue_mask_size(),
+                },
+            });
+        }
+    }
+
+    // Finally, save the boot information.
+    info.register();
+    init::init();
 
     unreachable!();
 }

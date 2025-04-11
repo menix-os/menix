@@ -9,11 +9,11 @@ use crate::{
         elf,
         memory::{
             PageAlloc,
-            virt::{self, KERNEL_PAGE_TABLE},
+            virt::{self},
         },
     },
 };
-use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, format, string::String, vec::Vec};
+use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{ffi::CStr, slice};
 use spin::{Mutex, RwLock};
 
@@ -31,7 +31,7 @@ pub struct ModuleInfo {
 }
 
 /// Sets up the module system.
-pub fn init(info: &mut BootInfo) {
+pub fn init() {
     let dynsym_start = &raw const virt::LD_DYNSYM_START;
     let dynsym_end = &raw const virt::LD_DYNSYM_END;
     let dynstr_start = &raw const virt::LD_DYNSTR_START;
@@ -71,10 +71,10 @@ pub fn init(info: &mut BootInfo) {
     }
 
     // Load all modules provided by the bootloader.
-    if let Some(files) = info.files {
+    if let Some(files) = &BootInfo::get().files {
         for file in files {
             print!("module: Loading \"{}\"\n", file.name);
-            if let Err(x) = load(file.name, file.command_line, file.data) {
+            if let Err(x) = load(&file.name, file.command_line.as_deref(), &file.data) {
                 print!("module: Failed to load module: {:?}\n", x);
             }
         }
@@ -234,7 +234,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
         }
     }
 
-    // Fix up addresses to offsets in the binary without having to map them in memory.
+    // Convert addresses to offsets in the binary so we can read their values.
     let fix_addr = |opt: &mut Option<u64>| {
         if let Some(x) = opt {
             for phdr in phdrs {
@@ -262,7 +262,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                 .unwrap()
         })
         // "menix.kso" is the kernel itself. We don't actually have to load that :)
-        //.filter(|x| *x != "menix.kso")
+        .filter(|x| *x != "menix.kso")
         .collect::<Vec<_>>();
 
     print!("module: Loaded module \"{}\":\n", name);
@@ -320,8 +320,12 @@ macro_rules! module {
         };
 
         #[unsafe(no_mangle)]
-        unsafe extern "C" fn _start(args: *const u8) {
-            $entry();
+        unsafe extern "C" fn _start(args: *const u8, len: usize) {
+            let command_line = $crate::generic::cmdline::CmdLine::new(unsafe {
+                $crate::core::str::from_utf8($crate::core::slice::from_raw_parts(args, len))
+                    .unwrap()
+            });
+            $entry(command_line);
         }
     };
 }

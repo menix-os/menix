@@ -5,4 +5,4 @@ pub fn early_init() {
     super::idt::init();
 }
 
-pub fn init(info: &mut BootInfo) {}
+pub fn init() {}

@@ -7,10 +7,12 @@
 // Needed for volatile memmove
 #![allow(internal_features)]
 #![feature(core_intrinsics)]
+#![feature(str_from_raw_parts)]
 #![feature(new_zeroed_alloc)]
 
-extern crate alloc;
-extern crate core;
+pub extern crate alloc;
+pub extern crate core;
+pub use spin;
 
 #[macro_use]
 pub mod macros;

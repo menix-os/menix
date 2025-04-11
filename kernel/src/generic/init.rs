@@ -9,11 +9,11 @@ use crate::{
     arch::{self, PhysAddr, VirtAddr},
     boot::BootInfo,
     generic::{
-        self, clock, fbcon,
+        self, fbcon,
         memory::{self, PhysMemory, virt},
     },
 };
-use alloc::boxed::Box;
+use spin::Once;
 
 /// Called as the very first thing during boot. Initializes very basic I/O and temporary features.
 pub(crate) fn early_init() {
@@ -34,22 +34,22 @@ pub(crate) fn memory_init(
 
 /// Called after all info from the bootloader has been collected.
 /// Initializes all subsystems and starts all servers.
-pub(crate) fn init(info: &mut BootInfo) {
+pub(crate) fn init() {
     print!("Menix {}\n", crate::MENIX_VERSION);
 
-    if let Some(x) = &info.frame_buffer {
+    if let Some(x) = &BootInfo::get().frame_buffer {
         fbcon::init(x.clone());
         print!("boot: Initialized framebuffer.\n");
     }
 
-    match info.command_line {
+    match &BootInfo::get().command_line {
         Some(x) => print!("boot: Command line: \"{x}\"\n"),
         None => print!("boot: Command line is empty.\n"),
     }
 
-    generic::firmware::init(info);
-    arch::init::init(info);
-    generic::module::init(info);
+    generic::firmware::init();
+    arch::init::init();
+    generic::module::init();
 
     print!("boot: Starting init...\n");
 

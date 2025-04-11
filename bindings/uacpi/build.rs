@@ -24,7 +24,8 @@ fn main() {
         "uacpi/source/utilities.c",
     ])
     .includes(["uacpi/include/"])
-    .define("UACPI_SIZED_FREES", None);
+    .define("UACPI_SIZED_FREES", None)
+    .pic(true);
 
     #[cfg(target_arch = "x86_64")]
     {

@@ -1,0 +1,3 @@
+pub struct PciDevice {
+    // TODO
+}

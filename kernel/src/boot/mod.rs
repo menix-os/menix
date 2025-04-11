@@ -2,28 +2,54 @@ use crate::{
     arch::{self, PhysAddr, VirtAddr},
     generic::{fbcon::FrameBuffer, memory::PhysMemory},
 };
+use alloc::{boxed::Box, string::String, vec::Vec};
+use spin::Once;
 
 /// Information passed from the bootloader. Memory is reclaimed after initialization.
 #[derive(Default, Debug)]
-pub struct BootInfo<'a> {
+pub struct BootInfo {
     /// Kernel command line.
-    pub command_line: Option<&'a str>,
+    pub command_line: Option<String>,
     /// Base address of the RSDT/XSDT ACPI table.
     pub rsdp_addr: Option<PhysAddr>,
     /// Base address of a flattened device tree in memory.
-    pub fdt_addr: Option<*const u8>,
+    pub fdt_addr: Option<PhysAddr>,
     /// A framebuffer.
     pub frame_buffer: Option<FrameBuffer>,
     /// Files given to the bootloader.
-    pub files: Option<&'a [BootFile<'a>]>,
+    pub files: Option<Vec<BootFile>>,
+}
+
+static BOOT_INFO: Once<BootInfo> = Once::new();
+
+impl BootInfo {
+    pub const fn new() -> Self {
+        return Self {
+            command_line: None,
+            rsdp_addr: None,
+            fdt_addr: None,
+            frame_buffer: None,
+            files: None,
+        };
+    }
+
+    pub fn register(self) {
+        BOOT_INFO.call_once(|| return self);
+    }
+
+    pub fn get() -> &'static Self {
+        return BOOT_INFO
+            .get()
+            .expect("Boot info wasn't set yet! Did you forget to call BootInfo::set()?");
+    }
 }
 
 /// A file loaded by the bootloader. Memory is reclaimed after initialization.
-#[derive(Default, Clone, Copy, Debug)]
-pub struct BootFile<'a> {
-    pub data: &'a [u8],
-    pub name: &'a str,
-    pub command_line: Option<&'a str>,
+#[derive(Default, Clone, Debug)]
+pub struct BootFile {
+    pub data: Box<[u8]>,
+    pub name: String,
+    pub command_line: Option<String>,
 }
 
 // Boot method selection. Limine is the default method.
