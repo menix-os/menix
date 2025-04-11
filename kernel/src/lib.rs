@@ -9,6 +9,7 @@
 #![feature(core_intrinsics)]
 #![feature(str_from_raw_parts)]
 #![feature(new_zeroed_alloc)]
+#![feature(cfg_match)]
 
 pub extern crate alloc;
 pub extern crate core;
