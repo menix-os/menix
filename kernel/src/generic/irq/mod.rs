@@ -4,11 +4,11 @@ use spin::Mutex;
 
 pub enum IrqStatus {
     /// Interrupt was not handled.
-    Ignored = 0,
+    Ignored,
     /// Handler completed the IRQ work.
-    Handled = (1 << 0),
+    Handled,
     /// Handler wants to wake up the handler thread.
-    Wake = (1 << 1),
+    Wake,
 }
 
 /// An IRQ handler callback.
