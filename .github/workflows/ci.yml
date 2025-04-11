@@ -31,7 +31,7 @@ jobs:
           components: rust-src
       - name: Install tools
         run:
-          sudo apt install -y clang llvm lld
+          sudo apt install -y clang llvm lld gcc-multilib
       - name: Run build
         run: cargo build --target "toolchain/${{matrix.arch}}-kernel.json"
         env:
