@@ -28,4 +28,4 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: rust-src
-      - run: cargo build --target ${{matrix.arch}}-kernel.json
+      - run: cargo build --target "toolchain/${{matrix.arch}}-kernel.json"
