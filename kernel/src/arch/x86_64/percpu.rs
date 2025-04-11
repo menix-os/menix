@@ -32,9 +32,9 @@ pub struct ArchPerCpu {
     /// Size of the FPU.
     pub fpu_size: usize,
     /// Function called to save the FPU context.
-    pub fpu_save: fn(memory: *mut u8),
+    pub fpu_save: unsafe fn(memory: *mut u8),
     /// Function called to restore the FPU context.
-    pub fpu_restore: fn(memory: *const u8),
+    pub fpu_restore: unsafe fn(memory: *const u8),
     /// If this CPU supports the STAC/CLAC instructions.
     pub can_smap: bool,
 }
@@ -95,7 +95,7 @@ impl PerCpu {
     /// Initializes architecture dependent data for the current processor.
     pub fn arch_setup_cpu(&mut self) {
         // Print CPUID identification string.
-        {
+        unsafe {
             let m = cpuid(0, 0);
             let manufacturer = [m.ebx, m.edx, m.ecx, 0];
             let (n0, n1, n2) = (
@@ -107,19 +107,17 @@ impl PerCpu {
                 n0.eax, n0.ebx, n0.ecx, n0.edx, n1.eax, n1.ebx, n1.ecx, n1.edx, n2.eax, n2.ebx,
                 n2.ecx, n2.edx, 0,
             ];
-            unsafe {
-                print!(
-                    "percpu: {}, {}\n",
-                    CStr::from_bytes_until_nul(bytemuck::cast_slice(&manufacturer))
-                        .unwrap()
-                        .to_str()
-                        .unwrap(),
-                    CStr::from_bytes_until_nul(bytemuck::cast_slice(&cpu_name))
-                        .unwrap()
-                        .to_str()
-                        .unwrap()
-                );
-            }
+            print!(
+                "percpu: {}, {}\n",
+                CStr::from_bytes_until_nul(bytemuck::cast_slice(&manufacturer))
+                    .unwrap()
+                    .to_str()
+                    .unwrap(),
+                CStr::from_bytes_until_nul(bytemuck::cast_slice(&cpu_name))
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+            );
         }
 
         // Load a GDT and TSS.
@@ -130,21 +128,23 @@ impl PerCpu {
         idt::set_idt();
 
         // Enable the `syscall` extension.
-        let msr = asm::rdmsr(consts::MSR_EFER);
-        asm::wrmsr(consts::MSR_EFER, msr | consts::MSR_EFER_SCE as u64);
-        // Bits 32-47 are kernel segment base, Bits 48-63 are user segment base. Lower 32 bits (EIP) are unused.
-        asm::wrmsr(
-            consts::MSR_STAR,
-            ((offset_of!(Gdt, user_code) | consts::CPL_USER as usize) as u64) << 48
-                | (offset_of!(Gdt, kernel_code) as u64) << 32,
-        );
-        // Set syscall entry point.
-        asm::wrmsr(
-            consts::MSR_LSTAR,
-            super::irq::amd64_syscall_stub as usize as u64,
-        );
-        // Set the flag mask to everything except the second bit (always has to be enabled).
-        asm::wrmsr(consts::MSR_SFMASK, (!2u32) as u64);
+        unsafe {
+            let msr = asm::rdmsr(consts::MSR_EFER);
+            asm::wrmsr(consts::MSR_EFER, msr | consts::MSR_EFER_SCE as u64);
+            // Bits 32-47 are kernel segment base, Bits 48-63 are user segment base. Lower 32 bits (EIP) are unused.
+            asm::wrmsr(
+                consts::MSR_STAR,
+                ((offset_of!(Gdt, user_code) | consts::CPL_USER as usize) as u64) << 48
+                    | (offset_of!(Gdt, kernel_code) as u64) << 32,
+            );
+            // Set syscall entry point.
+            asm::wrmsr(
+                consts::MSR_LSTAR,
+                super::irq::amd64_syscall_stub as usize as u64,
+            );
+            // Set the flag mask to everything except the second bit (always has to be enabled).
+            asm::wrmsr(consts::MSR_SFMASK, (!2u32) as u64);
+        }
 
         // Now, start manipulating the control registers.
         let mut cr0 = 0usize;
@@ -153,10 +153,14 @@ impl PerCpu {
         unsafe { asm!("mov {cr4}, cr4", cr4 = out(reg) cr4) };
 
         // Collect all relevant CPUIDs.
-        let cpuid1 = cpuid(1, 0);
-        let cpuid7 = cpuid(7, 0);
-        let cpuid13 = cpuid(13, 0);
-        let cpuid8000_0007 = cpuid(0x8000_0007, 0);
+        let (cpuid1, cpuid7, cpuid13, cpuid8000_0007) = unsafe {
+            (
+                cpuid(1, 0),
+                cpuid(7, 0),
+                cpuid(13, 0),
+                cpuid(0x8000_0007, 0),
+            )
+        };
 
         // Enable SSE.
         cr0 &= !consts::CR0_EM; // Clear EM bit.
@@ -188,7 +192,7 @@ impl PerCpu {
                 print!("percpu: + AVX-512\n");
             }
 
-            asm::wrxcr(0, xcr0);
+            unsafe { asm::wrxcr(0, xcr0) };
 
             // Change callbacks from FXSAVE to XSAVE.
             self.arch.fpu_size = cpuid13.ecx as usize;
@@ -236,12 +240,14 @@ impl PerCpu {
         );
         cr4 |= consts::CR4_FSGSBASE;
 
-        // Set FSGSBASE contents.
-        // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
-        asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
-        // We will save a reference to this struct in GS_BASE.
-        asm::wrmsr(consts::MSR_GS_BASE, self as *mut PerCpu as u64);
-        asm::wrmsr(consts::MSR_FS_BASE, 0);
+        unsafe {
+            // Set FSGSBASE contents.
+            // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
+            asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
+            // We will save a reference to this struct in GS_BASE.
+            asm::wrmsr(consts::MSR_GS_BASE, self as *mut PerCpu as u64);
+            asm::wrmsr(consts::MSR_FS_BASE, 0);
+        }
 
         // TODO: Mask the legacy PIC.
         // TODO: Setup LAPIC.
