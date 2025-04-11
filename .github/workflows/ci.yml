@@ -1,12 +1,13 @@
-name: Cargo Format Check
+name: Continuous Integration
 
-on:
-  pull_request:
-    types: [opened, synchronize]
+on: [pull_request, merge_group]
 
 jobs:
-  build_and_check:
-    name: Rust CI
+  format-check:
+    strategy:
+      matrix:
+        arch: [x86_64, aarch64, riscv64, loongarch64]
+    name: Check formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,4 +16,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@nightly
         with:
           components: clippy rust-src rustfmt
-      - run: cargo fmt --check
+      - name: Initialize submodules
+        run: git submodule update --init --recursive
+      - name: Run format check
+        run: cargo fmt --check
