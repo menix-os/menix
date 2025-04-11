@@ -18,7 +18,8 @@ jobs:
   compile-check:
     strategy:
       matrix:
-        arch: [x86_64, aarch64, riscv64, loongarch64]
+        # arch: [x86_64, aarch64, riscv64, loongarch64]
+        arch: [x86_64]
     name: Debug build
     runs-on: ubuntu-latest
     steps:

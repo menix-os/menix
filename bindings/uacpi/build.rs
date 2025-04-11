@@ -25,16 +25,13 @@ fn main() {
     ])
     .includes(["uacpi/include/"])
     .define("UACPI_SIZED_FREES", None)
-    .pic(true);
+    .pic(true)
+    .flag("-ffreestanding")
+    .flag("-nostdlib");
 
-    #[cfg(target_arch = "x86_64")]
-    {
+    if std::env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "x86_64" {
         b.flag("-mgeneral-regs-only");
         b.flag("-mno-red-zone");
-    }
-    #[cfg(target_arch = "riscv64")]
-    {
-        b.flag("-march=rv64gc_zicsr_zifencei_zihintpause");
     }
 
     b.compile("uacpi");
