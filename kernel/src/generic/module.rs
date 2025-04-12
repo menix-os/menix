@@ -275,49 +275,44 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
     return Ok(());
 }
 
+#[doc(hidden)]
+#[macro_export]
+macro_rules! define_string_section {
+    (expanded $(#[$meta:meta])* $name:ident $src:expr) => {
+        #[doc(hidden)]
+        #[used]
+        $(#[$meta])*
+        static $name: [u8; $src.len()] = {
+            let mut buf = [0u8; $src.len()];
+            let src = $src;
+            let mut idx = 0;
+            while idx < src.len() {
+                buf[idx] = src[idx];
+                idx += 1;
+            }
+            buf
+        };
+    };
+    ($($(#[$meta:meta])* static $name:ident = $str:expr;)*) => {
+        $(
+            $crate::define_string_section!(expanded $(#[$meta])* $name $str.as_bytes());
+        )*
+    };
+}
+
 #[macro_export]
 macro_rules! module {
-    ($desc: expr, $auth: expr, $entry: ident) => {
-        const MODULE_VERSION: &str = env!("CARGO_PKG_VERSION");
+    ($desc: expr, $author: expr, $entry: ident) => {
+        $crate::define_string_section! {
+            #[unsafe(link_section = ".mod.version")]
+            static MODULE_VERSION = env!("CARGO_PKG_VERSION");
 
-        #[unsafe(link_section = ".mod.vers")]
-        #[used]
-        static MODULE_VERS: [u8; MODULE_VERSION.len()] = {
-            let mut buf = [0u8; MODULE_VERSION.len()];
-            let src = MODULE_VERSION.as_bytes();
-            let mut idx = 0;
-            while idx < src.len() {
-                buf[idx] = src[idx];
-                idx += 1;
-            }
-            buf
-        };
+            #[unsafe(link_section = ".mod.desc")]
+            static MODULE_DESC = $desc;
 
-        #[unsafe(link_section = ".mod.desc")]
-        #[used]
-        static MODULE_DESC: [u8; $desc.len()] = {
-            let mut buf = [0u8; $desc.len()];
-            let src = $desc.as_bytes();
-            let mut idx = 0;
-            while idx < src.len() {
-                buf[idx] = src[idx];
-                idx += 1;
-            }
-            buf
-        };
-
-        #[unsafe(link_section = ".mod.auth")]
-        #[used]
-        static MODULE_AUTH: [u8; $auth.len()] = {
-            let mut buf = [0u8; $auth.len()];
-            let src = $auth.as_bytes();
-            let mut idx = 0;
-            while idx < src.len() {
-                buf[idx] = src[idx];
-                idx += 1;
-            }
-            buf
-        };
+            #[unsafe(link_section = ".mod.author")]
+            static MODULE_AUTHOR = $author;
+        }
 
         #[unsafe(no_mangle)]
         unsafe extern "C" fn _start(args: *const u8, len: usize) {

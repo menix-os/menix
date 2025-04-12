@@ -39,11 +39,11 @@ SECTIONS
 	} :rodata
 
 	.mod.vers : {
-		KEEP(*(.mod.vers))
+		KEEP(*(.mod.version))
 	} :rodata :modvers
 
 	.mod.auth : {
-		KEEP(*(.mod.auth))
+		KEEP(*(.mod.author))
 	} :rodata :modauth
 
 	.mod.desc : {
