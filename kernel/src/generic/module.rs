@@ -32,6 +32,7 @@ pub struct ModuleInfo {
 
 /// Sets up the module system.
 pub fn init() {
+    let boot_info = BootInfo::get();
     let dynsym_start = &raw const virt::LD_DYNSYM_START;
     let dynsym_end = &raw const virt::LD_DYNSYM_END;
     let dynstr_start = &raw const virt::LD_DYNSTR_START;
@@ -71,12 +72,21 @@ pub fn init() {
     }
 
     // Load all modules provided by the bootloader.
-    if let Some(files) = &BootInfo::get().files {
-        for file in files {
-            print!("module: Loading \"{}\"\n", file.name);
-            if let Err(x) = load(&file.name, file.command_line.as_deref(), &file.data) {
-                print!("module: Failed to load module: {:?}\n", x);
-            }
+    for file in &boot_info.files {
+        let name = file
+            .name
+            .split_once('.')
+            .map(|(name, _)| name)
+            .unwrap_or(&file.name);
+
+        if !boot_info.command_line().get_bool(name).unwrap_or(true) {
+            print!("module: Skipping \"{}\".\n", file.name);
+            continue;
+        }
+
+        print!("module: Loading \"{}\"\n", file.name);
+        if let Err(x) = load(&file.name, file.command_line.as_deref(), &file.data) {
+            print!("module: Failed to load module: {:?}\n", x);
         }
     }
 }

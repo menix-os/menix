@@ -7,6 +7,7 @@ use super::{BootFile, BootInfo};
 use crate::{
     arch::{PhysAddr, VirtAddr},
     generic::{
+        cmdline::CmdLine,
         fbcon::{FbColorBits, FrameBuffer},
         init,
         memory::{PhysMemory, PhysMemoryUsage},
@@ -112,15 +113,7 @@ unsafe extern "C" fn _start() -> ! {
     // Convert the command line from bytes to UTF-8 if there is any.
     info.command_line = {
         let line_buf = COMMAND_LINE_REQUEST.get_response().unwrap().cmdline();
-        match line_buf.count_bytes() {
-            0 => None,
-            1.. => Some(
-                line_buf
-                    .to_str()
-                    .expect("Command line was not valid UTF-8")
-                    .to_owned(),
-            ),
-        }
+        line_buf.to_str().unwrap_or_default().to_owned()
     };
 
     // The RSDP is a physical address.
@@ -164,7 +157,7 @@ unsafe extern "C" fn _start() -> ! {
                 },
             });
         }
-        info.files = Some(file_buf);
+        info.files = file_buf;
     }
 
     if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {

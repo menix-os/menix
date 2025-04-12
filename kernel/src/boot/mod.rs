@@ -1,6 +1,6 @@
 use crate::{
     arch::{self, PhysAddr, VirtAddr},
-    generic::{fbcon::FrameBuffer, memory::PhysMemory},
+    generic::{cmdline::CmdLine, fbcon::FrameBuffer, memory::PhysMemory},
 };
 use alloc::{boxed::Box, string::String, vec::Vec};
 use spin::Once;
@@ -9,7 +9,7 @@ use spin::Once;
 #[derive(Default, Debug)]
 pub struct BootInfo {
     /// Kernel command line.
-    pub command_line: Option<String>,
+    pub command_line: String,
     /// Base address of the RSDT/XSDT ACPI table.
     pub rsdp_addr: Option<PhysAddr>,
     /// Base address of a flattened device tree in memory.
@@ -17,20 +17,24 @@ pub struct BootInfo {
     /// A framebuffer.
     pub frame_buffer: Option<FrameBuffer>,
     /// Files given to the bootloader.
-    pub files: Option<Vec<BootFile>>,
+    pub files: Vec<BootFile>,
 }
 
 static BOOT_INFO: Once<BootInfo> = Once::new();
 
 impl BootInfo {
     pub const fn new() -> Self {
-        return Self {
-            command_line: None,
+        Self {
+            command_line: String::new(),
             rsdp_addr: None,
             fdt_addr: None,
             frame_buffer: None,
-            files: None,
-        };
+            files: Vec::new(),
+        }
+    }
+
+    pub fn command_line(&self) -> CmdLine {
+        CmdLine::new(&self.command_line)
     }
 
     pub fn register(self) {
