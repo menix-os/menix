@@ -42,11 +42,6 @@ pub(crate) fn init() {
         print!("boot: Initialized framebuffer.\n");
     }
 
-    match &BootInfo::get().command_line {
-        Some(x) => print!("boot: Command line: \"{x}\"\n"),
-        None => print!("boot: Command line is empty.\n"),
-    }
-
     generic::firmware::init();
     arch::init::init();
     generic::module::init();
