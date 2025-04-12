@@ -1,8 +1,9 @@
-use crate::boot::BootInfo;
+use super::{apic, idt, serial};
 
 pub fn early_init() {
-    super::serial::init();
-    super::idt::init();
+    apic::disable_legacy_pic();
+    serial::init();
+    idt::init();
 }
 
 pub fn init() {}

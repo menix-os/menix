@@ -1,3 +1,4 @@
+mod apic;
 mod asm;
 mod consts;
 pub mod firmware;
