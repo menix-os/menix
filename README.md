@@ -1,6 +1,6 @@
 # Menix
 
-Menix is a modern, lightweight, pragmatic, asynchronous, modular 64-bit kernel.
+Menix is a modular 64-bit kernel written in Rust.
 
 ## Getting started
 
@@ -14,7 +14,7 @@ To build the kernel you will need:
 - cargo
 - rustc
 - clang (Used for bindgen)
-- binutils
+- lld
 
 The following commmand will build the kernel and all drivers for x86_64:
 ```sh
