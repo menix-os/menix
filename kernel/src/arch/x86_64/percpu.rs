@@ -1,11 +1,12 @@
 use super::{
+    apic::{self, LocalApic},
     asm, consts,
     gdt::{self, Gdt, TaskStateSegment},
     idt,
 };
 use crate::{
     arch::x86_64::asm::cpuid,
-    generic::{clock::ClockError, irq::IrqHandlerFn, sched::thread::Thread},
+    generic::{irq::IrqHandlerFn, sched::thread::Thread},
 };
 use crate::{
     arch::x86_64::tsc::{self, TscClock},
@@ -37,6 +38,8 @@ pub struct ArchPerCpu {
     pub fpu_restore: unsafe fn(memory: *const u8),
     /// If this CPU supports the STAC/CLAC instructions.
     pub can_smap: bool,
+    /// Local APIC context.
+    pub lapic: Option<LocalApic>,
 }
 
 impl Default for ArchPerCpu {
@@ -58,6 +61,7 @@ impl ArchPerCpu {
             fpu_save: asm::fxsave,
             fpu_restore: asm::fxrstor,
             can_smap: false,
+            lapic: None,
         }
     }
 }
@@ -170,7 +174,7 @@ impl PerCpu {
         print!("percpu: Enabling features:\n");
 
         // XSAVE
-        if cpuid1.ecx & consts::CPUID_1C_XSAVE as u32 != 0 {
+        if cpuid1.ecx & consts::CPUID_1C_XSAVE != 0 {
             cr4 |= consts::CR4_OSXSAVE | consts::CR4_OSFXSR | consts::CR4_OSXMMEXCPT;
             unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
             print!("percpu: + XSAVE\n");
@@ -179,13 +183,13 @@ impl PerCpu {
             xcr0 |= 3;
 
             // AVX
-            if cpuid1.ecx & consts::CPUID_1C_AVX as u32 != 0 {
+            if cpuid1.ecx & consts::CPUID_1C_AVX != 0 {
                 xcr0 |= 1 << 2;
                 print!("percpu: + AVX\n");
             }
 
             // AVX-512
-            if cpuid7.ebx & consts::CPUID_7B_AVX512F as u32 != 0 {
+            if cpuid7.ebx & consts::CPUID_7B_AVX512F != 0 {
                 xcr0 |= 1 << 5;
                 xcr0 |= 1 << 6;
                 xcr0 |= 1 << 7;
@@ -200,24 +204,24 @@ impl PerCpu {
             self.arch.fpu_restore = asm::xrstor;
         }
 
-        if cpuid7.ecx & consts::CPUID_7C_UMIP as u32 != 0 {
+        if cpuid7.ecx & consts::CPUID_7C_UMIP != 0 {
             cr4 |= consts::CR4_UMIP;
             print!("percpu: + UMIP\n");
         }
 
-        if cpuid7.ebx & consts::CPUID_7B_SMEP as u32 != 0 {
+        if cpuid7.ebx & consts::CPUID_7B_SMEP != 0 {
             cr4 |= consts::CR4_SMEP;
             print!("percpu: + SMEP\n");
         }
 
-        if cpuid7.ebx & consts::CPUID_7B_SMAP as u32 != 0 {
+        if cpuid7.ebx & consts::CPUID_7B_SMAP != 0 {
             cr4 |= consts::CR4_SMAP;
             self.arch.can_smap = true;
             print!("percpu: + SMAP\n");
         }
 
         // Check if the TSC exists and is also invariant.
-        if cpuid1.edx & consts::CPUID_1D_TSC as u32 != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
+        if cpuid1.edx & consts::CPUID_1D_TSC != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
             match clock::switch(Box::new(super::tsc::TscClock)) {
                 Ok(x) => {
                     cr4 |= consts::CR4_TSD;
@@ -235,7 +239,7 @@ impl PerCpu {
 
         // FSGSBASE is NOT optional for us.
         assert!(
-            cpuid7.ebx & consts::CPUID_7B_FSGSBASE as u32 != 0,
+            cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0,
             "FSGSBASE is required for the kernel to function, but the bit wasn't set"
         );
         cr4 |= consts::CR4_FSGSBASE;
@@ -249,8 +253,7 @@ impl PerCpu {
             asm::wrmsr(consts::MSR_FS_BASE, 0);
         }
 
-        // TODO: Mask the legacy PIC.
-        // TODO: Setup LAPIC.
+        self.arch.lapic = Some(apic::LocalApic::init(self));
     }
 }
 

@@ -13,6 +13,7 @@ use crate::{
             self,
             virt::{KERNEL_PAGE_TABLE, VmFlags},
         },
+        percpu::PerCpu,
     },
 };
 use alloc::boxed::Box;
@@ -68,7 +69,7 @@ pub fn init(rsdp: PhysAddr) {
     }
 
     // Setup the boot CPU.
-    generic::percpu::setup_cpu();
+    PerCpu::setup_data();
 
     print!("acpi: Booting CPUs using MADT\n");
     // TODO: Evaluate MADT and initialize all remaining CPUs.

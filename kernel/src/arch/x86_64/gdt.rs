@@ -1,6 +1,9 @@
 use super::asm::{interrupt_disable, interrupt_enable};
 use super::consts::{CPL_KERNEL, CPL_USER};
 use crate::arch::{VirtAddr, x86_64::asm};
+use crate::generic::memory::PageAlloc;
+use crate::generic::memory::virt::KERNEL_STACK_SIZE;
+use alloc::vec::Vec;
 use bitflags::bitflags;
 use core::arch::asm;
 use core::mem::offset_of;
@@ -291,8 +294,9 @@ pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
     };
 
     // TODO: Allocate a stack for the TSS.
-    // tss.rsp0 = ;
-    // tss.ist1 = ;
+    tss.rsp0 = Vec::with_capacity_in(KERNEL_STACK_SIZE as usize, PageAlloc)
+        .leak()
+        .as_mut_ptr() as *mut u8 as u64;
 
     // Construct a register to hold the GDT base and limit.
     let gdtr = GdtRegister {

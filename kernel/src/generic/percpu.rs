@@ -10,7 +10,6 @@ use core::{
 use spin::RwLock;
 
 /// Processor-local information.
-#[repr(C)]
 #[derive(Debug)]
 pub struct PerCpu {
     /// A pointer to this structure.
@@ -32,30 +31,32 @@ pub struct PerCpu {
 
 static CPU_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-/// Initializes the current processor.
-pub fn setup_cpu() {
-    let next_id = CPU_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
-    print!("percpu: Initializing CPU {}.\n", next_id);
+impl PerCpu {
+    /// Initializes the current processor.
+    pub fn setup_data() {
+        let next_id = CPU_ID_COUNTER.fetch_add(1, Ordering::Relaxed);
+        print!("percpu: Initializing per-CPU block for CPU {}.\n", next_id);
 
-    let mut cpu = Box::leak(Box::new(PerCpu {
-        ptr: null_mut(),
-        id: next_id,
-        kernel_stack: 0,
-        user_stack: 0,
-        enabled: true,
-        thread: None,
-        arch: ArchPerCpu::new(),
-    }));
+        let mut cpu = Box::leak(Box::new(PerCpu {
+            ptr: null_mut(),
+            id: next_id,
+            kernel_stack: 0,
+            user_stack: 0,
+            enabled: true,
+            thread: None,
+            arch: ArchPerCpu::new(),
+        }));
 
-    cpu.ptr = cpu;
+        cpu.ptr = cpu;
 
-    // Some fields are not generic, initialize them too.
-    cpu.arch_setup_cpu();
+        // Some fields are not generic, initialize them too.
+        cpu.arch_setup_cpu();
 
-    print!("percpu: Initialized CPU {}.\n", next_id);
-}
+        print!("percpu: Initialized CPU {}.\n", next_id);
+    }
 
-/// Stops all CPUs immediately.
-pub fn stop_all() -> ! {
-    arch::percpu::stop_all();
+    /// Stops all CPUs immediately.
+    pub fn stop_all() -> ! {
+        arch::percpu::stop_all();
+    }
 }

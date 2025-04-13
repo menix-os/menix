@@ -1,14 +1,10 @@
-use seq_macro::seq;
-
 use super::consts::CPL_USER;
-use crate::arch;
-use crate::arch::x86_64::gdt::Gdt;
-use crate::generic::percpu::PerCpu;
-use crate::generic::syscall;
-use core::arch::naked_asm;
-use core::mem::offset_of;
-
-use super::VirtAddr;
+use super::{VirtAddr, percpu};
+use crate::arch::{self, x86_64::gdt::Gdt};
+use crate::generic::irq::IrqController;
+use crate::generic::{percpu::PerCpu, syscall};
+use core::{arch::naked_asm, mem::offset_of};
+use seq_macro::seq;
 
 /// Swaps GSBASE if CPL is 3.
 macro_rules! swapgs_if_necessary {
@@ -81,6 +77,7 @@ pub struct InterruptFrame {
     pub rsp: u64,
     pub ss: u64,
 }
+assert_size!(InterruptFrame, 0xB0);
 
 impl InterruptFrame {
     pub fn set_stack(&mut self, addr: VirtAddr) {
@@ -97,9 +94,11 @@ unsafe extern "C" fn interrupt_handler(
     isr: usize,
     context: *mut InterruptFrame,
 ) -> *mut InterruptFrame {
+    let mut result = context;
     unsafe {
         match (*context).isr as u8 {
             0x0E => _ = arch::page::page_fault_handler(context),
+            0x20 => result = timer_handler(context),
             0x80 => syscall_handler(context),
             isr => {
                 let cpu = &PerCpu::get_per_cpu().arch;
@@ -110,7 +109,7 @@ unsafe extern "C" fn interrupt_handler(
             }
         };
     }
-    return context;
+    return result;
 }
 
 /// Invoked by either the interrupt or syscall stub.
@@ -130,6 +129,14 @@ unsafe extern "C" fn syscall_handler(context: *mut InterruptFrame) {
         (*context).rax = result.0 as u64;
         (*context).rdx = result.1 as u64;
     }
+}
+
+unsafe extern "C" fn timer_handler(context: *mut InterruptFrame) -> *mut InterruptFrame {
+    let percpu = unsafe { PerCpu::get_per_cpu() };
+    if let Some(lapic) = &percpu.arch.lapic {
+        lapic.eoi();
+    }
+    return context;
 }
 
 /// Handles a syscall via AMD64 syscall/sysret instructions.
