@@ -4,6 +4,7 @@ use core::{alloc::Layout, ptr::NonNull};
 use spin::Mutex;
 use talc::{ClaimOnOom, Span, Talc, Talck};
 
+pub mod mmio;
 pub mod page;
 pub mod virt;
 

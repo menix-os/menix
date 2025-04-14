@@ -53,7 +53,7 @@ impl BootInfo {
 pub struct BootFile {
     pub data: Box<[u8]>,
     pub name: String,
-    pub command_line: Option<String>,
+    pub command_line: String,
 }
 
 // Boot method selection. Limine is the default method.

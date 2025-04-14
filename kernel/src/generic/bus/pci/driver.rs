@@ -1,13 +1,8 @@
 // PCI driver handling.
 
-use crate::device::PciDevice;
-use menix::{alloc::collections::btree_map::BTreeMap, spin::RwLock};
-
-#[derive(Debug)]
-pub enum PciError {
-    Unknown,
-    DriverAlreadyExists,
-}
+use super::{PciError, device::PciDevice};
+use alloc::collections::btree_map::BTreeMap;
+use spin::RwLock;
 
 pub type PciDriverFn = fn(dev: &PciDevice) -> Result<(), PciError>;
 

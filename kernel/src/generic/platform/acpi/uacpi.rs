@@ -1,94 +1,30 @@
-// Advanced Configuration and Power Interface
-// Wrapper for uACPI
-
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
+use core::{
+    alloc::Layout,
+    ffi::{CStr, c_void},
+    ptr::{NonNull, null_mut},
+};
+
+use alloc::{alloc::Allocator, alloc::GlobalAlloc, boxed::Box};
+use spin::Mutex;
+pub use uacpi::*;
+
 use crate::{
-    arch::{PhysAddr, firmware},
+    arch::PhysAddr,
     generic::{
-        self,
-        clock::{self},
+        clock,
         memory::{
             self,
             virt::{KERNEL_PAGE_TABLE, VmFlags},
         },
-        percpu::PerCpu,
     },
 };
-use alloc::boxed::Box;
-use core::{
-    alloc::{Allocator, GlobalAlloc, Layout},
-    ffi::{CStr, c_void},
-    ptr::{NonNull, null_mut},
-};
-use spin::{Once, Spin, mutex::Mutex};
-use uacpi::{
-    self, uacpi_bool, uacpi_char, uacpi_cpu_flags, uacpi_firmware_request, uacpi_handle,
-    uacpi_interrupt_handler, uacpi_io_addr, uacpi_log_level, uacpi_log_level_UACPI_LOG_DEBUG,
-    uacpi_log_level_UACPI_LOG_ERROR, uacpi_log_level_UACPI_LOG_WARN, uacpi_pci_address,
-    uacpi_phys_addr, uacpi_size, uacpi_status, uacpi_status_UACPI_STATUS_INTERNAL_ERROR,
-    uacpi_status_UACPI_STATUS_MAPPING_FAILED, uacpi_status_UACPI_STATUS_OK,
-    uacpi_status_UACPI_STATUS_UNIMPLEMENTED, uacpi_thread_id, uacpi_u8, uacpi_u16, uacpi_u32,
-    uacpi_u64, uacpi_work_handler, uacpi_work_type,
-};
-
-static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
-
-pub fn init(rsdp: PhysAddr) {
-    RSDP_ADDRESS.call_once(|| return rsdp);
-
-    let mut uacpi_status = uacpi_status_UACPI_STATUS_OK;
-
-    // Get an early table window so we can initialize e.g. HPET and MADT.
-    let mut early_mem = Box::<[u8]>::new_uninit_slice(4096);
-    uacpi_status = unsafe {
-        uacpi::uacpi_setup_early_table_access(
-            early_mem.as_mut_ptr() as *mut c_void,
-            early_mem.len(),
-        )
-    };
-    if uacpi_status != uacpi_status_UACPI_STATUS_OK {
-        error!(
-            "acpi: Early table access failed with error {}!\n",
-            uacpi_status
-        );
-        return;
-    }
-
-    #[cfg(target_arch = "x86_64")]
-    clock::switch(Box::new(firmware::Hpet::default()));
-
-    print!("acpi: Initializing...\n");
-    uacpi_status = unsafe { uacpi::uacpi_initialize(0) };
-    if uacpi_status != uacpi_status_UACPI_STATUS_OK {
-        error!(
-            "acpi: Initialization failed with error \"{}\"!\n",
-            uacpi_status
-        );
-    }
-
-    // Setup the boot CPU.
-    PerCpu::setup_data();
-
-    print!("acpi: Booting CPUs using MADT\n");
-    // TODO: Evaluate MADT and initialize all remaining CPUs.
-
-    uacpi_status = unsafe { uacpi::uacpi_namespace_load() };
-
-    if uacpi_status != uacpi_status_UACPI_STATUS_OK {
-        error!(
-            "acpi: Namespace loading failed with error \"{}\"!\n",
-            uacpi_status
-        );
-    } else {
-        unsafe { uacpi::uacpi_namespace_initialize() };
-    }
-}
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_addr) -> uacpi_status {
-    match RSDP_ADDRESS.get() {
+    match super::RSDP_ADDRESS.get() {
         Some(x) => unsafe {
             *out_rsdp_address = *x as uacpi_phys_addr;
             return uacpi_status_UACPI_STATUS_OK;
@@ -202,6 +138,7 @@ extern "C" fn uacpi_kernel_io_map(
         0,
         len,
     );
+
     if mem == null_mut() {
         return uacpi_status_UACPI_STATUS_MAPPING_FAILED;
     }
@@ -245,7 +182,7 @@ extern "C" fn uacpi_kernel_get_nanoseconds_since_boot() -> uacpi_u64 {
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_stall(usec: uacpi_u8) {
-    todo!()
+    clock::wait_ns(usec as usize);
 }
 
 #[unsafe(no_mangle)]
@@ -338,7 +275,7 @@ extern "C" fn uacpi_kernel_uninstall_interrupt_handler(
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_create_spinlock() -> uacpi_handle {
-    let mut b = Box::new(Mutex::<usize, Spin>::new(0));
+    let mut b = Box::new(Mutex::<usize>::new(0));
     return Box::into_raw(b) as uacpi_handle;
 }
 

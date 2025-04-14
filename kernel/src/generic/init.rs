@@ -42,8 +42,14 @@ pub(crate) fn init() {
         print!("boot: Initialized framebuffer.\n");
     }
 
-    generic::firmware::init();
+    // Intialize platform.
+    generic::platform::init();
+    // Finalize processor setup.
     arch::init::init();
+    // Initialize buses.
+    generic::bus::init();
+
+    // Finally, load all module.
     generic::module::init();
 
     print!("boot: Starting init...\n");

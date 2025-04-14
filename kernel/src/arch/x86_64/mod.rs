@@ -1,7 +1,6 @@
 mod apic;
 mod asm;
 mod consts;
-pub mod firmware;
 mod gdt;
 mod idt;
 pub mod init;
@@ -9,6 +8,7 @@ pub mod irq;
 mod kvmclock;
 pub mod page;
 pub mod percpu;
+pub mod platform;
 mod serial;
 mod tsc;
 

@@ -143,18 +143,11 @@ unsafe extern "C" fn _start() -> ! {
                     .unwrap()
                     .1
                     .to_owned(),
-                command_line: {
-                    let line_buf = file.string();
-                    match line_buf.count_bytes() {
-                        0 => None,
-                        1.. => Some(
-                            line_buf
-                                .to_str()
-                                .expect("Module command line was not valid UTF-8")
-                                .to_owned(),
-                        ),
-                    }
-                },
+                command_line: file
+                    .string()
+                    .to_str()
+                    .expect("Module command line was not valid UTF-8")
+                    .to_owned(),
             });
         }
         info.files = file_buf;

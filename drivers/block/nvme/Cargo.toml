@@ -9,4 +9,3 @@ crate-type = ["dylib"]
 
 [dependencies]
 menix = { path = "../../../kernel" }
-pci = { path = "../../bus/pci" }

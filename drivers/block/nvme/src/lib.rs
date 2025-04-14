@@ -1,9 +1,12 @@
 #![no_std]
 
-use menix::generic::cmdline::CmdLine;
-use pci::{
-    device::PciDevice,
-    driver::{PciDriver, PciError, PciVariant},
+use menix::generic::{
+    bus::pci::{
+        PciError,
+        device::PciDevice,
+        driver::{PciDriver, PciVariant},
+    },
+    cmdline::CmdLine,
 };
 
 menix::module!("NVMe block devices", "Marvin Friedrich", main);

@@ -85,7 +85,7 @@ pub fn init() {
         }
 
         print!("module: Loading \"{}\"\n", file.name);
-        if let Err(x) = load(&file.name, file.command_line.as_deref(), &file.data) {
+        if let Err(x) = load(&file.name, Some(&file.command_line), &file.data) {
             print!("module: Failed to load module: {:?}\n", x);
         }
     }
