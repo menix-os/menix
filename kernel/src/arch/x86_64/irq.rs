@@ -3,6 +3,7 @@ use super::{VirtAddr, percpu};
 use crate::arch::{self, x86_64::gdt::Gdt};
 use crate::generic::irq::IrqController;
 use crate::generic::{percpu::PerCpu, syscall};
+use core::fmt::{Debug, Display};
 use core::{arch::naked_asm, mem::offset_of};
 use seq_macro::seq;
 
@@ -48,8 +49,8 @@ macro_rules! pop_all_regs {
 }
 
 /// Registers which are saved and restored during a context switch or interrupt.
-#[repr(C, packed)]
-#[derive(Clone, Copy, Debug, Default)]
+#[repr(C)]
+#[derive(Clone, Debug, Copy, Default)]
 pub struct InterruptFrame {
     pub r15: u64,
     pub r14: u64,
@@ -89,6 +90,38 @@ impl InterruptFrame {
     }
 }
 
+impl Display for InterruptFrame {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_fmt(format_args!(
+            "rax  {:016x} rbx  {:016x} rcx  {:016x} rdx  {:016x}\n\
+             rbp  {:016x} rdi  {:016x} rsi  {:016x} r8   {:016x}\n\
+             r9   {:016x} r10  {:016x} r11  {:016x} r12  {:016x}\n\
+             r13  {:016x} r14  {:016x} r15  {:016x} rip  {:016x}\n\
+             cs   {:016x} ss   {:016x} rflg {:016x} rsp  {:016x}",
+            &self.rax,
+            &self.rbx,
+            &self.rcx,
+            &self.rdx,
+            &self.rbp,
+            &self.rdi,
+            &self.rsi,
+            &self.r8,
+            &self.r9,
+            &self.r10,
+            &self.r11,
+            &self.r12,
+            &self.r13,
+            &self.r14,
+            &self.r15,
+            &self.rip,
+            &self.cs,
+            &self.ss,
+            &self.rflags,
+            &self.rsp,
+        ))
+    }
+}
+
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
 unsafe extern "C" fn interrupt_handler(
     isr: usize,
@@ -96,11 +129,49 @@ unsafe extern "C" fn interrupt_handler(
 ) -> *mut InterruptFrame {
     let mut result = context;
     unsafe {
-        match (*context).isr as u8 {
+        match isr as u8 {
+            // Exceptions.
             0x0E => _ = arch::page::page_fault_handler(context),
+            // Unhandled exceptions.
+            0..0x20 => {
+                error!("Registers:\n{}\n", *context);
+                panic!(
+                    "Got an unhandled CPU exception: {} (ISR {})!",
+                    match isr {
+                        0x00 => "Division Error",
+                        0x01 => "Debug",
+                        0x02 => "NMI",
+                        0x03 => "Breakpoint",
+                        0x04 => "Overflow",
+                        0x05 => "Bound Range Exceeded",
+                        0x06 => "Invalid Opcode",
+                        0x07 => "Device Not Available",
+                        0x08 => "Double Fault",
+                        0x0A => "Invalid TSS",
+                        0x0B => "Segment Not Present",
+                        0x0C => "Stack-Segment Fault",
+                        0x0D => "General Protection Fault",
+                        0x0E => "Page Fault",
+                        0x10 => "x87 Floating Point Exception",
+                        0x11 => "Alignment Check",
+                        0x12 => "Machine Check",
+                        0x13 => "SIMD Floating Point Exception",
+                        0x14 => "Virtualization Exception",
+                        0x15 => "Control Protection Exception",
+                        0x1C => "Hypervisor Injection Exception",
+                        0x1D => "VMM Communication Exception",
+                        0x1E => "Security Exception",
+                        _ => "Reserved",
+                    },
+                    isr
+                );
+            }
+            // Timer.
             0x20 => result = timer_handler(context),
+            // Legacy Syscall.
             0x80 => syscall_handler(context),
-            isr => {
+            //
+            _ => {
                 let cpu = &PerCpu::get_per_cpu().arch;
                 match cpu.irq_handlers[isr as usize] {
                     Some(x) => x(cpu.irq_map[isr as usize], cpu.irq_ctx[isr as usize]),
