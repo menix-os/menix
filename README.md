@@ -4,12 +4,27 @@ Menix is a modular 64-bit kernel written in Rust.
 
 ## Getting started
 
-> [!Important]
+> [!NOTE]
 > This repository contains only the kernel and drivers.
 > If you want to get a bootable image, you might want to check out
 > **https://github.com/menix-os/bootstrap** instead.
 
+### Cloning the repository
+
+Menix has external submodules as dependencies, to initialize them either run:
+
+```sh
+git clone https://github.com/menix-os/menix --recurse-submodules
+```
+
+or if you've already cloned the repository:
+
+```sh
+git submodule update --init --recursive
+```
+
 ### Building the kernel
+
 To build the kernel you will need:
 - cargo
 - rustc
