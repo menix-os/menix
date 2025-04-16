@@ -29,7 +29,7 @@ pub struct FrameBuffer {
 unsafe impl Sync for FrameBuffer {}
 unsafe impl Send for FrameBuffer {}
 
-const FONT_DATA: &[u8] = include_bytes!("../../bin/fbcon_font.bin");
+const FONT_DATA: &[u8] = include_bytes!("../../assets/fbcon_font.bin");
 const FONT_WIDTH: usize = 8;
 const FONT_HEIGHT: usize = 12;
 const FONT_GLYPH_SIZE: usize = ((FONT_WIDTH * FONT_HEIGHT) / 8);
