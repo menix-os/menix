@@ -2,14 +2,12 @@ use super::{
     elf::{ElfHdr, ElfPhdr},
     memory::{PhysAddr, VirtAddr, virt::VmFlags},
 };
-use crate::{
+use crate::generic::{
     boot::BootInfo,
-    generic::{
-        elf,
-        memory::{
-            PageAlloc,
-            virt::{self},
-        },
+    elf,
+    memory::{
+        PageAlloc,
+        virt::{self},
     },
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};

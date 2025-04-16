@@ -1,53 +1,12 @@
 use super::consts::CPL_USER;
-use super::percpu;
+use super::cpu;
 use crate::arch::{self, x86_64::gdt::Gdt};
 use crate::generic::irq::IrqController;
 use crate::generic::memory::VirtAddr;
-use crate::generic::{percpu::PerCpu, syscall};
+use crate::generic::{cpu::PerCpu, syscall};
 use core::fmt::{Debug, Display};
 use core::{arch::naked_asm, mem::offset_of};
 use seq_macro::seq;
-
-/// Swaps GSBASE if CPL is 3.
-macro_rules! swapgs_if_necessary {
-    () => {
-        concat!("cmp word ptr [rsp+0x8], 0x8;", "je 2f;", "swapgs;", "2:")
-    };
-}
-
-/// Pushes all general purpose registers onto the stack.
-macro_rules! push_all_regs {
-    () => {
-        concat!(
-            "push rax;",
-            "push rbx;",
-            "push rcx;",
-            "push rdx;",
-            "push rbp;",
-            "push rdi;",
-            "push rsi;",
-            "push r8;",
-            "push r9;",
-            "push r10;",
-            "push r11;",
-            "push r12;",
-            "push r13;",
-            "push r14;",
-            "push r15;"
-        )
-    };
-}
-
-/// Pops all general purpose registers from the stack.
-macro_rules! pop_all_regs {
-    () => {
-        concat!(
-            "pop rax;", "pop rbx;", "pop rcx;", "pop rdx;", "pop rbp;", "pop rdi;", "pop rsi;",
-            "pop r8;", "pop r9;", "pop r10;", "pop r11;", "pop r12;", "pop r13;", "pop r14;",
-            "pop r15;"
-        )
-    };
-}
 
 /// Registers which are saved and restored during a context switch or interrupt.
 #[repr(C)]
@@ -209,6 +168,47 @@ unsafe extern "C" fn timer_handler(context: *mut InterruptFrame) -> *mut Interru
         lapic.eoi();
     }
     return context;
+}
+
+/// Swaps GSBASE if CPL is 3.
+macro_rules! swapgs_if_necessary {
+    () => {
+        concat!("cmp word ptr [rsp+0x8], 0x8;", "je 2f;", "swapgs;", "2:")
+    };
+}
+
+/// Pushes all general purpose registers onto the stack.
+macro_rules! push_all_regs {
+    () => {
+        concat!(
+            "push rax;",
+            "push rbx;",
+            "push rcx;",
+            "push rdx;",
+            "push rbp;",
+            "push rdi;",
+            "push rsi;",
+            "push r8;",
+            "push r9;",
+            "push r10;",
+            "push r11;",
+            "push r12;",
+            "push r13;",
+            "push r14;",
+            "push r15;"
+        )
+    };
+}
+
+/// Pops all general purpose registers from the stack.
+macro_rules! pop_all_regs {
+    () => {
+        concat!(
+            "pop rax;", "pop rbx;", "pop rcx;", "pop rdx;", "pop rbp;", "pop rdi;", "pop rsi;",
+            "pop r8;", "pop r9;", "pop r10;", "pop r11;", "pop r12;", "pop r13;", "pop r14;",
+            "pop r15;"
+        )
+    };
 }
 
 /// Handles a syscall via AMD64 syscall/sysret instructions.

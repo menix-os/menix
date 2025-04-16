@@ -1,6 +1,20 @@
-use crate::generic::{cmdline::CmdLine, fbcon::FrameBuffer, memory::PhysAddr};
+use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
 use alloc::{boxed::Box, string::String, vec::Vec};
 use spin::Once;
+
+pub mod bootcon;
+
+// Boot method selection. Limine is the default method.
+#[cfg(all(
+    feature = "boot_limine",
+    any(
+        target_arch = "x86_64",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+        target_arch = "loongarch64"
+    )
+))]
+pub mod limine;
 
 /// Information passed from the bootloader. Memory is reclaimed after initialization.
 #[derive(Default, Debug)]
@@ -11,8 +25,6 @@ pub struct BootInfo {
     pub rsdp_addr: Option<PhysAddr>,
     /// Base address of a flattened device tree in memory.
     pub fdt_addr: Option<PhysAddr>,
-    /// A framebuffer.
-    pub frame_buffer: Option<FrameBuffer>,
     /// Files given to the bootloader.
     pub files: Vec<BootFile>,
 }
@@ -25,7 +37,6 @@ impl BootInfo {
             command_line: String::new(),
             rsdp_addr: None,
             fdt_addr: None,
-            frame_buffer: None,
             files: Vec::new(),
         }
     }
@@ -52,15 +63,3 @@ pub struct BootFile {
     pub name: String,
     pub command_line: String,
 }
-
-// Boot method selection. Limine is the default method.
-#[cfg(all(
-    feature = "boot_limine",
-    any(
-        target_arch = "x86_64",
-        target_arch = "aarch64",
-        target_arch = "riscv64",
-        target_arch = "loongarch64"
-    )
-))]
-pub mod limine;

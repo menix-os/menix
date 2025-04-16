@@ -1,13 +1,9 @@
 // Boot using the Limine protocol.
 
-#![no_std]
-#![no_main]
-
 use super::{BootFile, BootInfo};
 use crate::generic::{
+    boot::bootcon::{FbColorBits, FrameBuffer},
     cmdline::CmdLine,
-    fbcon::{FbColorBits, FrameBuffer},
-    init,
     memory::{PhysAddr, PhysMemory, PhysMemoryUsage, VirtAddr},
 };
 use alloc::{borrow::ToOwned, vec::Vec};
@@ -56,10 +52,7 @@ pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 #[unsafe(link_section = ".boot")]
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 
-#[unsafe(no_mangle)]
-unsafe extern "C" fn _start() -> ! {
-    init::early_init();
-
+pub(crate) fn init() -> ! {
     if let Some(x) = BOOTLOADER_REQUEST.get_response() {
         print!(
             "boot: Booting with Limine protocol, loaded by {} {}\n",
@@ -97,7 +90,7 @@ unsafe extern "C" fn _start() -> ! {
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
 
-        init::memory_init(
+        crate::memory_init(
             &mut memmap_buf[0..entries.len()],
             VirtAddr(HHDM_REQUEST.get_response().unwrap().offset() as usize),
             PhysAddr(kernel_addr.physical_base() as usize),
@@ -154,7 +147,7 @@ unsafe extern "C" fn _start() -> ! {
 
     if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
         if let Some(fb) = response.framebuffers().next() {
-            info.frame_buffer = Some(FrameBuffer {
+            super::bootcon::init(FrameBuffer {
                 screen: fb.addr(),
                 width: fb.width() as usize,
                 height: fb.height() as usize,
@@ -178,7 +171,7 @@ unsafe extern "C" fn _start() -> ! {
 
     // Finally, save the boot information.
     info.register();
-    init::init();
+    crate::main();
 
     unreachable!();
 }
