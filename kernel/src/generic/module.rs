@@ -211,7 +211,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                     }
                 }
             }
-            elf::PT_MODVERS => {
+            elf::PT_MODVERSION => {
                 info.version = str::from_utf8(
                     &data
                         [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
@@ -219,7 +219,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                 .map_err(|x| ModuleLoadError::BrokenModuleInfo)?
                 .to_owned();
             }
-            elf::PT_MODAUTH => {
+            elf::PT_MODAUTHOR => {
                 info.author = str::from_utf8(
                     &data
                         [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],

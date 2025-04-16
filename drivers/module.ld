@@ -4,90 +4,90 @@ ENTRY(_start)
 
 PHDRS
 {
-	null	PT_NULL;
-	text	PT_LOAD		FLAGS(5);
-	rodata	PT_LOAD		FLAGS(4);
-	data	PT_LOAD		FLAGS(6);
-	dynamic PT_DYNAMIC	FLAGS(6);
-	modvers 0x60000001;
-	modauth 0x60000002;
-	moddesc 0x60000003;
+    null        PT_NULL;
+    text        PT_LOAD     FLAGS(5);
+    rodata      PT_LOAD     FLAGS(4);
+    data        PT_LOAD     FLAGS(6);
+    dynamic     PT_DYNAMIC  FLAGS(6);
+    modversion  0x60000001;
+    modauthor   0x60000002;
+    moddesc     0x60000003;
 }
 
 SECTIONS
 {
-	.debug_gdb_scripts : {
-		*(.debug_gdb_scripts)
-	} :null
+    .debug_gdb_scripts : {
+        *(.debug_gdb_scripts)
+    } :null
 
-	/* Code */
-	.text : {
-		*(.init)
-		*(.text)
-		*(.text.*)
-		*(.fini)
-		*(.plt)
-		*(.plt.*)
-	} :text
+    /* Code */
+    .text : {
+        *(.init)
+        *(.text)
+        *(.text.*)
+        *(.fini)
+        *(.plt)
+        *(.plt.*)
+    } :text
 
-	/* Read-only data */
-	.rodata : {
-		*(.rodata)
-		*(.rodata.*)
-		*(.got)
-		*(.got.*)
-	} :rodata
+    /* Read-only data */
+    .rodata : {
+        *(.rodata)
+        *(.rodata.*)
+        *(.got)
+        *(.got.*)
+    } :rodata
 
-	.mod.vers : {
-		KEEP(*(.mod.version))
-	} :rodata :modvers
+    .mod.version : {
+        KEEP(*(.mod.version))
+    } :rodata :modversion
 
-	.mod.auth : {
-		KEEP(*(.mod.author))
-	} :rodata :modauth
+    .mod.author : {
+        KEEP(*(.mod.author))
+    } :rodata :modauthor
 
-	.mod.desc : {
-		KEEP(*(.mod.desc))
-	} :rodata :moddesc
+    .mod.desc : {
+        KEEP(*(.mod.desc))
+    } :rodata :moddesc
 
-	/* Read-Write data */
-	.data : {
-		*(.data)
-		*(.data.*)
-	} :data
+    /* Read-Write data */
+    .data : {
+        *(.data)
+        *(.data.*)
+    } :data
 
-	/* Zero-initialized memory */
-	.bss : {
-		*(.*bss)
-		*(.*bss.*)
-		*(COMMON)
-	} :data
+    /* Zero-initialized memory */
+    .bss : {
+        *(.*bss)
+        *(.*bss.*)
+        *(COMMON)
+    } :data
 
-	.dynsym : {
-		*(.dynsym)
-	} :data
+    .dynsym : {
+        *(.dynsym)
+    } :data
 
-	.dynstr : {
-		*(.dynstr)
-	} :data
+    .dynstr : {
+        *(.dynstr)
+    } :data
 
-	.rela.dyn : {
-		*(.rela.dyn)
-	} :data
+    .rela.dyn : {
+        *(.rela.dyn)
+    } :data
 
-	/* Dynamic tags */
-	.dynamic : {
-		*(.dynamic)
-	} :data :dynamic
+    /* Dynamic tags */
+    .dynamic : {
+        *(.dynamic)
+    } :data :dynamic
 
 
-	/DISCARD/ :
-	{
-		*(.comment*)
-		*(.eh_frame*)
-		*(.rel.eh_frame*)
-		*(.gcc_except_table*)
-		*(.note*)
-		*(.interp)
-	}
+    /DISCARD/ :
+    {
+        *(.comment*)
+        *(.eh_frame*)
+        *(.rel.eh_frame*)
+        *(.gcc_except_table*)
+        *(.note*)
+        *(.interp)
+    }
 }
