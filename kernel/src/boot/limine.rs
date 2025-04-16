@@ -4,14 +4,11 @@
 #![no_main]
 
 use super::{BootFile, BootInfo};
-use crate::{
-    arch::{PhysAddr, VirtAddr},
-    generic::{
-        cmdline::CmdLine,
-        fbcon::{FbColorBits, FrameBuffer},
-        init,
-        memory::{PhysMemory, PhysMemoryUsage},
-    },
+use crate::generic::{
+    cmdline::CmdLine,
+    fbcon::{FbColorBits, FrameBuffer},
+    init,
+    memory::{PhysAddr, PhysMemory, PhysMemoryUsage, VirtAddr},
 };
 use alloc::{borrow::ToOwned, vec::Vec};
 use core::ptr::slice_from_raw_parts;
@@ -86,7 +83,7 @@ unsafe extern "C" fn _start() -> ! {
         let entries = MEMMAP_REQUEST.get_response().unwrap().entries();
         for (i, entry) in entries.iter().enumerate() {
             let elem = memmap_buf.get_mut(i).unwrap();
-            elem.address = entry.base as VirtAddr;
+            elem.address = PhysAddr(entry.base as usize);
             elem.length = entry.length as usize;
             elem.usage = match entry.entry_type {
                 EntryType::USABLE => PhysMemoryUsage::Free,
@@ -102,9 +99,9 @@ unsafe extern "C" fn _start() -> ! {
 
         init::memory_init(
             &mut memmap_buf[0..entries.len()],
-            HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr,
-            kernel_addr.physical_base() as PhysAddr,
-            kernel_addr.virtual_base() as VirtAddr,
+            VirtAddr(HHDM_REQUEST.get_response().unwrap().offset() as usize),
+            PhysAddr(kernel_addr.physical_base() as usize),
+            VirtAddr(kernel_addr.virtual_base() as usize),
         );
     }
 
@@ -117,12 +114,14 @@ unsafe extern "C" fn _start() -> ! {
     };
 
     // The RSDP is a physical address.
-    info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| x.address() as PhysAddr);
+    info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| PhysAddr(x.address()));
 
     // The FDT is a virtual address.
     info.fdt_addr = DTB_REQUEST.get_response().map(|x| {
-        ((x.dtb_ptr() as VirtAddr) - HHDM_REQUEST.get_response().unwrap().offset() as VirtAddr)
-            as PhysAddr
+        PhysAddr(unsafe {
+            x.dtb_ptr()
+                .byte_sub(HHDM_REQUEST.get_response().unwrap().offset() as usize)
+        } as usize)
     });
 
     // Get all modules.

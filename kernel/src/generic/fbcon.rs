@@ -4,7 +4,6 @@ use super::{
     log::{Logger, LoggerSink},
     misc::align_up,
 };
-use crate::arch::VirtAddr;
 use alloc::{boxed::Box, vec::Vec};
 use core::{intrinsics::volatile_copy_nonoverlapping_memory, ptr::null_mut};
 use spin::{Mutex, RwLock};

@@ -1,10 +1,8 @@
-use super::{PhysAddr, consts, irq::InterruptFrame};
-use crate::{
-    arch::VirtAddr,
-    generic::memory::{
-        page::{self, PageFaultInfo, PageFaultKind},
-        virt::{self, PageTable, VmFlags},
-    },
+use super::{consts, irq::InterruptFrame};
+use crate::generic::memory::{
+    PhysAddr, VirtAddr,
+    page::{self, PageFaultInfo, PageFaultKind},
+    virt::{self, PageTable, VmFlags},
 };
 use bitflags::bitflags;
 use core::arch::asm;
@@ -12,7 +10,7 @@ use core::arch::asm;
 #[repr(transparent)]
 #[derive(Clone, Copy)]
 pub struct PageTableEntry {
-    inner: PhysAddr,
+    inner: u64,
 }
 
 impl core::fmt::Debug for PageTableEntry {
@@ -26,12 +24,12 @@ impl core::fmt::Debug for PageTableEntry {
 }
 
 /// Masks only the address bits of a PTE.
-const ADDR_MASK: PhysAddr = 0x000FFFFFFFFFF000;
+const ADDR_MASK: u64 = 0x000F_FFFF_FFFF_F000;
 
 bitflags! {
     #[repr(transparent)]
     #[derive(Debug)]
-    pub struct PageFlags: PhysAddr {
+    pub struct PageFlags: u64 {
         const None = 0;
         const Present = 1 << 0;
         const ReadWrite = 1 << 1;
@@ -54,7 +52,7 @@ impl PageTableEntry {
     }
 
     pub const fn new(address: PhysAddr, flags: VmFlags) -> Self {
-        let mut result = (address & ADDR_MASK) | PageFlags::Present.bits();
+        let mut result = (address.0 as u64 & ADDR_MASK) | PageFlags::Present.bits();
 
         if flags.contains(VmFlags::User) {
             result |= PageFlags::UserMode.bits();
@@ -79,8 +77,8 @@ impl PageTableEntry {
         return Self { inner: result };
     }
 
-    pub const fn inner(&self) -> PhysAddr {
-        return self.inner;
+    pub const fn inner(&self) -> usize {
+        return self.inner as usize;
     }
 
     pub fn is_present(&self) -> bool {
@@ -92,7 +90,7 @@ impl PageTableEntry {
     }
 
     pub fn address(&self) -> PhysAddr {
-        return self.inner & ADDR_MASK;
+        return PhysAddr((self.inner & ADDR_MASK) as usize);
     }
 
     pub const fn get_levels() -> usize {
@@ -108,7 +106,7 @@ impl PageTableEntry {
     }
 
     pub const fn get_hhdm_addr() -> VirtAddr {
-        return 0xffff_8000_0000_0000;
+        return VirtAddr(0xffff_8000_0000_0000);
     }
 
     pub const fn get_hhdm_size() -> usize {
@@ -123,7 +121,7 @@ impl PageTableEntry {
 /// Invalidates a TLB entry cache.
 fn flush_tlb(addr: VirtAddr) {
     unsafe {
-        asm!("invlpg [{addr}]", addr = in(reg) addr);
+        asm!("invlpg [{addr}]", addr = in(reg) addr.0);
     }
 }
 
@@ -135,7 +133,7 @@ pub unsafe fn set_page_table(page_table: &PageTable) {
         .expect("Page table should have been allocated")
         .as_ptr();
     unsafe {
-        asm!("mov cr3, {addr}", addr = in(reg) table as VirtAddr - PageTableEntry::get_hhdm_addr());
+        asm!("mov cr3, {addr}", addr = in(reg) table.byte_sub( PageTableEntry::get_hhdm_addr().0));
     }
 }
 
@@ -146,8 +144,8 @@ pub unsafe fn page_fault_handler(context: *const InterruptFrame) -> *const Inter
 
         let info = PageFaultInfo {
             caused_by_user: (*context).cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
-            ip: (*context).rip as VirtAddr,
-            addr: cr2 as VirtAddr,
+            ip: VirtAddr((*context).rip as usize),
+            addr: VirtAddr(cr2),
             kind: match (*context).error {
                 _ => PageFaultKind::Unknown,
             },

@@ -1,6 +1,5 @@
 #![allow(unused)]
 
-use super::VirtAddr;
 use super::gdt::GdtRegister;
 use super::idt::{IDT_SIZE, IdtRegister};
 use core::arch::{asm, global_asm};

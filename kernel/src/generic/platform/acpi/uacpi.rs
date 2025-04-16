@@ -11,14 +11,11 @@ use alloc::{alloc::Allocator, alloc::GlobalAlloc, boxed::Box};
 use spin::Mutex;
 pub use uacpi::*;
 
-use crate::{
-    arch::PhysAddr,
-    generic::{
-        clock,
-        memory::{
-            self,
-            virt::{KERNEL_PAGE_TABLE, VmFlags},
-        },
+use crate::generic::{
+    clock,
+    memory::{
+        self, PhysAddr,
+        virt::{KERNEL_PAGE_TABLE, VmFlags},
     },
 };
 
@@ -26,7 +23,7 @@ use crate::{
 unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_addr) -> uacpi_status {
     match super::RSDP_ADDRESS.get() {
         Some(x) => unsafe {
-            *out_rsdp_address = *x as uacpi_phys_addr;
+            *out_rsdp_address = x.0 as uacpi_phys_addr;
             return uacpi_status_UACPI_STATUS_OK;
         },
         None => return uacpi_status_UACPI_STATUS_INTERNAL_ERROR,
@@ -36,7 +33,7 @@ unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_add
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c_void {
     return KERNEL_PAGE_TABLE.write().map_memory(
-        addr as PhysAddr,
+        PhysAddr(addr as usize),
         VmFlags::Read | VmFlags::Write,
         0,
         len,
@@ -133,7 +130,7 @@ extern "C" fn uacpi_kernel_io_map(
     out_handle: *mut uacpi_handle,
 ) -> uacpi_status {
     let mem = KERNEL_PAGE_TABLE.write().map_memory(
-        base as PhysAddr,
+        PhysAddr(base as usize),
         VmFlags::Read | VmFlags::Write,
         0,
         len,

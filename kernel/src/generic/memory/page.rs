@@ -1,4 +1,5 @@
-use crate::arch::{VirtAddr, irq::InterruptFrame};
+use super::VirtAddr;
+use crate::arch::irq::InterruptFrame;
 
 /// The origin of the page fault.
 pub enum PageFaultKind {
@@ -38,6 +39,6 @@ pub fn page_fault_handler<'a>(
 
     panic!(
         "Kernel caused an unrecoverable page fault! IP: {:#x}, Address: {:#x}",
-        info.ip, info.addr
+        info.ip.0, info.addr.0
     );
 }

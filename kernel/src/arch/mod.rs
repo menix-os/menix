@@ -35,10 +35,3 @@ pub use internal::irq;
 pub use internal::page;
 pub use internal::percpu;
 pub use internal::platform;
-
-/// Represents a physical address. It can't be directly read from or written to.
-pub use internal::PhysAddr;
-/// Represents a virtual address. It can't be directly read from or written to.
-/// Note: Not the same as a pointer. A `VirtAddr` might point into another
-/// process's memory that is not mapped in the kernel.
-pub use internal::VirtAddr;

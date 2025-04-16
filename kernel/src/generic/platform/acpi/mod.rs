@@ -4,12 +4,12 @@
 mod uacpi;
 
 use crate::{
-    arch::{PhysAddr, platform},
+    arch::platform,
     generic::{
         self,
         clock::{self},
         memory::{
-            self,
+            self, PhysAddr,
             virt::{KERNEL_PAGE_TABLE, VmFlags},
         },
         percpu::PerCpu,

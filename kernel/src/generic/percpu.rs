@@ -1,7 +1,7 @@
 // Per-CPU data structures.
 
-use super::sched::thread::Thread;
-use crate::arch::{self, VirtAddr, percpu::ArchPerCpu};
+use super::{memory::VirtAddr, sched::thread::Thread};
+use crate::arch::{self, percpu::ArchPerCpu};
 use alloc::{boxed::Box, sync::Arc};
 use core::{
     ptr::null_mut,
@@ -40,8 +40,8 @@ impl PerCpu {
         let mut cpu = Box::leak(Box::new(PerCpu {
             ptr: null_mut(),
             id: next_id,
-            kernel_stack: 0,
-            user_stack: 0,
+            kernel_stack: VirtAddr(0),
+            user_stack: VirtAddr(0),
             enabled: true,
             thread: None,
             arch: ArchPerCpu::new(),

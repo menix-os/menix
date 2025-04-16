@@ -1,7 +1,4 @@
-use crate::{
-    arch::{self, PhysAddr, VirtAddr},
-    generic::{cmdline::CmdLine, fbcon::FrameBuffer, memory::PhysMemory},
-};
+use crate::generic::{cmdline::CmdLine, fbcon::FrameBuffer, memory::PhysAddr};
 use alloc::{boxed::Box, string::String, vec::Vec};
 use spin::Once;
 

@@ -1,5 +1,5 @@
-use super::PageAlloc;
-use crate::arch::{self, PhysAddr, VirtAddr, page::PageTableEntry};
+use super::{PageAlloc, PhysAddr, VirtAddr};
+use crate::arch::{self, page::PageTableEntry};
 use alloc::vec::Vec;
 use alloc::{boxed::Box, sync::Arc};
 use bitflags::bitflags;
@@ -115,7 +115,7 @@ impl PageTable {
                 PageTableEntry::get_page_bits() + (PageTableEntry::get_level_bits() * level);
 
             // Get the index for this level by masking the relevant address part.
-            index = (virt >> addr_shift) & addr_bits;
+            index = (virt.0 >> addr_shift) & addr_bits;
 
             // The last level is used to access the actual PTE, so break the loop then.
             if level <= target_level || do_break {
@@ -145,7 +145,7 @@ impl PageTable {
                         do_break = true;
                     } else {
                         // If the PTE is not large, go one level deeper.
-                        current_head = ((*pte).address() + PageTableEntry::get_hhdm_addr())
+                        current_head = ((*pte).address().0 + PageTableEntry::get_hhdm_addr().0)
                             as *mut PageTableEntry;
                     }
                     *pte = PageTableEntry::new((*pte).address(), pte_flags);
@@ -162,7 +162,9 @@ impl PageTable {
                     .as_mut_ptr();
                     // ptr::byte_sub() doesn't allow taking higher half addresses because it doesn't fit in an isize.
                     *pte = PageTableEntry::new(
-                        next_head as VirtAddr - PageTableEntry::get_hhdm_addr(),
+                        VirtAddr::from(next_head)
+                            .get_kernel_phys()
+                            .ok_or(VirtMapError::PageTableEntryMissing)?,
                         pte_flags,
                     );
                     current_head = next_head;
@@ -183,7 +185,7 @@ impl PageTable {
         // Check if the new mapping is virtually contigious.
         // If it is, don't allocate a new mapping, but rather update the existing entry.
         for map in &mut self.mappings {
-            if map.virt + map.size == new_mapping.virt {
+            if map.virt.0 + map.size == new_mapping.virt.0 {
                 map.size += new_mapping.size;
                 return;
             }
@@ -230,7 +232,12 @@ impl PageTable {
             1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
 
         for offset in (0..length).step_by(step) {
-            self.map_single(virt + offset, phys + offset, flags, level)?;
+            self.map_single(
+                VirtAddr(virt.0 + offset),
+                PhysAddr(phys.0 + offset),
+                flags,
+                level,
+            )?;
         }
         return Ok(());
     }
@@ -269,7 +276,7 @@ impl PageTable {
             "map_memory may not be called on a user page"
         );
         // TODO: Get next free memory region.
-        return (PageTableEntry::get_hhdm_addr() + phys) as *mut u8;
+        return (PageTableEntry::get_hhdm_addr().0 + phys.0) as *mut u8;
     }
 }
 
@@ -280,21 +287,21 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
     let mut table = PageTable::new(false);
 
     unsafe {
-        let text_start = &raw const LD_TEXT_START as VirtAddr;
-        let text_end = &raw const LD_TEXT_END as VirtAddr;
-        let rodata_start = &raw const LD_RODATA_START as VirtAddr;
-        let rodata_end = &raw const LD_RODATA_END as VirtAddr;
-        let data_start = &raw const LD_DATA_START as VirtAddr;
-        let data_end = &raw const LD_DATA_END as VirtAddr;
-        let kernel_start = &raw const LD_KERNEL_START as VirtAddr;
+        let text_start = VirtAddr(&raw const LD_TEXT_START as usize);
+        let text_end = VirtAddr(&raw const LD_TEXT_END as usize);
+        let rodata_start = VirtAddr(&raw const LD_RODATA_START as usize);
+        let rodata_end = VirtAddr(&raw const LD_RODATA_END as usize);
+        let data_start = VirtAddr(&raw const LD_DATA_START as usize);
+        let data_end = VirtAddr(&raw const LD_DATA_END as usize);
+        let kernel_start = VirtAddr(&raw const LD_KERNEL_START as usize);
 
         table
             .map_range(
                 text_start,
-                text_start - kernel_start + kernel_phys,
+                PhysAddr(text_start.0 - kernel_start.0 + kernel_phys.0),
                 VmFlags::Read | VmFlags::Exec,
                 0,
-                text_end - text_start,
+                text_end.0 - text_start.0,
             )
             .expect("Unable to map the text segment");
         print!("virt: Mapped text segment.\n");
@@ -302,10 +309,10 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
         table
             .map_range(
                 rodata_start,
-                rodata_start - kernel_start + kernel_phys,
+                PhysAddr(rodata_start.0 - kernel_start.0 + kernel_phys.0),
                 VmFlags::Read,
                 0,
-                rodata_end - rodata_start,
+                rodata_end.0 - rodata_start.0,
             )
             .expect("Unable to map the rodata segment");
         print!("virt: Mapped rodata segment.\n");
@@ -313,10 +320,10 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
         table
             .map_range(
                 data_start,
-                data_start - kernel_start + kernel_phys,
+                PhysAddr(data_start.0 - kernel_start.0 + kernel_phys.0),
                 VmFlags::Read | VmFlags::Write,
                 0,
-                data_end - data_start,
+                data_end.0 - data_start.0,
             )
             .expect("Unable to map the data segment");
         print!("virt: Mapped data segment.\n");
@@ -324,7 +331,7 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
         table
             .map_range(
                 PageTableEntry::get_hhdm_addr(),
-                0,
+                PhysAddr(0),
                 VmFlags::Read | VmFlags::Write,
                 PageTableEntry::get_hhdm_level(),
                 PageTableEntry::get_hhdm_size(),

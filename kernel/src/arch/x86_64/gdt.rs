@@ -1,6 +1,6 @@
 use super::asm::{interrupt_disable, interrupt_enable};
 use super::consts::{CPL_KERNEL, CPL_USER};
-use crate::arch::{VirtAddr, x86_64::asm};
+use crate::arch::x86_64::asm;
 use crate::generic::memory::PageAlloc;
 use crate::generic::memory::virt::KERNEL_STACK_SIZE;
 use alloc::vec::Vec;

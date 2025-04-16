@@ -1,7 +1,8 @@
 use super::consts::CPL_USER;
-use super::{VirtAddr, percpu};
+use super::percpu;
 use crate::arch::{self, x86_64::gdt::Gdt};
 use crate::generic::irq::IrqController;
+use crate::generic::memory::VirtAddr;
 use crate::generic::{percpu::PerCpu, syscall};
 use core::fmt::{Debug, Display};
 use core::{arch::naked_asm, mem::offset_of};
@@ -82,11 +83,11 @@ assert_size!(InterruptFrame, 0xB0);
 
 impl InterruptFrame {
     pub fn set_stack(&mut self, addr: VirtAddr) {
-        self.rsp = addr as u64;
+        self.rsp = addr.0 as u64;
     }
 
     pub fn set_ip(&mut self, addr: VirtAddr) {
-        self.rip = addr as u64;
+        self.rip = addr.0 as u64;
     }
 }
 

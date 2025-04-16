@@ -2,8 +2,10 @@
 
 use num_traits::PrimInt;
 
-use super::virt::{self, VmFlags};
-use crate::arch::{PhysAddr, VirtAddr};
+use super::{
+    PhysAddr, VirtAddr,
+    virt::{self, VmFlags},
+};
 use core::{marker::PhantomData, ops::RangeInclusive};
 
 pub struct MemorySpace {
@@ -19,7 +21,7 @@ impl Drop for MemorySpace {
     fn drop(&mut self) {
         virt::KERNEL_PAGE_TABLE
             .write()
-            .unmap_range(self.base as VirtAddr, self.len);
+            .unmap_range(VirtAddr(self.base as usize), self.len);
     }
 }
 

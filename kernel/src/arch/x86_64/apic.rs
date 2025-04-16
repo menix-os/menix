@@ -1,7 +1,6 @@
 use core::{ptr::read_volatile, u32};
 
 use super::{
-    PhysAddr,
     asm::{self, interrupt_disable},
     consts,
     page::PageTableEntry,
@@ -12,6 +11,7 @@ use crate::{
     generic::{
         clock,
         irq::{IpiTarget, IrqController, IrqError},
+        memory::PhysAddr,
         percpu::PerCpu,
     },
 };
@@ -28,7 +28,7 @@ impl LocalApic {
     pub fn init(cpu_info: &PerCpu) -> Self {
         let mut result = Self {
             has_x2apic: false,
-            lapic_addr: 0,
+            lapic_addr: PhysAddr(0),
             ticks_per_10ms: 0,
         };
 
@@ -94,8 +94,9 @@ impl LocalApic {
             return unsafe { asm::rdmsr(Self::reg_to_x2apic(reg)) } as u32;
         } else {
             return unsafe {
-                ((PageTableEntry::get_hhdm_addr() + self.lapic_addr) as *const u32).read_volatile()
-                    as u32
+                (PageTableEntry::get_hhdm_addr().0 as *const u32)
+                    .byte_add(self.lapic_addr.0)
+                    .read_volatile() as u32
             };
         }
     }
@@ -105,7 +106,8 @@ impl LocalApic {
             unsafe { asm::wrmsr(Self::reg_to_x2apic(reg), value as u64) };
         } else {
             unsafe {
-                ((PageTableEntry::get_hhdm_addr() + self.lapic_addr) as *mut u32)
+                (PageTableEntry::get_hhdm_addr().0 as *mut u32)
+                    .byte_add(self.lapic_addr.0)
                     .write_volatile(value)
             };
         }

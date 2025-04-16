@@ -1,18 +1,11 @@
-use core::{
-    error::Error,
-    sync::atomic::{AtomicUsize, Ordering},
+use crate::generic::{
+    elf::{self, ElfHdr, ElfPhdr},
+    memory::virt::{PageTable, VmFlags},
+    posix::errno::Errno,
 };
-
-use crate::generic::sched::thread::Thread;
-use crate::{
-    arch::VirtAddr,
-    generic::{
-        elf::{self, ElfHdr, ElfPhdr},
-        memory::virt::{PageTable, VmFlags},
-        posix::errno::Errno,
-    },
-};
+use crate::generic::{memory::VirtAddr, sched::thread::Thread};
 use alloc::vec::Vec;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 pub struct Process {
     id: usize,
@@ -109,7 +102,7 @@ impl Process {
                     let phys = todo!();
 
                     result.page_table.map_range(
-                        phdr.p_vaddr as VirtAddr,
+                        VirtAddr(phdr.p_vaddr as usize),
                         phys,
                         flags,
                         0,
@@ -121,7 +114,9 @@ impl Process {
             }
         }
 
-        main_thread.context.set_ip(elf_hdr.e_entry as VirtAddr);
+        main_thread
+            .context
+            .set_ip(VirtAddr(elf_hdr.e_entry as usize));
 
         result.threads.push(main_thread);
         return Ok(result);

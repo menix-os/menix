@@ -11,6 +11,3 @@ pub mod percpu;
 pub mod platform;
 mod serial;
 mod tsc;
-
-pub type PhysAddr = usize;
-pub type VirtAddr = usize;

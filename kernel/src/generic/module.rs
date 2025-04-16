@@ -1,9 +1,8 @@
 use super::{
     elf::{ElfHdr, ElfPhdr},
-    memory::virt::VmFlags,
+    memory::{PhysAddr, VirtAddr, virt::VmFlags},
 };
 use crate::{
-    arch::{PhysAddr, VirtAddr},
     boot::BootInfo,
     generic::{
         elf,
@@ -43,14 +42,11 @@ pub fn init() {
         let symbols = unsafe {
             slice::from_raw_parts(
                 dynsym_start as *const elf::ElfSym,
-                (dynsym_end as VirtAddr - dynsym_start as VirtAddr) / size_of::<elf::ElfSym>(),
+                (dynsym_end as usize - dynsym_start as usize) / size_of::<elf::ElfSym>(),
             )
         };
         let strings = unsafe {
-            slice::from_raw_parts(
-                dynstr_start,
-                dynstr_end as VirtAddr - dynstr_start as VirtAddr,
-            )
+            slice::from_raw_parts(dynstr_start, dynstr_end as usize - dynstr_start as usize)
         };
 
         let mut symbol_table = SYMBOL_TABLE.write();
@@ -145,7 +141,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
     )
     .map_err(|_| ModuleLoadError::InvalidData)?;
 
-    let mut load_base = 0; // TODO
+    let mut load_base = VirtAddr(0); // TODO
     let mut info = ModuleInfo {
         version: String::new(),
         description: String::new(),
@@ -185,8 +181,8 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                 let mut memory = Vec::new_in(PageAlloc);
                 memory.resize(phdr.p_memsz as usize, 0u8);
 
-                if load_base == 0 {
-                    load_base = memory.as_ptr() as VirtAddr;
+                if load_base.0 == 0 {
+                    load_base = VirtAddr(memory.as_ptr() as usize);
                 }
 
                 Vec::leak(memory);
@@ -276,7 +272,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
         .collect::<Vec<_>>();
 
     print!("module: Loaded module \"{}\":\n", name);
-    print!("module:   Base Address | {:#x}\n", load_base);
+    print!("module:   Base Address | {:#x}\n", load_base.0);
     print!("module:   Description  | {}\n", info.description);
     print!("module:   Version      | {}\n", info.version);
     print!("module:   Author(s)    | {}\n", info.author);

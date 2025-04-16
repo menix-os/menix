@@ -1,12 +1,59 @@
-use crate::arch::{PhysAddr, VirtAddr, page::PageTableEntry};
+use crate::arch::page::PageTableEntry;
 use alloc::alloc::{AllocError, Allocator};
-use core::{alloc::Layout, ptr::NonNull};
+use core::{
+    alloc::Layout,
+    ptr::{self, NonNull},
+};
 use spin::Mutex;
 use talc::{ClaimOnOom, Span, Talc, Talck};
 
 pub mod mmio;
 pub mod page;
 pub mod virt;
+
+/// Represents a physical address. It can't be directly read from or written to.
+#[repr(transparent)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PhysAddr(pub usize);
+
+/// Represents a virtual address. It can't be directly read from or written to.
+/// Note: Not the same as a pointer. A `VirtAddr` might point into another
+/// process's memory that is not mapped in the kernel.
+#[repr(transparent)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct VirtAddr(pub usize);
+
+impl<T> From<*const T> for VirtAddr {
+    fn from(ptr: *const T) -> Self {
+        Self(ptr as usize)
+    }
+}
+
+impl<T> From<*mut T> for VirtAddr {
+    fn from(ptr: *mut T) -> Self {
+        Self(ptr as usize)
+    }
+}
+
+impl<T> From<NonNull<T>> for VirtAddr {
+    fn from(ptr: NonNull<T>) -> Self {
+        Self(ptr.as_ptr() as usize)
+    }
+}
+
+impl VirtAddr {
+    pub fn as_ptr<T>(self) -> *mut T {
+        return ptr::with_exposed_provenance_mut(self.0);
+    }
+
+    /// Returns the physical address mapped in the kernel for this [`VirtAddr`].
+    pub fn get_kernel_phys(self) -> Option<PhysAddr> {
+        return self
+            .0
+            .checked_sub(PageTableEntry::get_hhdm_addr().0)
+            .map(PhysAddr);
+    }
+}
 
 /// Describes how a memory region is used.
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
@@ -38,7 +85,7 @@ pub struct PhysMemory {
 impl PhysMemory {
     pub const fn new() -> Self {
         Self {
-            address: 0,
+            address: PhysAddr(0),
             length: 0,
             usage: PhysMemoryUsage::Unknown,
         }
@@ -88,7 +135,7 @@ pub fn init(memory_map: &mut [PhysMemory], temp_base: VirtAddr) {
 
         let actual = unsafe {
             alloc.claim(Span::from_base_size(
-                (region.address + temp_base) as *mut u8,
+                temp_base.as_ptr::<u8>().byte_add(region.address.0),
                 region.length,
             ))
         };

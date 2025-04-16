@@ -5,15 +5,15 @@
 // - `memory_init`: Calls to evaluate the memory map and setup allocators.
 // - `init`: Calls to initialize the rest of the kernel.
 
+use super::memory::{PhysAddr, VirtAddr};
 use crate::{
-    arch::{self, PhysAddr, VirtAddr},
+    arch::{self},
     boot::BootInfo,
     generic::{
         self, fbcon,
         memory::{self, PhysMemory, virt},
     },
 };
-use spin::Once;
 
 /// Called as the very first thing during boot. Initializes very basic I/O and temporary features.
 pub(crate) fn early_init() {

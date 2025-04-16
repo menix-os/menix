@@ -1,4 +1,4 @@
-use crate::arch::{VirtAddr, irq::InterruptFrame};
+use crate::{arch::irq::InterruptFrame, generic::memory::VirtAddr};
 use alloc::sync::Arc;
 use core::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 

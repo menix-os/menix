@@ -1,7 +1,10 @@
-use super::{PhysAddr, VirtAddr, asm};
+use super::asm;
 use crate::generic::{
     clock::{ClockError, ClockSource},
-    memory::virt::{KERNEL_PAGE_TABLE, VmFlags},
+    memory::{
+        PhysAddr,
+        virt::{KERNEL_PAGE_TABLE, VmFlags},
+    },
 };
 use core::{mem::offset_of, ptr::NonNull};
 use uacpi::{
@@ -73,7 +76,7 @@ impl ClockSource for Hpet {
 
         let hpet: *mut acpi_hpet = unsafe { table.__bindgen_anon_1.ptr } as *mut acpi_hpet;
         self.regs = Some(KERNEL_PAGE_TABLE.write().map_memory(
-            (unsafe { *hpet }).address.address as PhysAddr,
+            PhysAddr((unsafe { *hpet }).address.address as usize),
             VmFlags::Read | VmFlags::Write,
             0,
             size_of::<HpetRegisters>(),
