@@ -1,6 +1,6 @@
 // PCI/PCIe bus implementation
 
-use crate::{boot::BootInfo, generic::cmdline::CmdLine};
+use crate::generic::boot::BootInfo;
 
 #[cfg(not(any(feature = "acpi", feature = "openfw")))]
 compile_error!("PCI needs some form of firmware support in order to work!");
@@ -28,7 +28,7 @@ pub(crate) fn init() {
         print!("pci: Using ACPI to configure PCI.\n")
     }
 
-    // If there is no ACPI, resort to
+    // If there is no ACPI, resort to OpenFirmware.
     #[cfg(feature = "openfw")]
     {}
 }

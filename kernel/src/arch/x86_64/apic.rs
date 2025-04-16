@@ -7,12 +7,11 @@ use super::{
 };
 use crate::{
     arch::x86_64::asm::interrupt_enable,
-    boot::BootInfo,
     generic::{
         clock,
+        cpu::PerCpu,
         irq::{IpiTarget, IrqController, IrqError},
         memory::PhysAddr,
-        percpu::PerCpu,
     },
 };
 
@@ -72,14 +71,10 @@ impl LocalApic {
         // Read how many ticks have passed in 10 ms.
         result.ticks_per_10ms = u32::MAX - result.read_register(0x390);
 
-        unsafe { interrupt_disable() };
-
         // Finally, run the periodic timer interrupt on irq0.
         result.write_register(0x320, 0x20 | 0x20000);
         result.write_register(0x3E0, 3);
         result.write_register(0x380, result.ticks_per_10ms);
-
-        unsafe { interrupt_enable() };
 
         print!("apic: Initialized LAPIC for CPU {}\n", cpu_info.id);
         return result;

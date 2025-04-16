@@ -1,7 +1,7 @@
 // Panic handler.
 
 use super::log::GLOBAL_LOGGERS;
-use crate::generic::percpu::{self, PerCpu};
+use crate::generic::cpu::{self, PerCpu};
 use core::panic::PanicInfo;
 
 #[panic_handler]
@@ -16,5 +16,5 @@ fn panic_handler(info: &PanicInfo) -> ! {
         error!("panic: at {}\n", location);
     }
 
-    PerCpu::stop_all();
+    loop {}
 }

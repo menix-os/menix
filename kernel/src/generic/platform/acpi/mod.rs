@@ -8,11 +8,11 @@ use crate::{
     generic::{
         self,
         clock::{self},
+        cpu::PerCpu,
         memory::{
             self, PhysAddr,
             virt::{KERNEL_PAGE_TABLE, VmFlags},
         },
-        percpu::PerCpu,
     },
 };
 use alloc::boxed::Box;
@@ -59,11 +59,8 @@ pub fn init(rsdp: PhysAddr) {
         );
     }
 
-    // Setup the boot CPU.
-    PerCpu::setup_data();
-
-    print!("acpi: Booting CPUs using MADT\n");
     // TODO: Evaluate MADT and initialize all remaining CPUs.
+    // print!("acpi: Booting CPUs using MADT\n");
 
     uacpi_status = unsafe { uacpi::uacpi_namespace_load() };
 

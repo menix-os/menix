@@ -4,13 +4,10 @@ use super::{
     gdt::{self, Gdt, TaskStateSegment},
     idt,
 };
-use crate::{
-    arch::x86_64::asm::cpuid,
-    generic::{irq::IrqHandlerFn, sched::thread::Thread},
-};
+use crate::{arch::x86_64::asm::cpuid, generic::irq::IrqHandlerFn};
 use crate::{
     arch::x86_64::tsc::{self, TscClock},
-    generic::{clock, percpu::PerCpu},
+    generic::{clock, cpu::PerCpu},
 };
 use alloc::boxed::Box;
 use core::{arch::asm, ffi::CStr, mem::offset_of, ptr::null_mut};
@@ -79,20 +76,6 @@ impl PerCpu {
                 options(nostack, preserves_flags),
             );
             return cpu.as_mut().unwrap();
-        }
-    }
-
-    /// Returns a reference to the currently running thread.
-    pub fn get_thread() -> *mut Thread {
-        unsafe {
-            let thread: *mut Thread;
-            asm!(
-                "mov {thread}, gs:[{thread_off}]",
-                thread = out(reg) thread,
-                thread_off = const offset_of!(PerCpu, thread),
-                options(nostack, preserves_flags),
-            );
-            return thread;
         }
     }
 

@@ -1,12 +1,13 @@
-// Framebuffer console for kernel logging.
+// Early boot console (likely using an EFI GOP framebuffer).
 
-use super::{
-    log::{Logger, LoggerSink},
-    misc::align_up,
-};
 use alloc::{boxed::Box, vec::Vec};
 use core::{intrinsics::volatile_copy_nonoverlapping_memory, ptr::null_mut};
 use spin::{Mutex, RwLock};
+
+use crate::generic::{
+    log::{Logger, LoggerSink},
+    misc::align_up,
+};
 
 #[derive(Default, Debug, Clone)]
 pub struct FbColorBits {
@@ -29,12 +30,12 @@ pub struct FrameBuffer {
 unsafe impl Sync for FrameBuffer {}
 unsafe impl Send for FrameBuffer {}
 
-const FONT_DATA: &[u8] = include_bytes!("../../assets/fbcon_font.bin");
+const FONT_DATA: &[u8] = include_bytes!("../../../assets/builtin_font.bin");
 const FONT_WIDTH: usize = 8;
 const FONT_HEIGHT: usize = 12;
 const FONT_GLYPH_SIZE: usize = ((FONT_WIDTH * FONT_HEIGHT) / 8);
 
-struct FbCon {
+struct BootCon {
     /// Screen width in characters.
     ch_width: usize,
     /// Screen height in characters.
@@ -51,14 +52,14 @@ struct FbCon {
 
 pub fn init(fb: FrameBuffer) {
     print!(
-        "fbcon: Framebuffer resolution = {}x{}x{}\n",
+        "bootcon: Framebuffer resolution = {}x{}x{}\n",
         fb.width,
         fb.height,
         fb.cpp * 8
     );
     let mut buf = Vec::new();
     buf.resize(fb.pitch * fb.height, 0);
-    Logger::add_sink(Box::new(FbCon {
+    Logger::add_sink(Box::new(BootCon {
         ch_width: fb.width / FONT_WIDTH,
         ch_height: fb.height / FONT_HEIGHT,
         ch_xpos: 0,
@@ -68,7 +69,7 @@ pub fn init(fb: FrameBuffer) {
     }));
 }
 
-impl FbCon {
+impl BootCon {
     /// Scrolls the console by one line.
     fn scroll(&mut self) {
         // Amount of bytes for each line.
@@ -129,7 +130,7 @@ impl FbCon {
     }
 }
 
-impl LoggerSink for FbCon {
+impl LoggerSink for BootCon {
     fn name(&self) -> &'static str {
         "fbcon"
     }
