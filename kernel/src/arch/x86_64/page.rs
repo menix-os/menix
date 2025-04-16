@@ -133,7 +133,7 @@ pub unsafe fn set_page_table(page_table: &PageTable) {
         .expect("Page table should have been allocated")
         .as_ptr();
     unsafe {
-        asm!("mov cr3, {addr}", addr = in(reg) table.byte_sub( PageTableEntry::get_hhdm_addr().0));
+        asm!("mov cr3, {addr}", addr = in(reg) VirtAddr(table as usize).get_kernel_phys().unwrap().0);
     }
 }
 
