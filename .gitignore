@@ -9,6 +9,3 @@
 
 # xbstrap
 *.xbstrap
-
-# Allow debug config
-!.vscode/launch.json
