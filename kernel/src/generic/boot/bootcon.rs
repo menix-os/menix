@@ -1,8 +1,7 @@
 // Early boot console (likely using an EFI GOP framebuffer).
 
 use alloc::{boxed::Box, vec::Vec};
-use core::{intrinsics::volatile_copy_nonoverlapping_memory, ptr::null_mut};
-use spin::{Mutex, RwLock};
+use core::intrinsics::volatile_copy_nonoverlapping_memory;
 
 use crate::generic::{
     log::{Logger, LoggerSink},
@@ -33,7 +32,7 @@ unsafe impl Send for FrameBuffer {}
 const FONT_DATA: &[u8] = include_bytes!("../../../assets/builtin_font.bin");
 const FONT_WIDTH: usize = 8;
 const FONT_HEIGHT: usize = 12;
-const FONT_GLYPH_SIZE: usize = ((FONT_WIDTH * FONT_HEIGHT) / 8);
+const FONT_GLYPH_SIZE: usize = (FONT_WIDTH * FONT_HEIGHT) / 8;
 
 struct BootCon {
     /// Screen width in characters.
@@ -47,7 +46,7 @@ struct BootCon {
     /// Back buffer to draw updates on.
     back_buffer: Vec<u8>,
     /// The buffer to draw on.
-    fb: Box<FrameBuffer>,
+    fb: FrameBuffer,
 }
 
 pub fn init(fb: FrameBuffer) {
@@ -65,7 +64,7 @@ pub fn init(fb: FrameBuffer) {
         ch_xpos: 0,
         ch_ypos: 0,
         back_buffer: buf,
-        fb: Box::new(fb),
+        fb,
     }));
 }
 
@@ -155,7 +154,7 @@ impl LoggerSink for BootCon {
                 self.ch_ypos += 1;
             }
 
-            if (self.ch_ypos >= self.ch_height) {
+            if self.ch_ypos >= self.ch_height {
                 self.scroll();
                 self.ch_ypos = self.ch_height - 1;
             }

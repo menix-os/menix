@@ -1,17 +1,14 @@
-use crate::generic::log::GLOBAL_LOGGERS;
-use core::{fmt::Write, ptr::slice_from_raw_parts};
-
 use super::posix::errno::{EResult, Errno};
 
 /// Executes the syscall as identified by `num`.
 pub fn invoke(
     num: usize,
-    a0: usize,
-    a1: usize,
-    a2: usize,
-    a3: usize,
-    a4: usize,
-    a5: usize,
+    _a0: usize,
+    _a1: usize,
+    _a2: usize,
+    _a3: usize,
+    _a4: usize,
+    _a5: usize,
 ) -> (usize, usize) {
     let result: EResult<usize> = match num {
         numbers::EXIT => todo!(),

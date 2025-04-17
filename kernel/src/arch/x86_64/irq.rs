@@ -1,9 +1,10 @@
 use super::consts::CPL_USER;
 use super::cpu;
 use crate::arch::{self, x86_64::gdt::Gdt};
+use crate::generic;
 use crate::generic::irq::IrqController;
 use crate::generic::memory::VirtAddr;
-use crate::generic::{cpu::PerCpu, syscall};
+use crate::generic::{cpu::CpuData, syscall};
 use core::fmt::{Debug, Display};
 use core::{arch::naked_asm, mem::offset_of};
 use seq_macro::seq;
@@ -132,7 +133,7 @@ unsafe extern "C" fn interrupt_handler(
             0x80 => syscall_handler(context),
             //
             _ => {
-                let cpu = &PerCpu::get_per_cpu().arch;
+                let cpu = &arch::cpu::CPU_DATA.get(CpuData::get());
                 match cpu.irq_handlers[isr as usize] {
                     Some(x) => x(cpu.irq_map[isr as usize], cpu.irq_ctx[isr as usize]),
                     None => panic!("Got an unhandled interrupt {}!", isr),
@@ -163,8 +164,8 @@ unsafe extern "C" fn syscall_handler(context: *mut InterruptFrame) {
 }
 
 unsafe extern "C" fn timer_handler(context: *mut InterruptFrame) -> *mut InterruptFrame {
-    let percpu = unsafe { PerCpu::get_per_cpu() };
-    if let Some(lapic) = &percpu.arch.lapic {
+    let percpu = unsafe { &arch::cpu::CPU_DATA.get(CpuData::get()) };
+    if let Some(lapic) = &percpu.lapic {
         lapic.eoi();
     }
     return context;
@@ -242,8 +243,8 @@ pub unsafe extern "C" fn amd64_syscall_stub() {
             "sysretq",                    // Return to user mode.
 
             syscall_handler = sym syscall_handler,
-            user_stack = const offset_of!(PerCpu, user_stack),
-            kernel_stack = const offset_of!(PerCpu, kernel_stack),
+            user_stack = const offset_of!(CpuData, user_stack),
+            kernel_stack = const offset_of!(CpuData, kernel_stack),
             user_code64 = const offset_of!(Gdt, user_code64) | CPL_USER as usize,
             user_data = const offset_of!(Gdt, user_data) | CPL_USER as usize,
         );

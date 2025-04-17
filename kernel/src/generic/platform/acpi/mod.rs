@@ -8,7 +8,7 @@ use crate::{
     generic::{
         self,
         clock::{self},
-        cpu::PerCpu,
+        cpu::CpuData,
         memory::{
             self, PhysAddr,
             virt::{KERNEL_PAGE_TABLE, VmFlags},

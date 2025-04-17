@@ -126,7 +126,8 @@ unsafe impl Allocator for PageAlloc {
 
 /// Initializes the physical memory manager.
 /// `temp_base`: A temporary base address which can be used to directly access physical memory.
-pub fn init(memory_map: &mut [PhysMemory], temp_base: VirtAddr) {
+#[deny(dead_code)]
+pub(crate) fn init(memory_map: &[PhysMemory], temp_base: VirtAddr) {
     let mut alloc = ALLOCATOR.lock();
     for region in memory_map {
         if region.usage != PhysMemoryUsage::Free {

@@ -73,9 +73,18 @@ pub fn has_clock() -> bool {
 }
 
 /// Blocking wait for a given amount of nanoseconds.
-pub fn wait_ns(time: usize) {
+pub fn wait_ns(time: usize) -> Result<(), ClockError> {
+    if CLOCK.lock().current.is_none() {
+        error!(
+            "clock: Unable to sleep for {} nanoseconds. No clock source available, this would block forever!\n",
+            time
+        );
+        return Err(ClockError::Unavailable);
+    }
+
     let target = get_elapsed() + time;
     while get_elapsed() < target {}
+    return Ok(());
 }
 
 struct Clock {

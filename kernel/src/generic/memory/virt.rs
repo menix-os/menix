@@ -283,6 +283,7 @@ impl PageTable {
 pub static KERNEL_PAGE_TABLE: RwLock<PageTable> = RwLock::new(PageTable::new_empty(false));
 
 /// Initialize the kernel page table and switch to it.
+#[deny(dead_code)]
 pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
     let mut table = PageTable::new(false);
 

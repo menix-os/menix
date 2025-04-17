@@ -37,7 +37,7 @@ impl ClockSource for TscClock {
         let freq = if clock::has_clock() {
             print!("tsc: Calibrating using exisiting clock.\n");
             let t1 = asm::rdtsc();
-            clock::wait_ns(1_000_000_000);
+            clock::wait_ns(1_000_000_000)?;
             let t2 = asm::rdtsc();
 
             t2 - t1

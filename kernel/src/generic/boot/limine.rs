@@ -3,10 +3,8 @@
 use super::{BootFile, BootInfo};
 use crate::generic::{
     boot::bootcon::{FbColorBits, FrameBuffer},
-    cmdline::CmdLine,
     memory::{PhysAddr, PhysMemory, PhysMemoryUsage, VirtAddr},
 };
-use alloc::{borrow::ToOwned, vec::Vec};
 use core::ptr::slice_from_raw_parts;
 use limine::{BaseRevision, memory_map::EntryType, request::*};
 
@@ -52,7 +50,12 @@ pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 #[unsafe(link_section = ".boot")]
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 
-pub(crate) fn init() -> ! {
+static mut MEMMAP_BUF: [PhysMemory; 128] = [PhysMemory::new(); 128];
+static mut FILE_BUF: [BootFile; 128] = [BootFile::new(); 128];
+
+pub(crate) fn init() {
+    let mut info = BootInfo::new();
+
     if let Some(x) = BOOTLOADER_REQUEST.get_response() {
         print!(
             "boot: Booting with Limine protocol, loaded by {} {}\n",
@@ -70,40 +73,42 @@ pub(crate) fn init() -> ! {
 
     {
         // Convert the memory map. This buffer has to be fixed since at this point
-        // in the boot process there is no dynamic memory allocator available yet.
+        // in the boot process since there is no dynamic memory allocator available yet.
         // 128 entries should be enough for all use cases.
-        let mut memmap_buf = [PhysMemory::new(); 128];
         let entries = MEMMAP_REQUEST.get_response().unwrap().entries();
         for (i, entry) in entries.iter().enumerate() {
-            let elem = memmap_buf.get_mut(i).unwrap();
-            elem.address = PhysAddr(entry.base as usize);
-            elem.length = entry.length as usize;
-            elem.usage = match entry.entry_type {
-                EntryType::USABLE => PhysMemoryUsage::Free,
-                EntryType::RESERVED => PhysMemoryUsage::Reserved,
-                EntryType::FRAMEBUFFER => PhysMemoryUsage::Reserved,
-                EntryType::EXECUTABLE_AND_MODULES => PhysMemoryUsage::Kernel,
-                _ => PhysMemoryUsage::Unknown,
-            };
+            unsafe {
+                MEMMAP_BUF[i] = PhysMemory {
+                    length: entry.length as usize,
+                    usage: match entry.entry_type {
+                        EntryType::USABLE => PhysMemoryUsage::Free,
+                        EntryType::RESERVED => PhysMemoryUsage::Reserved,
+                        EntryType::FRAMEBUFFER => PhysMemoryUsage::Reserved,
+                        EntryType::EXECUTABLE_AND_MODULES => PhysMemoryUsage::Kernel,
+                        _ => PhysMemoryUsage::Unknown,
+                    },
+                    address: PhysAddr(entry.base as usize),
+                };
+            }
         }
 
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
 
-        crate::memory_init(
-            &mut memmap_buf[0..entries.len()],
-            VirtAddr(HHDM_REQUEST.get_response().unwrap().offset() as usize),
-            PhysAddr(kernel_addr.physical_base() as usize),
-            VirtAddr(kernel_addr.virtual_base() as usize),
-        );
+        info.hhdm_address = Some(VirtAddr(
+            HHDM_REQUEST.get_response().unwrap().offset() as usize
+        ));
+        unsafe {
+            info.memory_map = &MEMMAP_BUF[0..entries.len()];
+        }
+        info.kernel_phys = PhysAddr(kernel_addr.physical_base() as usize);
+        info.kernel_virt = VirtAddr(kernel_addr.virtual_base() as usize);
     }
-
-    let mut info = BootInfo::default();
 
     // Convert the command line from bytes to UTF-8 if there is any.
     info.command_line = {
         let line_buf = COMMAND_LINE_REQUEST.get_response().unwrap().cmdline();
-        line_buf.to_str().unwrap_or_default().to_owned()
+        line_buf.to_str().unwrap_or_default()
     };
 
     // The RSDP is a physical address.
@@ -118,36 +123,30 @@ pub(crate) fn init() -> ! {
     });
 
     // Get all modules.
-    let mut file_buf = Vec::new();
     if let Some(response) = MODULE_REQUEST.get_response() {
-        for file in response.modules() {
-            file_buf.push(BootFile {
-                data: unsafe { slice_from_raw_parts(file.addr(), file.size() as usize).as_ref() }
-                    .unwrap()
-                    .to_owned()
-                    .into(),
-                // Split off any parts of the path that come before the actual file name.
-                name: file
-                    .path()
-                    .to_str()
-                    .unwrap()
-                    .rsplit_once('/')
-                    .unwrap()
-                    .1
-                    .to_owned(),
-                command_line: file
-                    .string()
-                    .to_str()
-                    .expect("Module command line was not valid UTF-8")
-                    .to_owned(),
-            });
+        for (i, entry) in response.modules().iter().enumerate() {
+            unsafe {
+                FILE_BUF[i] = BootFile {
+                    data: slice_from_raw_parts(entry.addr(), entry.size() as usize)
+                        .as_ref()
+                        .unwrap(),
+                    // Split off any parts of the path that come before the actual file name.
+                    name: entry.path().to_str().unwrap().rsplit_once('/').unwrap().1,
+                    command_line: entry
+                        .string()
+                        .to_str()
+                        .expect("Module command line was not valid UTF-8"),
+                }
+            };
         }
-        info.files = file_buf;
+        unsafe {
+            info.files = &FILE_BUF[0..response.modules().len()];
+        }
     }
 
     if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
         if let Some(fb) = response.framebuffers().next() {
-            super::bootcon::init(FrameBuffer {
+            info.framebuffer = Some(FrameBuffer {
                 screen: fb.addr(),
                 width: fb.width() as usize,
                 height: fb.height() as usize,
@@ -171,7 +170,4 @@ pub(crate) fn init() -> ! {
 
     // Finally, save the boot information.
     info.register();
-    crate::main();
-
-    unreachable!();
 }

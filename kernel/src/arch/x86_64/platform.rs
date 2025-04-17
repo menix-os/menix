@@ -6,10 +6,10 @@ use crate::generic::{
         virt::{KERNEL_PAGE_TABLE, VmFlags},
     },
 };
-use core::{mem::offset_of, ptr::NonNull};
+use core::mem::offset_of;
 use uacpi::{
-    acpi_hpet, acpi_sdt_hdr, uacpi_handle, uacpi_size, uacpi_status, uacpi_status_UACPI_STATUS_OK,
-    uacpi_table, uacpi_u8, uacpi_u16, uacpi_u32,
+    acpi_hpet, uacpi_handle, uacpi_size, uacpi_status, uacpi_status_UACPI_STATUS_OK, uacpi_table,
+    uacpi_u8, uacpi_u16, uacpi_u32,
 };
 
 // TODO: Use IoSpace

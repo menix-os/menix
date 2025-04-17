@@ -28,7 +28,8 @@ pub struct ModuleInfo {
 }
 
 /// Sets up the module system.
-pub fn init() {
+#[deny(dead_code)]
+pub(crate) fn init() {
     let boot_info = BootInfo::get();
     let dynsym_start = &raw const virt::LD_DYNSYM_START;
     let dynsym_end = &raw const virt::LD_DYNSYM_END;
@@ -66,7 +67,7 @@ pub fn init() {
     }
 
     // Load all modules provided by the bootloader.
-    for file in &boot_info.files {
+    for file in boot_info.files {
         let name = file
             .name
             .split_once('.')
@@ -214,7 +215,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                     &data
                         [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
                 )
-                .map_err(|x| ModuleLoadError::BrokenModuleInfo)?
+                .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
                 .to_owned();
             }
             elf::PT_MODAUTHOR => {
@@ -222,7 +223,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                     &data
                         [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
                 )
-                .map_err(|x| ModuleLoadError::BrokenModuleInfo)?
+                .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
                 .to_owned();
             }
             elf::PT_MODDESC => {
@@ -230,7 +231,7 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                     &data
                         [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
                 )
-                .map_err(|x| ModuleLoadError::BrokenModuleInfo)?
+                .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
                 .to_owned();
             }
             // Unknown or unhandled type. Do nothing.

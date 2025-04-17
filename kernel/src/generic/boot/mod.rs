@@ -1,5 +1,6 @@
+use super::memory::{PhysMemory, VirtAddr};
 use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
-use alloc::{boxed::Box, string::String, vec::Vec};
+use bootcon::FrameBuffer;
 use spin::Once;
 
 pub mod bootcon;
@@ -17,16 +18,26 @@ pub mod bootcon;
 pub mod limine;
 
 /// Information passed from the bootloader. Memory is reclaimed after initialization.
-#[derive(Default, Debug)]
+#[derive(Debug)]
 pub struct BootInfo {
     /// Kernel command line.
-    pub command_line: String,
+    pub command_line: &'static str,
+    /// Files given to the bootloader.
+    pub files: &'static [BootFile],
+    /// Temporary base address for the kernel to access physical memory.
+    pub hhdm_address: Option<VirtAddr>,
+    /// A list of valid physical memory.
+    pub memory_map: &'static [PhysMemory],
+    /// The start of the physical kernel address.
+    pub kernel_phys: PhysAddr,
+    /// The start of the virtual kernel address.
+    pub kernel_virt: VirtAddr,
     /// Base address of the RSDT/XSDT ACPI table.
     pub rsdp_addr: Option<PhysAddr>,
     /// Base address of a flattened device tree in memory.
     pub fdt_addr: Option<PhysAddr>,
-    /// Files given to the bootloader.
-    pub files: Vec<BootFile>,
+    /// Early framebuffer if it exists.
+    pub framebuffer: Option<FrameBuffer>,
 }
 
 static BOOT_INFO: Once<BootInfo> = Once::new();
@@ -34,10 +45,15 @@ static BOOT_INFO: Once<BootInfo> = Once::new();
 impl BootInfo {
     pub const fn new() -> Self {
         Self {
-            command_line: String::new(),
+            command_line: "",
+            files: &[],
+            hhdm_address: None,
+            memory_map: &[],
+            kernel_phys: PhysAddr(0),
+            kernel_virt: VirtAddr(0),
             rsdp_addr: None,
             fdt_addr: None,
-            files: Vec::new(),
+            framebuffer: None,
         }
     }
 
@@ -57,9 +73,19 @@ impl BootInfo {
 }
 
 /// A file loaded by the bootloader. Memory is reclaimed after initialization.
-#[derive(Default, Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct BootFile {
-    pub data: Box<[u8]>,
-    pub name: String,
-    pub command_line: String,
+    pub data: &'static [u8],
+    pub name: &'static str,
+    pub command_line: &'static str,
+}
+
+impl BootFile {
+    pub const fn new() -> Self {
+        Self {
+            data: &[],
+            name: "",
+            command_line: "",
+        }
+    }
 }
