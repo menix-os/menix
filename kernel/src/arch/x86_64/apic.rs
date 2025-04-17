@@ -1,18 +1,15 @@
-use core::{ptr::read_volatile, u32};
+use core::u32;
 
 use super::{
-    asm::{self, interrupt_disable},
+    asm::{self},
     consts,
     page::PageTableEntry,
 };
-use crate::{
-    arch::x86_64::asm::interrupt_enable,
-    generic::{
-        clock,
-        cpu::PerCpu,
-        irq::{IpiTarget, IrqController, IrqError},
-        memory::PhysAddr,
-    },
+use crate::generic::{
+    clock,
+    cpu::CpuData,
+    irq::{IpiTarget, IrqController, IrqError},
+    memory::PhysAddr,
 };
 
 #[derive(Debug)]
@@ -24,7 +21,7 @@ pub struct LocalApic {
 }
 
 impl LocalApic {
-    pub fn init(cpu_info: &PerCpu) -> Self {
+    pub fn init(cpu_info: &CpuData) -> Self {
         let mut result = Self {
             has_x2apic: false,
             lapic_addr: PhysAddr(0),
@@ -66,8 +63,11 @@ impl LocalApic {
         result.write_register(0x3E0, 3);
         // Set the timer counter to the highest possible value.
         result.write_register(0x380, u32::MAX);
+
         // Sleep for 10 milliseconds.
-        clock::wait_ns(10 * 1_000_000);
+        clock::wait_ns(10 * 1_000_000)
+            .expect("Unable to setup LAPIC, the kernel should have a working timer!");
+
         // Read how many ticks have passed in 10 ms.
         result.ticks_per_10ms = u32::MAX - result.read_register(0x390);
 
@@ -81,7 +81,7 @@ impl LocalApic {
     }
 
     const fn reg_to_x2apic(reg: u32) -> u32 {
-        return if reg == 0x310 { 0x30 } else { (reg >> 4) } + 0x800;
+        return if reg == 0x310 { 0x30 } else { reg >> 4 } + 0x800;
     }
 
     fn read_register(&self, reg: u32) -> u32 {

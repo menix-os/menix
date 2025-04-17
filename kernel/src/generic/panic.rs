@@ -1,7 +1,6 @@
 // Panic handler.
 
 use super::log::GLOBAL_LOGGERS;
-use crate::generic::cpu::{self, PerCpu};
 use core::panic::PanicInfo;
 
 #[panic_handler]

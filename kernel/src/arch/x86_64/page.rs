@@ -2,7 +2,7 @@ use super::{consts, irq::InterruptFrame};
 use crate::generic::memory::{
     PhysAddr, VirtAddr,
     page::{self, PageFaultInfo, PageFaultKind},
-    virt::{self, PageTable, VmFlags},
+    virt::{PageTable, VmFlags},
 };
 use bitflags::bitflags;
 use core::arch::asm;

@@ -59,18 +59,25 @@ SECTIONS
         *(.data.*)
     } :data
 
+    /* Dynamic tags */
+    .dynamic : {
+        *(.dynamic)
+    } :data :dynamic
+
     /* Zero-initialized memory */
     .bss ALIGN(CONSTANT(MAXPAGESIZE)) : {
         *(.*bss)
         *(.*bss.*)
         *(COMMON)
+    LD_DATA_END = .;
     } :data
 
-    /* Dynamic tags */
-    .dynamic : {
-        *(.dynamic)
-    LD_DATA_END = .;
-    } :data :dynamic
+    /* Per-CPU data block. MUST always come last. */
+    .percpu ALIGN(CONSTANT(MAXPAGESIZE)) : {
+        LD_PERCPU_START = .;
+        *(.percpu)
+        LD_PERCPU_END = .;
+    } :data
 
     LD_KERNEL_END = .;
 

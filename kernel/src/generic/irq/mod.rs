@@ -12,7 +12,7 @@ pub enum IrqStatus {
 }
 
 /// An IRQ handler callback.
-pub type IrqHandlerFn = fn(irq: usize, context: *mut u8) -> IrqStatus;
+pub type IrqHandlerFn = fn(irq: usize, context: usize) -> IrqStatus;
 
 pub struct IrqAction {
     irq: usize,                 // The IRQ number.
