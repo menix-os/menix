@@ -382,16 +382,12 @@ impl<T> Deref for ForeignPtr<T> {
 
 // Symbols defined in the linker script so we can map ourselves in our page table.
 unsafe extern "C" {
-    pub unsafe static LD_KERNEL_START: u8;
-    pub unsafe static LD_KERNEL_END: u8;
-    pub unsafe static LD_TEXT_START: u8;
-    pub unsafe static LD_TEXT_END: u8;
-    pub unsafe static LD_RODATA_START: u8;
-    pub unsafe static LD_RODATA_END: u8;
-    pub unsafe static LD_DATA_START: u8;
-    pub unsafe static LD_DATA_END: u8;
-    pub unsafe static LD_DYNSYM_START: u8;
-    pub unsafe static LD_DYNSYM_END: u8;
-    pub unsafe static LD_DYNSTR_START: u8;
-    pub unsafe static LD_DYNSTR_END: u8;
+    unsafe static LD_KERNEL_START: u8;
+    unsafe static LD_KERNEL_END: u8;
+    unsafe static LD_TEXT_START: u8;
+    unsafe static LD_TEXT_END: u8;
+    unsafe static LD_RODATA_START: u8;
+    unsafe static LD_RODATA_END: u8;
+    unsafe static LD_DATA_START: u8;
+    unsafe static LD_DATA_END: u8;
 }

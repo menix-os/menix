@@ -5,6 +5,7 @@ use crate::generic;
 use crate::generic::irq::IrqController;
 use crate::generic::memory::VirtAddr;
 use crate::generic::{cpu::CpuData, syscall};
+use core::arch::asm;
 use core::fmt::{Debug, Display};
 use core::{arch::naked_asm, mem::offset_of};
 use seq_macro::seq;
@@ -81,6 +82,16 @@ impl Display for InterruptFrame {
             &self.rsp,
         ))
     }
+}
+
+#[inline]
+pub unsafe fn interrupt_disable() {
+    unsafe { asm!("cli") };
+}
+
+#[inline]
+pub unsafe fn interrupt_enable() {
+    unsafe { asm!("sti") };
 }
 
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
@@ -164,18 +175,10 @@ unsafe extern "C" fn syscall_handler(context: *mut InterruptFrame) {
 }
 
 unsafe extern "C" fn timer_handler(context: *mut InterruptFrame) -> *mut InterruptFrame {
-    let percpu = unsafe { &arch::cpu::CPU_DATA.get(CpuData::get()) };
-    if let Some(lapic) = &percpu.lapic {
-        lapic.eoi();
-    }
+    let lapic = unsafe { super::apic::LAPIC.get(CpuData::get()) };
+    // TODO: crate::generic::sched::run();
+    lapic.eoi();
     return context;
-}
-
-/// Swaps GSBASE if CPL is 3.
-macro_rules! swapgs_if_necessary {
-    () => {
-        concat!("cmp word ptr [rsp+0x8], 0x8;", "je 2f;", "swapgs;", "2:")
-    };
 }
 
 /// Pushes all general purpose registers onto the stack.
@@ -196,7 +199,7 @@ macro_rules! push_all_regs {
             "push r12;",
             "push r13;",
             "push r14;",
-            "push r15;"
+            "push r15;",
         )
     };
 }
@@ -205,9 +208,9 @@ macro_rules! push_all_regs {
 macro_rules! pop_all_regs {
     () => {
         concat!(
-            "pop rax;", "pop rbx;", "pop rcx;", "pop rdx;", "pop rbp;", "pop rdi;", "pop rsi;",
-            "pop r8;", "pop r9;", "pop r10;", "pop r11;", "pop r12;", "pop r13;", "pop r14;",
-            "pop r15;"
+            "pop r15;", "pop r14;", "pop r13;", "pop r12;", "pop r11;", "pop r10;", "pop r9;",
+            "pop r8;", "pop rsi;", "pop rdi;", "pop rbp;", "pop rdx;", "pop rcx;", "pop rbx;",
+            "pop rax;",
         )
     };
 }
@@ -236,7 +239,7 @@ pub unsafe extern "C" fn amd64_syscall_stub() {
             "mov rdi, rsp",               // Put `*mut Context` as first argument.
             "call {syscall_handler}",     // Call syscall handler
             pop_all_regs!(),              // Pop stack values back to the general purpose registers.
-            "add rsp, 0x18",              // Skip .error, .isr and .core fields (3 * sizeof(u64))
+            "add rsp, 0x10",              // Skip .error and .isr fields (2 * sizeof(u64))
             "mov rsp, gs:{user_stack}",   // Load user stack from `Cpu.user_stack`.
             "swapgs",                     // Change GS to user mode.
             "sti",                        // Resume interrupts.
@@ -251,7 +254,12 @@ pub unsafe extern "C" fn amd64_syscall_stub() {
     }
 }
 
-// Interrupt stub generation.
+/// Swaps GSBASE if we're coming from user space.
+macro_rules! swapgs_if_necessary {
+    () => {
+        concat!("cmp word ptr [rsp+24], 0x8;", "je 2f;", "swapgs;", "2:")
+    };
+}
 
 // There are some interrupts which generate an error code on the stack, while others do not.
 // We normalize this by just pushing 0 for those that don't generate an error code.
@@ -283,15 +291,16 @@ seq! { N in 0..256 {
 unsafe extern "C" fn interrupt_stub_internal() {
     unsafe {
         naked_asm!(
+            swapgs_if_necessary!(),     // Load the kernel GS base.
             push_all_regs!(),           // Push all general purpose registers.
             "xor rbp, rbp",             // Zero out the base pointer since we can't trust it.
             "mov rdi, [rsp + 0x78]",    // Load the ISR value we pushed in the stub.
-            "mov rsi, rsp",             // Load the `*mut Context` as second argument.
+            "mov rsi, rsp",             // Load the frame as second argument.
             "call {interrupt_handler}", // Call interrupt handler.
-            "mov rsp, rax",             // Restore the returned `*mut Context`.
+            "mov rsp, rax",             // Restore the returned frame.
             pop_all_regs!(),            // Pop all general purpose registers.
-            "add rsp, 0x10",            // Skip .error and .isr fields.
             swapgs_if_necessary!(),     // Change GS back if we came from user mode.
+            "add rsp, 0x10",            // Skip .error and .isr fields.
             "iretq",                    // Leave.
             interrupt_handler = sym arch::irq::interrupt_handler
         );

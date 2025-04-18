@@ -6,6 +6,7 @@ PHDRS
     rodata  PT_LOAD	    FLAGS(4);
     data    PT_LOAD	    FLAGS(6);
     dynamic PT_DYNAMIC  FLAGS(6);
+    percpu  PT_LOAD     FLAGS(6);
 }
 
 SECTIONS
@@ -29,15 +30,15 @@ SECTIONS
     } :text
 
     .dynsym : {
-        LD_DYNSYM_START = .;
+    LD_DYNSYM_START = .;
         *(.dynsym)
-        LD_DYNSYM_END = .;
+    LD_DYNSYM_END = .;
     } :text
 
     .dynstr : {
-        LD_DYNSTR_START = .;
+    LD_DYNSTR_START = .;
         *(.dynstr)
-        LD_DYNSTR_END = .;
+    LD_DYNSTR_END = .;
     } :text
 
     LD_TEXT_END = .;
@@ -69,15 +70,17 @@ SECTIONS
         *(.*bss)
         *(.*bss.*)
         *(COMMON)
-    LD_DATA_END = .;
     } :data
 
     /* Per-CPU data block. MUST always come last. */
     .percpu ALIGN(CONSTANT(MAXPAGESIZE)) : {
-        LD_PERCPU_START = .;
+    LD_PERCPU_START = .;
+        *(.percpu.init)
         *(.percpu)
-        LD_PERCPU_END = .;
-    } :data
+        . = ALIGN(CONSTANT(MAXPAGESIZE));
+    LD_PERCPU_END = .;
+    LD_DATA_END = .;
+    } :percpu
 
     LD_KERNEL_END = .;
 
