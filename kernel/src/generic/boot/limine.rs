@@ -53,7 +53,8 @@ pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 static mut MEMMAP_BUF: [PhysMemory; 128] = [PhysMemory::new(); 128];
 static mut FILE_BUF: [BootFile; 128] = [BootFile::new(); 128];
 
-pub(crate) fn init() {
+#[unsafe(no_mangle)]
+extern "C" fn _start() -> ! {
     let mut info = BootInfo::new();
 
     if let Some(x) = BOOTLOADER_REQUEST.get_response() {
@@ -170,4 +171,7 @@ pub(crate) fn init() {
 
     // Finally, save the boot information.
     info.register();
+
+    // Call the kernel common entry point.
+    crate::main();
 }

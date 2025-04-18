@@ -1,4 +1,3 @@
-use super::asm::{interrupt_disable, interrupt_enable};
 use super::consts::{CPL_KERNEL, CPL_USER};
 use crate::arch::x86_64::asm;
 use crate::generic::memory::PageAlloc;

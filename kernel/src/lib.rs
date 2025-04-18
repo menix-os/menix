@@ -26,27 +26,21 @@ pub mod generic;
 /// Initializes all subsystems and starts all servers.
 #[deny(dead_code)]
 pub(crate) fn main() -> ! {
-    #[cfg(feature = "boot_limine")]
-    generic::boot::limine::init();
-
     let info = BootInfo::get();
 
-    let hhdm = info
-        .hhdm_address
-        .expect("HHDM address should have been set!");
-
-    generic::memory::init(&info.memory_map, hhdm);
-
-    generic::memory::virt::init(hhdm, info.kernel_phys, info.kernel_virt);
-
-    // Initialize early console.
-    // TODO: Abstract console interface so it handles init as well.
-    if let Some(fb) = &info.framebuffer {
-        generic::boot::bootcon::init(fb.clone());
-    }
-
+    unsafe { arch::irq::interrupt_disable() };
     generic::cpu::setup_bsp();
 
+    // Initialize allocators.
+    {
+        let hhdm = info
+            .hhdm_address
+            .expect("HHDM address should have been set!");
+        generic::memory::init(&info.memory_map, hhdm);
+        generic::memory::virt::init(hhdm, info.kernel_phys, info.kernel_virt);
+    }
+
+    // Say hello to the console.
     // TODO: Get this information from posix/utsname instead.
     print!(
         "Menix {}.{}.{}\n",
@@ -55,16 +49,29 @@ pub(crate) fn main() -> ! {
         env!("CARGO_PKG_VERSION_PATCH")
     );
 
+    // Initialize early console.
+    // TODO: Abstract console interface so it handles initialization of all consoles as well.
+    if let Some(fb) = &info.framebuffer {
+        generic::boot::bootcon::init(fb.clone());
+    }
+
     // Load the ACPI subsystem.
     #[cfg(feature = "acpi")]
     if let Some(rsdp) = info.rsdp_addr {
         generic::platform::acpi::init(rsdp);
     }
 
+    unsafe { arch::irq::interrupt_enable() };
+
+    // TODO: Start scheduler.
+
+    // Setup SMP.
+    generic::cpu::setup_all();
+
     // Initialize buses.
     generic::bus::init();
 
-    // Finally, load all modules.
+    // Load all modules and run their init function.
     generic::module::init();
 
     print!("boot: Starting init...\n");

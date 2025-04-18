@@ -27,14 +27,21 @@ pub struct ModuleInfo {
     mappings: Vec<(PhysAddr, VirtAddr, usize, VmFlags)>,
 }
 
+unsafe extern "C" {
+    unsafe static LD_DYNSYM_START: u8;
+    unsafe static LD_DYNSYM_END: u8;
+    unsafe static LD_DYNSTR_START: u8;
+    unsafe static LD_DYNSTR_END: u8;
+}
+
 /// Sets up the module system.
 #[deny(dead_code)]
 pub(crate) fn init() {
     let boot_info = BootInfo::get();
-    let dynsym_start = &raw const virt::LD_DYNSYM_START;
-    let dynsym_end = &raw const virt::LD_DYNSYM_END;
-    let dynstr_start = &raw const virt::LD_DYNSTR_START;
-    let dynstr_end = &raw const virt::LD_DYNSTR_END;
+    let dynsym_start = &raw const LD_DYNSYM_START;
+    let dynsym_end = &raw const LD_DYNSYM_END;
+    let dynstr_start = &raw const LD_DYNSTR_START;
+    let dynstr_end = &raw const LD_DYNSTR_END;
 
     // Add all kernel symbols to a table so we can perform dynamic linking.
     {

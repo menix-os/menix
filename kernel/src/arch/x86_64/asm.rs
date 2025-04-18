@@ -153,13 +153,3 @@ pub unsafe fn write32(port: u16, value: u32) {
         asm!("out dx, eax", in("dx") port, in("eax") value, options(nomem, nostack, preserves_flags));
     }
 }
-
-#[inline]
-pub unsafe fn interrupt_disable() {
-    unsafe { asm!("cli") };
-}
-
-#[inline]
-pub unsafe fn interrupt_enable() {
-    unsafe { asm!("sti") };
-}

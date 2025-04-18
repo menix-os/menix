@@ -5,11 +5,14 @@ use super::{
     consts,
     page::PageTableEntry,
 };
-use crate::generic::{
-    clock,
-    cpu::CpuData,
-    irq::{IpiTarget, IrqController, IrqError},
-    memory::PhysAddr,
+use crate::{
+    generic::{
+        clock,
+        cpu::CpuData,
+        irq::{IpiTarget, IrqController, IrqError},
+        memory::PhysAddr,
+    },
+    per_cpu,
 };
 
 #[derive(Debug)]
@@ -20,13 +23,19 @@ pub struct LocalApic {
     ticks_per_10ms: u32,
 }
 
+per_cpu!(
+    LAPIC,
+    LocalApic,
+    LocalApic {
+        has_x2apic: false,
+        lapic_addr: PhysAddr(0),
+        ticks_per_10ms: 0
+    }
+);
+
 impl LocalApic {
-    pub fn init(cpu_info: &CpuData) -> Self {
-        let mut result = Self {
-            has_x2apic: false,
-            lapic_addr: PhysAddr(0),
-            ticks_per_10ms: 0,
-        };
+    pub fn init(context: &CpuData) {
+        let mut result = LAPIC.get(context);
 
         // Enable the APIC flag.
         let mut apic_msr = unsafe { asm::rdmsr(0x1B) };
@@ -76,18 +85,18 @@ impl LocalApic {
         result.write_register(0x3E0, 3);
         result.write_register(0x380, result.ticks_per_10ms);
 
-        print!("apic: Initialized LAPIC for CPU {}\n", cpu_info.id);
-        return result;
+        print!("apic: Initialized LAPIC for CPU {}\n", context.id);
     }
 
     const fn reg_to_x2apic(reg: u32) -> u32 {
-        return if reg == 0x310 { 0x30 } else { reg >> 4 } + 0x800;
+        return (if reg == 0x310 { 0x30 } else { reg >> 4 }) + 0x800;
     }
 
     fn read_register(&self, reg: u32) -> u32 {
         if self.has_x2apic {
             return unsafe { asm::rdmsr(Self::reg_to_x2apic(reg)) } as u32;
         } else {
+            todo!("Add register offset");
             return unsafe {
                 (PageTableEntry::get_hhdm_addr().0 as *const u32)
                     .byte_add(self.lapic_addr.0)
@@ -100,6 +109,7 @@ impl LocalApic {
         if self.has_x2apic {
             unsafe { asm::wrmsr(Self::reg_to_x2apic(reg), value as u64) };
         } else {
+            todo!("Add register offset");
             unsafe {
                 (PageTableEntry::get_hhdm_addr().0 as *mut u32)
                     .byte_add(self.lapic_addr.0)

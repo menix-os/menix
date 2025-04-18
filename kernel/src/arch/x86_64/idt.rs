@@ -33,7 +33,6 @@ impl Idt {
 /// Loads the ISRs into the static table.
 pub fn init() {
     unsafe {
-        asm::interrupt_disable();
         // Create a new table.
         let mut idt = IDT_TABLE.lock();
 

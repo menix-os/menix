@@ -2,11 +2,14 @@ use super::{
     apic::{self, LocalApic},
     asm, consts,
     gdt::{self, Gdt, TaskStateSegment},
-    idt,
+    idt, serial,
 };
 use crate::{
     arch::x86_64::tsc::{self, TscClock},
-    generic::{clock, cpu::CpuData},
+    generic::{
+        clock,
+        cpu::{CpuData, LD_PERCPU_START},
+    },
     per_cpu,
 };
 use crate::{
@@ -39,8 +42,6 @@ pub struct ArchPerCpu {
     pub fpu_restore: unsafe fn(memory: *const u8),
     /// If this CPU supports the STAC/CLAC instructions.
     pub can_smap: bool,
-    /// Local APIC context.
-    pub lapic: Option<LocalApic>,
 }
 
 per_cpu!(
@@ -57,30 +58,61 @@ per_cpu!(
         fpu_save: asm::fxsave,
         fpu_restore: asm::fxrstor,
         can_smap: false,
-        lapic: None,
     }
 );
 
 /// Returns the per-CPU data of this CPU.
 /// # Safety
 /// Accessing this data directly is inherently unsafe without first disabling preemption!
-pub unsafe fn get_per_cpu() -> *mut CpuData {
+#[inline]
+pub(crate) unsafe fn get_per_cpu() -> *mut CpuData {
     unsafe {
         let cpu: *mut CpuData;
         asm!(
-            "mov {cpu}, gs:[0]",
+            "mov {cpu}, gs:[{this}]",
             cpu = out(reg) cpu,
+            this = const offset_of!(CpuData, this),
             options(nostack, preserves_flags),
         );
-        return cpu.as_mut().unwrap();
+        return cpu;
+    }
+}
+
+pub(crate) fn setup_bsp() {
+    apic::disable_legacy_pic();
+    serial::init();
+    idt::init();
+
+    // Check if the FSGSBASE feature is available.
+    let cpuid7 = unsafe { cpuid(7, 0) };
+    assert!(
+        cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0,
+        "FSGSBASE is required for the kernel to function, but the bit wasn't set"
+    );
+
+    // Enable the FSGSBASE bit.
+    let mut cr4 = 0usize;
+    unsafe { asm!("mov {cr4}, cr4", cr4 = out(reg) cr4) };
+    cr4 |= consts::CR4_FSGSBASE;
+    unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
+
+    // Set FSGSBASE contents.
+    unsafe {
+        // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
+        asm::wrmsr(
+            consts::MSR_KERNEL_GS_BASE,
+            &raw const LD_PERCPU_START as u64,
+        );
+        // We will save a reference to this struct in GS_BASE.
+        asm::wrmsr(consts::MSR_GS_BASE, &raw const LD_PERCPU_START as u64);
+        asm::wrmsr(consts::MSR_FS_BASE, 0);
     }
 }
 
 /// Initializes architecture dependent data for the current processor.
-pub fn setup() {
+pub fn setup(context: &mut CpuData) {
     // Allocate a new CPU.
-    let (new_cpu_data, new_cpu_id) = generic::cpu::allocate_cpu();
-    let mut cpu = CPU_DATA.get(new_cpu_data);
+    let mut cpu = CPU_DATA.get(context);
 
     // Print CPUID identification string.
     unsafe {
@@ -217,26 +249,26 @@ pub fn setup() {
         }
     }
 
-    // Write back the modified control register values.
-    unsafe { asm!("mov cr0, {cr0}", cr0 = in(reg) cr0) };
-    unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
-
-    // FSGSBASE is NOT optional for us.
     assert!(
         cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0,
         "FSGSBASE is required for the kernel to function, but the bit wasn't set"
     );
     cr4 |= consts::CR4_FSGSBASE;
 
+    // Write back the modified control register values.
+    unsafe { asm!("mov cr0, {cr0}", cr0 = in(reg) cr0) };
+    unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
+
+    // Set FSGSBASE contents.
     unsafe {
-        // Set FSGSBASE contents.
         // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
         asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
         // We will save a reference to this struct in GS_BASE.
-        todo!();
-        // TODO: asm::wrmsr(consts::MSR_GS_BASE, self as *mut PerCpu as u64);
+        asm::wrmsr(consts::MSR_GS_BASE, context.this as u64);
         asm::wrmsr(consts::MSR_FS_BASE, 0);
     }
+
+    super::apic::LocalApic::init(context);
 }
 
 pub fn stop_all() -> ! {

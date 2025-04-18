@@ -131,7 +131,7 @@ impl BootCon {
 
 impl LoggerSink for BootCon {
     fn name(&self) -> &'static str {
-        "fbcon"
+        "bootcon"
     }
 
     fn write(&mut self, input: &[u8]) {

@@ -1,6 +1,5 @@
 mod apic;
 mod asm;
-mod boot;
 mod consts;
 pub mod cpu;
 mod gdt;
