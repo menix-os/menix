@@ -184,14 +184,11 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                     flags |= VmFlags::Write;
                 }
 
-                let mut memory = Vec::new_in(PageAlloc);
-                memory.resize(phdr.p_memsz as usize, 0u8);
+                // TODO: Allocate memory.
+                // TODO: Map memory with RW permissions.
+                // TODO: Copy data to allocated memory.
+                // TODO: Change permissions of the mappings.
 
-                if load_base.0 == 0 {
-                    load_base = VirtAddr(memory.as_ptr() as usize);
-                }
-
-                Vec::leak(memory);
             }
             elf::PT_DYNAMIC => {
                 let dyntab: &[elf::ElfDyn] = bytemuck::try_cast_slice(
