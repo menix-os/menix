@@ -12,7 +12,7 @@ use seq_macro::seq;
 
 /// Registers which are saved and restored during a context switch or interrupt.
 #[repr(C)]
-#[derive(Clone, Debug, Copy, Default)]
+#[derive(Clone, Debug, Copy)]
 pub struct InterruptFrame {
     pub r15: u64,
     pub r14: u64,
@@ -43,11 +43,38 @@ pub struct InterruptFrame {
 assert_size!(InterruptFrame, 0xB0);
 
 impl InterruptFrame {
-    pub fn set_stack(&mut self, addr: VirtAddr) {
+    pub const fn new() -> Self {
+        Self {
+            r15: 0,
+            r14: 0,
+            r13: 0,
+            r12: 0,
+            r11: 0,
+            r10: 0,
+            r9: 0,
+            r8: 0,
+            rsi: 0,
+            rdi: 0,
+            rbp: 0,
+            rdx: 0,
+            rcx: 0,
+            rbx: 0,
+            rax: 0,
+            isr: 0,
+            error: 0,
+            rip: 0,
+            cs: 0,
+            rflags: 0,
+            rsp: 0,
+            ss: 0,
+        }
+    }
+
+    pub const fn set_stack(&mut self, addr: VirtAddr) {
         self.rsp = addr.0 as u64;
     }
 
-    pub fn set_ip(&mut self, addr: VirtAddr) {
+    pub const fn set_ip(&mut self, addr: VirtAddr) {
         self.rip = addr.0 as u64;
     }
 }

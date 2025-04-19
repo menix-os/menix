@@ -61,12 +61,10 @@ pub(crate) fn main() -> ! {
         generic::platform::acpi::init(rsdp);
     }
 
-    unsafe { arch::irq::interrupt_enable() };
-
-    // TODO: Start scheduler.
-
     // Setup SMP.
     generic::cpu::setup_all();
+
+    // TODO: Start scheduler.
 
     // Initialize buses.
     generic::bus::init();

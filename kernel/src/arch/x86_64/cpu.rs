@@ -98,12 +98,7 @@ pub(crate) fn setup_bsp() {
 
     // Set FSGSBASE contents.
     unsafe {
-        // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
-        asm::wrmsr(
-            consts::MSR_KERNEL_GS_BASE,
-            &raw const LD_PERCPU_START as u64,
-        );
-        // We will save a reference to this struct in GS_BASE.
+        asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
         asm::wrmsr(consts::MSR_GS_BASE, &raw const LD_PERCPU_START as u64);
         asm::wrmsr(consts::MSR_FS_BASE, 0);
     }

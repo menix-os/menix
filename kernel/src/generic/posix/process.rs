@@ -3,7 +3,7 @@ use crate::generic::{
     memory::virt::{PageTable, VmFlags},
     posix::errno::Errno,
 };
-use crate::generic::{memory::VirtAddr, sched::thread::Thread};
+use crate::generic::{memory::VirtAddr, sched::task::Task};
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -11,7 +11,7 @@ pub struct Process {
     id: usize,
     is_user: bool,
     page_table: PageTable,
-    threads: Vec<Thread>,
+    threads: Vec<Task>,
 }
 
 impl Process {
@@ -71,7 +71,7 @@ impl Process {
         // We can be certain that this is an ELF for us.
         // Now is a good time to allocate a process.
         let mut result = Process::new(is_user);
-        let mut main_thread = Thread::new();
+        let mut main_thread = Task::new();
 
         // Start by evaluating the program headers.
         let phdrs: &[ElfPhdr] = match bytemuck::try_cast_slice(

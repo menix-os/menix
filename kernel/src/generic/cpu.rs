@@ -2,7 +2,7 @@
 
 use super::{
     memory::{PageAlloc, VirtAddr},
-    sched::thread::Thread,
+    sched::{Scheduler, task::Task},
 };
 use crate::arch::{self};
 use alloc::{boxed::Box, sync::Arc};
@@ -25,7 +25,7 @@ pub struct CpuData {
     /// Whether this CPU is present.
     pub present: bool,
     /// Current thread running on this CPU.
-    pub thread: Option<Arc<RwLock<Thread>>>,
+    pub scheduler: Scheduler,
 }
 
 impl CpuData {
@@ -96,7 +96,7 @@ pub(crate) static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
     user_stack: VirtAddr(0),
     online: false,
     present: false,
-    thread: None,
+    scheduler: Scheduler::new(),
 });
 
 /// For regular per-CPU variables.
@@ -120,7 +120,7 @@ pub(crate) fn setup_bsp() {
 pub(crate) fn setup_all() {
     // Setup the BSP.
     arch::cpu::setup(CpuData::get());
-    // TODO
+    // TODO: Set up the rest.
 }
 
 /// Counts how many CPUs have been allocated. ID 0 is always used for the BSP.

@@ -1,4 +1,4 @@
-use super::sched::thread::Thread;
+use super::sched::task::Task;
 use alloc::{string::String, sync::Arc};
 use spin::Mutex;
 
@@ -15,12 +15,12 @@ pub enum IrqStatus {
 pub type IrqHandlerFn = fn(irq: usize, context: usize) -> IrqStatus;
 
 pub struct IrqAction {
-    irq: usize,                 // The IRQ number.
-    handler: IrqHandlerFn,      // Called directly to handle the IRQ.
-    worker: IrqHandlerFn,       // Function to call in a worker thread, if woken up by the handler.
-    thread: Arc<Mutex<Thread>>, // The thread to execute the worker function on.
-    name: String,               // Name of the IRQ.
-    context: *mut u8,           // A generic context to pass to the handler.
+    irq: usize,               // The IRQ number.
+    handler: IrqHandlerFn,    // Called directly to handle the IRQ.
+    worker: IrqHandlerFn,     // Function to call in a worker thread, if woken up by the handler.
+    thread: Arc<Mutex<Task>>, // The thread to execute the worker function on.
+    name: String,             // Name of the IRQ.
+    context: *mut u8,         // A generic context to pass to the handler.
 }
 
 pub enum IpiTarget {
