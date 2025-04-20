@@ -9,6 +9,7 @@ use talc::{ClaimOnOom, Span, Talc, Talck};
 
 pub mod mmio;
 pub mod page;
+pub mod phys;
 pub mod virt;
 
 /// Represents a physical address. It can't be directly read from or written to.
@@ -106,19 +107,13 @@ pub static ALLOCATOR: Talck<spin::Mutex<()>, ClaimOnOom> = Talc::new(unsafe {
 pub struct PageAlloc;
 unsafe impl Allocator for PageAlloc {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        ALLOCATOR.allocate(
-            layout
-                .align_to(1 << PageTableEntry::get_page_bits())
-                .unwrap(),
-        )
+        ALLOCATOR.allocate(layout.align_to(PageTableEntry::get_page_size()).unwrap())
     }
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         unsafe {
             ALLOCATOR.deallocate(
                 ptr,
-                layout
-                    .align_to(1 << PageTableEntry::get_page_bits())
-                    .unwrap(),
+                layout.align_to(PageTableEntry::get_page_size()).unwrap(),
             )
         }
     }

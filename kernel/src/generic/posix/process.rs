@@ -19,7 +19,7 @@ impl Process {
         Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             is_user,
-            page_table: PageTable::new(is_user),
+            page_table: PageTable::new_user(),
             threads: Vec::new(),
         }
     }

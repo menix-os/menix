@@ -43,10 +43,8 @@ macro_rules! dbg {
 }
 
 #[macro_export]
-macro_rules! assert_size {
-    ($x:ty, $xs:expr) => {
-        const _: fn() = || {
-            let _ = $crate::core::mem::transmute::<$x, [u8; $xs]>;
-        };
+macro_rules! static_assert {
+    ($xs:expr) => {
+        const _: () = assert!($xs, concat!("Assertion failed: \"", stringify!($xs), "\"!"));
     };
 }

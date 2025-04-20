@@ -105,6 +105,10 @@ impl PageTableEntry {
         return 12;
     }
 
+    pub const fn get_page_size() -> usize {
+        return 1 << Self::get_page_bits();
+    }
+
     pub const fn get_hhdm_addr() -> VirtAddr {
         return VirtAddr(0xffff_8000_0000_0000);
     }
@@ -125,15 +129,9 @@ fn flush_tlb(addr: VirtAddr) {
     }
 }
 
-pub unsafe fn set_page_table(page_table: &PageTable) {
-    let table = page_table
-        .head
-        .lock()
-        .as_ref()
-        .expect("Page table should have been allocated")
-        .as_ptr();
+pub unsafe fn set_page_table(addr: PhysAddr) {
     unsafe {
-        asm!("mov cr3, {addr}", addr = in(reg) VirtAddr(table as usize).get_kernel_phys().unwrap().0);
+        asm!("mov cr3, {addr}", addr = in(reg) addr.0);
     }
 }
 

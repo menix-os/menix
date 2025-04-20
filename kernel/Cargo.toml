@@ -30,4 +30,3 @@ acpi = ["dep:uacpi", "pci"]
 openfw = []
 # Bus
 pci = []
-i2c = []

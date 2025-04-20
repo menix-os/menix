@@ -204,7 +204,7 @@ pub struct TaskStateSegment {
     reserved5: u16,
     iopb: u16,
 }
-assert_size!(TaskStateSegment, 0x68);
+static_assert!(size_of::<TaskStateSegment>() == 0x68);
 
 impl Default for TaskStateSegment {
     fn default() -> Self {

@@ -17,7 +17,7 @@ SECTIONS
 
     /* Code */
     .text ALIGN(CONSTANT(MAXPAGESIZE)) : {
-    LD_TEXT_START = .;
+        LD_TEXT_START = .;
         KEEP(*(.boot.init))
         KEEP(*(.boot))
         KEEP(*(.boot.fini))
@@ -30,32 +30,32 @@ SECTIONS
     } :text
 
     .dynsym : {
-    LD_DYNSYM_START = .;
+        LD_DYNSYM_START = .;
         *(.dynsym)
-    LD_DYNSYM_END = .;
+        LD_DYNSYM_END = .;
     } :text
 
     .dynstr : {
-    LD_DYNSTR_START = .;
+        LD_DYNSTR_START = .;
         *(.dynstr)
-    LD_DYNSTR_END = .;
+        LD_DYNSTR_END = .;
     } :text
 
     LD_TEXT_END = .;
 
     /* Read-only data */
     .rodata ALIGN(CONSTANT(MAXPAGESIZE)) : {
-    LD_RODATA_START = .;
+        LD_RODATA_START = .;
         *(.rodata)
         *(.rodata.*)
         *(.got)
         *(.got.*)
-    LD_RODATA_END = .;
+        LD_RODATA_END = .;
     } :rodata
 
     /* Read-Write data */
     .data ALIGN(CONSTANT(MAXPAGESIZE)) : {
-    LD_DATA_START = .;
+        LD_DATA_START = .;
         *(.data)
         *(.data.*)
     } :data
@@ -74,12 +74,12 @@ SECTIONS
 
     /* Per-CPU data block. MUST always come last. */
     .percpu ALIGN(CONSTANT(MAXPAGESIZE)) : {
-    LD_PERCPU_START = .;
+        LD_PERCPU_START = .;
         *(.percpu.init)
         *(.percpu)
         . = ALIGN(CONSTANT(MAXPAGESIZE));
-    LD_PERCPU_END = .;
-    LD_DATA_END = .;
+        LD_PERCPU_END = .;
+        LD_DATA_END = .;
     } :percpu
 
     LD_KERNEL_END = .;

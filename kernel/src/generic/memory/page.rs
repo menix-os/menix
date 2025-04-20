@@ -1,6 +1,15 @@
 use super::VirtAddr;
 use crate::arch::irq::InterruptFrame;
 
+/// Metadata about a physical page.
+/// Keep this structure as small as possible, every single physical page has one!
+pub struct Page {
+    flags: usize,
+    refcount: usize,
+}
+
+static_assert!(size_of::<Page>() <= 40);
+
 /// Abstract information about a page fault.
 pub struct PageFaultInfo {
     /// Fault caused by the user.
@@ -33,7 +42,7 @@ pub fn page_fault_handler<'a>(
     info: &PageFaultInfo,
 ) -> &'a InterruptFrame {
     if info.caused_by_user {
-        // TODO: Send SIGSEGV.
+        // TODO: Send SIGSEGV and reschedule.
         return context;
     }
 
