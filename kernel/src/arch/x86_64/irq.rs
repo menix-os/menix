@@ -40,7 +40,7 @@ pub struct InterruptFrame {
     pub rsp: u64,
     pub ss: u64,
 }
-assert_size!(InterruptFrame, 0xB0);
+static_assert!(size_of::<InterruptFrame>() == 0xB0);
 
 impl InterruptFrame {
     pub const fn new() -> Self {
@@ -132,7 +132,7 @@ unsafe extern "C" fn interrupt_handler(
             // Exceptions.
             0x0E => _ = arch::page::page_fault_handler(context),
             // Unhandled exceptions.
-            0..0x20 => {
+            0x00..0x20 => {
                 error!("Registers:\n{}\n", *context);
                 panic!(
                     "Got an unhandled CPU exception: {} (ISR {})!",

@@ -158,7 +158,7 @@ pub struct ElfPhdr {
     pub p_align: u64,
 }
 #[cfg(target_pointer_width = "64")]
-assert_size!(ElfPhdr, 56);
+static_assert!(size_of::<ElfPhdr>() == 56);
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
@@ -174,7 +174,7 @@ pub struct ElfPhdr {
     pub p_align: u32,
 }
 #[cfg(target_pointer_width = "32")]
-assert_size!(ElfPhdr, 32);
+static_assert!(size_of::<ElfPhdr>() == 32);
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
@@ -249,7 +249,7 @@ pub struct ElfHdr {
     /// Section name string table index
     pub e_shstrndx: u16,
 }
-assert_size!(ElfHdr, 64);
+static_assert!(size_of::<ElfHdr>() == 64);
 
 pub struct ElfAuxv {
     atype: u32,

@@ -8,16 +8,17 @@ use super::{
 };
 use core::{marker::PhantomData, ops::RangeInclusive};
 
-pub struct MemorySpace {
+/// Represents a region of memory mapped IO.
+pub struct Mmio {
     phys: PhysAddr,
     base: *mut u8,
     len: usize,
 }
 
-unsafe impl Send for MemorySpace {}
-unsafe impl Sync for MemorySpace {}
+unsafe impl Send for Mmio {}
+unsafe impl Sync for Mmio {}
 
-impl Drop for MemorySpace {
+impl Drop for Mmio {
     fn drop(&mut self) {
         virt::KERNEL_PAGE_TABLE
             .write()
@@ -25,7 +26,7 @@ impl Drop for MemorySpace {
     }
 }
 
-impl MemorySpace {
+impl Mmio {
     pub fn new(phys: PhysAddr, len: usize) -> Self {
         return Self {
             phys,
@@ -45,9 +46,9 @@ impl MemorySpace {
     }
 
     /// Reads data from a single field.
-    pub fn read_field<T: PrimInt>(&self, field: &MemoryField<T>) -> T {
+    pub unsafe fn read_field<T: PrimInt>(&self, field: &MemoryField<T>) -> T {
         let result = T::zero();
-        let value = unsafe { (self.base as *mut T).add(field.offset).read_volatile() };
+        let value = unsafe { (self.base as *mut T).byte_add(field.offset).read_volatile() };
         return match field.native_endian {
             true => value,
             false => value.swap_bytes(),
@@ -55,7 +56,7 @@ impl MemorySpace {
     }
 
     /// Writes data to a single field.
-    pub fn write_field<T: PrimInt>(&mut self, field: &MemoryField<T>, value: T) {
+    pub unsafe fn write_field<T: PrimInt>(&mut self, field: &MemoryField<T>, value: T) {
         unsafe {
             (self.base as *mut T).byte_add(field.offset).write_volatile(
                 match field.native_endian {
@@ -67,7 +68,7 @@ impl MemorySpace {
     }
 
     /// Reads a single element from a vector.
-    pub fn vector_read_elem<T: PrimInt>(&self, vector: &MemoryVector<T>, index: usize) -> T {
+    pub unsafe fn vector_read_elem<T: PrimInt>(&self, vector: &MemoryVector<T>, index: usize) -> T {
         assert!(index < vector.count);
         let value = unsafe {
             (self.base as *const T)
@@ -81,7 +82,7 @@ impl MemorySpace {
     }
 
     /// Writes a single element to a vector.
-    pub fn vector_write_elem<T: PrimInt>(
+    pub unsafe fn vector_write_elem<T: PrimInt>(
         &mut self,
         vector: &MemoryVector<T>,
         index: usize,
@@ -99,9 +100,14 @@ impl MemorySpace {
     }
 
     /// Reads multiple vector elements into a buffer.
-    pub fn vector_read<T: PrimInt>(&self, vector: &MemoryVector<T>, offset: usize, dest: &mut [T]) {
+    pub unsafe fn vector_read<T: PrimInt>(
+        &self,
+        vector: &MemoryVector<T>,
+        offset: usize,
+        dest: &mut [T],
+    ) {
         for (idx, elem) in dest.iter_mut().enumerate() {
-            *elem = self.vector_read_elem(vector, offset + idx);
+            *elem = unsafe { self.vector_read_elem(vector, offset + idx) };
         }
     }
 
@@ -112,7 +118,7 @@ impl MemorySpace {
         value: &[T],
     ) {
         for (idx, elem) in value.iter().enumerate() {
-            self.vector_write_elem(vector, offset + idx, *elem);
+            unsafe { self.vector_write_elem(vector, offset + idx, *elem) };
         }
     }
 }
