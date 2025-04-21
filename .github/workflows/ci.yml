@@ -1,38 +1,43 @@
 name: CI
 
-on: [pull_request, merge_group]
+on:
+  push:
+    branches:
+    - main
+  pull_request:
+  merge_group:
+
 
 jobs:
   format-check:
     name: Check formatting
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: clippy rust-src rustfmt
-      - name: Run format check
-        run: cargo fmt --check
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: clippy rust-src rustfmt
+    - name: Run format check
+      run: cargo fmt --check
   compile-check:
     strategy:
       matrix:
         # arch: [x86_64, aarch64, riscv64, loongarch64]
-        arch: [x86_64]
+        arch: [ x86_64 ]
     name: Debug build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: 'recursive'
-      - uses: dtolnay/rust-toolchain@nightly
-        with:
-          components: rust-src
-      - name: Install tools
-        run:
-          sudo apt install -y clang llvm lld gcc-multilib
-      - name: Run build
-        run: cargo build --target "toolchain/${{matrix.arch}}-kernel.json"
-        env:
-          CC: clang
+    - uses: actions/checkout@v4
+      with:
+        submodules: 'recursive'
+    - uses: dtolnay/rust-toolchain@nightly
+      with:
+        components: rust-src
+    - name: Install tools
+      run: sudo apt install -y clang llvm lld gcc-multilib
+    - name: Run build
+      run: cargo build --target "toolchain/${{matrix.arch}}-kernel.json"
+      env:
+        CC: clang
