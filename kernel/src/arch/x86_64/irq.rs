@@ -245,7 +245,7 @@ macro_rules! pop_all_regs {
 /// Handles a syscall via AMD64 syscall/sysret instructions.
 /// # Safety
 /// Assumes that a valid stack is ready in the PerCpu block at this point.
-#[naked]
+#[unsafe(naked)]
 pub unsafe extern "C" fn amd64_syscall_stub() {
     unsafe {
         naked_asm!(
@@ -291,7 +291,7 @@ macro_rules! swapgs_if_necessary {
 // There are some interrupts which generate an error code on the stack, while others do not.
 // We normalize this by just pushing 0 for those that don't generate an error code.
 seq! { N in 0..256 {
-    #[naked]
+    #[unsafe(naked)]
     pub(crate) unsafe extern "C" fn interrupt_stub~N() {
         unsafe {
             naked_asm!(
@@ -314,7 +314,7 @@ seq! { N in 0..256 {
 
 // To avoid having 256 big functions with essentially the same logic,
 // this function is meant to do the actual heavy lifting.
-#[naked]
+#[unsafe(naked)]
 unsafe extern "C" fn interrupt_stub_internal() {
     unsafe {
         naked_asm!(
