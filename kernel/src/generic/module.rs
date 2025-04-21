@@ -4,6 +4,7 @@ use super::{
 };
 use crate::generic::{
     boot::BootInfo,
+    cmdline::CmdLine,
     elf,
     memory::{
         PageAlloc,
@@ -81,7 +82,7 @@ pub(crate) fn init() {
             .map(|(name, _)| name)
             .unwrap_or(&file.name);
 
-        if !boot_info.command_line().get_bool(name).unwrap_or(true) {
+        if !boot_info.command_line.get_bool(name).unwrap_or(true) {
             print!("module: Skipping \"{}\".\n", file.name);
             continue;
         }
@@ -100,7 +101,7 @@ pub enum ModuleLoadError {
 }
 
 /// Loads a module from an ELF in memory.
-pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoadError> {
+pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), ModuleLoadError> {
     let elf_hdr: &ElfHdr = bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()])
         .map_err(|_| ModuleLoadError::InvalidData)?;
 
@@ -188,7 +189,6 @@ pub fn load(name: &str, cmd: Option<&str>, data: &[u8]) -> Result<(), ModuleLoad
                 // TODO: Map memory with RW permissions.
                 // TODO: Copy data to allocated memory.
                 // TODO: Change permissions of the mappings.
-
             }
             elf::PT_DYNAMIC => {
                 let dyntab: &[elf::ElfDyn] = bytemuck::try_cast_slice(

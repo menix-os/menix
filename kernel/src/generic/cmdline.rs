@@ -1,4 +1,4 @@
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct CmdLine<'a> {
     data: &'a str,
 }

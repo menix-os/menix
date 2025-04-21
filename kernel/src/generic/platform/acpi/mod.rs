@@ -27,7 +27,7 @@ use uacpi::*;
 static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
 
 pub fn init(rsdp: PhysAddr) {
-    RSDP_ADDRESS.call_once(|| return rsdp);
+    RSDP_ADDRESS.call_once(|| rsdp);
 
     let mut uacpi_status = uacpi::uacpi_status_UACPI_STATUS_OK;
 
