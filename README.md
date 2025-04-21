@@ -31,6 +31,9 @@ To build the kernel you will need:
 - clang (Used for bindgen)
 - lld
 
+Make sure you have a full nightly toolchain installed,
+including the `rust-src` component.
+
 The following commmand will build the kernel and all drivers for x86_64:
 ```sh
 cargo +nightly build --release --target toolchain/x86_64-kernel.json
