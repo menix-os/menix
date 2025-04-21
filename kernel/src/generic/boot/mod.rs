@@ -21,7 +21,7 @@ pub mod limine;
 #[derive(Debug)]
 pub struct BootInfo {
     /// Kernel command line.
-    pub command_line: &'static str,
+    pub command_line: CmdLine<'static>,
     /// Files given to the bootloader.
     pub files: &'static [BootFile],
     /// Temporary base address for the kernel to access physical memory.
@@ -45,7 +45,7 @@ static BOOT_INFO: Once<BootInfo> = Once::new();
 impl BootInfo {
     pub const fn new() -> Self {
         Self {
-            command_line: "",
+            command_line: CmdLine::new(""),
             files: &[],
             hhdm_address: None,
             memory_map: &[],
@@ -57,12 +57,8 @@ impl BootInfo {
         }
     }
 
-    pub fn command_line(&self) -> CmdLine {
-        CmdLine::new(&self.command_line)
-    }
-
     pub fn register(self) {
-        BOOT_INFO.call_once(|| return self);
+        BOOT_INFO.call_once(|| self);
     }
 
     pub fn get() -> &'static Self {
@@ -77,7 +73,7 @@ impl BootInfo {
 pub struct BootFile {
     pub data: &'static [u8],
     pub name: &'static str,
-    pub command_line: &'static str,
+    pub command_line: CmdLine<'static>,
 }
 
 impl BootFile {
@@ -85,7 +81,7 @@ impl BootFile {
         Self {
             data: &[],
             name: "",
-            command_line: "",
+            command_line: CmdLine::new(""),
         }
     }
 }

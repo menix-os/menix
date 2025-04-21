@@ -21,7 +21,7 @@ pub(crate) fn init() {
     // First, attempt to initialize PCI using the ACPI table "MCFG".
     #[cfg(feature = "acpi")]
     if BootInfo::get()
-        .command_line()
+        .command_line
         .get_bool("acpi")
         .unwrap_or(true)
     {

@@ -3,6 +3,7 @@
 use super::{BootFile, BootInfo};
 use crate::generic::{
     boot::bootcon::{FbColorBits, FrameBuffer},
+    cmdline::CmdLine,
     memory::{PhysAddr, PhysMemory, PhysMemoryUsage, VirtAddr},
 };
 use core::ptr::slice_from_raw_parts;
@@ -109,7 +110,7 @@ extern "C" fn _start() -> ! {
     // Convert the command line from bytes to UTF-8 if there is any.
     info.command_line = {
         let line_buf = COMMAND_LINE_REQUEST.get_response().unwrap().cmdline();
-        line_buf.to_str().unwrap_or_default()
+        CmdLine::new(line_buf.to_str().unwrap_or_default())
     };
 
     // The RSDP is a physical address.
@@ -133,10 +134,12 @@ extern "C" fn _start() -> ! {
                         .unwrap(),
                     // Split off any parts of the path that come before the actual file name.
                     name: entry.path().to_str().unwrap().rsplit_once('/').unwrap().1,
-                    command_line: entry
-                        .string()
-                        .to_str()
-                        .expect("Module command line was not valid UTF-8"),
+                    command_line: CmdLine::new(
+                        entry
+                            .string()
+                            .to_str()
+                            .expect("Module command line was not valid UTF-8"),
+                    ),
                 }
             };
         }
