@@ -6,10 +6,7 @@ use crate::generic::{
     boot::BootInfo,
     cmdline::CmdLine,
     elf,
-    memory::{
-        PageAlloc,
-        virt::{self},
-    },
+    memory::virt::{self},
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{ffi::CStr, slice};

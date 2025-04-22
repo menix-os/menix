@@ -3,7 +3,7 @@ use core::u32;
 use super::{
     asm::{self},
     consts,
-    page::PageTableEntry,
+    virt::PageTableEntry,
 };
 use crate::{
     generic::{
@@ -96,12 +96,7 @@ impl LocalApic {
         if self.has_x2apic {
             return unsafe { asm::rdmsr(Self::reg_to_x2apic(reg)) } as u32;
         } else {
-            todo!("Add register offset");
-            return unsafe {
-                (PageTableEntry::get_hhdm_addr().0 as *const u32)
-                    .byte_add(self.lapic_addr.0)
-                    .read_volatile() as u32
-            };
+            todo!();
         }
     }
 
@@ -109,12 +104,7 @@ impl LocalApic {
         if self.has_x2apic {
             unsafe { asm::wrmsr(Self::reg_to_x2apic(reg), value as u64) };
         } else {
-            todo!("Add register offset");
-            unsafe {
-                (PageTableEntry::get_hhdm_addr().0 as *mut u32)
-                    .byte_add(self.lapic_addr.0)
-                    .write_volatile(value)
-            };
+            todo!();
         }
     }
 }

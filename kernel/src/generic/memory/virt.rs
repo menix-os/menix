@@ -1,5 +1,7 @@
-use super::{PageAlloc, PhysAddr, VirtAddr, phys};
-use crate::arch::{self, page::PageTableEntry};
+use super::{PhysAddr, VirtAddr, phys};
+use crate::arch::irq::InterruptFrame;
+use crate::arch::{self, virt::PageTableEntry};
+use alloc::alloc::AllocError;
 use alloc::vec::Vec;
 use alloc::{boxed::Box, sync::Arc};
 use bitflags::bitflags;
@@ -13,9 +15,6 @@ pub const USER_MAP_BASE: usize = 0x0000600000000000;
 
 // Kernel constants
 pub const KERNEL_STACK_SIZE: usize = 0x20000;
-pub const MAP_BASE: usize = 0xFFFF90000000000;
-pub const MEMORY_BASE: usize = 0xFFFFA0000000000;
-pub const MODULE_BASE: usize = 0xFFFFB0000000000;
 
 const PAGE_TABLE_SIZE: usize = (PageTableEntry::get_page_size()) / size_of::<PageTableEntry>();
 
@@ -46,28 +45,40 @@ pub enum PageTableError {
     NeedAllocation,
 }
 
-pub static KERNEL_PAGE_TABLE: RwLock<PageTable<true>> = RwLock::new(PageTable::new_kernel());
+pub static KERNEL_PAGE_TABLE: RwLock<PageTable<true>> = RwLock::new(PageTable::new_kernel_uninit());
 
 /// Represents a virtual address space.
 /// `K` controls whether or not this page table is for the kernel or a user process.
 pub struct PageTable<const K: bool = false> {
-    pub head: Mutex<Option<Box<[PageTableEntry; PAGE_TABLE_SIZE], PageAlloc>>>,
+    /// Physical address of the root directory.
+    head: Mutex<Option<PhysAddr>>,
+    /// The highest supported level for mappings.
+    max_level: usize,
 }
 
 impl PageTable<false> {
     /// Creates a new page table for a user process.
-    pub const fn new_user() -> Self {
-        return Self {
-            head: Mutex::new(None),
-        };
+    pub fn new_user(max_level: usize) -> Self {
+        Self {
+            head: Mutex::new(Some(phys::alloc_pages(1, phys::RangeType::Kernel).unwrap())),
+            max_level,
+        }
     }
 }
 
 impl PageTable<true> {
-    const fn new_kernel() -> Self {
-        return Self {
+    const fn new_kernel_uninit() -> Self {
+        Self {
             head: Mutex::new(None),
-        };
+            max_level: 0,
+        }
+    }
+
+    fn new_kernel(max_level: usize) -> Self {
+        Self {
+            head: Mutex::new(Some(phys::alloc_pages(1, phys::RangeType::Kernel).unwrap())),
+            max_level,
+        }
     }
 
     /// Maps physical memory to a free area in virtual address space.
@@ -79,7 +90,7 @@ impl PageTable<true> {
         length: usize,
     ) -> *mut u8 {
         // TODO: Get next free memory region.
-        return (PageTableEntry::get_hhdm_addr().0 + phys.0) as *mut u8;
+        todo!();
     }
 }
 
@@ -90,15 +101,12 @@ impl<const K: bool> PageTable<K> {
     ///
     /// All parts of the kernel must still be mapped for this call to be safe.
     pub unsafe fn set_active(&mut self) {
+        let addr = self
+            .head
+            .lock()
+            .expect("Page table should contain at least the root level");
         unsafe {
-            let virt = self
-                .head
-                .lock()
-                .as_mut()
-                .expect("Page table should contain at least the root level")
-                .as_ptr();
-            let addr = PhysAddr(virt as usize);
-            arch::page::set_page_table(addr);
+            arch::virt::set_page_table(addr);
         }
     }
 
@@ -115,21 +123,19 @@ impl<const K: bool> PageTable<K> {
         let mut head = self.head.lock();
 
         // If there is no head yet, allocate it.
-        let mut head = match &mut *head {
-            Some(x) => x,
-            None => &mut Box::new_in([PageTableEntry::empty(); PAGE_TABLE_SIZE], PageAlloc),
+        let mut current_head: *mut PageTableEntry = match &mut *head {
+            Some(x) => x.as_hhdm(),
+            None => todo!("Physical memory allocation"),
         };
-
-        let mut current_head = head.as_mut_ptr();
         let mut index = 0;
         let mut do_break = false;
 
-        if target_level >= PageTableEntry::get_levels() - 1 {
+        if target_level >= self.max_level - 1 {
             return Err(PageTableError::LevelOutOfRange);
         }
 
         // Traverse the page table (from highest to lowest level).
-        for level in (0..PageTableEntry::get_levels()).rev() {
+        for level in (0..self.max_level).rev() {
             // Create a mask for the address part of the PTE, e.g. 0x1ff for 9 bits.
             let addr_bits = (usize::MAX
                 >> (0usize.trailing_zeros() as usize - PageTableEntry::get_level_bits()));
@@ -165,8 +171,7 @@ impl<const K: bool> PageTable<K> {
                         do_break = true;
                     } else {
                         // If the PTE is not large, go one level deeper.
-                        current_head = ((*pte).address().0 + PageTableEntry::get_hhdm_addr().0)
-                            as *mut PageTableEntry;
+                        current_head = (*pte).address().as_hhdm();
                     }
                     *pte = PageTableEntry::new((*pte).address(), pte_flags);
                 } else {
@@ -175,15 +180,11 @@ impl<const K: bool> PageTable<K> {
                         return Err(PageTableError::NeedAllocation);
                     }
 
-                    let next_head = Box::leak(Box::new_in(
-                        [PageTableEntry::empty(); PAGE_TABLE_SIZE],
-                        PageAlloc,
-                    ))
-                    .as_mut_ptr();
+                    let next_head = todo!();
                     // ptr::byte_sub() doesn't allow taking higher half addresses because it doesn't fit in an isize.
                     *pte = PageTableEntry::new(
                         VirtAddr::from(next_head)
-                            .get_kernel_phys()
+                            .as_hhdm()
                             .ok_or(PageTableError::PageTableEntryMissing)?,
                         pte_flags,
                     );
@@ -252,12 +253,12 @@ impl<const K: bool> PageTable<K> {
 
     /// Un-maps a page from this address space.
     pub fn unmap(&mut self, virt: VirtAddr) -> Result<(), PageTableError> {
-        Ok(())
+        todo!();
     }
 
     /// Un-maps a range from this address space.
     pub fn unmap_range(&mut self, virt: VirtAddr, len: usize) -> Result<(), PageTableError> {
-        Ok(())
+        todo!();
     }
 
     /// Checks if the address (may be unaligned) is mapped in this address space.
@@ -272,10 +273,16 @@ impl<const K: bool> PageTable<K> {
     }
 }
 
-/// Initialize the kernel page table and switch to it.
+/// Initialize the kernel's own page table and switch to it.
 #[deny(dead_code)]
-pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
-    let mut table = PageTable::new_kernel();
+pub fn init(
+    hhdm_start: VirtAddr,
+    hhdm_length: usize,
+    paging_level: usize,
+    kernel_phys: PhysAddr,
+    kernel_virt: VirtAddr,
+) {
+    let mut table = PageTable::new_kernel(paging_level);
 
     unsafe {
         let text_start = VirtAddr(&raw const LD_TEXT_START as usize);
@@ -318,13 +325,13 @@ pub fn init(temp_hhdm: VirtAddr, kernel_phys: PhysAddr, kernel_virt: VirtAddr) {
 
         table
             .map_range(
-                PageTableEntry::get_hhdm_addr(),
+                hhdm_start,
                 PhysAddr(0),
                 VmFlags::Read | VmFlags::Write,
-                PageTableEntry::get_hhdm_level(),
-                PageTableEntry::get_hhdm_size(),
+                paging_level - 1,
+                hhdm_length,
             )
-            .expect("Unable to map identity region");
+            .expect("Unable to map HHDM region");
 
         // Activate the new page table.
         table.set_active();
@@ -362,6 +369,56 @@ impl<T> Deref for ForeignPtr<T> {
     fn deref(&self) -> &Self::Target {
         todo!()
     }
+}
+
+/// Abstract information about a page fault.
+pub struct PageFaultInfo {
+    /// Fault caused by the user.
+    pub caused_by_user: bool,
+    /// The instruction pointer address.
+    pub ip: VirtAddr,
+    /// The address that was attempted to access.
+    pub addr: VirtAddr,
+    /// The cause of this page fault.
+    pub kind: PageFaultKind,
+}
+
+/// The origin of the page fault.
+pub enum PageFaultKind {
+    /// Issue unclear (possible corruption).
+    Unknown,
+    /// Page is not mapped in the current page table.
+    NotMapped,
+    /// Page is mapped, but can't be read from.
+    IllegalRead,
+    /// Page is mapped, but can't be written to.
+    IllegalWrite,
+    /// Page is mapped, but can't be executed on.
+    IllegalExecute,
+}
+
+/// Generic page fault handler. May reschedule and return a different context.
+pub fn page_fault_handler<'a>(
+    context: &'a InterruptFrame,
+    info: &PageFaultInfo,
+) -> &'a InterruptFrame {
+    if info.caused_by_user {
+        // TODO: Send SIGSEGV and reschedule.
+        return context;
+    }
+
+    panic!(
+        "Kernel caused an unrecoverable page fault: {}! IP: {:#x}, Address: {:#x}",
+        match info.kind {
+            PageFaultKind::Unknown => "Unknown",
+            PageFaultKind::NotMapped => "Page was not mapped",
+            PageFaultKind::IllegalRead => "Page can't be read from",
+            PageFaultKind::IllegalWrite => "Page can't be written to",
+            PageFaultKind::IllegalExecute => "Page can't be executed on",
+        },
+        info.ip.0,
+        info.addr.0
+    );
 }
 
 // Symbols defined in the linker script so we can map ourselves in our page table.

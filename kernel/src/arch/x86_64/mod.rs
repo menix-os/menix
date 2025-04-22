@@ -5,7 +5,7 @@ pub mod cpu;
 mod gdt;
 mod idt;
 pub mod irq;
-pub mod page;
 pub mod platform;
 mod serial;
 mod tsc;
+pub mod virt;

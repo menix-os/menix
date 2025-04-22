@@ -11,5 +11,5 @@ cfg_match! {
 // Re-export only parts of the architecture implementation that get called by generic code.
 pub use internal::cpu;
 pub use internal::irq;
-pub use internal::page;
 pub use internal::platform;
+pub use internal::virt;

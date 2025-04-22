@@ -1,7 +1,7 @@
 // Per-CPU data structures.
 
 use super::{
-    memory::{PageAlloc, VirtAddr},
+    memory::VirtAddr,
     sched::{Scheduler, task::Task},
 };
 use crate::arch::{self};
@@ -112,6 +112,7 @@ macro_rules! per_cpu {
 /// Prepares per-CPU data for the boot CPU.
 #[deny(dead_code)]
 pub(crate) fn setup_bsp() {
+    unsafe { arch::irq::interrupt_disable() };
     arch::cpu::setup_bsp();
 }
 

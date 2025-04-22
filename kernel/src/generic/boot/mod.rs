@@ -1,4 +1,4 @@
-use super::memory::{PhysMemory, VirtAddr};
+use super::memory::VirtAddr;
 use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
 use bootcon::FrameBuffer;
 use spin::Once;
@@ -24,14 +24,16 @@ pub struct BootInfo {
     pub command_line: CmdLine<'static>,
     /// Files given to the bootloader.
     pub files: &'static [BootFile],
-    /// Temporary base address for the kernel to access physical memory.
+    /// Base address for the kernel to access physical memory.
     pub hhdm_address: Option<VirtAddr>,
+    /// How many levels the page table has.
+    pub paging_level: Option<usize>,
     /// A list of valid physical memory.
     pub memory_map: &'static [PhysMemory],
     /// The start of the physical kernel address.
-    pub kernel_phys: PhysAddr,
+    pub kernel_phys: Option<PhysAddr>,
     /// The start of the virtual kernel address.
-    pub kernel_virt: VirtAddr,
+    pub kernel_virt: Option<VirtAddr>,
     /// Base address of the RSDT/XSDT ACPI table.
     pub rsdp_addr: Option<PhysAddr>,
     /// Base address of a flattened device tree in memory.
@@ -48,9 +50,10 @@ impl BootInfo {
             command_line: CmdLine::new(""),
             files: &[],
             hhdm_address: None,
+            paging_level: None,
             memory_map: &[],
-            kernel_phys: PhysAddr(0),
-            kernel_virt: VirtAddr(0),
+            kernel_phys: None,
+            kernel_virt: None,
             rsdp_addr: None,
             fdt_addr: None,
             framebuffer: None,
@@ -82,6 +85,43 @@ impl BootFile {
             data: &[],
             name: "",
             command_line: CmdLine::new(""),
+        }
+    }
+}
+
+/// Describes how a memory region is used.
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+pub enum PhysMemoryUsage {
+    /// Free and usable memory.
+    Free,
+    /// Memory reserved by the System.
+    Reserved,
+    /// Memory which was used externally, but can be reclaimed by the kernel.
+    Reclaimable,
+    /// Kernel and modules are loaded here.
+    Kernel,
+    /// Unknown memory region.
+    #[default]
+    Unknown,
+}
+
+/// Describes a region of physical memory.
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+pub struct PhysMemory {
+    /// Start address of the memory region.
+    pub address: PhysAddr,
+    /// Length of the memory region in bytes.
+    pub length: usize,
+    /// How this memory region is used.
+    pub usage: PhysMemoryUsage,
+}
+
+impl PhysMemory {
+    pub const fn new() -> Self {
+        Self {
+            address: PhysAddr(0),
+            length: 0,
+            usage: PhysMemoryUsage::Unknown,
         }
     }
 }

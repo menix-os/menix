@@ -1,13 +1,16 @@
 // Boot using the Limine protocol.
 
-use super::{BootFile, BootInfo};
-use crate::generic::{
-    boot::bootcon::{FbColorBits, FrameBuffer},
-    cmdline::CmdLine,
-    memory::{PhysAddr, PhysMemory, PhysMemoryUsage, VirtAddr},
+use super::{BootFile, BootInfo, PhysMemory, PhysMemoryUsage};
+use crate::{
+    arch,
+    generic::{
+        boot::bootcon::{FbColorBits, FrameBuffer},
+        cmdline::CmdLine,
+        memory::{PhysAddr, VirtAddr},
+    },
 };
 use core::ptr::slice_from_raw_parts;
-use limine::{BaseRevision, memory_map::EntryType, request::*};
+use limine::{BaseRevision, memory_map::EntryType, paging::Mode, request::*};
 
 #[used]
 #[unsafe(link_section = ".boot.init")]
@@ -32,6 +35,9 @@ pub static MEMMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
 
 #[unsafe(link_section = ".boot")]
 pub static HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
+
+#[unsafe(link_section = ".boot")]
+pub static PAGING_REQUEST: PagingModeRequest = PagingModeRequest::new();
 
 #[unsafe(link_section = ".boot")]
 pub static KERNEL_ADDR_REQUEST: ExecutableAddressRequest = ExecutableAddressRequest::new();
@@ -84,6 +90,7 @@ extern "C" fn _start() -> ! {
                     length: entry.length as usize,
                     usage: match entry.entry_type {
                         EntryType::USABLE => PhysMemoryUsage::Free,
+                        EntryType::BOOTLOADER_RECLAIMABLE => PhysMemoryUsage::Reclaimable,
                         EntryType::RESERVED => PhysMemoryUsage::Reserved,
                         EntryType::FRAMEBUFFER => PhysMemoryUsage::Reserved,
                         EntryType::EXECUTABLE_AND_MODULES => PhysMemoryUsage::Kernel,
@@ -100,11 +107,38 @@ extern "C" fn _start() -> ! {
         info.hhdm_address = Some(VirtAddr(
             HHDM_REQUEST.get_response().unwrap().offset() as usize
         ));
+
+        let paging = PAGING_REQUEST.get_response().unwrap().mode();
+        #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+        {
+            if paging == Mode::FOUR_LEVEL {
+                info.paging_level = Some(4);
+            } else if paging == Mode::FIVE_LEVEL {
+                info.paging_level = Some(5);
+            }
+        }
+        #[cfg(target_arch = "riscv64")]
+        {
+            if paging == Mode::SV39 {
+                info.paging_level = Some(3);
+            } else if paging == Mode::SV48 {
+                info.paging_level = Some(4);
+            } else if paging == Mode::SV57 {
+                info.paging_level = Some(5);
+            }
+        }
+        #[cfg(target_arch = "loongarch64")]
+        {
+            if paging == Mode::FOUR_LEVEL {
+                info.paging_level = Some(4);
+            }
+        }
+
         unsafe {
             info.memory_map = &MEMMAP_BUF[0..entries.len()];
         }
-        info.kernel_phys = PhysAddr(kernel_addr.physical_base() as usize);
-        info.kernel_virt = VirtAddr(kernel_addr.virtual_base() as usize);
+        info.kernel_phys = Some(PhysAddr(kernel_addr.physical_base() as usize));
+        info.kernel_virt = Some(VirtAddr(kernel_addr.virtual_base() as usize));
     }
 
     // Convert the command line from bytes to UTF-8 if there is any.

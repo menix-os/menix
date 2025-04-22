@@ -7,6 +7,7 @@ use crate::{
     arch::platform,
     generic::{
         self,
+        boot::BootInfo,
         clock::{self},
         cpu::CpuData,
         memory::{
@@ -26,8 +27,11 @@ use uacpi::*;
 
 static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
 
-pub fn init(rsdp: PhysAddr) {
-    RSDP_ADDRESS.call_once(|| rsdp);
+pub fn init() {
+    match BootInfo::get().rsdp_addr {
+        Some(rsdp) => RSDP_ADDRESS.call_once(|| rsdp),
+        None => panic!("No RSDP available, unable to initialize the ACPI subsystem!"),
+    };
 
     let mut uacpi_status = uacpi::uacpi_status_UACPI_STATUS_OK;
 

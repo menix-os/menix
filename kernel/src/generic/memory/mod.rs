@@ -1,21 +1,34 @@
-use crate::arch::page::PageTableEntry;
+use crate::{
+    arch::virt::PageTableEntry,
+    generic::boot::{BootInfo, PhysMemoryUsage},
+};
 use alloc::alloc::{AllocError, Allocator};
 use core::{
-    alloc::Layout,
+    alloc::{GlobalAlloc, Layout},
+    hint::unlikely,
     ptr::{self, NonNull},
+    sync::atomic::{AtomicUsize, Ordering},
 };
+use phys::{Page, PageNumber, Region};
 use spin::Mutex;
-use talc::{ClaimOnOom, Span, Talc, Talck};
 
+pub mod heap;
 pub mod mmio;
-pub mod page;
 pub mod phys;
 pub mod virt;
+
+static HHDM_START: AtomicUsize = AtomicUsize::new(0);
 
 /// Represents a physical address. It can't be directly read from or written to.
 #[repr(transparent)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct PhysAddr(pub usize);
+
+impl PhysAddr {
+    fn as_hhdm<T>(self) -> *mut T {
+        VirtAddr(self.0 + HHDM_START.load(Ordering::Relaxed)).as_ptr()
+    }
+}
 
 /// Represents a virtual address. It can't be directly read from or written to.
 /// Note: Not the same as a pointer. A `VirtAddr` might point into another
@@ -48,107 +61,121 @@ impl VirtAddr {
     }
 
     /// Returns the physical address mapped in the kernel for this [`VirtAddr`].
-    pub fn get_kernel_phys(self) -> Option<PhysAddr> {
+    pub fn as_hhdm(self) -> Option<PhysAddr> {
         return self
             .0
-            .checked_sub(PageTableEntry::get_hhdm_addr().0)
+            .checked_sub(HHDM_START.load(Ordering::Relaxed))
             .map(PhysAddr);
     }
 }
 
-/// Describes how a memory region is used.
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
-pub enum PhysMemoryUsage {
-    /// Free and usable memory.
-    Free,
-    /// Memory reserved by the System.
-    Reserved,
-    /// Used by boot loader structures.
-    Bootloader,
-    /// Kernel and modules are loaded here.
-    Kernel,
-    /// Unknown memory region.
-    #[default]
-    Unknown,
-}
-
-/// Describes a region of physical memory.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct PhysMemory {
-    /// Start address of the memory region.
-    pub address: PhysAddr,
-    /// Length of the memory region in bytes.
-    pub length: usize,
-    /// How this memory region is used.
-    pub usage: PhysMemoryUsage,
-}
-
-impl PhysMemory {
-    pub const fn new() -> Self {
-        Self {
-            address: PhysAddr(0),
-            length: 0,
-            usage: PhysMemoryUsage::Unknown,
-        }
-    }
-}
-
-pub static EARLY_MEMORY: [u8; 0x10000] = [0u8; 0x10000];
-
-#[global_allocator]
-pub static ALLOCATOR: Talck<spin::Mutex<()>, ClaimOnOom> = Talc::new(unsafe {
-    ClaimOnOom::new(Span::from_array(
-        core::ptr::addr_of!(EARLY_MEMORY).cast_mut(),
-    ))
-})
-.lock();
-
-/// Allocates data that is aligned on page boundaries.
-pub struct PageAlloc;
-unsafe impl Allocator for PageAlloc {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        ALLOCATOR.allocate(layout.align_to(PageTableEntry::get_page_size()).unwrap())
-    }
-    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        unsafe {
-            ALLOCATOR.deallocate(
-                ptr,
-                layout.align_to(PageTableEntry::get_page_size()).unwrap(),
-            )
-        }
-    }
-}
-
-/// Initializes the physical memory manager.
-/// `temp_base`: A temporary base address which can be used to directly access physical memory.
+/// Initializes all memory management. Prior to this call, no allocations may be made.
 #[deny(dead_code)]
-pub(crate) fn init(memory_map: &[PhysMemory], temp_base: VirtAddr) {
-    let mut alloc = ALLOCATOR.lock();
-    for region in memory_map {
-        if region.usage != PhysMemoryUsage::Free {
+pub(crate) fn init() {
+    let info = BootInfo::get();
+
+    let hhdm_address = info
+        .hhdm_address
+        .expect("HHDM address should have been set!");
+
+    HHDM_START.store(hhdm_address.0, Ordering::Relaxed);
+
+    let paging_level = info
+        .paging_level
+        .expect("Paging level should have been set!");
+
+    let kernel_phys = info
+        .kernel_phys
+        .expect("Kernel physical address should have been set!");
+
+    let kernel_virt = info
+        .kernel_virt
+        .expect("Kernel virtual address should have been set!");
+
+    // Calculate range of usable memory.
+    let first_page = info
+        .memory_map
+        .iter()
+        .filter(|&f| f.usage == PhysMemoryUsage::Free)
+        .map(|x| x.address.0 / PageTableEntry::get_page_size())
+        .next()
+        .unwrap();
+
+    let last_page = info
+        .memory_map
+        .iter()
+        .filter(|&f| f.usage == PhysMemoryUsage::Free)
+        .map(|x| (x.address.0 + x.length) / PageTableEntry::get_page_size())
+        .last()
+        .unwrap();
+
+    let mut total_pages = 0;
+    let mut actual_pages = 0;
+
+    // Initialize all regions.
+    for entry in info.memory_map {
+        // Only care about usable memory.
+        // TODO: Also consider reclaimable memory at some point.
+        if entry.usage != PhysMemoryUsage::Free {
             continue;
         }
 
-        let actual = unsafe {
-            alloc.claim(Span::from_base_size(
-                temp_base.as_ptr::<u8>().byte_add(region.address.0),
-                region.length,
-            ))
-        };
+        // Copy this by value so we can do in-place modifications.
+        let mut entry = *entry;
 
-        match actual {
-            Ok(x) => {
-                if let Some((start, end)) = x.get_base_acme() {
-                    print!(
-                        "memory: Claimed memory region [{:p} - {:p}] ({:#x} bytes)\n",
-                        start,
-                        end,
-                        x.size()
-                    );
-                }
+        // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
+        if entry.address.0 < 1 << 16 {
+            print!(
+                "memory: Ignoring 16-bit memory at {:#018x}\n",
+                entry.address.0
+            );
+            // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
+            if entry.address.0 + entry.length >= 1 << 16 {
+                entry.length -= (1 << 16) - entry.address.0;
+                entry.address = PhysAddr(1 << 16);
+            } else {
+                continue;
             }
-            Err(_) => todo!(),
         }
+
+        let num_pages = entry.length / PageTableEntry::get_page_size();
+        let meta_size = num_pages * size_of::<Page>();
+
+        // Ignore memory regions which are too small to keep track of. We reserve at least one page for metadata.
+        if num_pages < 2 {
+            print!(
+                "memory: Ignoring single page region at {:#018x}\n",
+                entry.address.0,
+            );
+            continue;
+        }
+
+        let region = Region::new(
+            VirtAddr(entry.address.0 + hhdm_address.0),
+            PhysAddr(entry.address.0),
+            num_pages as PageNumber,
+        );
+
+        // Regions have to install metadata, which shrinks the amount of usable memory.
+        actual_pages += region.get_size();
+        total_pages += num_pages;
+        region.register();
     }
-    print!("memory: Initialized memory allocator.\n");
+
+    print!(
+        "memory: Using {} KiB for page metadata, effective usable memory: {} MiB\n",
+        (total_pages - actual_pages) * PageTableEntry::get_page_size() / 1024,
+        (actual_pages * (PageTableEntry::get_page_size() - size_of::<Page>())) / 1024 / 1024
+    );
+
+    // TODO: Initialize the heap allocator.
+
+    // Load our own page map.
+    virt::init(
+        hhdm_address,
+        last_page * PageTableEntry::get_page_size(),
+        paging_level,
+        kernel_phys,
+        kernel_virt,
+    );
 }

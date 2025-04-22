@@ -9,11 +9,12 @@ fn panic_handler(info: &PanicInfo) -> ! {
     unsafe { GLOBAL_LOGGERS.force_unlock() };
 
     error!("Kernel panic - Environment is unsound!\n");
-    error!("panic: {}\n", info.message());
 
     if let Some(location) = info.location() {
-        error!("panic: at {}\n", location);
+        error!("at {}\n", location);
     }
+
+    error!("\"{}\"\n", info.message());
 
     loop {}
 }

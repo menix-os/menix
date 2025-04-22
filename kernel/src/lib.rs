@@ -10,6 +10,7 @@
 #![feature(str_from_raw_parts)]
 #![feature(new_zeroed_alloc)]
 #![feature(cfg_match)]
+#![feature(likely_unlikely)]
 
 use generic::boot::BootInfo;
 
@@ -25,19 +26,17 @@ pub mod generic;
 /// Called by `_start`.
 /// Initializes all subsystems and starts all servers.
 #[deny(dead_code)]
+#[unsafe(no_mangle)]
 pub(crate) fn main() -> ! {
-    let info = BootInfo::get();
-
-    unsafe { arch::irq::interrupt_disable() };
     generic::cpu::setup_bsp();
 
     // Initialize allocators.
-    {
-        let hhdm = info
-            .hhdm_address
-            .expect("HHDM address should have been set!");
-        generic::memory::init(&info.memory_map, hhdm);
-        generic::memory::virt::init(hhdm, info.kernel_phys, info.kernel_virt);
+    generic::memory::init();
+
+    // Initialize early console.
+    // TODO: Abstract console interface so it handles initialization of all consoles as well.
+    if let Some(fb) = &BootInfo::get().framebuffer {
+        generic::boot::bootcon::init(fb.clone());
     }
 
     // Say hello to the console.
@@ -49,17 +48,8 @@ pub(crate) fn main() -> ! {
         env!("CARGO_PKG_VERSION_PATCH")
     );
 
-    // Initialize early console.
-    // TODO: Abstract console interface so it handles initialization of all consoles as well.
-    if let Some(fb) = &info.framebuffer {
-        generic::boot::bootcon::init(fb.clone());
-    }
-
-    // Load the ACPI subsystem.
-    #[cfg(feature = "acpi")]
-    if let Some(rsdp) = info.rsdp_addr {
-        generic::platform::acpi::init(rsdp);
-    }
+    // Load the platform subsystems.
+    generic::platform::init();
 
     // Setup SMP.
     generic::cpu::setup_all();

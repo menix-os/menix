@@ -153,7 +153,8 @@ extern "C" fn uacpi_kernel_io_unmap(handle: uacpi_handle) {
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_alloc(size: uacpi_size) -> *mut c_void {
     return unsafe {
-        memory::ALLOCATOR.alloc(Layout::from_size_align(size, 16).unwrap()) as *mut c_void
+        memory::heap::ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<usize>()).unwrap())
+            as *mut c_void
     };
 }
 
@@ -165,9 +166,9 @@ extern "C" fn uacpi_kernel_free(mem: *mut c_void, size: uacpi_size) {
     }
 
     unsafe {
-        memory::ALLOCATOR.deallocate(
-            NonNull::new(mem as *mut u8).unwrap(),
-            Layout::from_size_align(size, 16).unwrap(),
+        memory::heap::ALLOCATOR.dealloc(
+            mem as *mut u8,
+            Layout::from_size_align(size, align_of::<usize>()).unwrap(),
         )
     };
 }

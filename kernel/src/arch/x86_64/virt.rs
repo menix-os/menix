@@ -1,7 +1,7 @@
 use super::{consts, irq::InterruptFrame};
 use crate::generic::memory::{
     PhysAddr, VirtAddr,
-    page::{self, PageFaultInfo, PageFaultKind},
+    virt::{self, PageFaultInfo, PageFaultKind},
     virt::{PageTable, VmFlags},
 };
 use bitflags::bitflags;
@@ -93,7 +93,7 @@ impl PageTableEntry {
         return PhysAddr((self.inner & ADDR_MASK) as usize);
     }
 
-    pub const fn get_levels() -> usize {
+    pub const fn get_max_levels() -> usize {
         return 4;
     }
 
@@ -107,18 +107,6 @@ impl PageTableEntry {
 
     pub const fn get_page_size() -> usize {
         return 1 << Self::get_page_bits();
-    }
-
-    pub const fn get_hhdm_addr() -> VirtAddr {
-        return VirtAddr(0xffff_8000_0000_0000);
-    }
-
-    pub const fn get_hhdm_size() -> usize {
-        return 0x0000_0100_0000_0000;
-    }
-
-    pub const fn get_hhdm_level() -> usize {
-        return 2;
     }
 }
 
@@ -148,6 +136,6 @@ pub unsafe fn page_fault_handler(context: *const InterruptFrame) -> *const Inter
                 _ => PageFaultKind::Unknown,
             },
         };
-        return page::page_fault_handler(context.as_ref().unwrap(), &info);
+        return virt::page_fault_handler(context.as_ref().unwrap(), &info);
     }
 }

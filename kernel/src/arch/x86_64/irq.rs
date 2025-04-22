@@ -130,7 +130,7 @@ unsafe extern "C" fn interrupt_handler(
     unsafe {
         match isr as u8 {
             // Exceptions.
-            0x0E => _ = arch::page::page_fault_handler(context),
+            0x0E => _ = arch::virt::page_fault_handler(context),
             // Unhandled exceptions.
             0x00..0x20 => {
                 error!("Registers:\n{}\n", *context);
@@ -329,7 +329,7 @@ unsafe extern "C" fn interrupt_stub_internal() {
             swapgs_if_necessary!(),     // Change GS back if we came from user mode.
             "add rsp, 0x10",            // Skip .error and .isr fields.
             "iretq",                    // Leave.
-            interrupt_handler = sym arch::irq::interrupt_handler
+            interrupt_handler = sym interrupt_handler
         );
     }
 }

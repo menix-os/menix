@@ -16,7 +16,6 @@ limine = { version = "0.4.0", optional = true }
 seq-macro = "0.3.6"
 spin = "0.10.0"
 bytemuck = { version = "1.22.0", features = ["derive"] }
-talc = "4.4.2"
 uacpi = { path = "../bindings/uacpi", optional = true }
 num-traits = { version = "0.2.19", default-features = false }
 
