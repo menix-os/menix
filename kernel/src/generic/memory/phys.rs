@@ -1,6 +1,5 @@
 //! Physical page allocation.
 //! This allocator uses the buddy allocation algorithm.
-//! It's very loosely inspired by Maestro's
 
 use super::{PhysAddr, VirtAddr};
 use crate::{
@@ -8,12 +7,63 @@ use crate::{
     generic::{self, boot::PhysMemoryUsage},
 };
 use alloc::{alloc::AllocError, slice};
-use core::ptr::{NonNull, null_mut};
+use core::{
+    hint::likely,
+    num::NonZeroUsize,
+    ptr::{NonNull, null_mut},
+};
 use spin::Mutex;
 
-/// Allocates `pages` amount of consecutive pages.
-pub fn alloc_pages(pages: usize, range: RangeType) -> Result<PhysAddr, AllocError> {
-    todo!();
+/// Allocates `bytes` amount in bytes of consecutive pages.
+pub fn alloc_bytes(bytes: NonZeroUsize, region: RegionType) -> Result<PhysAddr, AllocError> {
+    print!("making alloc {bytes}\n");
+    let pages = bytes.get().div_ceil(PageTableEntry::get_page_size());
+    let block_order = get_order(pages);
+    let result = alloc(block_order, region);
+    print!("made alloc {bytes}, {:?}\n", result);
+    return result;
+}
+
+pub fn alloc(order: Order, region: RegionType) -> Result<PhysAddr, AllocError> {
+    if order > MAX_ORDER {
+        return Err(AllocError);
+    }
+
+    let mut regions = REGIONS.lock();
+
+    // Determine what the highest allowed address for this allocation is.
+    let search_limit = match region {
+        RegionType::Kernel => PhysAddr(usize::MAX),
+        RegionType::Kernel32 => PhysAddr(u32::MAX as usize),
+    };
+
+    let (mut frame, region) = regions
+        .iter_mut()
+        .filter_map(|reg| match reg {
+            Some(r) => {
+                if r.get_end() <= search_limit {
+                    Some((r.next_free_page(order)?, r))
+                } else {
+                    None
+                }
+            }
+            None => None,
+        })
+        .next()
+        .ok_or(AllocError)?;
+    let frame = unsafe { frame.as_mut() };
+
+    debug_assert!(!frame.is_used());
+
+    frame.split(region, order);
+    let addr = frame.addr(region);
+
+    debug_assert!(addr >= region.phys && addr.0 < region.phys.0 + region.get_size());
+
+    frame.mark_used();
+    region.num_used_pages += (1 << order);
+
+    Ok(addr)
 }
 
 /// Deallocates a region of `pages` amount of consecutive pages.
@@ -22,22 +72,33 @@ pub fn alloc_pages(pages: usize, range: RangeType) -> Result<PhysAddr, AllocErro
 ///
 /// Deallocating arbitrary physical addresses is inherently unsafe, since it can cause the kernel to crash.
 pub unsafe fn dealloc_pages(addr: PhysAddr, pages: usize) {
-    todo!();
+    // TODO
+}
+
+pub unsafe fn dealloc(addr: PhysAddr, order: Order) {
+    // TODO
 }
 
 pub type PageNumber = u32;
 pub type Order = u8;
 
+#[inline]
+pub fn get_order(pages: usize) -> Order {
+    if likely(pages != 0) {
+        (usize::BITS - pages.leading_zeros()) as _
+    } else {
+        0
+    }
+}
+
 const MAX_ORDER: Order = 17;
 
 #[repr(u32)]
-pub enum RangeType {
-    /// Memory suitable for any use case.
-    Kernel = 1 << 0,
-    /// Memory suitable for
-    User = 1 << 1,
-    /// Any zone.
-    Any = Self::Kernel as u32 | Self::User as u32,
+pub enum RegionType {
+    /// Any physical memory available to the kernel.
+    Kernel,
+    /// Any physical memory below 4GiB.
+    Kernel32,
 }
 
 // TODO: Use IRQ disabling mutex instead.
@@ -45,7 +106,7 @@ unsafe impl Send for Region {}
 static REGIONS: Mutex<[Option<Region>; 128]> = Mutex::new([None; 128]);
 
 /// A region of physical memory.
-#[derive(Clone, Copy)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct Region {
     /// Start of the metadata block for this region.
     meta: *mut Page,
@@ -66,13 +127,31 @@ impl Region {
             PageTableEntry::get_page_size(),
         ) / PageTableEntry::get_page_size();
 
-        Self {
+        let mut result = Self {
             meta: meta.as_ptr(),
             phys,
             num_pages: num_pages - meta_page_size as PageNumber,
             num_used_pages: 0,
             lists: [None; (MAX_ORDER + 1) as usize],
+        };
+
+        let frames = result.pages();
+        let mut frame: PageNumber = 0;
+        let mut order = MAX_ORDER;
+        while frame < result.num_pages as PageNumber {
+            let p = (1 as PageNumber) << (order as PageNumber);
+            if frame + p > result.num_pages {
+                order -= 1;
+                continue;
+            }
+            let f = &mut frames[frame as usize];
+            f.mark_free(&result);
+            f.order = order;
+            f.link(&mut result);
+            frame += p;
         }
+
+        return result;
     }
 
     /// Registers a region of usable memory for the page allocator.
@@ -95,13 +174,43 @@ impl Region {
 
     /// Returns the size of this region in pages.
     #[inline]
-    pub fn get_size(&self) -> usize {
+    pub fn get_num_pages(&self) -> usize {
         self.num_pages as usize
+    }
+
+    /// Returns the size of this region in bytes.
+    #[inline]
+    pub fn get_size(&self) -> usize {
+        self.num_pages as usize * PageTableEntry::get_page_size()
+    }
+
+    /// Returns the highest address covered by this region.
+    #[inline]
+    pub fn get_end(&self) -> PhysAddr {
+        PhysAddr(self.phys.0 + (self.num_pages as usize * PageTableEntry::get_page_size()))
+    }
+
+    /// Returns the start address of this region.
+    #[inline]
+    pub fn get_start(&self) -> PhysAddr {
+        self.phys
     }
 
     #[inline]
     fn pages(&self) -> &'static mut [Page] {
         unsafe { slice::from_raw_parts_mut(self.meta, self.num_pages as usize) }
+    }
+
+    fn next_free_page(&mut self, order: Order) -> Option<NonNull<Page>> {
+        let mut page = self.lists[(order as usize)..]
+            .iter_mut()
+            .filter_map(|f| *f)
+            .next()?;
+        let p = unsafe { page.as_mut() };
+        debug_assert!(!p.is_used());
+        debug_assert!(p.addr(self) >= self.phys);
+        debug_assert!(p.addr(self).0 < self.phys.0 + self.get_size());
+        Some(page)
     }
 }
 
@@ -135,6 +244,10 @@ impl Page {
         self.id(region) ^ (1 << self.order) as PageNumber
     }
 
+    fn addr(&self, region: &Region) -> PhysAddr {
+        PhysAddr(region.phys.0 + (self.id(region) as usize * PageTableEntry::get_page_size()))
+    }
+
     /// Links this page to a region.
     fn link(&mut self, region: &mut Region) {
         let id = self.id(region);
@@ -151,7 +264,84 @@ impl Page {
     }
 
     /// Unlinks this page from a region.
-    fn unlink(&mut self, region: &mut Region) {}
+    fn unlink(&mut self, region: &mut Region) {
+        let pages = region.pages();
+        let id = self.id(region);
+        let has_prev = self.prev != id;
+        let has_next = self.next != id;
+
+        let first = &mut region.lists[self.order as usize];
+        if first.map(NonNull::as_ptr) == Some(self) {
+            *first = if has_next {
+                NonNull::new(&mut pages[self.next as usize])
+            } else {
+                None
+            };
+        }
+
+        if has_prev {
+            pages[self.prev as usize].next = if has_next { self.next } else { self.prev };
+        }
+        if has_next {
+            pages[self.next as usize].prev = if has_prev { self.prev } else { self.next };
+        }
+    }
+
+    fn split(&mut self, region: &mut Region, order: Order) {
+        debug_assert!(!self.is_used());
+        debug_assert!(order <= MAX_ORDER);
+        debug_assert!(self.order >= order);
+
+        let pages = region.pages();
+        self.unlink(region);
+
+        while self.order > order {
+            self.order -= 1;
+            let buddy = self.buddy_id(region);
+            if buddy >= region.num_pages {
+                break;
+            }
+
+            let buddy_frame = &mut pages[buddy as usize];
+            buddy_frame.mark_free(region);
+            buddy_frame.order = self.order;
+            buddy_frame.link(region);
+        }
+    }
+
+    fn coalesce(&mut self, region: &mut Region) {
+        debug_assert!(!self.is_used());
+
+        let pages = region.pages();
+
+        while self.order < MAX_ORDER {
+            let id = self.id(region);
+            // Get buddy ID
+            let buddy = self.buddy_id(region);
+            if buddy >= region.num_pages {
+                break;
+            }
+            // Check if coalesce is possible
+            let new_pages_count = (1 << (self.order + 1) as usize) as PageNumber;
+            if core::cmp::min(id, buddy) + new_pages_count > region.num_pages {
+                break;
+            }
+            let buddy_frame = &mut pages[buddy as usize];
+            if buddy_frame.order != self.order || buddy_frame.is_used() {
+                break;
+            }
+            // Update buddy
+            buddy_frame.unlink(region);
+            if id < buddy {
+                self.order += 1;
+            } else {
+                buddy_frame.order += 1;
+                buddy_frame.coalesce(region);
+                return;
+            }
+        }
+        self.link(region);
+    }
 
     /// Checks if this page is used.
     #[inline]

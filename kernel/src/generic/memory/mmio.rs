@@ -30,12 +30,10 @@ impl Mmio {
     pub fn new(phys: PhysAddr, len: usize) -> Self {
         return Self {
             phys,
-            base: virt::KERNEL_PAGE_TABLE.write().map_memory(
-                phys,
-                VmFlags::Read | VmFlags::Write,
-                0,
-                len,
-            ),
+            base: virt::KERNEL_PAGE_TABLE
+                .write()
+                .map_memory(phys, VmFlags::Read | VmFlags::Write, 0, len)
+                .unwrap(),
             len,
         };
     }

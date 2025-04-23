@@ -4,18 +4,22 @@
 use core::{
     alloc::Layout,
     ffi::{CStr, c_void},
-    ptr::{NonNull, null_mut},
+    ptr::null_mut,
 };
 
-use alloc::{alloc::Allocator, alloc::GlobalAlloc, boxed::Box};
+use alloc::{alloc::GlobalAlloc, boxed::Box};
 use spin::Mutex;
 pub use uacpi::*;
 
-use crate::generic::{
-    clock,
-    memory::{
-        self, PhysAddr,
-        virt::{KERNEL_PAGE_TABLE, VmFlags},
+use crate::{
+    arch::virt::PageTableEntry,
+    generic::{
+        clock,
+        memory::{
+            self, PhysAddr,
+            virt::{KERNEL_PAGE_TABLE, VmFlags},
+        },
+        misc,
     },
 };
 
@@ -32,12 +36,21 @@ unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_add
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c_void {
-    return KERNEL_PAGE_TABLE.write().map_memory(
-        PhysAddr(addr as usize),
-        VmFlags::Read | VmFlags::Write,
-        0,
-        len,
-    ) as *mut c_void;
+    let aligned_addr = misc::align_down(addr as usize, PageTableEntry::get_page_size());
+    let difference = (addr as usize - aligned_addr);
+    let aligned_len = misc::align_up(len + difference, PageTableEntry::get_page_size());
+    return unsafe {
+        KERNEL_PAGE_TABLE
+            .write()
+            .map_memory(
+                PhysAddr(aligned_addr),
+                VmFlags::Read | VmFlags::Write,
+                0,
+                aligned_len,
+            )
+            .unwrap()
+            .byte_add(difference)
+    } as *mut c_void;
 }
 
 #[unsafe(no_mangle)]
@@ -136,14 +149,15 @@ extern "C" fn uacpi_kernel_io_map(
         len,
     );
 
-    if mem == null_mut() {
-        return uacpi_status_UACPI_STATUS_MAPPING_FAILED;
+    match mem {
+        Ok(x) => {
+            unsafe {
+                (*out_handle) = x as uacpi_handle;
+            }
+            return uacpi_status_UACPI_STATUS_OK;
+        }
+        Err(_) => return uacpi_status_UACPI_STATUS_MAPPING_FAILED,
     }
-
-    unsafe {
-        (*out_handle) = mem as uacpi_handle;
-    }
-    return uacpi_status_UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]

@@ -1,10 +1,13 @@
 use super::{PhysAddr, VirtAddr, phys};
 use crate::arch::irq::InterruptFrame;
 use crate::arch::{self, virt::PageTableEntry};
+use crate::generic::{self, misc};
 use alloc::alloc::AllocError;
 use alloc::vec::Vec;
 use alloc::{boxed::Box, sync::Arc};
 use bitflags::bitflags;
+use core::num::NonZero;
+use core::sync::atomic::{AtomicUsize, Ordering};
 use core::{marker::PhantomData, ops::Deref};
 use spin::{Mutex, RwLock};
 
@@ -46,12 +49,13 @@ pub enum PageTableError {
 }
 
 pub static KERNEL_PAGE_TABLE: RwLock<PageTable<true>> = RwLock::new(PageTable::new_kernel_uninit());
+pub static KERNEL_MMAP_BASE_ADDR: AtomicUsize = AtomicUsize::new(0);
 
 /// Represents a virtual address space.
 /// `K` controls whether or not this page table is for the kernel or a user process.
 pub struct PageTable<const K: bool = false> {
     /// Physical address of the root directory.
-    head: Mutex<Option<PhysAddr>>,
+    head: Mutex<PhysAddr>,
     /// The highest supported level for mappings.
     max_level: usize,
 }
@@ -60,7 +64,13 @@ impl PageTable<false> {
     /// Creates a new page table for a user process.
     pub fn new_user(max_level: usize) -> Self {
         Self {
-            head: Mutex::new(Some(phys::alloc_pages(1, phys::RangeType::Kernel).unwrap())),
+            head: Mutex::new(
+                phys::alloc_bytes(
+                    NonZero::new(PageTableEntry::get_page_size()).unwrap(),
+                    phys::RegionType::Kernel,
+                )
+                .unwrap(),
+            ),
             max_level,
         }
     }
@@ -69,14 +79,20 @@ impl PageTable<false> {
 impl PageTable<true> {
     const fn new_kernel_uninit() -> Self {
         Self {
-            head: Mutex::new(None),
+            head: Mutex::new(PhysAddr(0)),
             max_level: 0,
         }
     }
 
     fn new_kernel(max_level: usize) -> Self {
         Self {
-            head: Mutex::new(Some(phys::alloc_pages(1, phys::RangeType::Kernel).unwrap())),
+            head: Mutex::new(
+                phys::alloc_bytes(
+                    NonZero::new(PageTableEntry::get_page_size()).unwrap(),
+                    phys::RegionType::Kernel,
+                )
+                .unwrap(),
+            ),
             max_level,
         }
     }
@@ -88,9 +104,16 @@ impl PageTable<true> {
         flags: VmFlags,
         level: usize,
         length: usize,
-    ) -> *mut u8 {
-        // TODO: Get next free memory region.
-        todo!();
+    ) -> Result<*mut u8, AllocError> {
+        let aligned_len = misc::align_up(length, PageTableEntry::get_page_size());
+
+        // Increase mapping base.
+        // TODO: Use actual virtual address allocator.
+        let virt = KERNEL_MMAP_BASE_ADDR.fetch_add(aligned_len, Ordering::SeqCst);
+
+        // Map memory.
+        self.map_range(VirtAddr(virt), phys, flags, level, aligned_len);
+        return Ok(virt as *mut u8);
     }
 }
 
@@ -101,12 +124,9 @@ impl<const K: bool> PageTable<K> {
     ///
     /// All parts of the kernel must still be mapped for this call to be safe.
     pub unsafe fn set_active(&mut self) {
-        let addr = self
-            .head
-            .lock()
-            .expect("Page table should contain at least the root level");
+        let addr = self.head.lock();
         unsafe {
-            arch::virt::set_page_table(addr);
+            arch::virt::set_page_table(*addr);
         }
     }
 
@@ -123,10 +143,7 @@ impl<const K: bool> PageTable<K> {
         let mut head = self.head.lock();
 
         // If there is no head yet, allocate it.
-        let mut current_head: *mut PageTableEntry = match &mut *head {
-            Some(x) => x.as_hhdm(),
-            None => todo!("Physical memory allocation"),
-        };
+        let mut current_head: *mut PageTableEntry = head.as_hhdm();
         let mut index = 0;
         let mut do_break = false;
 
@@ -175,12 +192,19 @@ impl<const K: bool> PageTable<K> {
                     }
                     *pte = PageTableEntry::new((*pte).address(), pte_flags);
                 } else {
-                    // PTE isn't present, we have to allocate a new level.
+                    // PTE isn't present, but we have to allocate a new level now.
                     if !allocate {
                         return Err(PageTableError::NeedAllocation);
                     }
 
-                    let next_head = todo!();
+                    // Allocate a new level.
+                    let next_head = phys::alloc_bytes(
+                        NonZero::new(PageTableEntry::get_page_size()).unwrap(),
+                        phys::RegionType::Kernel,
+                    )
+                    .unwrap()
+                    .as_hhdm();
+
                     // ptr::byte_sub() doesn't allow taking higher half addresses because it doesn't fit in an isize.
                     *pte = PageTableEntry::new(
                         VirtAddr::from(next_head)
@@ -237,6 +261,7 @@ impl<const K: bool> PageTable<K> {
         level: usize,
         length: usize,
     ) -> Result<(), PageTableError> {
+        // TODO: Do transactional mapping.
         let step =
             1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
 
@@ -328,7 +353,7 @@ pub fn init(
                 hhdm_start,
                 PhysAddr(0),
                 VmFlags::Read | VmFlags::Write,
-                paging_level - 1,
+                paging_level - 2,
                 hhdm_length,
             )
             .expect("Unable to map HHDM region");
@@ -336,8 +361,17 @@ pub fn init(
         // Activate the new page table.
         table.set_active();
 
+        // Save the page table.
         let mut kernel_table = KERNEL_PAGE_TABLE.write();
         *kernel_table = table;
+
+        // Set the MMAP base to right after the HHDM.
+        let mmap_start = misc::align_up(
+            hhdm_start.0 + hhdm_length,
+            1 << (PageTableEntry::get_page_bits()
+                + ((paging_level - 2) * PageTableEntry::get_level_bits())),
+        );
+        KERNEL_MMAP_BASE_ADDR.store(mmap_start, Ordering::Relaxed);
     }
 }
 

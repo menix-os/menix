@@ -5,7 +5,7 @@ members = ["kernel", "bindings/*", "drivers/*/*"]
 # Debug build. Still somewhat optimized.
 [profile.dev]
 panic = "abort"
-opt-level = 1
+opt-level = 0
 debug = true
 strip = false
 

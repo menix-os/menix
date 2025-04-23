@@ -1,11 +1,12 @@
 use crate::{
     arch::virt::PageTableEntry,
-    generic::boot::{BootInfo, PhysMemoryUsage},
+    generic::{
+        boot::{BootInfo, PhysMemoryUsage},
+        misc,
+    },
 };
 use alloc::alloc::{AllocError, Allocator};
 use core::{
-    alloc::{GlobalAlloc, Layout},
-    hint::unlikely,
     ptr::{self, NonNull},
     sync::atomic::{AtomicUsize, Ordering},
 };
@@ -104,8 +105,7 @@ pub(crate) fn init() {
     let last_page = info
         .memory_map
         .iter()
-        .filter(|&f| f.usage == PhysMemoryUsage::Free)
-        .map(|x| (x.address.0 + x.length) / PageTableEntry::get_page_size())
+        .map(|x| (x.address.0 + x.length).div_ceil(PageTableEntry::get_page_size()))
         .last()
         .unwrap();
 
@@ -138,7 +138,8 @@ pub(crate) fn init() {
             }
         }
 
-        let num_pages = entry.length / PageTableEntry::get_page_size();
+        let num_pages = misc::align_up(entry.length, PageTableEntry::get_page_size())
+            / PageTableEntry::get_page_size();
         let meta_size = num_pages * size_of::<Page>();
 
         // Ignore memory regions which are too small to keep track of. We reserve at least one page for metadata.
@@ -157,8 +158,9 @@ pub(crate) fn init() {
         );
 
         // Regions have to install metadata, which shrinks the amount of usable memory.
-        actual_pages += region.get_size();
+        actual_pages += region.get_num_pages();
         total_pages += num_pages;
+
         region.register();
     }
 
