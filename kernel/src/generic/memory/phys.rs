@@ -16,11 +16,9 @@ use spin::Mutex;
 
 /// Allocates `bytes` amount in bytes of consecutive pages.
 pub fn alloc_bytes(bytes: NonZeroUsize, region: RegionType) -> Result<PhysAddr, AllocError> {
-    print!("making alloc {bytes}\n");
     let pages = bytes.get().div_ceil(PageTableEntry::get_page_size());
     let block_order = get_order(pages);
     let result = alloc(block_order, region);
-    print!("made alloc {bytes}, {:?}\n", result);
     return result;
 }
 
@@ -122,14 +120,15 @@ pub(crate) struct Region {
 impl Region {
     pub fn new(meta: VirtAddr, phys: PhysAddr, num_pages: PageNumber) -> Self {
         // Amount of pages which are going to get consumed by the metadata.
-        let meta_page_size = generic::misc::align_up(
+        let meta_size = generic::misc::align_up(
             num_pages as usize * size_of::<Page>(),
             PageTableEntry::get_page_size(),
-        ) / PageTableEntry::get_page_size();
+        );
+        let meta_page_size = meta_size / PageTableEntry::get_page_size();
 
         let mut result = Self {
             meta: meta.as_ptr(),
-            phys,
+            phys: PhysAddr(phys.0 + meta_size),
             num_pages: num_pages - meta_page_size as PageNumber,
             num_used_pages: 0,
             lists: [None; (MAX_ORDER + 1) as usize],
@@ -207,6 +206,7 @@ impl Region {
             .filter_map(|f| *f)
             .next()?;
         let p = unsafe { page.as_mut() };
+        debug_assert!(p.order >= order);
         debug_assert!(!p.is_used());
         debug_assert!(p.addr(self) >= self.phys);
         debug_assert!(p.addr(self).0 < self.phys.0 + self.get_size());
