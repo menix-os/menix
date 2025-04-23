@@ -365,11 +365,11 @@ pub fn init(
         let mut kernel_table = KERNEL_PAGE_TABLE.write();
         *kernel_table = table;
 
-        // Set the MMAP base to right after the HHDM.
+        // Set the MMAP base to right after the HHDM. Make sure this lands on a new PTE so we can map regular pages.
         let mmap_start = misc::align_up(
             hhdm_start.0 + hhdm_length,
             1 << (PageTableEntry::get_page_bits()
-                + ((paging_level - 2) * PageTableEntry::get_level_bits())),
+                + ((paging_level - 1) * PageTableEntry::get_level_bits())),
         );
         KERNEL_MMAP_BASE_ADDR.store(mmap_start, Ordering::Relaxed);
     }
