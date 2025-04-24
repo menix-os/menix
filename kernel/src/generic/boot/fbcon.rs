@@ -1,10 +1,14 @@
-// Early boot console (likely using an EFI GOP framebuffer).
+// Early framebuffer boot console (likely using an EFI GOP framebuffer).
 
 use alloc::{boxed::Box, vec::Vec};
-use core::intrinsics::volatile_copy_nonoverlapping_memory;
+use core::{intrinsics::volatile_copy_nonoverlapping_memory, ptr::NonNull};
 
 use crate::generic::{
     log::{Logger, LoggerSink},
+    memory::{
+        PhysAddr,
+        virt::{KERNEL_PAGE_TABLE, VmFlags},
+    },
     misc::align_up,
 };
 
@@ -16,7 +20,7 @@ pub struct FbColorBits {
 
 #[derive(Debug, Clone)]
 pub struct FrameBuffer {
-    pub screen: *mut u8,
+    pub base: PhysAddr,
     pub width: usize,
     pub height: usize,
     pub pitch: usize,
@@ -34,7 +38,7 @@ const FONT_WIDTH: usize = 8;
 const FONT_HEIGHT: usize = 12;
 const FONT_GLYPH_SIZE: usize = (FONT_WIDTH * FONT_HEIGHT) / 8;
 
-struct BootCon {
+struct FbCon {
     /// Screen width in characters.
     ch_width: usize,
     /// Screen height in characters.
@@ -47,28 +51,43 @@ struct BootCon {
     back_buffer: Vec<u8>,
     /// The buffer to draw on.
     fb: FrameBuffer,
+    screen: *mut u8,
 }
 
 pub fn init(fb: FrameBuffer) {
+    let mut buf = Vec::new();
+    buf.resize(fb.pitch * fb.height, 0);
+
+    // Map the framebuffer in memory.
+    let mem = KERNEL_PAGE_TABLE
+        .write()
+        .map_memory(
+            fb.base,
+            VmFlags::Read | VmFlags::Write,
+            0,
+            fb.pitch * fb.height,
+        )
+        .unwrap();
+
     print!(
-        "bootcon: Framebuffer resolution = {}x{}x{}\n",
+        "fbcon: Framebuffer resolution = {}x{}x{}\n",
         fb.width,
         fb.height,
         fb.cpp * 8
     );
-    let mut buf = Vec::new();
-    buf.resize(fb.pitch * fb.height, 0);
-    Logger::add_sink(Box::new(BootCon {
+
+    Logger::add_sink(Box::new(FbCon {
         ch_width: fb.width / FONT_WIDTH,
         ch_height: fb.height / FONT_HEIGHT,
         ch_xpos: 0,
         ch_ypos: 0,
         back_buffer: buf,
         fb,
+        screen: mem,
     }));
 }
 
-impl BootCon {
+impl FbCon {
     /// Scrolls the console by one line.
     fn scroll(&mut self) {
         // Amount of bytes for each line.
@@ -80,7 +99,7 @@ impl BootCon {
 
         unsafe {
             volatile_copy_nonoverlapping_memory(
-                self.fb.screen,
+                self.screen,
                 self.back_buffer.as_ptr(),
                 self.back_buffer.len(),
             )
@@ -96,15 +115,16 @@ impl BootCon {
         for y in 0..FONT_HEIGHT {
             for x in 0..FONT_WIDTH {
                 let offset = (pitch * (pix_pos.1 + y)) + (cpp * (pix_pos.0 + x));
+                let addr = self.screen;
                 if FONT_DATA[(code_point as usize * FONT_GLYPH_SIZE) + y]
                     & 1 << (FONT_WIDTH - x - 1)
                     != 0
                 {
                     unsafe {
-                        self.fb.screen.add(offset + 0).write_volatile(0xff);
-                        self.fb.screen.add(offset + 1).write_volatile(0xff);
-                        self.fb.screen.add(offset + 2).write_volatile(0xff);
-                        self.fb.screen.add(offset + 3).write_volatile(0xff);
+                        addr.add(offset + 0).write_volatile(0xff);
+                        addr.add(offset + 1).write_volatile(0xff);
+                        addr.add(offset + 2).write_volatile(0xff);
+                        addr.add(offset + 3).write_volatile(0xff);
                     };
                     self.back_buffer[offset + 0] = 0xff;
                     self.back_buffer[offset + 1] = 0xff;
@@ -112,10 +132,10 @@ impl BootCon {
                     self.back_buffer[offset + 3] = 0xff;
                 } else {
                     unsafe {
-                        self.fb.screen.add(offset + 0).write_volatile(0x00);
-                        self.fb.screen.add(offset + 1).write_volatile(0x00);
-                        self.fb.screen.add(offset + 2).write_volatile(0x00);
-                        self.fb.screen.add(offset + 3).write_volatile(0x00);
+                        addr.add(offset + 0).write_volatile(0x00);
+                        addr.add(offset + 1).write_volatile(0x00);
+                        addr.add(offset + 2).write_volatile(0x00);
+                        addr.add(offset + 3).write_volatile(0x00);
                     };
                     self.back_buffer[offset + 0] = 0x00;
                     self.back_buffer[offset + 1] = 0x00;
@@ -129,9 +149,11 @@ impl BootCon {
     }
 }
 
-impl LoggerSink for BootCon {
+unsafe impl Send for FbCon {}
+
+impl LoggerSink for FbCon {
     fn name(&self) -> &'static str {
-        "bootcon"
+        "fbcon"
     }
 
     fn write(&mut self, input: &[u8]) {

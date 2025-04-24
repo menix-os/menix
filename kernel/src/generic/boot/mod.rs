@@ -1,9 +1,9 @@
 use super::memory::VirtAddr;
 use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
-use bootcon::FrameBuffer;
+use fbcon::FrameBuffer;
 use spin::Once;
 
-pub mod bootcon;
+pub mod fbcon;
 
 // Boot method selection. Limine is the default method.
 #[cfg(all(

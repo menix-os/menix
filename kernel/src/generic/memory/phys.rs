@@ -150,6 +150,12 @@ impl Region {
             frame += p;
         }
 
+        print!(
+            "memory: [{:#018X} - {:#018X}]\n",
+            phys.0,
+            phys.0 + (num_pages as usize * PageTableEntry::get_page_size()) - 1
+        );
+
         return result;
     }
 
@@ -160,10 +166,6 @@ impl Region {
             match region {
                 Some(_) => continue,
                 None => {
-                    print!(
-                        "memory: Registered {:#018x}, {} pages\n",
-                        self.phys.0, self.num_pages
-                    );
                     *region = Some(self);
                     return;
                 }

@@ -2,7 +2,6 @@
 #![allow(unused)]
 #![allow(clippy::needless_return)]
 #![feature(negative_impls)]
-#![feature(naked_functions)]
 #![feature(allocator_api)]
 // Needed for volatile memmove
 #![allow(internal_features)]
@@ -35,8 +34,14 @@ pub(crate) fn main() -> ! {
 
     // Initialize early console.
     // TODO: Abstract console interface so it handles initialization of all consoles as well.
-    if let Some(fb) = &BootInfo::get().framebuffer {
-        generic::boot::bootcon::init(fb.clone());
+    if BootInfo::get()
+        .command_line
+        .get_bool("fbcon")
+        .unwrap_or(true)
+    {
+        if let Some(fb) = &BootInfo::get().framebuffer {
+            generic::boot::fbcon::init(fb.clone());
+        }
     }
 
     // Say hello to the console.

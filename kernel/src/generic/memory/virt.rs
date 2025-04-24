@@ -1,6 +1,8 @@
-use super::{PhysAddr, VirtAddr, phys};
+use super::{HHDM_START, PhysAddr, VirtAddr, phys};
 use crate::arch::irq::InterruptFrame;
 use crate::arch::{self, virt::PageTableEntry};
+use crate::generic::boot::BootInfo;
+use crate::generic::misc::align_up;
 use crate::generic::{self, misc};
 use alloc::alloc::AllocError;
 use alloc::vec::Vec;
@@ -40,6 +42,9 @@ bitflags! {
         const Directory = 1 << 5;
     }
 }
+
+/// Page caching types.
+pub enum VmCacheType {}
 
 #[derive(Debug)]
 pub enum PageTableError {
@@ -147,7 +152,7 @@ impl<const K: bool> PageTable<K> {
         let mut index = 0;
         let mut do_break = false;
 
-        if target_level >= self.max_level - 1 {
+        if target_level > self.max_level {
             return Err(PageTableError::LevelOutOfRange);
         }
 
@@ -262,6 +267,7 @@ impl<const K: bool> PageTable<K> {
         length: usize,
     ) -> Result<(), PageTableError> {
         // TODO: Do transactional mapping.
+        let length = align_up(length, PageTableEntry::get_page_size());
         let step =
             1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
 
@@ -327,6 +333,7 @@ pub fn init(
                 text_end.0 - text_start.0,
             )
             .expect("Unable to map the text segment");
+        print!("virt: Loaded text segment at {:#018X}.\n", text_start.0);
 
         table
             .map_range(
@@ -337,6 +344,7 @@ pub fn init(
                 rodata_end.0 - rodata_start.0,
             )
             .expect("Unable to map the rodata segment");
+        print!("virt: Loaded rodata segment at {:#018X}.\n", rodata_start.0);
 
         table
             .map_range(
@@ -347,31 +355,39 @@ pub fn init(
                 data_end.0 - data_start.0,
             )
             .expect("Unable to map the data segment");
+        print!("virt: Loaded data segment at {:#018X}.\n", data_start.0);
 
         table
             .map_range(
                 hhdm_start,
                 PhysAddr(0),
                 VmFlags::Read | VmFlags::Write,
-                paging_level - 2,
+                2,
                 hhdm_length,
             )
             .expect("Unable to map HHDM region");
+        print!("virt: Loaded HHDM segment at {:#018X}.\n", hhdm_start.0);
+
+        print!("virt: Installing kernel page table...\n");
 
         // Activate the new page table.
         table.set_active();
+
+        print!("virt: Kernel map is now active\n");
 
         // Save the page table.
         let mut kernel_table = KERNEL_PAGE_TABLE.write();
         *kernel_table = table;
 
         // Set the MMAP base to right after the HHDM. Make sure this lands on a new PTE so we can map regular pages.
-        let mmap_start = misc::align_up(
-            hhdm_start.0 + hhdm_length,
-            1 << (PageTableEntry::get_page_bits()
-                + ((paging_level - 1) * PageTableEntry::get_level_bits())),
+        let offset = misc::align_up(
+            hhdm_length,
+            1usize
+                << (paging_level * PageTableEntry::get_level_bits()
+                    + PageTableEntry::get_level_bits()
+                    + 1),
         );
-        KERNEL_MMAP_BASE_ADDR.store(mmap_start, Ordering::Relaxed);
+        KERNEL_MMAP_BASE_ADDR.store(hhdm_start.0 + offset, Ordering::Relaxed);
     }
 }
 

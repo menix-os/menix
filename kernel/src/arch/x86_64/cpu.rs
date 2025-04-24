@@ -82,6 +82,7 @@ pub(crate) fn setup_bsp() {
     apic::disable_legacy_pic();
     serial::init();
     idt::init();
+    idt::set_idt();
 
     // Check if the FSGSBASE feature is available.
     let cpuid7 = unsafe { cpuid(7, 0) };

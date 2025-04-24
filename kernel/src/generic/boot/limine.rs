@@ -4,7 +4,7 @@ use super::{BootFile, BootInfo, PhysMemory, PhysMemoryUsage};
 use crate::{
     arch,
     generic::{
-        boot::bootcon::{FbColorBits, FrameBuffer},
+        boot::fbcon::{FbColorBits, FrameBuffer},
         cmdline::CmdLine,
         memory::{PhysAddr, VirtAddr},
     },
@@ -185,7 +185,7 @@ extern "C" fn _start() -> ! {
     if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
         if let Some(fb) = response.framebuffers().next() {
             info.framebuffer = Some(FrameBuffer {
-                screen: fb.addr(),
+                base: PhysAddr(fb.addr() as usize - info.hhdm_address.unwrap().0),
                 width: fb.width() as usize,
                 height: fb.height() as usize,
                 pitch: fb.pitch() as usize,

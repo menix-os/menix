@@ -1,8 +1,9 @@
 use crate::{
     arch::virt::PageTableEntry,
     generic::{
+        self,
         boot::{BootInfo, PhysMemoryUsage},
-        misc,
+        misc::{self, align_up},
     },
 };
 use alloc::alloc::{AllocError, Allocator};
@@ -14,7 +15,6 @@ use phys::{Page, PageNumber, Region};
 use spin::Mutex;
 
 pub mod heap;
-mod libc;
 pub mod mmio;
 pub mod phys;
 pub mod virt;
@@ -106,7 +106,11 @@ pub(crate) fn init() {
     let last_page = info
         .memory_map
         .iter()
-        .map(|x| (x.address.0 + x.length).div_ceil(PageTableEntry::get_page_size()))
+        .filter(|&f| f.usage == PhysMemoryUsage::Free)
+        .map(|x| {
+            align_up(x.address.0 + x.length, PageTableEntry::get_page_size())
+                / PageTableEntry::get_page_size()
+        })
         .last()
         .unwrap();
 
@@ -127,7 +131,7 @@ pub(crate) fn init() {
         // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
         if entry.address.0 < 1 << 16 {
             print!(
-                "memory: Ignoring 16-bit memory at {:#018x}\n",
+                "memory: Ignoring 16-bit memory at {:#018X}\n",
                 entry.address.0
             );
             // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
@@ -146,7 +150,7 @@ pub(crate) fn init() {
         // Ignore memory regions which are too small to keep track of. We reserve at least one page for metadata.
         if num_pages < 2 {
             print!(
-                "memory: Ignoring single page region at {:#018x}\n",
+                "memory: Ignoring single page region at {:#018X}\n",
                 entry.address.0,
             );
             continue;
@@ -169,6 +173,11 @@ pub(crate) fn init() {
         "memory: Using {} KiB for page metadata, effective usable memory: {} MiB\n",
         (total_pages - actual_pages) * PageTableEntry::get_page_size() / 1024,
         (actual_pages * (PageTableEntry::get_page_size() - size_of::<Page>())) / 1024 / 1024
+    );
+
+    print!(
+        "memory: Using {}-level paging for page table.\n",
+        paging_level
     );
 
     // TODO: Initialize the heap allocator.
