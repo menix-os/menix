@@ -235,7 +235,7 @@ extern "C" fn uacpi_kernel_get_thread_id() -> uacpi_thread_id {
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_acquire_mutex(arg1: uacpi_handle, arg2: uacpi_u16) -> uacpi_status {
     // TODO
-    return uacpi_status_UACPI_STATUS_UNIMPLEMENTED;
+    return uacpi_status_UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -314,11 +314,11 @@ extern "C" fn uacpi_kernel_schedule_work(
     ctx: uacpi_handle,
 ) -> uacpi_status {
     // TODO
-    return uacpi_status_UACPI_STATUS_UNIMPLEMENTED;
+    return uacpi_status_UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_wait_for_work_completion() -> uacpi_status {
     // TODO
-    return uacpi_status_UACPI_STATUS_UNIMPLEMENTED;
+    return uacpi_status_UACPI_STATUS_OK;
 }

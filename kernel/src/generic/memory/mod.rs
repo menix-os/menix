@@ -14,6 +14,7 @@ use phys::{Page, PageNumber, Region};
 use spin::Mutex;
 
 pub mod heap;
+mod libc;
 pub mod mmio;
 pub mod phys;
 pub mod virt;

@@ -1,5 +1,5 @@
 //! Physical page allocation.
-//! This allocator uses the buddy allocation algorithm.
+//! This allocator uses the buddy algorithm.
 
 use super::{PhysAddr, VirtAddr};
 use crate::{
