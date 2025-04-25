@@ -4,7 +4,7 @@
 use super::{PhysAddr, VirtAddr};
 use crate::{
     arch::virt::PageTableEntry,
-    generic::{self, boot::PhysMemoryUsage},
+    generic::{self, boot::PhysMemoryUsage, misc::align_up},
 };
 use alloc::{alloc::AllocError, slice};
 use core::{
@@ -16,7 +16,8 @@ use spin::Mutex;
 
 /// Allocates `bytes` amount in bytes of consecutive pages.
 pub fn alloc_bytes(bytes: NonZeroUsize, region: RegionType) -> Result<PhysAddr, AllocError> {
-    let pages = bytes.get().div_ceil(PageTableEntry::get_page_size());
+    let pages =
+        align_up(bytes.get(), PageTableEntry::get_page_size()) / PageTableEntry::get_page_size();
     let block_order = get_order(pages);
     let result = alloc(block_order, region);
     return result;

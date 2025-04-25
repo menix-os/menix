@@ -2,19 +2,41 @@ use super::{
     elf::{ElfHdr, ElfPhdr},
     memory::{PhysAddr, VirtAddr, virt::VmFlags},
 };
-use crate::generic::{
-    boot::BootInfo,
-    cmdline::CmdLine,
-    elf,
-    memory::virt::{self},
+use crate::{
+    arch::virt::PageTableEntry,
+    generic::{
+        boot::BootInfo,
+        cmdline::CmdLine,
+        elf::{self, ElfHashTable, ElfRela, ElfSym},
+        memory::{
+            phys::{self, RegionType},
+            virt::{self},
+        },
+        misc::{align_down, align_up},
+    },
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
-use core::{ffi::CStr, slice};
-use spin::{Mutex, RwLock};
+use core::{
+    ffi::CStr,
+    num::NonZero,
+    ptr::null,
+    slice,
+    sync::atomic::{AtomicUsize, Ordering},
+};
+use spin::RwLock;
 
 static SYMBOL_TABLE: RwLock<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>> =
     RwLock::new(BTreeMap::new());
 static MODULE_TABLE: RwLock<BTreeMap<String, ModuleInfo>> = RwLock::new(BTreeMap::new());
+
+unsafe extern "C" {
+    unsafe static LD_DYNSYM_START: u8;
+    unsafe static LD_DYNSYM_END: u8;
+    unsafe static LD_DYNSTR_START: u8;
+    unsafe static LD_DYNSTR_END: u8;
+}
+
+type ModuleEntryFn = unsafe extern "C" fn(args: *const u8, len: usize);
 
 /// Stores metadata about a module.
 #[derive(Debug)]
@@ -22,14 +44,8 @@ pub struct ModuleInfo {
     version: String,
     description: String,
     author: String,
+    entry: Option<ModuleEntryFn>,
     mappings: Vec<(PhysAddr, VirtAddr, usize, VmFlags)>,
-}
-
-unsafe extern "C" {
-    unsafe static LD_DYNSYM_START: u8;
-    unsafe static LD_DYNSYM_END: u8;
-    unsafe static LD_DYNSTR_START: u8;
-    unsafe static LD_DYNSTR_END: u8;
 }
 
 /// Sets up the module system.
@@ -56,7 +72,7 @@ pub(crate) fn init() {
         let mut symbol_table = SYMBOL_TABLE.write();
         let mut idx = 0;
         for sym in symbols {
-            let name = unsafe { CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]) };
+            let name = CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]);
             if let Ok(x) = name {
                 if let Ok(s) = x.to_str() {
                     if !s.is_empty() {
@@ -95,7 +111,12 @@ pub(crate) fn init() {
 pub enum ModuleLoadError {
     InvalidData,
     BrokenModuleInfo,
+    AllocFailed,
+    UnsupportedRelocation,
+    SymbolNotFound,
 }
+
+pub static MODULE_ADDR: AtomicUsize = AtomicUsize::new(0);
 
 /// Loads a module from an ELF in memory.
 pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), ModuleLoadError> {
@@ -145,11 +166,12 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
     )
     .map_err(|_| ModuleLoadError::InvalidData)?;
 
-    let mut load_base = VirtAddr(0); // TODO
+    let mut load_base = 0;
     let mut info = ModuleInfo {
         version: String::new(),
         description: String::new(),
         author: String::new(),
+        entry: None,
         mappings: Vec::new(),
     };
 
@@ -157,6 +179,7 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
     let mut dt_strtab = None;
     let mut dt_strsz = None;
     let mut dt_symtab = None;
+    let mut dt_syment = None;
     let mut dt_rela = None;
     let mut dt_relasz = None;
     let mut dt_relaent = None;
@@ -164,12 +187,57 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
     let mut dt_jmprel = None;
     let mut dt_init_array = None;
     let mut dt_init_arraysz = None;
+    let mut dt_hash = None;
     let mut dt_needed = Vec::new();
 
     for phdr in phdrs {
         match phdr.p_type {
             // Load the segment into memory.
             elf::PT_LOAD => {
+                // Record where the first PHDR was loaded at.
+                if load_base == 0 {
+                    load_base = MODULE_ADDR.load(Ordering::SeqCst);
+                }
+
+                let mut memsz = phdr.p_memsz as usize;
+
+                // Fix potentially unaligned addresses.
+                let aligned_virt =
+                    align_down(phdr.p_vaddr as usize, PageTableEntry::get_page_size());
+                if aligned_virt < phdr.p_vaddr as usize {
+                    memsz += PageTableEntry::get_page_size()
+                        - (phdr.p_memsz as usize % PageTableEntry::get_page_size());
+                }
+
+                // Allocate physical memory.
+                let phys =
+                    phys::alloc_bytes(NonZero::new(memsz as usize).unwrap(), RegionType::Kernel)
+                        .map_err(|_| ModuleLoadError::AllocFailed)?;
+
+                let mut page_table = virt::KERNEL_PAGE_TABLE.write();
+
+                // Map memory with RW permissions.
+                for page in (0..=memsz + 4096).step_by(PageTableEntry::get_page_size()) {
+                    page_table
+                        .map_single(
+                            VirtAddr(load_base + aligned_virt + page),
+                            PhysAddr(phys.0 + page),
+                            VmFlags::Read | VmFlags::Write,
+                            0,
+                        )
+                        .map_err(|_| ModuleLoadError::AllocFailed)?;
+
+                    MODULE_ADDR.fetch_add(PageTableEntry::get_page_size(), Ordering::AcqRel);
+                }
+
+                let virt = load_base + phdr.p_vaddr as usize;
+
+                // Copy data to allocated memory.
+                let buf =
+                    unsafe { slice::from_raw_parts_mut(virt as *mut u8, phdr.p_memsz as usize) };
+                buf.copy_from_slice(&data[phdr.p_offset as usize..][..phdr.p_filesz as usize]);
+                buf[phdr.p_filesz as usize..].fill(0);
+
                 // Convert the flags to our format.
                 let mut flags = VmFlags::None;
                 if phdr.p_flags & elf::PF_EXECUTE != 0 {
@@ -182,14 +250,13 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                     flags |= VmFlags::Write;
                 }
 
-                // TODO: Allocate memory.
-                // TODO: Map memory with RW permissions.
-                // TODO: Copy data to allocated memory.
-                // TODO: Change permissions of the mappings.
+                // Record this mapping.
+                info.mappings
+                    .push((phys, VirtAddr(virt), memsz as usize, flags));
             }
             elf::PT_DYNAMIC => {
                 let dyntab: &[elf::ElfDyn] = bytemuck::try_cast_slice(
-                    &data[phdr.p_offset as usize..(phdr.p_offset + phdr.p_filesz) as usize],
+                    &data[phdr.p_offset as usize..][..phdr.p_filesz as usize],
                 )
                 .map_err(|_| ModuleLoadError::InvalidData)?;
 
@@ -197,6 +264,7 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                     match entry.d_tag as u32 {
                         elf::DT_STRTAB => dt_strtab = Some(entry.d_val),
                         elf::DT_SYMTAB => dt_symtab = Some(entry.d_val),
+                        elf::DT_SYMENT => dt_syment = Some(entry.d_val),
                         elf::DT_STRSZ => dt_strsz = Some(entry.d_val),
                         elf::DT_RELA => dt_rela = Some(entry.d_val),
                         elf::DT_RELASZ => dt_relasz = Some(entry.d_val),
@@ -205,6 +273,7 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                         elf::DT_JMPREL => dt_jmprel = Some(entry.d_val),
                         elf::DT_INIT_ARRAY => dt_init_array = Some(entry.d_val),
                         elf::DT_INIT_ARRAYSZ => dt_init_arraysz = Some(entry.d_val),
+                        elf::DT_HASH => dt_hash = Some(entry.d_val),
                         elf::DT_NEEDED => dt_needed.push(entry.d_val),
                         elf::DT_NULL => break,
                         _ => (),
@@ -212,28 +281,22 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                 }
             }
             elf::PT_MODVERSION => {
-                info.version = str::from_utf8(
-                    &data
-                        [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
-                )
-                .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
-                .to_owned();
+                info.version =
+                    str::from_utf8(&data[phdr.p_offset as usize..][..phdr.p_filesz as usize])
+                        .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
+                        .to_owned();
             }
             elf::PT_MODAUTHOR => {
-                info.author = str::from_utf8(
-                    &data
-                        [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
-                )
-                .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
-                .to_owned();
+                info.author =
+                    str::from_utf8(&data[phdr.p_offset as usize..][..phdr.p_filesz as usize])
+                        .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
+                        .to_owned();
             }
             elf::PT_MODDESC => {
-                info.description = str::from_utf8(
-                    &data
-                        [phdr.p_offset as usize..(phdr.p_offset as usize + phdr.p_filesz as usize)],
-                )
-                .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
-                .to_owned();
+                info.description =
+                    str::from_utf8(&data[phdr.p_offset as usize..][..phdr.p_filesz as usize])
+                        .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
+                        .to_owned();
             }
             // Unknown or unhandled type. Do nothing.
             _ => (),
@@ -241,7 +304,7 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
     }
 
     // Convert addresses to offsets in the binary so we can read their values.
-    let fix_addr = |opt: &mut Option<u64>| {
+    let fix_addr = |opt: &mut Option<_>| {
         if let Some(x) = opt {
             for phdr in phdrs {
                 if phdr.p_vaddr <= *x && phdr.p_vaddr + phdr.p_filesz > *x {
@@ -257,6 +320,92 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
     fix_addr(&mut dt_rela);
     fix_addr(&mut dt_jmprel);
     fix_addr(&mut dt_init_array);
+    fix_addr(&mut dt_hash);
+
+    let strtab = &data[dt_strtab.unwrap() as usize..][..dt_strsz.unwrap() as usize];
+
+    // Load symbol table. To get the size of it, we need to look at the DT_HASH tag.
+    let symtab_len = bytemuck::try_from_bytes::<ElfHashTable>(
+        &data[dt_hash.unwrap() as usize..][..size_of::<ElfHashTable>()],
+    )
+    .map_err(|_| ModuleLoadError::InvalidData)?
+    .nchain as usize;
+
+    let symtab: &[ElfSym] = bytemuck::try_cast_slice(
+        &data[dt_symtab.unwrap() as usize..][..symtab_len * size_of::<ElfSym>()],
+    )
+    .map_err(|_| ModuleLoadError::InvalidData)?;
+
+    // Handle relocations.
+    let do_reloc = |addr: _, size: _| -> _ {
+        let relas: &[ElfRela] = bytemuck::try_cast_slice(&data[addr as usize..][..size as usize])
+            .map_err(|_| ModuleLoadError::InvalidData)?;
+
+        for rela in relas {
+            // The symbol index is stored in the upper 32 bits.
+            let sym = (rela.r_info >> 32) as u32;
+            let typ = (rela.r_info & 0xFFFF_FFFF) as u32;
+
+            let symbol = symtab[sym as usize];
+
+            // The address where to write the relocated address to.
+            let location = unsafe { (load_base + rela.r_offset as usize) as *mut usize };
+
+            // Do the relocation.
+            match typ {
+                elf::R_COMMON_NONE => (),
+                elf::R_COMMON_64 | elf::R_COMMON_GLOB_DAT | elf::R_COMMON_JUMP_SLOT => {
+                    // Check if this symbol has an associated section.
+                    // If it does not, we need to look the symbol up in our own list.
+                    let resolved = if symbol.st_shndx == 0 {
+                        // Get the symbol name.
+                        let name = CStr::from_bytes_until_nul(&strtab[symbol.st_name as usize..])
+                            .map_err(|_| ModuleLoadError::InvalidData)?
+                            .to_str()
+                            .map_err(|_| ModuleLoadError::InvalidData)?;
+
+                        let kernel_symbol = SYMBOL_TABLE
+                            .read()
+                            .get(name)
+                            .ok_or(ModuleLoadError::SymbolNotFound)?
+                            .0;
+
+                        unsafe { kernel_symbol.st_value as usize }
+                    } else {
+                        unsafe { (load_base + symbol.st_value as usize) }
+                    };
+
+                    unsafe {
+                        *location = resolved + rela.r_addend as usize;
+                    }
+                }
+                elf::R_COMMON_RELATIVE => unsafe {
+                    *location = load_base + rela.r_addend as usize;
+                },
+                _ => return Err(ModuleLoadError::UnsupportedRelocation),
+            }
+        }
+        Ok(())
+    };
+
+    if let Some(addr) = dt_rela {
+        do_reloc(addr, dt_relasz.ok_or(ModuleLoadError::InvalidData)?)?;
+    }
+    if let Some(addr) = dt_jmprel {
+        do_reloc(addr, dt_pltrelsz.ok_or(ModuleLoadError::InvalidData)?)?;
+    }
+
+    // Finally, remap everything so the permissions are as described.
+    for (phys, virt, length, flags) in &info.mappings {
+        let mut page_table = virt::KERNEL_PAGE_TABLE.write();
+        let length = align_up(*length, PageTableEntry::get_page_size());
+        for page in (0..=length).step_by(PageTableEntry::get_page_size()) {
+            page_table.remap_single(VirtAddr(virt.0 + page), *flags, 0);
+        }
+    }
+
+    // Register newly added symbols for dependencies.
+    for symbol in symtab {}
 
     let dependencies = dt_needed
         .as_slice()
@@ -272,11 +421,27 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
         .collect::<Vec<_>>();
 
     print!("module: Loaded module \"{}\":\n", name);
-    print!("module:   Base Address | {:#x}\n", load_base.0);
+    print!("module:   Base Address | {:#018X}\n", load_base);
     print!("module:   Description  | {}\n", info.description);
     print!("module:   Version      | {}\n", info.version);
     print!("module:   Author(s)    | {}\n", info.author);
     print!("module:   Dependencies | {:?}\n", dependencies);
+
+    // TODO: Load dependencies
+
+    // Save the entry point and call it.
+    unsafe {
+        let mut temp_entry = Some(elf_hdr.e_entry);
+        fix_addr(&mut temp_entry);
+
+        info.entry = Some(core::mem::transmute(
+            load_base + temp_entry.unwrap() as usize,
+        ));
+
+        if let Some(entry_point) = info.entry {
+            entry_point(null(), 0);
+        }
+    }
 
     return Ok(());
 }
@@ -322,6 +487,7 @@ macro_rules! module {
 
         #[unsafe(no_mangle)]
         unsafe extern "C" fn _start(args: *const u8, len: usize) {
+            $crate::print!("Hello world!");
             let command_line = $crate::generic::cmdline::CmdLine::new(unsafe {
                 $crate::core::str::from_utf8($crate::core::slice::from_raw_parts(args, len))
                     .unwrap()

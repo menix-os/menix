@@ -146,8 +146,6 @@ impl<const K: bool> PageTable<K> {
         target_level: usize,
     ) -> Result<&mut PageTableEntry, PageTableError> {
         let mut head = self.head.lock();
-
-        // If there is no head yet, allocate it.
         let mut current_head: *mut PageTableEntry = head.as_hhdm();
         let mut index = 0;
         let mut do_break = false;
@@ -159,8 +157,8 @@ impl<const K: bool> PageTable<K> {
         // Traverse the page table (from highest to lowest level).
         for level in (0..self.max_level).rev() {
             // Create a mask for the address part of the PTE, e.g. 0x1ff for 9 bits.
-            let addr_bits = (usize::MAX
-                >> (0usize.trailing_zeros() as usize - PageTableEntry::get_level_bits()));
+            let addr_bits =
+                (usize::MAX >> (usize::BITS as usize - PageTableEntry::get_level_bits()));
 
             // Determine the shift for the appropriate level, e.g. x << (12 + (9 * level)).
             let addr_shift =
@@ -253,8 +251,25 @@ impl<const K: bool> PageTable<K> {
         return Ok(());
     }
 
-    pub fn remap_single() -> Result<(), PageTableError> {
-        todo!();
+    /// Changes the permissions on a mapping.
+    pub fn remap_single(
+        &mut self,
+        virt: VirtAddr,
+        flags: VmFlags,
+        level: usize,
+    ) -> Result<(), PageTableError> {
+        let pte = self.get_pte(virt, false, level)?;
+
+        *pte = PageTableEntry::new(
+            pte.address(),
+            flags
+                | if level != 0 {
+                    VmFlags::Large
+                } else {
+                    VmFlags::None
+                },
+        );
+        return Ok(());
     }
 
     /// Maps a range of consecutive memory in this address space.
@@ -278,6 +293,25 @@ impl<const K: bool> PageTable<K> {
                 flags,
                 level,
             )?;
+        }
+        return Ok(());
+    }
+
+    /// Changes the permissions on a mapping of consecutive memory.
+    pub fn remap_range(
+        &mut self,
+        virt: VirtAddr,
+        flags: VmFlags,
+        level: usize,
+        length: usize,
+    ) -> Result<(), PageTableError> {
+        // TODO: Do transactional mapping.
+        let length = align_up(length, PageTableEntry::get_page_size());
+        let step =
+            1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
+
+        for offset in (0..length).step_by(step) {
+            self.remap_single(VirtAddr(virt.0 + offset), flags, level)?;
         }
         return Ok(());
     }
@@ -380,14 +414,10 @@ pub fn init(
         *kernel_table = table;
 
         // Set the MMAP base to right after the HHDM. Make sure this lands on a new PTE so we can map regular pages.
-        let offset = misc::align_up(
-            hhdm_length,
-            1usize
-                << (paging_level * PageTableEntry::get_level_bits()
-                    + PageTableEntry::get_level_bits()
-                    + 1),
-        );
+        let pte_size = 1usize << (paging_level * PageTableEntry::get_level_bits());
+        let offset = misc::align_up(hhdm_length, pte_size);
         KERNEL_MMAP_BASE_ADDR.store(hhdm_start.0 + offset, Ordering::Relaxed);
+        generic::module::MODULE_ADDR.store(hhdm_start.0 + offset + pte_size, Ordering::Relaxed);
     }
 }
 
@@ -460,7 +490,7 @@ pub fn page_fault_handler<'a>(
     panic!(
         "Kernel caused an unrecoverable page fault: {}! IP: {:#x}, Address: {:#x}",
         match info.kind {
-            PageFaultKind::Unknown => "Unknown",
+            PageFaultKind::Unknown => "Unknown cause",
             PageFaultKind::NotMapped => "Page was not mapped",
             PageFaultKind::IllegalRead => "Page can't be read from",
             PageFaultKind::IllegalWrite => "Page can't be written to",
