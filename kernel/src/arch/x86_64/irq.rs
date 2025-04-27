@@ -71,11 +71,11 @@ impl InterruptFrame {
     }
 
     pub const fn set_stack(&mut self, addr: VirtAddr) {
-        self.rsp = addr.0 as u64;
+        self.rsp = addr.inner() as u64;
     }
 
     pub const fn set_ip(&mut self, addr: VirtAddr) {
-        self.rip = addr.0 as u64;
+        self.rip = addr.inner() as u64;
     }
 }
 

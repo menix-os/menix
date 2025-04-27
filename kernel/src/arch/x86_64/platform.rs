@@ -79,7 +79,7 @@ impl ClockSource for Hpet {
             KERNEL_PAGE_TABLE
                 .write()
                 .map_memory(
-                    PhysAddr((unsafe { *hpet }).address.address as usize),
+                    ((unsafe { *hpet }).address.address as usize).into(),
                     VmFlags::Read | VmFlags::Write,
                     0,
                     size_of::<HpetRegisters>(),

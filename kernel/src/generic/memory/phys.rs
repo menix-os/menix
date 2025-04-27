@@ -4,26 +4,44 @@
 use super::{PhysAddr, VirtAddr};
 use crate::{
     arch::virt::PageTableEntry,
-    generic::{self, boot::PhysMemoryUsage, misc::align_up},
+    generic::{self, boot::PhysMemoryUsage, memory::virt::PageTable, misc::align_up},
 };
 use alloc::{alloc::AllocError, slice};
+use bitflags;
+use bytemuck::AnyBitPattern;
 use core::{
     hint::likely,
     num::NonZeroUsize,
-    ptr::{NonNull, null_mut},
+    ptr::{NonNull, null_mut, write_bytes},
 };
 use spin::Mutex;
 
 /// Allocates `bytes` amount in bytes of consecutive pages.
-pub fn alloc_bytes(bytes: NonZeroUsize, region: RegionType) -> Result<PhysAddr, AllocError> {
-    let pages =
-        align_up(bytes.get(), PageTableEntry::get_page_size()) / PageTableEntry::get_page_size();
+pub fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
+    if bytes == 0 {
+        return Err(AllocError);
+    }
+
+    let pages = align_up(bytes, PageTableEntry::get_page_size()) / PageTableEntry::get_page_size();
     let block_order = get_order(pages);
-    let result = alloc(block_order, region);
+    let result = alloc(block_order, flags);
+
     return result;
 }
 
-pub fn alloc(order: Order, region: RegionType) -> Result<PhysAddr, AllocError> {
+/// Allocates `bytes` amount in bytes of consecutive pages.
+pub fn alloc_pages(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
+    if pages == 0 {
+        return Err(AllocError);
+    }
+
+    let block_order = get_order(pages);
+    let result = alloc(block_order, flags);
+
+    return result;
+}
+
+pub fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
     if order > MAX_ORDER {
         return Err(AllocError);
     }
@@ -31,9 +49,10 @@ pub fn alloc(order: Order, region: RegionType) -> Result<PhysAddr, AllocError> {
     let mut regions = REGIONS.lock();
 
     // Determine what the highest allowed address for this allocation is.
-    let search_limit = match region {
-        RegionType::Kernel => PhysAddr(usize::MAX),
-        RegionType::Kernel32 => PhysAddr(u32::MAX as usize),
+    let search_limit = if flags.contains(AllocFlags::Kernel32) {
+        PhysAddr(u32::MAX as usize)
+    } else {
+        PhysAddr(usize::MAX)
     };
 
     let (mut frame, region) = regions
@@ -61,6 +80,17 @@ pub fn alloc(order: Order, region: RegionType) -> Result<PhysAddr, AllocError> {
 
     frame.mark_used();
     region.num_used_pages += (1 << order);
+
+    // If required, zero new memory.
+    if flags.contains(AllocFlags::Zeroed) {
+        unsafe {
+            write_bytes(
+                addr.as_hhdm::<u8>(),
+                0,
+                PageTableEntry::get_page_size() << frame.order,
+            );
+        }
+    }
 
     Ok(addr)
 }
@@ -90,14 +120,20 @@ pub fn get_order(pages: usize) -> Order {
     }
 }
 
-const MAX_ORDER: Order = 17;
+const MAX_ORDER: Order = 20;
 
-#[repr(u32)]
-pub enum RegionType {
-    /// Any physical memory available to the kernel.
-    Kernel,
-    /// Any physical memory below 4GiB.
-    Kernel32,
+bitflags::bitflags! {
+    pub struct AllocFlags: usize {
+        /// Only consider physical memory below 4GiB.
+        const Kernel32 = 1 << 0;
+        /// Allocated memory has to be initialized to zero.
+        const Zeroed = 1 << 2;
+    }
+}
+
+pub enum Test {
+    VarA,
+    VarB,
 }
 
 // TODO: Use IRQ disabling mutex instead.

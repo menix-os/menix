@@ -92,8 +92,8 @@ impl<T> PerCpuData<T> {
 pub(crate) static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
     this: &raw const LD_PERCPU_START as *mut CpuData,
     id: 0,
-    kernel_stack: VirtAddr(0),
-    user_stack: VirtAddr(0),
+    kernel_stack: VirtAddr::null(),
+    user_stack: VirtAddr::null(),
     online: false,
     present: false,
     scheduler: Scheduler::new(),

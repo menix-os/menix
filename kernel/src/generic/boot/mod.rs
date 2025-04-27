@@ -119,7 +119,7 @@ pub struct PhysMemory {
 impl PhysMemory {
     pub const fn new() -> Self {
         Self {
-            address: PhysAddr(0),
+            address: PhysAddr::null(),
             length: 0,
             usage: PhysMemoryUsage::Unknown,
         }

@@ -1,3 +1,4 @@
+use super::phys::AllocFlags;
 use super::{HHDM_START, PhysAddr, VirtAddr, phys};
 use crate::arch::irq::InterruptFrame;
 use crate::arch::{self, virt::PageTableEntry};
@@ -69,13 +70,7 @@ impl PageTable<false> {
     /// Creates a new page table for a user process.
     pub fn new_user(max_level: usize) -> Self {
         Self {
-            head: Mutex::new(
-                phys::alloc_bytes(
-                    NonZero::new(PageTableEntry::get_page_size()).unwrap(),
-                    phys::RegionType::Kernel,
-                )
-                .unwrap(),
-            ),
+            head: Mutex::new(phys::alloc_pages(1, AllocFlags::Zeroed).unwrap()),
             max_level,
         }
     }
@@ -91,13 +86,7 @@ impl PageTable<true> {
 
     fn new_kernel(max_level: usize) -> Self {
         Self {
-            head: Mutex::new(
-                phys::alloc_bytes(
-                    NonZero::new(PageTableEntry::get_page_size()).unwrap(),
-                    phys::RegionType::Kernel,
-                )
-                .unwrap(),
-            ),
+            head: Mutex::new(phys::alloc_pages(1, AllocFlags::Zeroed).unwrap()),
             max_level,
         }
     }
@@ -201,12 +190,7 @@ impl<const K: bool> PageTable<K> {
                     }
 
                     // Allocate a new level.
-                    let next_head = phys::alloc_bytes(
-                        NonZero::new(PageTableEntry::get_page_size()).unwrap(),
-                        phys::RegionType::Kernel,
-                    )
-                    .unwrap()
-                    .as_hhdm();
+                    let next_head = phys::alloc_pages(1, AllocFlags::Zeroed).unwrap().as_hhdm();
 
                     // ptr::byte_sub() doesn't allow taking higher half addresses because it doesn't fit in an isize.
                     *pte = PageTableEntry::new(

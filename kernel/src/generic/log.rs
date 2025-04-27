@@ -1,6 +1,8 @@
-use core::fmt;
+//! Message logs from the kernel.
+// TODO: Convert to struct Console
 
 use alloc::{boxed::Box, vec::Vec};
+use core::fmt;
 use spin::Mutex;
 
 /// A sink to write logs to.
@@ -33,11 +35,24 @@ impl Logger {
         }
         print!("log: Registered new logging sink \"{}\".\n", name);
     }
+
+    pub fn remove_sink(name: &str) {
+        let mut logger = GLOBAL_LOGGERS.lock();
+        for sink in &mut logger.sinks {
+            if let Some(x) = sink {
+                if x.name() == name {
+                    *sink = None;
+                }
+            }
+        }
+    }
 }
+
+const MAX_LOGGERS: usize = 16;
 
 /// The global registry for loggers.
 pub static GLOBAL_LOGGERS: Mutex<Logger> = Mutex::new(Logger {
-    sinks: [const { None }; 16],
+    sinks: [const { None }; MAX_LOGGERS],
 });
 
 impl fmt::Write for Logger {

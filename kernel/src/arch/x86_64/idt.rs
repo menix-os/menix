@@ -38,7 +38,7 @@ pub fn init() {
 
         // Set all gates to their respective handlers.
         seq!(N in 0..256 {
-            idt.routines[N] = IdtEntry::new(VirtAddr(interrupt_stub~N as usize), 0, IdtIsrType::Interrupt);
+            idt.routines[N] = IdtEntry::new((interrupt_stub~N as usize).into(), 0, IdtIsrType::Interrupt);
         });
     }
 }
@@ -104,7 +104,7 @@ impl IdtEntry {
         assert!(interrupt_stack <= 2, "`ist` must be 0, 1 or 2!");
 
         Self {
-            base0: base.0 as u16,
+            base0: base.inner() as u16,
             // Only allow handlers to be part of the kernel.
             selector: offset_of!(Gdt, kernel_code) as u16,
             ist: interrupt_stack,
@@ -113,8 +113,8 @@ impl IdtEntry {
                     IdtIsrType::Interrupt => 0xE,
                     IdtIsrType::Trap => 0xF,
                 },
-            base1: (base.0 >> 16) as u16,
-            base2: (base.0 >> 32) as u32,
+            base1: (base.inner() >> 16) as u16,
+            base2: (base.inner() >> 32) as u32,
             reserved: 0,
         }
     }

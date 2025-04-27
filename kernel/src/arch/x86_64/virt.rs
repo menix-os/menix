@@ -52,7 +52,7 @@ impl PageTableEntry {
     }
 
     pub const fn new(address: PhysAddr, flags: VmFlags) -> Self {
-        let mut result = (address.0 as u64 & ADDR_MASK) | PageFlags::Present.bits();
+        let mut result = (address.inner() as u64 & ADDR_MASK) | PageFlags::Present.bits();
 
         if flags.contains(VmFlags::User) {
             result |= PageFlags::UserMode.bits();
@@ -90,7 +90,7 @@ impl PageTableEntry {
     }
 
     pub fn address(&self) -> PhysAddr {
-        return PhysAddr((self.inner & ADDR_MASK) as usize);
+        return (self.inner & ADDR_MASK).into();
     }
 
     pub const fn get_max_levels() -> usize {
@@ -113,13 +113,13 @@ impl PageTableEntry {
 /// Invalidates a TLB entry cache.
 fn flush_tlb(addr: VirtAddr) {
     unsafe {
-        asm!("invlpg [{addr}]", addr = in(reg) addr.0);
+        asm!("invlpg [{addr}]", addr = in(reg) addr.inner());
     }
 }
 
 pub unsafe fn set_page_table(addr: PhysAddr) {
     unsafe {
-        asm!("mov cr3, {addr}", addr = in(reg) addr.0);
+        asm!("mov cr3, {addr}", addr = in(reg) addr.inner());
     }
 }
 
@@ -130,8 +130,8 @@ pub unsafe fn page_fault_handler(context: *const InterruptFrame) -> *const Inter
 
         let info = PageFaultInfo {
             caused_by_user: (*context).cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
-            ip: VirtAddr((*context).rip as usize),
-            addr: VirtAddr(cr2),
+            ip: ((*context).rip as usize).into(),
+            addr: cr2.into(),
             // TODO
             kind: match (*context).error {
                 _ => PageFaultKind::Unknown,

@@ -28,7 +28,7 @@ per_cpu!(
     LocalApic,
     LocalApic {
         has_x2apic: false,
-        lapic_addr: PhysAddr(0),
+        lapic_addr: PhysAddr::null(),
         ticks_per_10ms: 0
     }
 );

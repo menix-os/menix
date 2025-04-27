@@ -96,7 +96,7 @@ extern "C" fn _start() -> ! {
                         EntryType::EXECUTABLE_AND_MODULES => PhysMemoryUsage::Kernel,
                         _ => PhysMemoryUsage::Unknown,
                     },
-                    address: PhysAddr(entry.base as usize),
+                    address: entry.base.into(),
                 };
             }
         }
@@ -104,9 +104,7 @@ extern "C" fn _start() -> ! {
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
 
-        info.hhdm_address = Some(VirtAddr(
-            HHDM_REQUEST.get_response().unwrap().offset() as usize
-        ));
+        info.hhdm_address = Some(HHDM_REQUEST.get_response().unwrap().offset().into());
 
         let paging = PAGING_REQUEST.get_response().unwrap().mode();
         #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
@@ -137,8 +135,8 @@ extern "C" fn _start() -> ! {
         unsafe {
             info.memory_map = &MEMMAP_BUF[0..entries.len()];
         }
-        info.kernel_phys = Some(PhysAddr(kernel_addr.physical_base() as usize));
-        info.kernel_virt = Some(VirtAddr(kernel_addr.virtual_base() as usize));
+        info.kernel_phys = Some(kernel_addr.physical_base().into());
+        info.kernel_virt = Some(kernel_addr.virtual_base().into());
     }
 
     // Convert the command line from bytes to UTF-8 if there is any.
@@ -148,14 +146,15 @@ extern "C" fn _start() -> ! {
     };
 
     // The RSDP is a physical address.
-    info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| PhysAddr(x.address()));
+    info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| (x.address().into()));
 
     // The FDT is a virtual address.
     info.fdt_addr = DTB_REQUEST.get_response().map(|x| {
-        PhysAddr(unsafe {
+        unsafe {
             x.dtb_ptr()
                 .byte_sub(HHDM_REQUEST.get_response().unwrap().offset() as usize)
-        } as usize)
+        }
+        .into()
     });
 
     // Get all modules.
@@ -184,8 +183,12 @@ extern "C" fn _start() -> ! {
 
     if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
         if let Some(fb) = response.framebuffers().next() {
+            // We can't call `as_hhdm` yet because it's not been initialized yet.
+            let fb_addr = (fb.addr() as usize);
+            let hhdm = (HHDM_REQUEST.get_response().unwrap().offset()) as usize;
+
             info.framebuffer = Some(FrameBuffer {
-                base: PhysAddr(fb.addr() as usize - info.hhdm_address.unwrap().0),
+                base: (fb_addr - hhdm).into(),
                 width: fb.width() as usize,
                 height: fb.height() as usize,
                 pitch: fb.pitch() as usize,

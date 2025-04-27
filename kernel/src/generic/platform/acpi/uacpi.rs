@@ -27,7 +27,7 @@ use crate::{
 unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_addr) -> uacpi_status {
     match super::RSDP_ADDRESS.get() {
         Some(x) => unsafe {
-            *out_rsdp_address = x.0 as uacpi_phys_addr;
+            *out_rsdp_address = (*x).into();
             return uacpi_status_UACPI_STATUS_OK;
         },
         None => return uacpi_status_UACPI_STATUS_INTERNAL_ERROR,
@@ -43,7 +43,7 @@ extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c
         KERNEL_PAGE_TABLE
             .write()
             .map_memory(
-                PhysAddr(aligned_addr),
+                aligned_addr.into(),
                 VmFlags::Read | VmFlags::Write,
                 0,
                 aligned_len,
@@ -142,32 +142,16 @@ extern "C" fn uacpi_kernel_io_map(
     len: uacpi_size,
     out_handle: *mut uacpi_handle,
 ) -> uacpi_status {
-    let mem = KERNEL_PAGE_TABLE.write().map_memory(
-        PhysAddr(base as usize),
-        VmFlags::Read | VmFlags::Write,
-        0,
-        len,
-    );
-
-    match mem {
-        Ok(x) => {
-            unsafe {
-                (*out_handle) = x as uacpi_handle;
-            }
-            return uacpi_status_UACPI_STATUS_OK;
-        }
-        Err(_) => return uacpi_status_UACPI_STATUS_MAPPING_FAILED,
-    }
+    return uacpi_status_UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn uacpi_kernel_io_unmap(handle: uacpi_handle) {
-    // TODO
-}
+extern "C" fn uacpi_kernel_io_unmap(handle: uacpi_handle) {}
+
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_alloc(size: uacpi_size) -> *mut c_void {
     return unsafe {
-        memory::heap::ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<usize>()).unwrap())
+        memory::slab::ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<usize>()).unwrap())
             as *mut c_void
     };
 }
@@ -180,7 +164,7 @@ extern "C" fn uacpi_kernel_free(mem: *mut c_void, size: uacpi_size) {
     }
 
     unsafe {
-        memory::heap::ALLOCATOR.dealloc(
+        memory::slab::ALLOCATOR.dealloc(
             mem as *mut u8,
             Layout::from_size_align(size, align_of::<usize>()).unwrap(),
         )

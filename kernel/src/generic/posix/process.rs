@@ -102,7 +102,7 @@ impl Process {
                     let phys = todo!();
 
                     result.page_table.map_range(
-                        VirtAddr(phdr.p_vaddr as usize),
+                        phdr.p_vaddr.into(),
                         phys,
                         flags,
                         0,
@@ -114,9 +114,7 @@ impl Process {
             }
         }
 
-        main_thread
-            .context
-            .set_ip(VirtAddr(elf_hdr.e_entry as usize));
+        main_thread.context.set_ip(elf_hdr.e_entry.into());
 
         result.threads.push(main_thread);
         return Ok(result);

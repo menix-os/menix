@@ -1,75 +1,23 @@
 use crate::{
     arch::virt::PageTableEntry,
     generic::{
-        self,
         boot::{BootInfo, PhysMemoryUsage},
         misc::{self, align_up},
     },
 };
-use alloc::alloc::{AllocError, Allocator};
 use core::{
+    ops::{Add, Sub},
     ptr::{self, NonNull},
     sync::atomic::{AtomicUsize, Ordering},
 };
 use phys::{Page, PageNumber, Region};
-use spin::Mutex;
 
-pub mod heap;
 pub mod mmio;
 pub mod phys;
+pub mod slab;
 pub mod virt;
 
 static HHDM_START: AtomicUsize = AtomicUsize::new(0);
-
-/// Represents a physical address. It can't be directly read from or written to.
-#[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PhysAddr(pub usize);
-
-impl PhysAddr {
-    fn as_hhdm<T>(self) -> *mut T {
-        VirtAddr(self.0 + HHDM_START.load(Ordering::Relaxed)).as_ptr()
-    }
-}
-
-/// Represents a virtual address. It can't be directly read from or written to.
-/// Note: Not the same as a pointer. A `VirtAddr` might point into another
-/// process's memory that is not mapped in the kernel.
-#[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct VirtAddr(pub usize);
-
-impl<T> From<*const T> for VirtAddr {
-    fn from(ptr: *const T) -> Self {
-        Self(ptr as usize)
-    }
-}
-
-impl<T> From<*mut T> for VirtAddr {
-    fn from(ptr: *mut T) -> Self {
-        Self(ptr as usize)
-    }
-}
-
-impl<T> From<NonNull<T>> for VirtAddr {
-    fn from(ptr: NonNull<T>) -> Self {
-        Self(ptr.as_ptr() as usize)
-    }
-}
-
-impl VirtAddr {
-    pub fn as_ptr<T>(self) -> *mut T {
-        return ptr::with_exposed_provenance_mut(self.0);
-    }
-
-    /// Returns the physical address mapped in the kernel for this [`VirtAddr`].
-    pub fn as_hhdm(self) -> Option<PhysAddr> {
-        return self
-            .0
-            .checked_sub(HHDM_START.load(Ordering::Relaxed))
-            .map(PhysAddr);
-    }
-}
 
 /// Initializes all memory management. Prior to this call, no allocations may be made.
 #[deny(dead_code)]
@@ -80,7 +28,7 @@ pub(crate) fn init() {
         .hhdm_address
         .expect("HHDM address should have been set!");
 
-    HHDM_START.store(hhdm_address.0, Ordering::Relaxed);
+    HHDM_START.store(hhdm_address.inner(), Ordering::Relaxed);
 
     let paging_level = info
         .paging_level
@@ -99,7 +47,7 @@ pub(crate) fn init() {
         .memory_map
         .iter()
         .filter(|&f| f.usage == PhysMemoryUsage::Free)
-        .map(|x| x.address.0 / PageTableEntry::get_page_size())
+        .map(|x| x.address.inner() / PageTableEntry::get_page_size())
         .next()
         .unwrap();
 
@@ -108,8 +56,10 @@ pub(crate) fn init() {
         .iter()
         .filter(|&f| f.usage == PhysMemoryUsage::Free)
         .map(|x| {
-            align_up(x.address.0 + x.length, PageTableEntry::get_page_size())
-                / PageTableEntry::get_page_size()
+            align_up(
+                x.address.inner() + x.length,
+                PageTableEntry::get_page_size(),
+            ) / PageTableEntry::get_page_size()
         })
         .last()
         .unwrap();
@@ -129,14 +79,14 @@ pub(crate) fn init() {
         let mut entry = *entry;
 
         // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
-        if entry.address.0 < 1 << 16 {
+        if entry.address.inner() < 1 << 16 {
             print!(
                 "memory: Ignoring 16-bit memory at {:#018X}\n",
-                entry.address.0
+                entry.address.inner()
             );
             // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
-            if entry.address.0 + entry.length >= 1 << 16 {
-                entry.length -= (1 << 16) - entry.address.0;
+            if entry.address.inner() + entry.length >= 1 << 16 {
+                entry.length -= (1 << 16) - entry.address.inner();
                 entry.address = PhysAddr(1 << 16);
             } else {
                 continue;
@@ -151,14 +101,14 @@ pub(crate) fn init() {
         if num_pages < 2 {
             print!(
                 "memory: Ignoring single page region at {:#018X}\n",
-                entry.address.0,
+                entry.address.inner(),
             );
             continue;
         }
 
         let region = Region::new(
-            VirtAddr(entry.address.0 + hhdm_address.0),
-            PhysAddr(entry.address.0),
+            (entry.address.inner() + hhdm_address.inner()).into(),
+            entry.address,
             num_pages as PageNumber,
         );
 
@@ -191,3 +141,129 @@ pub(crate) fn init() {
         kernel_virt,
     );
 }
+
+/// Represents a physical address. It can't be directly read from or written to.
+#[repr(transparent)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PhysAddr(usize);
+
+impl PhysAddr {
+    pub fn as_hhdm<T>(self) -> *mut T {
+        VirtAddr(self.0 + HHDM_START.load(Ordering::Relaxed)).as_ptr()
+    }
+}
+
+/// Represents a virtual address. It can't be directly read from or written to.
+/// Note: Not the same as a pointer. A `VirtAddr` might point into another
+/// process's memory that is not mapped in the kernel.
+#[repr(transparent)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct VirtAddr(usize);
+
+impl VirtAddr {
+    pub fn as_ptr<T>(self) -> *mut T {
+        return ptr::with_exposed_provenance_mut(self.0);
+    }
+
+    /// Returns the physical address mapped in the kernel for this [`VirtAddr`].
+    pub fn as_hhdm(self) -> Option<PhysAddr> {
+        return self
+            .0
+            .checked_sub(HHDM_START.load(Ordering::Relaxed))
+            .map(PhysAddr);
+    }
+}
+
+macro_rules! addr_impl {
+    ($ty:ty) => {
+        impl $ty {
+            pub const fn null() -> Self {
+                Self(0)
+            }
+
+            pub const fn new(value: usize) -> Self {
+                Self(value)
+            }
+
+            pub const fn inner(&self) -> usize {
+                self.0
+            }
+        }
+
+        impl Into<usize> for $ty {
+            fn into(self) -> usize {
+                self.0
+            }
+        }
+        #[cfg(target_pointer_width = "32")]
+        impl Into<u32> for $ty {
+            fn into(self) -> u32 {
+                self.0 as u32
+            }
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        impl Into<u64> for $ty {
+            fn into(self) -> u64 {
+                self.0 as u64
+            }
+        }
+
+        impl From<usize> for $ty {
+            fn from(addr: usize) -> Self {
+                Self(addr)
+            }
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        impl From<u32> for $ty {
+            fn from(addr: u32) -> Self {
+                Self(addr as usize)
+            }
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        impl From<u64> for $ty {
+            fn from(addr: u64) -> Self {
+                Self(addr as usize)
+            }
+        }
+
+        impl<T> From<*const T> for $ty {
+            fn from(ptr: *const T) -> Self {
+                Self(ptr as usize)
+            }
+        }
+
+        impl<T> From<*mut T> for $ty {
+            fn from(ptr: *mut T) -> Self {
+                Self(ptr as usize)
+            }
+        }
+
+        impl<T> From<NonNull<T>> for $ty {
+            fn from(ptr: NonNull<T>) -> Self {
+                Self(ptr.as_ptr() as usize)
+            }
+        }
+
+        impl Add for $ty {
+            type Output = Self;
+
+            fn add(self, rhs: Self) -> Self::Output {
+                Self(self.0 + rhs.0)
+            }
+        }
+
+        impl Sub for $ty {
+            type Output = Self;
+
+            fn sub(self, rhs: Self) -> Self::Output {
+                Self(self.0 - rhs.0)
+            }
+        }
+    };
+}
+
+addr_impl!(PhysAddr);
+addr_impl!(VirtAddr);

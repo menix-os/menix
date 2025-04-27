@@ -9,7 +9,7 @@ use crate::{
         cmdline::CmdLine,
         elf::{self, ElfHashTable, ElfRela, ElfSym},
         memory::{
-            phys::{self, RegionType},
+            phys::{self, AllocFlags},
             virt::{self},
         },
         misc::{align_down, align_up},
@@ -76,7 +76,8 @@ pub(crate) fn init() {
             if let Ok(x) = name {
                 if let Ok(s) = x.to_str() {
                     if !s.is_empty() {
-                        assert!(symbol_table.insert(s.to_owned(), (*sym, None)).is_none());
+                        let result = symbol_table.insert(s.to_owned(), (*sym, None));
+                        assert!(result.is_none(), "Duplicate symbol names!");
                     }
                 }
             }
@@ -210,9 +211,8 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                 }
 
                 // Allocate physical memory.
-                let phys =
-                    phys::alloc_bytes(NonZero::new(memsz as usize).unwrap(), RegionType::Kernel)
-                        .map_err(|_| ModuleLoadError::AllocFailed)?;
+                let phys = phys::alloc_bytes(memsz as usize, AllocFlags::Zeroed)
+                    .map_err(|_| ModuleLoadError::AllocFailed)?;
 
                 let mut page_table = virt::KERNEL_PAGE_TABLE.write();
 
@@ -220,8 +220,8 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                 for page in (0..=memsz + 4096).step_by(PageTableEntry::get_page_size()) {
                     page_table
                         .map_single(
-                            VirtAddr(load_base + aligned_virt + page),
-                            PhysAddr(phys.0 + page),
+                            (load_base + aligned_virt + page).into(),
+                            phys + page.into(),
                             VmFlags::Read | VmFlags::Write,
                             0,
                         )
@@ -252,7 +252,7 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
 
                 // Record this mapping.
                 info.mappings
-                    .push((phys, VirtAddr(virt), memsz as usize, flags));
+                    .push((phys, virt.into(), memsz as usize, flags));
             }
             elf::PT_DYNAMIC => {
                 let dyntab: &[elf::ElfDyn] = bytemuck::try_cast_slice(
@@ -363,7 +363,12 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                             .map_err(|_| ModuleLoadError::InvalidData)?
                             .to_str()
                             .map_err(|_| ModuleLoadError::InvalidData)?;
-
+                        if !SYMBOL_TABLE.read().contains_key(name) {
+                            print!("couldnt find \"{}\"\n", name);
+                            for symbol in SYMBOL_TABLE.read().iter() {
+                                print!("{}\n", symbol.0);
+                            }
+                        }
                         let kernel_symbol = SYMBOL_TABLE
                             .read()
                             .get(name)
@@ -400,12 +405,14 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
         let mut page_table = virt::KERNEL_PAGE_TABLE.write();
         let length = align_up(*length, PageTableEntry::get_page_size());
         for page in (0..=length).step_by(PageTableEntry::get_page_size()) {
-            page_table.remap_single(VirtAddr(virt.0 + page), *flags, 0);
+            page_table.remap_single(*virt + page.into(), *flags, 0);
         }
     }
 
     // Register newly added symbols for dependencies.
-    for symbol in symtab {}
+    for symbol in symtab {
+        // TODO
+    }
 
     let dependencies = dt_needed
         .as_slice()
