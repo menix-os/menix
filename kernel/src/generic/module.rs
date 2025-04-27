@@ -363,12 +363,6 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                             .map_err(|_| ModuleLoadError::InvalidData)?
                             .to_str()
                             .map_err(|_| ModuleLoadError::InvalidData)?;
-                        if !SYMBOL_TABLE.read().contains_key(name) {
-                            print!("couldnt find \"{}\"\n", name);
-                            for symbol in SYMBOL_TABLE.read().iter() {
-                                print!("{}\n", symbol.0);
-                            }
-                        }
                         let kernel_symbol = SYMBOL_TABLE
                             .read()
                             .get(name)

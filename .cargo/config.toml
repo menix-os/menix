@@ -1,7 +1,6 @@
 [unstable]
 mtime-on-use = true
 build-std = ["core", "alloc"]
-build-std-features = ["compiler-builtins-mem"]
 
 # Using `build` instead of this causes the LSP to panic because it also affects build scripts.
 [target.'cfg(target_os = "none")']

@@ -10,6 +10,7 @@
 #![feature(new_zeroed_alloc)]
 #![feature(cfg_match)]
 #![feature(likely_unlikely)]
+#![no_builtins]
 
 use generic::boot::BootInfo;
 
