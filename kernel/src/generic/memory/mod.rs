@@ -12,7 +12,6 @@ use core::{
 };
 use phys::{Page, PageNumber, Region};
 
-mod libc;
 pub mod mmio;
 pub mod phys;
 pub mod slab;
