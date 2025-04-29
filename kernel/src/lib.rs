@@ -3,7 +3,7 @@
 #![allow(clippy::needless_return)]
 #![feature(negative_impls)]
 #![feature(allocator_api)]
-// Needed for volatile memmove
+// Needed for volatile memmove. This is an LLVM intrinsic, replace it with our own.
 #![allow(internal_features)]
 #![feature(core_intrinsics)]
 #![feature(str_from_raw_parts)]
@@ -29,9 +29,12 @@ pub mod generic;
 #[unsafe(no_mangle)]
 pub(crate) fn main() -> ! {
     generic::cpu::setup_bsp();
+    // TODO: Run early init calls.
 
     // Initialize allocators.
     generic::memory::init();
+
+    // TODO: Run init calls.
 
     // Initialize early console.
     // TODO: Abstract console interface so it handles initialization of all consoles as well.
