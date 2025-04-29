@@ -1,7 +1,7 @@
 use super::memory::VirtAddr;
 use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
 use fbcon::FrameBuffer;
-use spin::Once;
+use spin::{Mutex, Once};
 
 pub mod fbcon;
 
@@ -29,7 +29,7 @@ pub struct BootInfo {
     /// How many levels the page table has.
     pub paging_level: Option<usize>,
     /// A list of valid physical memory.
-    pub memory_map: &'static [PhysMemory],
+    pub memory_map: Mutex<&'static mut [PhysMemory]>,
     /// The start of the physical kernel address.
     pub kernel_phys: Option<PhysAddr>,
     /// The start of the virtual kernel address.
@@ -51,7 +51,7 @@ impl BootInfo {
             files: &[],
             hhdm_address: None,
             paging_level: None,
-            memory_map: &[],
+            memory_map: Mutex::new(&mut []),
             kernel_phys: None,
             kernel_virt: None,
             rsdp_addr: None,
@@ -67,7 +67,7 @@ impl BootInfo {
     pub fn get() -> &'static Self {
         return BOOT_INFO
             .get()
-            .expect("Boot info wasn't set yet! Did you forget to call BootInfo::set()?");
+            .expect("Boot info wasn't set yet! Did you forget to call BootInfo::register()?");
     }
 }
 
@@ -89,39 +89,46 @@ impl BootFile {
     }
 }
 
-/// Describes how a memory region is used.
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
-pub enum PhysMemoryUsage {
-    /// Free and usable memory.
-    Free,
-    /// Memory reserved by the System.
-    Reserved,
-    /// Memory which was used externally, but can be reclaimed by the kernel.
-    Reclaimable,
-    /// Kernel and modules are loaded here.
-    Kernel,
-    /// Unknown memory region.
-    #[default]
-    Unknown,
-}
-
 /// Describes a region of physical memory.
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 pub struct PhysMemory {
     /// Start address of the memory region.
-    pub address: PhysAddr,
+    address: PhysAddr,
     /// Length of the memory region in bytes.
-    pub length: usize,
-    /// How this memory region is used.
-    pub usage: PhysMemoryUsage,
+    length: usize,
 }
 
 impl PhysMemory {
-    pub const fn new() -> Self {
+    pub const fn empty() -> Self {
         Self {
             address: PhysAddr::null(),
             length: 0,
-            usage: PhysMemoryUsage::Unknown,
         }
+    }
+
+    pub const fn new(address: PhysAddr, length: usize) -> Self {
+        if length == 0 {
+            panic!("Can't construct a PhysMemory descriptor with empty size!");
+        }
+        Self { address, length }
+    }
+
+    pub const fn address(&self) -> PhysAddr {
+        self.address
+    }
+
+    pub const fn length(&self) -> usize {
+        self.length
+    }
+
+    pub const fn set_address(&mut self, address: PhysAddr) {
+        self.address = address;
+    }
+
+    pub const fn set_length(&mut self, length: usize) {
+        if length == 0 {
+            panic!("Can't update a PhysMemory descriptor with empty size!");
+        }
+        self.length = length;
     }
 }

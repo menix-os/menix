@@ -9,7 +9,7 @@ use crate::{
         cmdline::CmdLine,
         elf::{self, ElfHashTable, ElfRela, ElfSym},
         memory::{
-            phys::{self, AllocFlags},
+            phys::{self, AllocFlags, BuddyAllocator},
             virt::{self},
         },
         misc::{align_down, align_up},
@@ -219,9 +219,9 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                 // Map memory with RW permissions.
                 for page in (0..=memsz + 4096).step_by(PageTableEntry::get_page_size()) {
                     page_table
-                        .map_single(
+                        .map_single::<BuddyAllocator>(
                             (load_base + aligned_virt + page).into(),
-                            phys + page.into(),
+                            phys + page,
                             VmFlags::Read | VmFlags::Write,
                             0,
                         )
@@ -399,7 +399,7 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
         let mut page_table = virt::KERNEL_PAGE_TABLE.write();
         let length = align_up(*length, PageTableEntry::get_page_size());
         for page in (0..=length).step_by(PageTableEntry::get_page_size()) {
-            page_table.remap_single(*virt + page.into(), *flags, 0);
+            page_table.remap_single::<BuddyAllocator>(*virt + page, *flags, 0);
         }
     }
 

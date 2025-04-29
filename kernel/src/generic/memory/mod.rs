@@ -1,7 +1,7 @@
 use crate::{
     arch::virt::PageTableEntry,
     generic::{
-        boot::{BootInfo, PhysMemoryUsage},
+        boot::BootInfo,
         misc::{self, align_up},
     },
 };
@@ -12,6 +12,7 @@ use core::{
 };
 use phys::{Page, PageNumber, Region};
 
+pub mod init;
 pub mod mmio;
 pub mod phys;
 pub mod slab;
@@ -42,22 +43,20 @@ pub(crate) fn init() {
         .kernel_virt
         .expect("Kernel virtual address should have been set!");
 
+    let mut memory_map = info.memory_map.lock();
+
     // Calculate range of usable memory.
-    let first_page = info
-        .memory_map
+    let first_page = memory_map
         .iter()
-        .filter(|&f| f.usage == PhysMemoryUsage::Free)
-        .map(|x| x.address.inner() / PageTableEntry::get_page_size())
+        .map(|x| x.address().inner() / PageTableEntry::get_page_size())
         .next()
         .unwrap();
 
-    let last_page = info
-        .memory_map
+    let last_page = memory_map
         .iter()
-        .filter(|&f| f.usage == PhysMemoryUsage::Free)
         .map(|x| {
             align_up(
-                x.address.inner() + x.length,
+                x.address().inner() + x.length(),
                 PageTableEntry::get_page_size(),
             ) / PageTableEntry::get_page_size()
         })
@@ -68,32 +67,23 @@ pub(crate) fn init() {
     let mut actual_pages = 0;
 
     // Initialize all regions.
-    for entry in info.memory_map {
-        // Only care about usable memory.
-        // TODO: Also consider reclaimable memory at some point.
-        if entry.usage != PhysMemoryUsage::Free {
-            continue;
-        }
-
-        // Copy this by value so we can do in-place modifications.
-        let mut entry = *entry;
-
+    for entry in memory_map.iter_mut() {
         // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
-        if entry.address.inner() < 1 << 16 {
+        if entry.address().inner() < 1 << 16 {
             print!(
                 "memory: Ignoring 16-bit memory at {:#018X}\n",
-                entry.address.inner()
+                entry.address().inner()
             );
             // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
-            if entry.address.inner() + entry.length >= 1 << 16 {
-                entry.length -= (1 << 16) - entry.address.inner();
-                entry.address = PhysAddr(1 << 16);
+            if entry.address() + entry.length() >= PhysAddr(1 << 16) {
+                entry.set_length(entry.length() - (1 << 16) - entry.address().inner());
+                entry.set_address(PhysAddr(1 << 16));
             } else {
                 continue;
             }
         }
 
-        let num_pages = misc::align_up(entry.length, PageTableEntry::get_page_size())
+        let num_pages = misc::align_up(entry.length(), PageTableEntry::get_page_size())
             / PageTableEntry::get_page_size();
         let meta_size = num_pages * size_of::<Page>();
 
@@ -101,14 +91,14 @@ pub(crate) fn init() {
         if num_pages < 2 {
             print!(
                 "memory: Ignoring single page region at {:#018X}\n",
-                entry.address.inner(),
+                entry.address().inner(),
             );
             continue;
         }
 
         let region = Region::new(
-            (entry.address.inner() + hhdm_address.inner()).into(),
-            entry.address,
+            (entry.address().inner() + hhdm_address.inner()).into(),
+            entry.address(),
             num_pages as PageNumber,
         );
 
@@ -260,6 +250,22 @@ macro_rules! addr_impl {
 
             fn sub(self, rhs: Self) -> Self::Output {
                 Self(self.0 - rhs.0)
+            }
+        }
+
+        impl Add<usize> for $ty {
+            type Output = Self;
+
+            fn add(self, rhs: usize) -> Self::Output {
+                Self(self.0 + rhs)
+            }
+        }
+
+        impl Sub<usize> for $ty {
+            type Output = Self;
+
+            fn sub(self, rhs: usize) -> Self::Output {
+                Self(self.0 - rhs)
             }
         }
     };

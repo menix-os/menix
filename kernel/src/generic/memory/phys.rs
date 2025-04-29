@@ -4,7 +4,7 @@
 use super::{PhysAddr, VirtAddr};
 use crate::{
     arch::virt::PageTableEntry,
-    generic::{self, boot::PhysMemoryUsage, memory::virt::PageTable, misc::align_up},
+    generic::{self, memory::virt::PageTable, misc::align_up},
 };
 use alloc::{alloc::AllocError, slice};
 use bitflags;
@@ -15,6 +15,18 @@ use core::{
     ptr::{NonNull, null_mut, write_bytes},
 };
 use spin::Mutex;
+
+pub trait PageAllocator {
+    /// Allocates `pages` amount of consecutive pages.
+    fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError>;
+
+    /// Deallocates a region of `pages` amount of consecutive pages.
+    ///
+    /// # Safety
+    ///
+    /// Deallocating arbitrary physical addresses is inherently unsafe, since it can cause the kernel to corrupt.
+    unsafe fn dealloc(addr: PhysAddr, pages: usize);
+}
 
 /// Allocates `bytes` amount in bytes of consecutive pages.
 pub fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
@@ -29,19 +41,25 @@ pub fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocErr
     return result;
 }
 
-/// Allocates `bytes` amount in bytes of consecutive pages.
-pub fn alloc_pages(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
-    if pages == 0 {
-        return Err(AllocError);
+pub struct BuddyAllocator;
+impl PageAllocator for BuddyAllocator {
+    fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
+        if pages == 0 {
+            return Err(AllocError);
+        }
+
+        let block_order = get_order(pages);
+        let result = alloc(block_order, flags);
+
+        return result;
     }
 
-    let block_order = get_order(pages);
-    let result = alloc(block_order, flags);
-
-    return result;
+    unsafe fn dealloc(addr: PhysAddr, pages: usize) {
+        todo!()
+    }
 }
 
-pub fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
+fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
     if order > MAX_ORDER {
         return Err(AllocError);
     }
@@ -93,15 +111,6 @@ pub fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
     }
 
     Ok(addr)
-}
-
-/// Deallocates a region of `pages` amount of consecutive pages.
-///
-/// # Safety
-///
-/// Deallocating arbitrary physical addresses is inherently unsafe, since it can cause the kernel to crash.
-pub unsafe fn dealloc_pages(addr: PhysAddr, pages: usize) {
-    // TODO
 }
 
 pub unsafe fn dealloc(addr: PhysAddr, order: Order) {
@@ -258,14 +267,15 @@ const PAGE_USED: PageNumber = PageNumber::MAX;
 
 /// Metadata about a physical page.
 /// Keep this structure as small as possible, every single physical page has one!
-#[repr(packed)]
 #[derive(Debug)]
 pub struct Page {
     prev: PageNumber,
     next: PageNumber,
     order: Order,
+    _pad: u32,
 }
 static_assert!(size_of::<Page>() <= 48);
+static_assert!(PageTableEntry::get_page_size() % size_of::<Page>() == 0);
 
 impl Page {
     /// Gets the page number of this page relative to the given region.

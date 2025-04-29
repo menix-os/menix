@@ -100,14 +100,6 @@ impl Process {
 
                     // TODO: Allocate memory.
                     let phys = todo!();
-
-                    result.page_table.map_range(
-                        phdr.p_vaddr.into(),
-                        phys,
-                        flags,
-                        0,
-                        phdr.p_memsz as usize,
-                    );
                 }
                 // Unknown or unhandled type. Do nothing.
                 _ => (),

@@ -29,6 +29,8 @@ pub mod generic;
 #[unsafe(no_mangle)]
 pub(crate) fn main() -> ! {
     generic::cpu::setup_bsp();
+    generic::memory::init::init();
+
     // TODO: Run early init calls.
 
     // Initialize allocators.

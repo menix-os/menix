@@ -1,4 +1,4 @@
-use super::phys::AllocFlags;
+use super::phys::{AllocFlags, BuddyAllocator, PageAllocator};
 use super::{HHDM_START, PhysAddr, VirtAddr, phys};
 use crate::arch::irq::InterruptFrame;
 use crate::arch::{self, virt::PageTableEntry};
@@ -68,9 +68,9 @@ pub struct PageTable<const K: bool = false> {
 
 impl PageTable<false> {
     /// Creates a new page table for a user process.
-    pub fn new_user(max_level: usize) -> Self {
+    pub fn new_user<P: PageAllocator>(max_level: usize) -> Self {
         Self {
-            head: Mutex::new(phys::alloc_pages(1, AllocFlags::Zeroed).unwrap()),
+            head: Mutex::new(P::alloc(1, AllocFlags::Zeroed).unwrap()),
             max_level,
         }
     }
@@ -84,9 +84,9 @@ impl PageTable<true> {
         }
     }
 
-    fn new_kernel(max_level: usize) -> Self {
+    fn new_kernel<P: PageAllocator>(max_level: usize) -> Self {
         Self {
-            head: Mutex::new(phys::alloc_pages(1, AllocFlags::Zeroed).unwrap()),
+            head: Mutex::new(P::alloc(1, AllocFlags::Zeroed).unwrap()),
             max_level,
         }
     }
@@ -106,7 +106,7 @@ impl PageTable<true> {
         let virt = KERNEL_MMAP_BASE_ADDR.fetch_add(aligned_len, Ordering::SeqCst);
 
         // Map memory.
-        self.map_range(VirtAddr(virt), phys, flags, level, aligned_len);
+        self.map_range::<BuddyAllocator>(VirtAddr(virt), phys, flags, level, aligned_len);
         return Ok(virt as *mut u8);
     }
 }
@@ -128,7 +128,7 @@ impl<const K: bool> PageTable<K> {
     /// Allocates new levels if necessary and requested.
     /// `target_level`: The level to get for the PTE. Use 0 if you're unsure.
     /// `length`: The amount of bytes this PTE should be able to fit. This helps allocate more efficient entries.
-    pub fn get_pte(
+    pub fn get_pte<P: PageAllocator>(
         &self,
         virt: VirtAddr,
         allocate: bool,
@@ -190,7 +190,7 @@ impl<const K: bool> PageTable<K> {
                     }
 
                     // Allocate a new level.
-                    let next_head = phys::alloc_pages(1, AllocFlags::Zeroed).unwrap().as_hhdm();
+                    let next_head = P::alloc(1, AllocFlags::Zeroed).unwrap().as_hhdm();
 
                     // ptr::byte_sub() doesn't allow taking higher half addresses because it doesn't fit in an isize.
                     *pte = PageTableEntry::new(
@@ -214,14 +214,14 @@ impl<const K: bool> PageTable<K> {
 
     /// Establishes a new mapping in this address space.
     /// Fails if the mapping already exists. To overwrite a mapping, use [`Self::remap_single`] instead.
-    pub fn map_single(
+    pub fn map_single<P: PageAllocator>(
         &mut self,
         virt: VirtAddr,
         phys: PhysAddr,
         flags: VmFlags,
         level: usize,
     ) -> Result<(), PageTableError> {
-        let pte = self.get_pte(virt, true, level)?;
+        let pte = self.get_pte::<P>(virt, true, level)?;
 
         *pte = PageTableEntry::new(
             phys,
@@ -236,13 +236,13 @@ impl<const K: bool> PageTable<K> {
     }
 
     /// Changes the permissions on a mapping.
-    pub fn remap_single(
+    pub fn remap_single<P: PageAllocator>(
         &mut self,
         virt: VirtAddr,
         flags: VmFlags,
         level: usize,
     ) -> Result<(), PageTableError> {
-        let pte = self.get_pte(virt, false, level)?;
+        let pte = self.get_pte::<P>(virt, false, level)?;
 
         *pte = PageTableEntry::new(
             pte.address(),
@@ -257,7 +257,7 @@ impl<const K: bool> PageTable<K> {
     }
 
     /// Maps a range of consecutive memory in this address space.
-    pub fn map_range(
+    pub fn map_range<P: PageAllocator>(
         &mut self,
         virt: VirtAddr,
         phys: PhysAddr,
@@ -271,7 +271,7 @@ impl<const K: bool> PageTable<K> {
             1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
 
         for offset in (0..length).step_by(step) {
-            self.map_single(
+            self.map_single::<P>(
                 VirtAddr(virt.0 + offset),
                 PhysAddr(phys.0 + offset),
                 flags,
@@ -295,7 +295,7 @@ impl<const K: bool> PageTable<K> {
             1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
 
         for offset in (0..length).step_by(step) {
-            self.remap_single(VirtAddr(virt.0 + offset), flags, level)?;
+            self.remap_single::<BuddyAllocator>(VirtAddr(virt.0 + offset), flags, level)?;
         }
         return Ok(());
     }
@@ -312,7 +312,7 @@ impl<const K: bool> PageTable<K> {
 
     /// Checks if the address (may be unaligned) is mapped in this address space.
     pub fn is_mapped(&self, virt: VirtAddr, level: usize) -> bool {
-        let pte = self.get_pte(virt, false, level);
+        let pte = self.get_pte::<BuddyAllocator>(virt, false, level);
         match pte {
             Ok(x) => x.is_present(),
             Err(_) => {
@@ -331,7 +331,7 @@ pub fn init(
     kernel_phys: PhysAddr,
     kernel_virt: VirtAddr,
 ) {
-    let mut table = PageTable::new_kernel(paging_level);
+    let mut table = PageTable::new_kernel::<BuddyAllocator>(paging_level);
 
     unsafe {
         let text_start = VirtAddr(&raw const LD_TEXT_START as usize);
@@ -343,7 +343,7 @@ pub fn init(
         let kernel_start = VirtAddr(&raw const LD_KERNEL_START as usize);
 
         table
-            .map_range(
+            .map_range::<BuddyAllocator>(
                 text_start,
                 PhysAddr(text_start.0 - kernel_start.0 + kernel_phys.0),
                 VmFlags::Read | VmFlags::Exec,
@@ -354,7 +354,7 @@ pub fn init(
         print!("virt: Loaded text segment at {:#018X}.\n", text_start.0);
 
         table
-            .map_range(
+            .map_range::<BuddyAllocator>(
                 rodata_start,
                 PhysAddr(rodata_start.0 - kernel_start.0 + kernel_phys.0),
                 VmFlags::Read,
@@ -365,7 +365,7 @@ pub fn init(
         print!("virt: Loaded rodata segment at {:#018X}.\n", rodata_start.0);
 
         table
-            .map_range(
+            .map_range::<BuddyAllocator>(
                 data_start,
                 PhysAddr(data_start.0 - kernel_start.0 + kernel_phys.0),
                 VmFlags::Read | VmFlags::Write,
@@ -376,7 +376,7 @@ pub fn init(
         print!("virt: Loaded data segment at {:#018X}.\n", data_start.0);
 
         table
-            .map_range(
+            .map_range::<BuddyAllocator>(
                 hhdm_start,
                 PhysAddr(0),
                 VmFlags::Read | VmFlags::Write,

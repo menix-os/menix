@@ -2,7 +2,7 @@
 
 use super::{
     VirtAddr,
-    phys::{self, AllocFlags},
+    phys::{self, AllocFlags, BuddyAllocator, PageAllocator},
 };
 use crate::{
     arch::virt::PageTableEntry,
@@ -53,7 +53,7 @@ impl Slab {
             let available_size = (PageTableEntry::get_page_size()) - offset;
 
             // Allocate memory for this slab.
-            let mem = phys::alloc_pages(1, AllocFlags::Zeroed).expect("Out of memory");
+            let mem = BuddyAllocator::alloc(1, AllocFlags::Zeroed).expect("Out of memory");
             let mut head = mem.as_hhdm::<*mut ()>();
 
             // Get a reference to the start of the buffer.
@@ -115,9 +115,10 @@ unsafe impl GlobalAlloc for SlabAllocator {
         let slab = find_size(layout.size());
         if let Some(s) = slab {
             // The allocation fits within our defined slabs.
-            let result = s.alloc();
-            assert!(result as usize % layout.align() == 0);
-            return result;
+            // TODO: This is broken.
+            // let result = s.alloc();
+            // assert!(result as usize % layout.align() == 0);
+            // return result;
         }
 
         // The allocation won't fit within our defined slabs.
@@ -126,7 +127,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
             / PageTableEntry::get_page_size();
 
         // Allocate the pages plus an additional page for metadata.
-        match phys::alloc_pages(num_pages + 1, AllocFlags::Zeroed) {
+        match BuddyAllocator::alloc(num_pages + 1, AllocFlags::Zeroed) {
             Ok(mem) => unsafe {
                 // Convert the physical address to a pointer.
                 let ret: *mut u8 = mem.as_hhdm();
@@ -152,7 +153,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
         if ptr as usize == align_down(ptr as usize, PageTableEntry::get_page_size()) {
             unsafe {
                 let info = ptr.sub(PageTableEntry::get_page_size()) as *mut SlabInfo;
-                phys::dealloc_pages(info.into(), (*info).num_pages);
+                BuddyAllocator::dealloc(info.into(), (*info).num_pages);
             }
         } else {
             unsafe {

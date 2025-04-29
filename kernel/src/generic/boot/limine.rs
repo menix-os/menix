@@ -1,6 +1,6 @@
 // Boot using the Limine protocol.
 
-use super::{BootFile, BootInfo, PhysMemory, PhysMemoryUsage};
+use super::{BootFile, BootInfo, PhysMemory};
 use crate::{
     arch,
     generic::{
@@ -11,6 +11,7 @@ use crate::{
 };
 use core::ptr::slice_from_raw_parts;
 use limine::{BaseRevision, memory_map::EntryType, paging::Mode, request::*};
+use spin::Mutex;
 
 #[used]
 #[unsafe(link_section = ".boot.init")]
@@ -57,7 +58,7 @@ pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 #[unsafe(link_section = ".boot")]
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 
-static mut MEMMAP_BUF: [PhysMemory; 128] = [PhysMemory::new(); 128];
+static mut MEMMAP_BUF: [PhysMemory; 128] = [PhysMemory::empty(); 128];
 static mut FILE_BUF: [BootFile; 128] = [BootFile::new(); 128];
 
 #[unsafe(no_mangle)]
@@ -84,22 +85,18 @@ extern "C" fn _start() -> ! {
         // in the boot process since there is no dynamic memory allocator available yet.
         // 128 entries should be enough for all use cases.
         let entries = MEMMAP_REQUEST.get_response().unwrap().entries();
-        for (i, entry) in entries.iter().enumerate() {
-            unsafe {
+        let mut total_entries = 0;
+        entries
+            .iter()
+            .filter(|x| x.entry_type == EntryType::USABLE)
+            .enumerate()
+            .for_each(|(i, entry)| unsafe {
                 MEMMAP_BUF[i] = PhysMemory {
                     length: entry.length as usize,
-                    usage: match entry.entry_type {
-                        EntryType::USABLE => PhysMemoryUsage::Free,
-                        EntryType::BOOTLOADER_RECLAIMABLE => PhysMemoryUsage::Reclaimable,
-                        EntryType::RESERVED => PhysMemoryUsage::Reserved,
-                        EntryType::FRAMEBUFFER => PhysMemoryUsage::Reserved,
-                        EntryType::EXECUTABLE_AND_MODULES => PhysMemoryUsage::Kernel,
-                        _ => PhysMemoryUsage::Unknown,
-                    },
                     address: entry.base.into(),
                 };
-            }
-        }
+                total_entries += 1;
+            });
 
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
@@ -133,7 +130,7 @@ extern "C" fn _start() -> ! {
         }
 
         unsafe {
-            info.memory_map = &MEMMAP_BUF[0..entries.len()];
+            info.memory_map = Mutex::new(&mut MEMMAP_BUF[0..total_entries]);
         }
         info.kernel_phys = Some(kernel_addr.physical_base().into());
         info.kernel_virt = Some(kernel_addr.virtual_base().into());
