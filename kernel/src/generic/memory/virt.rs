@@ -1,5 +1,6 @@
-use super::phys::{AllocFlags, BuddyAllocator, PageAllocator};
-use super::{HHDM_START, PhysAddr, VirtAddr, phys};
+use super::buddy::BuddyAllocator;
+use super::page::{AllocFlags, PageAllocator};
+use super::{HHDM_START, PhysAddr, VirtAddr, buddy};
 use crate::arch::irq::InterruptFrame;
 use crate::arch::{self, virt::PageTableEntry};
 use crate::generic::boot::BootInfo;

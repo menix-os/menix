@@ -1,3 +1,6 @@
+use buddy::{PageNumber, Region};
+use page::Page;
+
 use crate::{
     arch::virt::PageTableEntry,
     generic::{
@@ -10,11 +13,11 @@ use core::{
     ptr::{self, NonNull},
     sync::atomic::{AtomicUsize, Ordering},
 };
-use phys::{Page, PageNumber, Region};
 
+pub mod buddy;
 pub mod init;
 pub mod mmio;
-pub mod phys;
+pub mod page;
 pub mod slab;
 pub mod virt;
 

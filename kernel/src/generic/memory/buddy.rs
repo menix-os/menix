@@ -1,10 +1,17 @@
 //! Physical page allocation.
 //! This allocator uses the buddy algorithm.
 
-use super::{PhysAddr, VirtAddr};
+use super::{
+    PhysAddr, VirtAddr,
+    page::{Page, PageAllocator},
+};
 use crate::{
     arch::virt::PageTableEntry,
-    generic::{self, memory::virt::PageTable, misc::align_up},
+    generic::{
+        self,
+        memory::{page::AllocFlags, virt::PageTable},
+        misc::align_up,
+    },
 };
 use alloc::{alloc::AllocError, slice};
 use bitflags;
@@ -15,18 +22,6 @@ use core::{
     ptr::{NonNull, null_mut, write_bytes},
 };
 use spin::Mutex;
-
-pub trait PageAllocator {
-    /// Allocates `pages` amount of consecutive pages.
-    fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError>;
-
-    /// Deallocates a region of `pages` amount of consecutive pages.
-    ///
-    /// # Safety
-    ///
-    /// Deallocating arbitrary physical addresses is inherently unsafe, since it can cause the kernel to corrupt.
-    unsafe fn dealloc(addr: PhysAddr, pages: usize);
-}
 
 /// Allocates `bytes` amount in bytes of consecutive pages.
 pub fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
@@ -130,20 +125,6 @@ pub fn get_order(pages: usize) -> Order {
 }
 
 const MAX_ORDER: Order = 20;
-
-bitflags::bitflags! {
-    pub struct AllocFlags: usize {
-        /// Only consider physical memory below 4GiB.
-        const Kernel32 = 1 << 0;
-        /// Allocated memory has to be initialized to zero.
-        const Zeroed = 1 << 2;
-    }
-}
-
-pub enum Test {
-    VarA,
-    VarB,
-}
 
 // TODO: Use IRQ disabling mutex instead.
 unsafe impl Send for Region {}
@@ -264,18 +245,6 @@ impl Region {
 
 /// Used to represent a used page.
 const PAGE_USED: PageNumber = PageNumber::MAX;
-
-/// Metadata about a physical page.
-/// Keep this structure as small as possible, every single physical page has one!
-#[derive(Debug)]
-pub struct Page {
-    prev: PageNumber,
-    next: PageNumber,
-    order: Order,
-    _pad: u32,
-}
-static_assert!(size_of::<Page>() <= 48);
-static_assert!(PageTableEntry::get_page_size() % size_of::<Page>() == 0);
 
 impl Page {
     /// Gets the page number of this page relative to the given region.

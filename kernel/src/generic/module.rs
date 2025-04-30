@@ -9,7 +9,8 @@ use crate::{
         cmdline::CmdLine,
         elf::{self, ElfHashTable, ElfRela, ElfSym},
         memory::{
-            phys::{self, AllocFlags, BuddyAllocator},
+            buddy::BuddyAllocator,
+            page::{AllocFlags, PageAllocator},
             virt::{self},
         },
         misc::{align_down, align_up},
@@ -18,7 +19,6 @@ use crate::{
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{
     ffi::CStr,
-    num::NonZero,
     ptr::null,
     slice,
     sync::atomic::{AtomicUsize, Ordering},
@@ -211,7 +211,7 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                 }
 
                 // Allocate physical memory.
-                let phys = phys::alloc_bytes(memsz as usize, AllocFlags::Zeroed)
+                let phys = BuddyAllocator::alloc_bytes(memsz as usize, AllocFlags::Zeroed)
                     .map_err(|_| ModuleLoadError::AllocFailed)?;
 
                 let mut page_table = virt::KERNEL_PAGE_TABLE.write();

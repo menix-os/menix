@@ -2,7 +2,8 @@
 
 use super::{
     VirtAddr,
-    phys::{self, AllocFlags, BuddyAllocator, PageAllocator},
+    buddy::BuddyAllocator,
+    page::{AllocFlags, PageAllocator},
 };
 use crate::{
     arch::virt::PageTableEntry,

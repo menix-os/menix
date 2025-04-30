@@ -1,16 +1,15 @@
 //! Early memory setup and allocator.
 
-use core::sync::atomic::{AtomicUsize, Ordering};
-
 use super::{
     PhysAddr,
-    phys::{AllocFlags, Page, PageAllocator},
+    page::{AllocFlags, Page, PageAllocator},
 };
 use crate::{
     arch::virt::PageTableEntry,
     generic::{boot::BootInfo, misc::align_up},
 };
 use alloc::alloc::AllocError;
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// Global array that spans all usable physical memory.
 /// It contains important metadata about a certain page.
