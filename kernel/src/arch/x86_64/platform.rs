@@ -8,8 +8,8 @@ use crate::generic::{
 };
 use core::mem::offset_of;
 use uacpi::{
-    acpi_hpet, uacpi_handle, uacpi_size, uacpi_status, uacpi_status_UACPI_STATUS_OK, uacpi_table,
-    uacpi_u8, uacpi_u16, uacpi_u32,
+    UACPI_STATUS_OK, acpi_hpet, uacpi_handle, uacpi_size, uacpi_status, uacpi_table, uacpi_u8,
+    uacpi_u16, uacpi_u32,
 };
 
 // TODO: Use IoSpace
@@ -69,7 +69,7 @@ impl ClockSource for Hpet {
         let mut table = uacpi_table::default();
 
         if unsafe { uacpi::uacpi_table_find_by_signature(c"HPET".as_ptr(), &raw mut table) }
-            != uacpi_status_UACPI_STATUS_OK
+            != UACPI_STATUS_OK
         {
             return Err(ClockError::Unavailable);
         }
@@ -114,7 +114,7 @@ extern "C" fn uacpi_kernel_io_read8(
     unsafe {
         (*out_value) = asm::read8((arg1 as usize + offset) as u16);
     }
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -126,7 +126,7 @@ extern "C" fn uacpi_kernel_io_read16(
     unsafe {
         (*out_value) = asm::read16((arg1 as usize + offset) as u16);
     }
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -138,7 +138,7 @@ extern "C" fn uacpi_kernel_io_read32(
     unsafe {
         (*out_value) = asm::read32((arg1 as usize + offset) as u16);
     }
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -150,7 +150,7 @@ extern "C" fn uacpi_kernel_io_write8(
     unsafe {
         asm::write8((arg1 as usize + offset) as u16, in_value);
     }
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -162,7 +162,7 @@ extern "C" fn uacpi_kernel_io_write16(
     unsafe {
         asm::write16((arg1 as usize + offset) as u16, in_value);
     }
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -174,5 +174,5 @@ extern "C" fn uacpi_kernel_io_write32(
     unsafe {
         asm::write32((arg1 as usize + offset) as u16, in_value);
     }
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }

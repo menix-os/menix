@@ -28,9 +28,9 @@ unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_add
     match super::RSDP_ADDRESS.get() {
         Some(x) => unsafe {
             *out_rsdp_address = (*x).into();
-            return uacpi_status_UACPI_STATUS_OK;
+            return UACPI_STATUS_OK;
         },
-        None => return uacpi_status_UACPI_STATUS_INTERNAL_ERROR,
+        None => return UACPI_STATUS_INTERNAL_ERROR,
     }
 }
 
@@ -62,8 +62,8 @@ extern "C" fn uacpi_kernel_unmap(addr: *mut c_void, len: uacpi_size) {
 extern "C" fn uacpi_kernel_log(arg1: uacpi_log_level, arg2: *const uacpi_char) {
     let msg = unsafe { CStr::from_ptr(arg2) }.to_str().unwrap();
     match arg1 {
-        uacpi_log_level_UACPI_LOG_WARN => warn!("acpi: {}", msg),
-        uacpi_log_level_UACPI_LOG_ERROR => error!("acpi: {}", msg),
+        UACPI_LOG_WARN => warn!("acpi: {}", msg),
+        UACPI_LOG_ERROR => error!("acpi: {}", msg),
         _ => print!("acpi: {}", msg),
     }
 }
@@ -74,7 +74,7 @@ extern "C" fn uacpi_kernel_pci_device_open(
     out_handle: *mut uacpi_handle,
 ) -> uacpi_status {
     // TODO
-    return uacpi_status_UACPI_STATUS_UNIMPLEMENTED;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 #[unsafe(no_mangle)]
@@ -142,7 +142,7 @@ extern "C" fn uacpi_kernel_io_map(
     len: uacpi_size,
     out_handle: *mut uacpi_handle,
 ) -> uacpi_status {
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -219,7 +219,7 @@ extern "C" fn uacpi_kernel_get_thread_id() -> uacpi_thread_id {
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_acquire_mutex(arg1: uacpi_handle, arg2: uacpi_u16) -> uacpi_status {
     // TODO
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -257,7 +257,7 @@ extern "C" fn uacpi_kernel_install_interrupt_handler(
     out_irq_handle: *mut uacpi_handle,
 ) -> uacpi_status {
     // TODO
-    return uacpi_status_UACPI_STATUS_UNIMPLEMENTED;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 #[unsafe(no_mangle)]
@@ -266,7 +266,7 @@ extern "C" fn uacpi_kernel_uninstall_interrupt_handler(
     irq_handle: uacpi_handle,
 ) -> uacpi_status {
     // TODO
-    return uacpi_status_UACPI_STATUS_UNIMPLEMENTED;
+    return UACPI_STATUS_UNIMPLEMENTED;
 }
 
 #[unsafe(no_mangle)]
@@ -298,11 +298,11 @@ extern "C" fn uacpi_kernel_schedule_work(
     ctx: uacpi_handle,
 ) -> uacpi_status {
     // TODO
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_wait_for_work_completion() -> uacpi_status {
     // TODO
-    return uacpi_status_UACPI_STATUS_OK;
+    return UACPI_STATUS_OK;
 }

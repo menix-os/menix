@@ -33,7 +33,7 @@ pub fn init() {
         None => panic!("No RSDP available, unable to initialize the ACPI subsystem!"),
     };
 
-    let mut uacpi_status = uacpi::uacpi_status_UACPI_STATUS_OK;
+    let mut uacpi_status = uacpi::UACPI_STATUS_OK;
 
     // Get an early table window so we can initialize e.g. HPET and MADT.
     let mut early_mem = Box::<[u8]>::new_uninit_slice(4096);
@@ -43,7 +43,7 @@ pub fn init() {
             early_mem.len(),
         )
     };
-    if uacpi_status != uacpi_status_UACPI_STATUS_OK {
+    if uacpi_status != UACPI_STATUS_OK {
         error!(
             "acpi: Early table access failed with error {}!\n",
             uacpi_status
@@ -56,7 +56,7 @@ pub fn init() {
 
     print!("acpi: Initializing...\n");
     uacpi_status = unsafe { uacpi::uacpi_initialize(0) };
-    if uacpi_status != uacpi_status_UACPI_STATUS_OK {
+    if uacpi_status != UACPI_STATUS_OK {
         error!(
             "acpi: Initialization failed with error \"{}\"!\n",
             uacpi_status
@@ -68,7 +68,7 @@ pub fn init() {
 
     uacpi_status = unsafe { uacpi::uacpi_namespace_load() };
 
-    if uacpi_status != uacpi_status_UACPI_STATUS_OK {
+    if uacpi_status != UACPI_STATUS_OK {
         error!(
             "acpi: Namespace loading failed with error \"{}\"!\n",
             uacpi_status
