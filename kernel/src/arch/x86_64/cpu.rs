@@ -10,7 +10,6 @@ use crate::{
         clock,
         cpu::{CpuData, LD_PERCPU_START},
     },
-    per_cpu,
 };
 use crate::{
     arch::{self, x86_64::asm::cpuid},
@@ -44,10 +43,8 @@ pub struct ArchPerCpu {
     pub can_smap: bool,
 }
 
-per_cpu!(
-    CPU_DATA,
-    ArchPerCpu,
-    ArchPerCpu {
+thread_local!(
+    pub(crate) static CPU_DATA: ArchPerCpu = ArchPerCpu {
         gdt: Gdt::new(),
         tss: TaskStateSegment::new(),
         irq_handlers: [None; 256],
@@ -58,7 +55,7 @@ per_cpu!(
         fpu_save: asm::fxsave,
         fpu_restore: asm::fxrstor,
         can_smap: false,
-    }
+    };
 );
 
 /// Returns the per-CPU data of this CPU.

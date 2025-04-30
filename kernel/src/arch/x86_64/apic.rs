@@ -5,14 +5,11 @@ use super::{
     consts,
     virt::PageTableEntry,
 };
-use crate::{
-    generic::{
-        clock,
-        cpu::CpuData,
-        irq::{IpiTarget, IrqController, IrqError},
-        memory::PhysAddr,
-    },
-    per_cpu,
+use crate::generic::{
+    clock,
+    cpu::CpuData,
+    irq::{IpiTarget, IrqController, IrqError},
+    memory::PhysAddr,
 };
 
 #[derive(Debug)]
@@ -23,14 +20,12 @@ pub struct LocalApic {
     ticks_per_10ms: u32,
 }
 
-per_cpu!(
-    LAPIC,
-    LocalApic,
-    LocalApic {
+thread_local!(
+    pub(crate) static LAPIC: LocalApic = LocalApic {
         has_x2apic: false,
         lapic_addr: PhysAddr::null(),
-        ticks_per_10ms: 0
-    }
+        ticks_per_10ms: 0,
+    };
 );
 
 impl LocalApic {

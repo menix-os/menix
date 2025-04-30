@@ -6,7 +6,10 @@ use super::{
 };
 use crate::arch::{self};
 use alloc::{boxed::Box, sync::Arc};
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{
+    ptr::null_mut,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 use spin::RwLock;
 
 /// Common processor-local information.
@@ -24,8 +27,8 @@ pub struct CpuData {
     pub online: bool,
     /// Whether this CPU is present.
     pub present: bool,
-    /// Current thread running on this CPU.
-    pub scheduler: Scheduler,
+    /// Current task running on this CPU.
+    pub task: *mut Task,
 }
 
 impl CpuData {
@@ -89,25 +92,15 @@ impl<T> PerCpuData<T> {
 // This variable must come first, so put it in a special section that is guaranteed to be put somewhere before `.percpu`.
 #[used]
 #[unsafe(link_section = ".percpu.init")]
-pub(crate) static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
+pub static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
     this: &raw const LD_PERCPU_START as *mut CpuData,
     id: 0,
     kernel_stack: VirtAddr::null(),
     user_stack: VirtAddr::null(),
     online: false,
     present: false,
-    scheduler: Scheduler::new(),
+    task: null_mut(),
 });
-
-/// For regular per-CPU variables.
-#[macro_export]
-macro_rules! per_cpu {
-    ($name:ident, $ty:ty, $value:expr) => {
-        #[unsafe(link_section = ".percpu")]
-        pub(crate) static $name: $crate::generic::cpu::PerCpuData<$ty> =
-            $crate::generic::cpu::PerCpuData::new($value);
-    };
-}
 
 /// Prepares per-CPU data for the boot CPU.
 #[deny(dead_code)]
