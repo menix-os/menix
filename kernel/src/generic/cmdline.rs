@@ -102,7 +102,7 @@ impl<'a> CmdLine<'a> {
             "true" | "yes" | "on" | "1" | "" /* empty string */ => Some(true),
             "false" | "no" | "off" | "0" => Some(false),
             value => {
-                crate::warn!("Invalid boolean value for {}: {:?}\n", name, value);
+                warn!("Invalid boolean value for {}: {:?}", name, value);
                 None
             }
         }
@@ -114,7 +114,7 @@ impl<'a> CmdLine<'a> {
         match value.parse::<usize>() {
             Ok(value) => Some(value),
             Err(_) => {
-                crate::warn!("Invalid usize value for {}: {:?}\n", name, value);
+                warn!("Invalid usize value for {}: {:?}", name, value);
                 None
             }
         }

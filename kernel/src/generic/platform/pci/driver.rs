@@ -36,7 +36,7 @@ impl PciDriver {
 
         drivers.insert(self.name, self);
 
-        print!("pci: Registered new driver \"{}\".\n", self.name);
+        log!("pci: Registered new driver \"{}\"", self.name);
 
         return Ok(());
     }

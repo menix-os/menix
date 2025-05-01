@@ -8,13 +8,13 @@ fn panic_handler(info: &PanicInfo) -> ! {
     // Force unlock output in cases like panics during printing.
     unsafe { GLOBAL_LOGGERS.force_unlock() };
 
-    error!("Kernel panic - Environment is unsound!\n");
+    error!("Kernel panic - Environment is unsound!");
 
     if let Some(location) = info.location() {
-        error!("at {}\n", location);
+        error!("at {}", location);
     }
 
-    error!("\"{}\"\n", info.message());
+    error!("\"{}\"", info.message());
 
     loop {}
 }

@@ -1,12 +1,12 @@
+use alloc::alloc::AllocError;
 use buddy::{PageNumber, Region};
-use page::Page;
+use bump::BumpAllocator;
+use page::{AllocFlags, Page, PageAllocator};
+use virt::{PageTable, VmFlags, VmLevel};
 
 use crate::{
-    arch::virt::PageTableEntry,
-    generic::{
-        boot::BootInfo,
-        misc::{self, align_up},
-    },
+    arch,
+    generic::{boot::BootInfo, util::align_up},
 };
 use core::{
     ops::{Add, Sub},
@@ -15,7 +15,7 @@ use core::{
 };
 
 pub mod buddy;
-pub mod init;
+pub mod bump;
 pub mod mmio;
 pub mod page;
 pub mod slab;
@@ -23,35 +23,70 @@ pub mod virt;
 
 static HHDM_START: AtomicUsize = AtomicUsize::new(0);
 
-/// Initializes all memory management. Prior to this call, no allocations may be made.
+/// Global array that spans all usable physical memory.
+/// It contains important metadata about a certain page.
+/// This is virtually continuous, but not completely mapped in.
+static PAGE_METADATA: &[Page] = &[];
+
+// Symbols defined in the linker script so we can map ourselves in our page table.
+unsafe extern "C" {
+    unsafe static LD_KERNEL_START: u8;
+    unsafe static LD_KERNEL_END: u8;
+    unsafe static LD_TEXT_START: u8;
+    unsafe static LD_TEXT_END: u8;
+    unsafe static LD_RODATA_START: u8;
+    unsafe static LD_RODATA_END: u8;
+    unsafe static LD_DATA_START: u8;
+    unsafe static LD_DATA_END: u8;
+}
+
+/// Bootstraps the memory allocators and kernel virtual page table.
+///
+/// # Safety
+///
+/// Must be called as soon as control is handed to [`crate::main`] or the system won't function!
 #[deny(dead_code)]
-pub(crate) fn init() {
+pub unsafe fn init() {
     let info = BootInfo::get();
-
-    let hhdm_address = info
-        .hhdm_address
-        .expect("HHDM address should have been set!");
-
-    HHDM_START.store(hhdm_address.inner(), Ordering::Relaxed);
-
-    let paging_level = info
-        .paging_level
-        .expect("Paging level should have been set!");
 
     let kernel_phys = info
         .kernel_phys
-        .expect("Kernel physical address should have been set!");
+        .expect("Kernel physical address should have been set");
 
     let kernel_virt = info
         .kernel_virt
-        .expect("Kernel virtual address should have been set!");
+        .expect("Kernel virtual address should have been set");
+
+    let paging_level = info
+        .paging_level
+        .expect("Paging level should have been set");
+
+    let hhdm_address = info
+        .hhdm_address
+        .expect("HHDM address should have been set");
+
+    HHDM_START.store(hhdm_address.value(), Ordering::Relaxed);
 
     let mut memory_map = info.memory_map.lock();
+    memory_map.iter().for_each(|f| {
+        log!(
+            "memory: [{:#018x} - {:#018x}]",
+            f.address().0,
+            f.address().0 + f.length() - 1
+        )
+    });
+
+    // Find the highest usable memory.
+    let highest_addr = memory_map
+        .iter()
+        .map(|x| (x.address().value() + x.length()))
+        .max()
+        .unwrap();
 
     // Calculate range of usable memory.
     let first_page = memory_map
         .iter()
-        .map(|x| x.address().inner() / PageTableEntry::get_page_size())
+        .map(|x| x.address().value() / arch::virt::get_page_size(VmLevel::L1))
         .next()
         .unwrap();
 
@@ -59,12 +94,98 @@ pub(crate) fn init() {
         .iter()
         .map(|x| {
             align_up(
-                x.address().inner() + x.length(),
-                PageTableEntry::get_page_size(),
-            ) / PageTableEntry::get_page_size()
+                x.address().value() + x.length(),
+                arch::virt::get_page_size(VmLevel::L1),
+            ) / arch::virt::get_page_size(VmLevel::L1)
         })
         .last()
         .unwrap();
+
+    // Find the largest region there is.
+    let bump_region = memory_map
+        .iter()
+        .max_by(|x, y| x.length().cmp(&y.length()))
+        .unwrap();
+
+    // Use that to bootstrap the bump allocator.
+    bump::BUMP_PN.store(
+        align_up(
+            bump_region.address().value(),
+            arch::virt::get_page_size(VmLevel::L1),
+        ),
+        Ordering::Relaxed,
+    );
+
+    // Now we can start making page allocations!
+    // ------------------------------------
+
+    // Remap the kernel in our own page table.
+    unsafe {
+        log!("memory: Using {}-level paging for page table", paging_level);
+        let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level);
+
+        let text_start = VirtAddr(&raw const LD_TEXT_START as usize);
+        let text_end = VirtAddr(&raw const LD_TEXT_END as usize);
+        let rodata_start = VirtAddr(&raw const LD_RODATA_START as usize);
+        let rodata_end = VirtAddr(&raw const LD_RODATA_END as usize);
+        let data_start = VirtAddr(&raw const LD_DATA_START as usize);
+        let data_end = VirtAddr(&raw const LD_DATA_END as usize);
+        let kernel_start = VirtAddr(&raw const LD_KERNEL_START as usize);
+
+        table
+            .map_range::<BumpAllocator>(
+                text_start,
+                PhysAddr(text_start.0 - kernel_start.0 + kernel_phys.0),
+                VmFlags::Read | VmFlags::Exec,
+                VmLevel::L1,
+                text_end.0 - text_start.0,
+            )
+            .expect("Unable to map the text segment");
+        log!("memory: Mapped text segment at {:#018x}", text_start.0);
+
+        table
+            .map_range::<BumpAllocator>(
+                rodata_start,
+                PhysAddr(rodata_start.0 - kernel_start.0 + kernel_phys.0),
+                VmFlags::Read,
+                VmLevel::L1,
+                rodata_end.0 - rodata_start.0,
+            )
+            .expect("Unable to map the rodata segment");
+        log!("memory: Mapped rodata segment at {:#018x}", rodata_start.0);
+
+        table
+            .map_range::<BumpAllocator>(
+                data_start,
+                PhysAddr(data_start.0 - kernel_start.0 + kernel_phys.0),
+                VmFlags::Read | VmFlags::Write,
+                VmLevel::L1,
+                data_end.0 - data_start.0,
+            )
+            .expect("Unable to map the data segment");
+        log!("memory: Mapped data segment at {:#018x}", data_start.0);
+
+        // Map physical memory.
+        table
+            .map_range::<BumpAllocator>(
+                hhdm_address,
+                PhysAddr::null(),
+                VmFlags::Read | VmFlags::Write,
+                VmLevel::L3,
+                128 * 1024 * 1024 * 1024,
+            )
+            .expect("Unable to map HHDM region");
+        log!("memory: Mapped HHDM segment at {:#018x}", hhdm_address.0);
+
+        // Activate the new page table.
+        table.set_active();
+
+        // Save the page table.
+        let mut kernel_table = virt::KERNEL_PAGE_TABLE.write();
+        *kernel_table = table;
+
+        log!("memory: Kernel map is now active");
+    }
 
     let mut total_pages = 0;
     let mut actual_pages = 0;
@@ -72,35 +193,35 @@ pub(crate) fn init() {
     // Initialize all regions.
     for entry in memory_map.iter_mut() {
         // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
-        if entry.address().inner() < 1 << 16 {
-            print!(
-                "memory: Ignoring 16-bit memory at {:#018X}\n",
-                entry.address().inner()
+        if entry.address().value() < 1 << 16 {
+            log!(
+                "memory: Ignoring 16-bit memory at {:#018x}",
+                entry.address().value()
             );
             // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
             if entry.address() + entry.length() >= PhysAddr(1 << 16) {
-                entry.set_length(entry.length() - (1 << 16) - entry.address().inner());
+                entry.set_length(entry.length() - (1 << 16) - entry.address().value());
                 entry.set_address(PhysAddr(1 << 16));
             } else {
                 continue;
             }
         }
 
-        let num_pages = misc::align_up(entry.length(), PageTableEntry::get_page_size())
-            / PageTableEntry::get_page_size();
+        let num_pages = align_up(entry.length(), arch::virt::get_page_size(VmLevel::L1))
+            / arch::virt::get_page_size(VmLevel::L1);
         let meta_size = num_pages * size_of::<Page>();
 
         // Ignore memory regions which are too small to keep track of. We reserve at least one page for metadata.
         if num_pages < 2 {
-            print!(
-                "memory: Ignoring single page region at {:#018X}\n",
-                entry.address().inner(),
+            log!(
+                "memory: Ignoring single page region at {:#018x}",
+                entry.address().value(),
             );
             continue;
         }
 
         let region = Region::new(
-            (entry.address().inner() + hhdm_address.inner()).into(),
+            (entry.address().value() + HHDM_START.load(Ordering::Relaxed)).into(),
             entry.address(),
             num_pages as PageNumber,
         );
@@ -112,27 +233,16 @@ pub(crate) fn init() {
         region.register();
     }
 
-    print!(
-        "memory: Using {} KiB for page metadata, effective usable memory: {} MiB\n",
-        (total_pages - actual_pages) * PageTableEntry::get_page_size() / 1024,
-        (actual_pages * (PageTableEntry::get_page_size() - size_of::<Page>())) / 1024 / 1024
+    log!(
+        "memory: Using {} KiB for page metadata, effective usable memory: {} MiB",
+        (total_pages - actual_pages) * arch::virt::get_page_size(VmLevel::L1) / 1024,
+        (actual_pages * (arch::virt::get_page_size(VmLevel::L1) - size_of::<Page>())) / 1024 / 1024
     );
 
-    print!(
-        "memory: Using {}-level paging for page table.\n",
-        paging_level
-    );
-
-    // TODO: Initialize the heap allocator.
-
-    // Load our own page map.
-    virt::init(
-        hhdm_address,
-        last_page * PageTableEntry::get_page_size(),
-        paging_level,
-        kernel_phys,
-        kernel_virt,
-    );
+    // Set the MMAP base to right after the HHDM. Make sure this lands on a new PTE so we can map regular pages.
+    let pte_size = 1usize << (paging_level * arch::virt::get_level_bits());
+    let offset = align_up(0x1000_0000_0000, pte_size);
+    virt::KERNEL_MMAP_BASE_ADDR.store(hhdm_address.0 + offset, Ordering::Relaxed);
 }
 
 /// Represents a physical address. It can't be directly read from or written to.
@@ -178,7 +288,7 @@ macro_rules! addr_impl {
                 Self(value)
             }
 
-            pub const fn inner(&self) -> usize {
+            pub const fn value(&self) -> usize {
                 self.0
             }
         }

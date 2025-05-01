@@ -6,6 +6,9 @@ pub mod acpi;
 #[cfg(feature = "openfw")]
 pub mod openfw;
 
+#[cfg(feature = "pci")]
+pub mod pci;
+
 #[deny(dead_code)]
 pub fn init() {
     let info = BootInfo::get();
@@ -16,4 +19,7 @@ pub fn init() {
     }
 
     // TODO: OpenFirmware support.
+
+    #[cfg(feature = "pci")]
+    pci::init();
 }

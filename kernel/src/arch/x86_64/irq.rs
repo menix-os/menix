@@ -1,19 +1,19 @@
 use super::consts::CPL_USER;
-use super::cpu;
-use crate::arch::{self, x86_64::gdt::Gdt};
+use super::task::TaskFrame;
+use crate::arch::x86_64::gdt::Gdt;
 use crate::generic;
-use crate::generic::irq::IrqController;
-use crate::generic::memory::VirtAddr;
-use crate::generic::{cpu::CpuData, syscall};
+use crate::generic::exec::Frame;
+use crate::generic::memory::page::{PageFaultInfo, PageFaultKind};
+use crate::generic::{irq::IrqController, memory::VirtAddr, percpu::CpuData, syscall};
 use core::arch::asm;
-use core::fmt::{Debug, Display};
+use core::fmt::Display;
 use core::{arch::naked_asm, mem::offset_of};
 use seq_macro::seq;
 
 /// Registers which are saved and restored during a context switch or interrupt.
 #[repr(C)]
 #[derive(Clone, Debug, Copy)]
-pub struct InterruptFrame {
+pub struct TrapFrame {
     pub r15: u64,
     pub r14: u64,
     pub r13: u64,
@@ -40,9 +40,9 @@ pub struct InterruptFrame {
     pub rsp: u64,
     pub ss: u64,
 }
-static_assert!(size_of::<InterruptFrame>() == 0xB0);
+static_assert!(size_of::<TrapFrame>() == 0xB0);
 
-impl InterruptFrame {
+impl TrapFrame {
     pub const fn new() -> Self {
         Self {
             r15: 0,
@@ -69,71 +69,63 @@ impl InterruptFrame {
             ss: 0,
         }
     }
-
-    pub const fn set_stack(&mut self, addr: VirtAddr) {
-        self.rsp = addr.inner() as u64;
-    }
-
-    pub const fn set_ip(&mut self, addr: VirtAddr) {
-        self.rip = addr.inner() as u64;
-    }
 }
 
-impl Display for InterruptFrame {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_fmt(format_args!(
-            "rax  {:016x} rbx  {:016x} rcx  {:016x} rdx  {:016x}\n\
-             rbp  {:016x} rdi  {:016x} rsi  {:016x} r8   {:016x}\n\
-             r9   {:016x} r10  {:016x} r11  {:016x} r12  {:016x}\n\
-             r13  {:016x} r14  {:016x} r15  {:016x} rip  {:016x}\n\
-             cs   {:016x} ss   {:016x} rflg {:016x} rsp  {:016x}",
-            &self.rax,
-            &self.rbx,
-            &self.rcx,
-            &self.rdx,
-            &self.rbp,
-            &self.rdi,
-            &self.rsi,
-            &self.r8,
-            &self.r9,
-            &self.r10,
-            &self.r11,
-            &self.r12,
-            &self.r13,
-            &self.r14,
-            &self.r15,
-            &self.rip,
-            &self.cs,
-            &self.ss,
-            &self.rflags,
-            &self.rsp,
-        ))
+impl Frame for TrapFrame {
+    fn set_stack(&mut self, addr: usize) {
+        self.rsp = addr as u64;
     }
-}
 
-#[inline]
-pub unsafe fn interrupt_disable() {
-    unsafe { asm!("cli") };
-}
+    fn set_ip(&mut self, addr: usize) {
+        self.rip = addr as u64;
+    }
 
-#[inline]
-pub unsafe fn interrupt_enable() {
-    unsafe { asm!("sti") };
+    fn get_stack(&self) -> usize {
+        self.rsp as usize
+    }
+
+    fn get_ip(&self) -> usize {
+        self.rip as usize
+    }
+
+    fn save(&self) -> TaskFrame {
+        TaskFrame {
+            r15: self.r15,
+            r14: self.r14,
+            r13: self.r13,
+            r12: self.r12,
+            r11: self.r11,
+            r10: self.r10,
+            r9: self.r9,
+            r8: self.r8,
+            rsi: self.rsi,
+            rdi: self.rdi,
+            rbp: self.rbp,
+            rdx: self.rdx,
+            rcx: self.rcx,
+            rbx: self.rbx,
+            rax: self.rax,
+            rip: self.rip,
+            rsp: self.rsp,
+            rflags: self.rflags,
+        }
+    }
+
+    fn restore(&mut self, saved: TaskFrame) {
+        todo!()
+    }
 }
 
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
-unsafe extern "C" fn interrupt_handler(
-    isr: usize,
-    context: *mut InterruptFrame,
-) -> *mut InterruptFrame {
+unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut TrapFrame) -> *mut TrapFrame {
     let mut result = context;
     unsafe {
         match isr as u8 {
             // Exceptions.
-            0x0E => _ = arch::virt::page_fault_handler(context),
+            0x0E => page_fault_handler(context),
             // Unhandled exceptions.
             0x00..0x20 => {
-                error!("Registers:\n{}\n", *context);
+                error!("Registers:\n{:?}", *context);
                 panic!(
                     "Got an unhandled CPU exception: {} (ISR {})!",
                     match isr {
@@ -171,7 +163,7 @@ unsafe extern "C" fn interrupt_handler(
             0x80 => syscall_handler(context),
             //
             _ => {
-                let cpu = &arch::cpu::CPU_DATA.get(CpuData::get());
+                let cpu = &super::CPU_DATA.get(CpuData::get());
                 match cpu.irq_handlers[isr as usize] {
                     Some(x) => x(cpu.irq_map[isr as usize], cpu.irq_ctx[isr as usize]),
                     None => panic!("Got an unhandled interrupt {}!", isr),
@@ -183,7 +175,7 @@ unsafe extern "C" fn interrupt_handler(
 }
 
 /// Invoked by either the interrupt or syscall stub.
-unsafe extern "C" fn syscall_handler(context: *mut InterruptFrame) {
+unsafe extern "C" fn syscall_handler(context: *mut TrapFrame) {
     unsafe {
         // Arguments use the SYSV C ABI.
         // Except for a3, since RCX is needed for sysret, we need a different register.
@@ -201,7 +193,26 @@ unsafe extern "C" fn syscall_handler(context: *mut InterruptFrame) {
     }
 }
 
-unsafe extern "C" fn timer_handler(context: *mut InterruptFrame) -> *mut InterruptFrame {
+pub unsafe fn page_fault_handler(context: *const TrapFrame) {
+    let mut cr2 = 0usize;
+    unsafe {
+        asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
+
+        let info = PageFaultInfo {
+            caused_by_user: (*context).cs & super::consts::CPL_USER as u64
+                == super::consts::CPL_USER as u64,
+            ip: ((*context).rip as usize).into(),
+            addr: cr2.into(),
+            // TODO
+            kind: match (*context).error {
+                _ => PageFaultKind::Unknown,
+            },
+        };
+        return generic::memory::page::page_fault_handler(context.as_ref().unwrap(), &info);
+    }
+}
+
+unsafe extern "C" fn timer_handler(context: *mut TrapFrame) -> *mut TrapFrame {
     let lapic = unsafe { super::apic::LAPIC.get(CpuData::get()) };
     // TODO: crate::generic::sched::run();
     lapic.eoi();
@@ -331,5 +342,31 @@ unsafe extern "C" fn interrupt_stub_internal() {
             "iretq",                    // Leave.
             interrupt_handler = sym interrupt_handler
         );
+    }
+}
+
+pub unsafe fn set_irq_mask(mask: bool) -> bool {
+    let old_mask = get_irq_state();
+    unsafe {
+        if mask {
+            asm!("cli");
+        } else {
+            asm!("sti");
+        }
+    }
+    return old_mask;
+}
+
+pub fn get_irq_state() -> bool {
+    let mut flags: u64;
+    unsafe {
+        asm!("pushf; pop {0}", out(reg) flags);
+    }
+    return flags & (super::consts::RFLAGS_IF as u64) == 0;
+}
+
+pub fn wait_for_irq() {
+    unsafe {
+        asm!("hlt");
     }
 }

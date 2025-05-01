@@ -1,9 +1,10 @@
 use crate::generic::{
     elf::{self, ElfHdr, ElfPhdr},
+    exec::Frame,
     memory::virt::{PageTable, VmFlags},
     posix::errno::Errno,
 };
-use crate::generic::{memory::VirtAddr, sched::task::Task};
+use crate::generic::{exec::Task, memory::VirtAddr};
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -106,7 +107,7 @@ impl Process {
             }
         }
 
-        main_thread.context.set_ip(elf_hdr.e_entry.into());
+        main_thread.context.set_ip(elf_hdr.e_entry as usize);
 
         result.threads.push(main_thread);
         return Ok(result);

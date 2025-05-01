@@ -38,7 +38,7 @@ impl LoggerSink for SerialLogger {
     }
 }
 
-pub fn init() {
+fn init() {
     if !BootInfo::get()
         .command_line
         .get_bool("com1")
@@ -60,3 +60,5 @@ pub fn init() {
     };
     Logger::add_sink(Box::new(SerialLogger));
 }
+
+early_init_call!(init);

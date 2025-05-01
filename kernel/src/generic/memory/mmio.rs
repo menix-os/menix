@@ -4,7 +4,7 @@ use num_traits::PrimInt;
 
 use super::{
     PhysAddr, VirtAddr,
-    virt::{self, VmFlags},
+    virt::{self, VmFlags, VmLevel},
 };
 use core::{marker::PhantomData, ops::RangeInclusive};
 
@@ -32,7 +32,7 @@ impl Mmio {
             phys,
             base: virt::KERNEL_PAGE_TABLE
                 .write()
-                .map_memory(phys, VmFlags::Read | VmFlags::Write, 0, len)
+                .map_memory(phys, VmFlags::Read | VmFlags::Write, VmLevel::L1, len)
                 .unwrap(),
             len,
         };

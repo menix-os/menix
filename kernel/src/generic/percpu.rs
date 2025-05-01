@@ -1,10 +1,10 @@
-// Per-CPU data structures.
+//! Per-CPU data structures.
 
 use super::{
+    exec::{Task, sched::Scheduler},
     memory::VirtAddr,
-    sched::{Scheduler, task::Task},
 };
-use crate::arch::{self};
+use crate::arch;
 use alloc::{boxed::Box, sync::Arc};
 use core::{
     ptr::null_mut,
@@ -34,7 +34,7 @@ pub struct CpuData {
 impl CpuData {
     /// Gets the data for the current CPU.
     pub fn get() -> &'static mut CpuData {
-        return unsafe { arch::cpu::get_per_cpu().as_mut().unwrap() };
+        return unsafe { arch::core::get_per_cpu().as_mut().unwrap() };
     }
 
     /// Gets the data for a specific CPU.
@@ -77,6 +77,7 @@ impl<T> PerCpuData<T> {
         return Self { storage: value };
     }
 
+    /// Gets the inner CPU-local instance of this field.
     pub fn get(&self, context: &CpuData) -> &'static mut T {
         // Calculate the offset into the per-CPU region.
         let size = &raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize;
@@ -101,21 +102,6 @@ pub static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
     present: false,
     task: null_mut(),
 });
-
-/// Prepares per-CPU data for the boot CPU.
-#[deny(dead_code)]
-pub(crate) fn setup_bsp() {
-    unsafe { arch::irq::interrupt_disable() };
-    arch::cpu::setup_bsp();
-}
-
-/// Sets up all CPUs.
-#[deny(dead_code)]
-pub(crate) fn setup_all() {
-    // Setup the BSP.
-    arch::cpu::setup(CpuData::get());
-    // TODO: Set up the rest.
-}
 
 /// Counts how many CPUs have been allocated. ID 0 is always used for the BSP.
 static NUM_CPUS: AtomicUsize = AtomicUsize::new(1);

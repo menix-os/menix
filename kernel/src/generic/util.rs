@@ -1,3 +1,5 @@
+//! Common functions for calculations or conversions.
+
 /// Aligns a value to the next higher multiple of `alignment`.
 #[inline]
 pub const fn align_up(value: usize, alignment: usize) -> usize {

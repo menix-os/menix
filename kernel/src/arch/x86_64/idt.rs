@@ -1,6 +1,5 @@
 use super::gdt::Gdt;
 use super::irq::*;
-use crate::arch::x86_64::asm;
 use crate::generic::memory::VirtAddr;
 use core::arch::asm;
 use core::mem::offset_of;
@@ -104,7 +103,7 @@ impl IdtEntry {
         assert!(interrupt_stack <= 2, "`ist` must be 0, 1 or 2!");
 
         Self {
-            base0: base.inner() as u16,
+            base0: base.value() as u16,
             // Only allow handlers to be part of the kernel.
             selector: offset_of!(Gdt, kernel_code) as u16,
             ist: interrupt_stack,
@@ -113,8 +112,8 @@ impl IdtEntry {
                     IdtIsrType::Interrupt => 0xE,
                     IdtIsrType::Trap => 0xF,
                 },
-            base1: (base.inner() >> 16) as u16,
-            base2: (base.inner() >> 32) as u32,
+            base1: (base.value() >> 16) as u16,
+            base2: (base.value() >> 32) as u32,
             reserved: 0,
         }
     }

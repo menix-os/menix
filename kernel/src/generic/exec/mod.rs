@@ -1,9 +1,24 @@
 use crate::{
-    arch::irq::InterruptFrame,
+    arch::virt::TaskFrame,
     generic::memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
 };
 use alloc::{sync::Arc, vec};
 use core::sync::atomic::{AtomicUsize, Ordering};
+
+pub mod sched;
+
+pub trait Frame {
+    fn set_stack(&mut self, addr: usize);
+    fn get_stack(&self) -> usize;
+
+    fn set_ip(&mut self, addr: usize);
+    fn get_ip(&self) -> usize;
+
+    /// Saves a copy of this frame.
+    fn save(&self) -> TaskFrame;
+    /// Reconstructs itself from a saved frame.
+    fn restore(&mut self, saved: TaskFrame);
+}
 
 #[derive(Clone, Copy, Debug)]
 pub enum TaskState {
@@ -24,7 +39,7 @@ pub struct Task {
     /// Unique identifier
     pub id: usize,
     /// The saved context of a thread while the thread is not running.
-    pub context: InterruptFrame,
+    pub context: TaskFrame,
     /// The current state of the thread.
     pub state: TaskState,
 }
@@ -37,12 +52,12 @@ impl Task {
         return Self {
             next: None,
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
-            context: InterruptFrame::new(),
+            context: TaskFrame::new(),
             state: TaskState::Ready,
         };
     }
 
-    pub const fn with_entry(mut self, entry_point: VirtAddr, stack: VirtAddr) -> Self {
+    pub fn with_entry(mut self, entry_point: usize, stack: usize) -> Self {
         self.context.set_ip(entry_point);
         self.context.set_stack(stack);
         return self;

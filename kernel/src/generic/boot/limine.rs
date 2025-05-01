@@ -66,8 +66,8 @@ extern "C" fn _start() -> ! {
     let mut info = BootInfo::new();
 
     if let Some(x) = BOOTLOADER_REQUEST.get_response() {
-        print!(
-            "boot: Booting with Limine protocol, loaded by {} {}\n",
+        log!(
+            "boot: Booting with Limine protocol, loaded by {} {}",
             x.name(),
             x.version()
         )

@@ -3,7 +3,7 @@ use super::{
     memory::{PhysAddr, VirtAddr, virt::VmFlags},
 };
 use crate::{
-    arch::virt::PageTableEntry,
+    arch,
     generic::{
         boot::BootInfo,
         cmdline::CmdLine,
@@ -11,9 +11,9 @@ use crate::{
         memory::{
             buddy::BuddyAllocator,
             page::{AllocFlags, PageAllocator},
-            virt::{self},
+            virt::{self, VmLevel},
         },
-        misc::{align_down, align_up},
+        util::{align_down, align_up},
     },
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
@@ -49,7 +49,6 @@ pub struct ModuleInfo {
 }
 
 /// Sets up the module system.
-#[deny(dead_code)]
 pub(crate) fn init() {
     let boot_info = BootInfo::get();
     let dynsym_start = &raw const LD_DYNSYM_START;
@@ -82,10 +81,7 @@ pub(crate) fn init() {
                 }
             }
         }
-        print!(
-            "module: Registered {} kernel symbols.\n",
-            symbol_table.len()
-        );
+        log!("module: Registered {} kernel symbols", symbol_table.len());
     }
 
     // Load all modules provided by the bootloader.
@@ -97,13 +93,13 @@ pub(crate) fn init() {
             .unwrap_or(&file.name);
 
         if !boot_info.command_line.get_bool(name).unwrap_or(true) {
-            print!("module: Skipping \"{}\".\n", file.name);
+            log!("module: Skipping \"{}\"", file.name);
             continue;
         }
 
-        print!("module: Loading \"{}\"\n", file.name);
+        log!("module: Loading \"{}\"", file.name);
         if let Err(x) = load(&file.name, Some(&file.command_line), &file.data) {
-            print!("module: Failed to load module: {:?}\n", x);
+            log!("module: Failed to load module: {:?}", x);
         }
     }
 }
@@ -203,11 +199,13 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                 let mut memsz = phdr.p_memsz as usize;
 
                 // Fix potentially unaligned addresses.
-                let aligned_virt =
-                    align_down(phdr.p_vaddr as usize, PageTableEntry::get_page_size());
+                let aligned_virt = align_down(
+                    phdr.p_vaddr as usize,
+                    arch::virt::get_page_size(VmLevel::L1),
+                );
                 if aligned_virt < phdr.p_vaddr as usize {
-                    memsz += PageTableEntry::get_page_size()
-                        - (phdr.p_memsz as usize % PageTableEntry::get_page_size());
+                    memsz += arch::virt::get_page_size(VmLevel::L1)
+                        - (phdr.p_memsz as usize % arch::virt::get_page_size(VmLevel::L1));
                 }
 
                 // Allocate physical memory.
@@ -217,17 +215,17 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                 let mut page_table = virt::KERNEL_PAGE_TABLE.write();
 
                 // Map memory with RW permissions.
-                for page in (0..=memsz + 4096).step_by(PageTableEntry::get_page_size()) {
+                for page in (0..=memsz + 4096).step_by(arch::virt::get_page_size(VmLevel::L1)) {
                     page_table
                         .map_single::<BuddyAllocator>(
                             (load_base + aligned_virt + page).into(),
                             phys + page,
                             VmFlags::Read | VmFlags::Write,
-                            0,
+                            VmLevel::L1,
                         )
                         .map_err(|_| ModuleLoadError::AllocFailed)?;
 
-                    MODULE_ADDR.fetch_add(PageTableEntry::get_page_size(), Ordering::AcqRel);
+                    MODULE_ADDR.fetch_add(arch::virt::get_page_size(VmLevel::L1), Ordering::AcqRel);
                 }
 
                 let virt = load_base + phdr.p_vaddr as usize;
@@ -397,9 +395,9 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
     // Finally, remap everything so the permissions are as described.
     for (phys, virt, length, flags) in &info.mappings {
         let mut page_table = virt::KERNEL_PAGE_TABLE.write();
-        let length = align_up(*length, PageTableEntry::get_page_size());
-        for page in (0..=length).step_by(PageTableEntry::get_page_size()) {
-            page_table.remap_single::<BuddyAllocator>(*virt + page, *flags, 0);
+        let length = align_up(*length, arch::virt::get_page_size(VmLevel::L1));
+        for page in (0..=length).step_by(arch::virt::get_page_size(VmLevel::L1)) {
+            page_table.remap_single::<BuddyAllocator>(*virt + page, *flags, VmLevel::L1);
         }
     }
 
@@ -421,12 +419,12 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
         .filter(|x| *x != "menix.kso")
         .collect::<Vec<_>>();
 
-    print!("module: Loaded module \"{}\":\n", name);
-    print!("module:   Base Address | {:#018X}\n", load_base);
-    print!("module:   Description  | {}\n", info.description);
-    print!("module:   Version      | {}\n", info.version);
-    print!("module:   Author(s)    | {}\n", info.author);
-    print!("module:   Dependencies | {:?}\n", dependencies);
+    log!("module: Loaded module \"{}\":", name);
+    log!("module:   Base Address | {:#018X}", load_base);
+    log!("module:   Description  | {}", info.description);
+    log!("module:   Version      | {}", info.version);
+    log!("module:   Author(s)    | {}", info.author);
+    log!("module:   Dependencies | {:?}", dependencies);
 
     // TODO: Load dependencies
 
@@ -472,6 +470,7 @@ macro_rules! define_string_section {
     };
 }
 
+/// Defines metadata for
 #[macro_export]
 macro_rules! module {
     ($desc: expr, $author: expr, $entry: ident) => {
@@ -487,13 +486,8 @@ macro_rules! module {
         }
 
         #[unsafe(no_mangle)]
-        unsafe extern "C" fn _start(args: *const u8, len: usize) {
-            $crate::print!("Hello world!");
-            let command_line = $crate::generic::cmdline::CmdLine::new(unsafe {
-                $crate::core::str::from_utf8($crate::core::slice::from_raw_parts(args, len))
-                    .unwrap()
-            });
-            $entry(command_line);
+        unsafe extern "C" fn _start() {
+            $entry();
         }
     };
 }

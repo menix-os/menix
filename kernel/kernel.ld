@@ -56,6 +56,15 @@ SECTIONS
     /* Read-Write data */
     .data ALIGN(CONSTANT(MAXPAGESIZE)) : {
         LD_DATA_START = .;
+
+        LD_EARLY_ARRAY_START = .;
+        *(.early_array)
+        LD_EARLY_ARRAY_END = .;
+
+        LD_INIT_ARRAY_START = .;
+        *(.init_array)
+        LD_INIT_ARRAY_END = .;
+
         *(.data)
         *(.data.*)
     } :data

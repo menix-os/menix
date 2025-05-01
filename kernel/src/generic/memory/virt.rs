@@ -1,29 +1,20 @@
-use super::buddy::BuddyAllocator;
-use super::page::{AllocFlags, PageAllocator};
-use super::{HHDM_START, PhysAddr, VirtAddr, buddy};
-use crate::arch::irq::InterruptFrame;
-use crate::arch::{self, virt::PageTableEntry};
-use crate::generic::boot::BootInfo;
-use crate::generic::misc::align_up;
-use crate::generic::{self, misc};
-use alloc::alloc::AllocError;
-use alloc::vec::Vec;
-use alloc::{boxed::Box, sync::Arc};
+use super::{
+    HHDM_START, PhysAddr, VirtAddr,
+    buddy::{self, BuddyAllocator},
+    page::{AllocFlags, PageAllocator},
+};
+use crate::{
+    arch::{self, virt::PageTableEntry},
+    generic::{self, util::align_up},
+};
+use alloc::{alloc::AllocError, sync::Arc};
 use bitflags::bitflags;
-use core::num::NonZero;
 use core::sync::atomic::{AtomicUsize, Ordering};
 use core::{marker::PhantomData, ops::Deref};
 use spin::{Mutex, RwLock};
 
-// User constants
-pub const USER_STACK_SIZE: usize = 0x200000;
-pub const USER_STACK_BASE: usize = 0x00007F0000000000;
-pub const USER_MAP_BASE: usize = 0x0000600000000000;
-
 // Kernel constants
 pub const KERNEL_STACK_SIZE: usize = 0x20000;
-
-const PAGE_TABLE_SIZE: usize = (PageTableEntry::get_page_size()) / size_of::<PageTableEntry>();
 
 bitflags! {
     /// Page protection flags.
@@ -55,24 +46,36 @@ pub enum PageTableError {
     NeedAllocation,
 }
 
+// TODO: Replace with allocator.
 pub static KERNEL_PAGE_TABLE: RwLock<PageTable<true>> = RwLock::new(PageTable::new_kernel_uninit());
 pub static KERNEL_MMAP_BASE_ADDR: AtomicUsize = AtomicUsize::new(0);
+
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
+pub enum VmLevel {
+    L1,
+    L2,
+    L3,
+    #[cfg(target_arch = "riscv64")]
+    L4,
+    #[cfg(target_arch = "riscv64")]
+    L5,
+}
 
 /// Represents a virtual address space.
 /// `K` controls whether or not this page table is for the kernel or a user process.
 pub struct PageTable<const K: bool = false> {
     /// Physical address of the root directory.
     head: Mutex<PhysAddr>,
-    /// The highest supported level for mappings.
-    max_level: usize,
+    /// The root page level.
+    root_level: usize,
 }
 
 impl PageTable<false> {
     /// Creates a new page table for a user process.
-    pub fn new_user<P: PageAllocator>(max_level: usize) -> Self {
+    pub fn new_user<P: PageAllocator>(root_level: usize) -> Self {
         Self {
             head: Mutex::new(P::alloc(1, AllocFlags::Zeroed).unwrap()),
-            max_level,
+            root_level,
         }
     }
 }
@@ -81,14 +84,14 @@ impl PageTable<true> {
     const fn new_kernel_uninit() -> Self {
         Self {
             head: Mutex::new(PhysAddr(0)),
-            max_level: 0,
+            root_level: 0,
         }
     }
 
-    fn new_kernel<P: PageAllocator>(max_level: usize) -> Self {
+    pub fn new_kernel<P: PageAllocator>(root_level: usize) -> Self {
         Self {
             head: Mutex::new(P::alloc(1, AllocFlags::Zeroed).unwrap()),
-            max_level,
+            root_level,
         }
     }
 
@@ -97,10 +100,10 @@ impl PageTable<true> {
         &mut self,
         phys: PhysAddr,
         flags: VmFlags,
-        level: usize,
+        level: VmLevel,
         length: usize,
     ) -> Result<*mut u8, AllocError> {
-        let aligned_len = misc::align_up(length, PageTableEntry::get_page_size());
+        let aligned_len = align_up(length, arch::virt::get_page_size(VmLevel::L1));
 
         // Increase mapping base.
         // TODO: Use actual virtual address allocator.
@@ -113,6 +116,10 @@ impl PageTable<true> {
 }
 
 impl<const K: bool> PageTable<K> {
+    pub const fn root_level(&self) -> usize {
+        self.root_level
+    }
+
     /// Sets this page table as the active one.
     ///
     /// # Safety
@@ -128,37 +135,30 @@ impl<const K: bool> PageTable<K> {
     /// Gets the page table entry pointed to by `virt`.
     /// Allocates new levels if necessary and requested.
     /// `target_level`: The level to get for the PTE. Use 0 if you're unsure.
-    /// `length`: The amount of bytes this PTE should be able to fit. This helps allocate more efficient entries.
     pub fn get_pte<P: PageAllocator>(
         &self,
         virt: VirtAddr,
         allocate: bool,
-        target_level: usize,
+        target_level: VmLevel,
     ) -> Result<&mut PageTableEntry, PageTableError> {
         let mut head = self.head.lock();
         let mut current_head: *mut PageTableEntry = head.as_hhdm();
         let mut index = 0;
         let mut do_break = false;
 
-        if target_level > self.max_level {
-            return Err(PageTableError::LevelOutOfRange);
-        }
-
         // Traverse the page table (from highest to lowest level).
-        for level in (0..self.max_level).rev() {
+        for level in (0..self.root_level).rev() {
             // Create a mask for the address part of the PTE, e.g. 0x1ff for 9 bits.
-            let addr_bits =
-                (usize::MAX >> (usize::BITS as usize - PageTableEntry::get_level_bits()));
+            let addr_bits = (usize::MAX >> (usize::BITS as usize - arch::virt::get_level_bits()));
 
             // Determine the shift for the appropriate level, e.g. x << (12 + (9 * level)).
-            let addr_shift =
-                PageTableEntry::get_page_bits() + (PageTableEntry::get_level_bits() * level);
+            let addr_shift = arch::virt::get_page_bits() + (arch::virt::get_level_bits() * level);
 
             // Get the index for this level by masking the relevant address part.
             index = (virt.0 >> addr_shift) & addr_bits;
 
             // The last level is used to access the actual PTE, so break the loop then.
-            if level <= target_level || do_break {
+            if level <= target_level as usize || do_break {
                 break;
             }
 
@@ -170,11 +170,11 @@ impl<const K: bool> PageTable<K> {
 
                 if (*pte).is_present() {
                     // If this PTE is a large page, it already contains the final address. Don't continue.
-                    if !(*pte).is_directory() {
+                    if !(*pte).is_directory(level) {
                         pte_flags |= VmFlags::Large;
 
                         // If the caller wanted to go further than this, tell them that it's not possible.
-                        if level != target_level {
+                        if level != target_level as usize {
                             return Err(PageTableError::LevelOutOfRange);
                         }
 
@@ -183,7 +183,7 @@ impl<const K: bool> PageTable<K> {
                         // If the PTE is not large, go one level deeper.
                         current_head = (*pte).address().as_hhdm();
                     }
-                    *pte = PageTableEntry::new((*pte).address(), pte_flags);
+                    *pte = PageTableEntry::new((*pte).address(), pte_flags, level);
                 } else {
                     // PTE isn't present, but we have to allocate a new level now.
                     if !allocate {
@@ -199,6 +199,7 @@ impl<const K: bool> PageTable<K> {
                             .as_hhdm()
                             .ok_or(PageTableError::PageTableEntryMissing)?,
                         pte_flags,
+                        level as usize,
                     );
                     current_head = next_head;
                 }
@@ -220,19 +221,21 @@ impl<const K: bool> PageTable<K> {
         virt: VirtAddr,
         phys: PhysAddr,
         flags: VmFlags,
-        level: usize,
+        level: VmLevel,
     ) -> Result<(), PageTableError> {
         let pte = self.get_pte::<P>(virt, true, level)?;
 
         *pte = PageTableEntry::new(
             phys,
             flags
-                | if level != 0 {
+                | if level != VmLevel::L1 {
                     VmFlags::Large
                 } else {
                     VmFlags::None
                 },
+            level as usize,
         );
+
         return Ok(());
     }
 
@@ -241,18 +244,19 @@ impl<const K: bool> PageTable<K> {
         &mut self,
         virt: VirtAddr,
         flags: VmFlags,
-        level: usize,
+        level: VmLevel,
     ) -> Result<(), PageTableError> {
         let pte = self.get_pte::<P>(virt, false, level)?;
 
         *pte = PageTableEntry::new(
             pte.address(),
             flags
-                | if level != 0 {
+                | if level != VmLevel::L1 {
                     VmFlags::Large
                 } else {
                     VmFlags::None
                 },
+            level as usize,
         );
         return Ok(());
     }
@@ -263,13 +267,12 @@ impl<const K: bool> PageTable<K> {
         virt: VirtAddr,
         phys: PhysAddr,
         flags: VmFlags,
-        level: usize,
+        level: VmLevel,
         length: usize,
     ) -> Result<(), PageTableError> {
         // TODO: Do transactional mapping.
-        let length = align_up(length, PageTableEntry::get_page_size());
-        let step =
-            1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
+        let length = align_up(length, arch::virt::get_page_size(level));
+        let step = arch::virt::get_page_size(level);
 
         for offset in (0..length).step_by(step) {
             self.map_single::<P>(
@@ -287,13 +290,13 @@ impl<const K: bool> PageTable<K> {
         &mut self,
         virt: VirtAddr,
         flags: VmFlags,
-        level: usize,
+        level: VmLevel,
         length: usize,
     ) -> Result<(), PageTableError> {
         // TODO: Do transactional mapping.
-        let length = align_up(length, PageTableEntry::get_page_size());
-        let step =
-            1 << (PageTableEntry::get_page_bits() + (level * PageTableEntry::get_level_bits()));
+        let length = align_up(length, arch::virt::get_page_size(VmLevel::L1));
+        let step = arch::virt::get_page_size(VmLevel::L1)
+            + (level as usize * arch::virt::get_level_bits());
 
         for offset in (0..length).step_by(step) {
             self.remap_single::<BuddyAllocator>(VirtAddr(virt.0 + offset), flags, level)?;
@@ -312,7 +315,7 @@ impl<const K: bool> PageTable<K> {
     }
 
     /// Checks if the address (may be unaligned) is mapped in this address space.
-    pub fn is_mapped(&self, virt: VirtAddr, level: usize) -> bool {
+    pub fn is_mapped(&self, virt: VirtAddr, level: VmLevel) -> bool {
         let pte = self.get_pte::<BuddyAllocator>(virt, false, level);
         match pte {
             Ok(x) => x.is_present(),
@@ -320,89 +323,6 @@ impl<const K: bool> PageTable<K> {
                 return false;
             }
         }
-    }
-}
-
-/// Initialize the kernel's own page table and switch to it.
-#[deny(dead_code)]
-pub fn init(
-    hhdm_start: VirtAddr,
-    hhdm_length: usize,
-    paging_level: usize,
-    kernel_phys: PhysAddr,
-    kernel_virt: VirtAddr,
-) {
-    let mut table = PageTable::new_kernel::<BuddyAllocator>(paging_level);
-
-    unsafe {
-        let text_start = VirtAddr(&raw const LD_TEXT_START as usize);
-        let text_end = VirtAddr(&raw const LD_TEXT_END as usize);
-        let rodata_start = VirtAddr(&raw const LD_RODATA_START as usize);
-        let rodata_end = VirtAddr(&raw const LD_RODATA_END as usize);
-        let data_start = VirtAddr(&raw const LD_DATA_START as usize);
-        let data_end = VirtAddr(&raw const LD_DATA_END as usize);
-        let kernel_start = VirtAddr(&raw const LD_KERNEL_START as usize);
-
-        table
-            .map_range::<BuddyAllocator>(
-                text_start,
-                PhysAddr(text_start.0 - kernel_start.0 + kernel_phys.0),
-                VmFlags::Read | VmFlags::Exec,
-                0,
-                text_end.0 - text_start.0,
-            )
-            .expect("Unable to map the text segment");
-        print!("virt: Loaded text segment at {:#018X}.\n", text_start.0);
-
-        table
-            .map_range::<BuddyAllocator>(
-                rodata_start,
-                PhysAddr(rodata_start.0 - kernel_start.0 + kernel_phys.0),
-                VmFlags::Read,
-                0,
-                rodata_end.0 - rodata_start.0,
-            )
-            .expect("Unable to map the rodata segment");
-        print!("virt: Loaded rodata segment at {:#018X}.\n", rodata_start.0);
-
-        table
-            .map_range::<BuddyAllocator>(
-                data_start,
-                PhysAddr(data_start.0 - kernel_start.0 + kernel_phys.0),
-                VmFlags::Read | VmFlags::Write,
-                0,
-                data_end.0 - data_start.0,
-            )
-            .expect("Unable to map the data segment");
-        print!("virt: Loaded data segment at {:#018X}.\n", data_start.0);
-
-        table
-            .map_range::<BuddyAllocator>(
-                hhdm_start,
-                PhysAddr(0),
-                VmFlags::Read | VmFlags::Write,
-                2,
-                hhdm_length,
-            )
-            .expect("Unable to map HHDM region");
-        print!("virt: Loaded HHDM segment at {:#018X}.\n", hhdm_start.0);
-
-        print!("virt: Installing kernel page table...\n");
-
-        // Activate the new page table.
-        table.set_active();
-
-        print!("virt: Kernel map is now active\n");
-
-        // Save the page table.
-        let mut kernel_table = KERNEL_PAGE_TABLE.write();
-        *kernel_table = table;
-
-        // Set the MMAP base to right after the HHDM. Make sure this lands on a new PTE so we can map regular pages.
-        let pte_size = 1usize << (paging_level * PageTableEntry::get_level_bits());
-        let offset = misc::align_up(hhdm_length, pte_size);
-        KERNEL_MMAP_BASE_ADDR.store(hhdm_start.0 + offset, Ordering::Relaxed);
-        generic::module::MODULE_ADDR.store(hhdm_start.0 + offset + pte_size, Ordering::Relaxed);
     }
 }
 
@@ -434,66 +354,4 @@ impl<T> Deref for ForeignPtr<T> {
     fn deref(&self) -> &Self::Target {
         todo!()
     }
-}
-
-/// Abstract information about a page fault.
-pub struct PageFaultInfo {
-    /// Fault caused by the user.
-    pub caused_by_user: bool,
-    /// The instruction pointer address.
-    pub ip: VirtAddr,
-    /// The address that was attempted to access.
-    pub addr: VirtAddr,
-    /// The cause of this page fault.
-    pub kind: PageFaultKind,
-}
-
-/// The origin of the page fault.
-pub enum PageFaultKind {
-    /// Issue unclear (possible corruption).
-    Unknown,
-    /// Page is not mapped in the current page table.
-    NotMapped,
-    /// Page is mapped, but can't be read from.
-    IllegalRead,
-    /// Page is mapped, but can't be written to.
-    IllegalWrite,
-    /// Page is mapped, but can't be executed on.
-    IllegalExecute,
-}
-
-/// Generic page fault handler. May reschedule and return a different context.
-pub fn page_fault_handler<'a>(
-    context: &'a InterruptFrame,
-    info: &PageFaultInfo,
-) -> &'a InterruptFrame {
-    if info.caused_by_user {
-        // TODO: Send SIGSEGV and reschedule.
-        return context;
-    }
-
-    panic!(
-        "Kernel caused an unrecoverable page fault: {}! IP: {:#x}, Address: {:#x}",
-        match info.kind {
-            PageFaultKind::Unknown => "Unknown cause",
-            PageFaultKind::NotMapped => "Page was not mapped",
-            PageFaultKind::IllegalRead => "Page can't be read from",
-            PageFaultKind::IllegalWrite => "Page can't be written to",
-            PageFaultKind::IllegalExecute => "Page can't be executed on",
-        },
-        info.ip.0,
-        info.addr.0
-    );
-}
-
-// Symbols defined in the linker script so we can map ourselves in our page table.
-unsafe extern "C" {
-    unsafe static LD_KERNEL_START: u8;
-    unsafe static LD_KERNEL_END: u8;
-    unsafe static LD_TEXT_START: u8;
-    unsafe static LD_TEXT_END: u8;
-    unsafe static LD_RODATA_START: u8;
-    unsafe static LD_RODATA_END: u8;
-    unsafe static LD_DATA_START: u8;
-    unsafe static LD_DATA_END: u8;
 }

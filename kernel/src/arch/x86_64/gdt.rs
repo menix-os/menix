@@ -1,5 +1,4 @@
 use super::consts::{CPL_KERNEL, CPL_USER};
-use crate::arch::x86_64::asm;
 use crate::generic::memory::virt::KERNEL_STACK_SIZE;
 use alloc::vec::Vec;
 use bitflags::bitflags;

@@ -1,29 +1,9 @@
-// Advanced Configuration and Power Interface
-// Wrapper for uACPI
-
 mod uacpi;
 
-use crate::{
-    arch::platform,
-    generic::{
-        self,
-        boot::BootInfo,
-        clock::{self},
-        cpu::CpuData,
-        memory::{
-            self, PhysAddr,
-            virt::{KERNEL_PAGE_TABLE, VmFlags},
-        },
-    },
-};
+use crate::generic::{boot::BootInfo, memory::PhysAddr};
 use alloc::boxed::Box;
-use core::{
-    alloc::{Allocator, GlobalAlloc, Layout},
-    ffi::{CStr, c_void},
-    ptr::{NonNull, null_mut},
-};
-use spin::{Once, Spin, mutex::Mutex};
-use uacpi::*;
+use core::ffi::c_void;
+use spin::Once;
 
 static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
 
@@ -43,34 +23,27 @@ pub fn init() {
             early_mem.len(),
         )
     };
-    if uacpi_status != UACPI_STATUS_OK {
+    if uacpi_status != uacpi::UACPI_STATUS_OK {
         error!(
-            "acpi: Early table access failed with error {}!\n",
+            "acpi: Early table access failed with error {}!",
             uacpi_status
         );
         return;
     }
 
-    #[cfg(target_arch = "x86_64")]
-    clock::switch(Box::new(platform::Hpet::default()));
-
-    print!("acpi: Initializing...\n");
     uacpi_status = unsafe { uacpi::uacpi_initialize(0) };
-    if uacpi_status != UACPI_STATUS_OK {
+    if uacpi_status != uacpi::UACPI_STATUS_OK {
         error!(
-            "acpi: Initialization failed with error \"{}\"!\n",
+            "acpi: Initialization failed with error \"{}\"!",
             uacpi_status
         );
+        return;
     }
 
-    // TODO: Evaluate MADT and initialize all remaining CPUs.
-    // print!("acpi: Booting CPUs using MADT\n");
-
     uacpi_status = unsafe { uacpi::uacpi_namespace_load() };
-
-    if uacpi_status != UACPI_STATUS_OK {
+    if uacpi_status != uacpi::UACPI_STATUS_OK {
         error!(
-            "acpi: Namespace loading failed with error \"{}\"!\n",
+            "acpi: Namespace loading failed with error \"{}\"!",
             uacpi_status
         );
     } else {

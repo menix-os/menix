@@ -2,6 +2,9 @@
 resolver = "3"
 members = ["kernel", "bindings/*", "drivers/*/*"]
 
+[workspace.dependencies]
+menix = { path = "kernel" }
+
 # Debug build. Still somewhat optimized.
 [profile.dev]
 panic = "abort"

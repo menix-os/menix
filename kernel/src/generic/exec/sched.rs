@@ -1,9 +1,8 @@
-use crate::arch::irq::InterruptFrame;
+use crate::arch::virt::TaskFrame;
+
+use super::Task;
 use alloc::sync::Arc;
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
-use task::Task;
-
-pub mod task;
 
 /// An instance of a scheduler. Each CPU has one instance running to coordinate thead management.
 #[derive(Debug)]
@@ -42,7 +41,7 @@ impl Scheduler {
         }
     }
 
-    pub fn reschedule<'a>(&mut self, mut context: &'a InterruptFrame) -> &'a InterruptFrame {
+    pub fn reschedule(&mut self, mut context: *const TaskFrame) -> *const TaskFrame {
         self.preempt_off();
         // TODO: Reschedule
         self.preempt_on();

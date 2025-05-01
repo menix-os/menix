@@ -1,11 +1,12 @@
 use super::asm;
 use crate::generic::{
-    clock::{ClockError, ClockSource},
+    clock::{self, ClockError, ClockSource},
     memory::{
         PhysAddr,
-        virt::{KERNEL_PAGE_TABLE, VmFlags},
+        virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
     },
 };
+use alloc::boxed::Box;
 use core::mem::offset_of;
 use uacpi::{
     UACPI_STATUS_OK, acpi_hpet, uacpi_handle, uacpi_size, uacpi_status, uacpi_table, uacpi_u8,
@@ -81,7 +82,7 @@ impl ClockSource for Hpet {
                 .map_memory(
                     ((unsafe { *hpet }).address.address as usize).into(),
                     VmFlags::Read | VmFlags::Write,
-                    0,
+                    VmLevel::L1,
                     size_of::<HpetRegisters>(),
                 )
                 .unwrap() as *mut u64,
@@ -104,6 +105,12 @@ impl ClockSource for Hpet {
         return Ok(());
     }
 }
+
+fn hpet_init() {
+    clock::switch(Box::new(Hpet::default()));
+}
+
+init_call!(hpet_init);
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_io_read8(

@@ -1,8 +1,11 @@
-use super::{consts, irq::InterruptFrame};
-use crate::generic::memory::{
-    PhysAddr, VirtAddr,
-    virt::{self, PageFaultInfo, PageFaultKind},
-    virt::{PageTable, VmFlags},
+use super::{consts, irq::TrapFrame};
+use crate::generic::{
+    self,
+    memory::{
+        PhysAddr, VirtAddr,
+        page::{self, PageFaultInfo, PageFaultKind},
+        virt::{self, PageTable, VmFlags, VmLevel},
+    },
 };
 use bitflags::bitflags;
 use core::arch::asm;
@@ -29,7 +32,7 @@ const ADDR_MASK: u64 = 0x000F_FFFF_FFFF_F000;
 bitflags! {
     #[repr(transparent)]
     #[derive(Debug)]
-    pub struct PageFlags: u64 {
+    struct PageFlags: u64 {
         const None = 0;
         const Present = 1 << 0;
         const ReadWrite = 1 << 1;
@@ -51,8 +54,8 @@ impl PageTableEntry {
         return Self { inner: 0 };
     }
 
-    pub const fn new(address: PhysAddr, flags: VmFlags) -> Self {
-        let mut result = (address.inner() as u64 & ADDR_MASK) | PageFlags::Present.bits();
+    pub const fn new(address: PhysAddr, flags: VmFlags, level: usize) -> Self {
+        let mut result = (address.value() as u64 & ADDR_MASK) | PageFlags::Present.bits();
 
         if flags.contains(VmFlags::User) {
             result |= PageFlags::UserMode.bits();
@@ -85,58 +88,36 @@ impl PageTableEntry {
         return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Present);
     }
 
-    pub fn is_directory(&self) -> bool {
-        return !PageFlags::from_bits_retain(self.inner).contains(PageFlags::Size);
+    pub fn is_directory(&self, level: usize) -> bool {
+        return level > 0 && !PageFlags::from_bits_retain(self.inner).contains(PageFlags::Size);
     }
 
     pub fn address(&self) -> PhysAddr {
         return (self.inner & ADDR_MASK).into();
-    }
-
-    pub const fn get_max_levels() -> usize {
-        return 4;
-    }
-
-    pub const fn get_level_bits() -> usize {
-        return 9;
-    }
-
-    pub const fn get_page_bits() -> usize {
-        return 12;
-    }
-
-    pub const fn get_page_size() -> usize {
-        return 1 << Self::get_page_bits();
     }
 }
 
 /// Invalidates a TLB entry cache.
 fn flush_tlb(addr: VirtAddr) {
     unsafe {
-        asm!("invlpg [{addr}]", addr = in(reg) addr.inner());
+        asm!("invlpg [{addr}]", addr = in(reg) addr.value());
     }
 }
 
 pub unsafe fn set_page_table(addr: PhysAddr) {
     unsafe {
-        asm!("mov cr3, {addr}", addr = in(reg) addr.inner());
+        asm!("mov cr3, {addr}", addr = in(reg) addr.value());
     }
 }
 
-pub unsafe fn page_fault_handler(context: *const InterruptFrame) -> *const InterruptFrame {
-    let mut cr2 = 0usize;
-    unsafe {
-        asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
+pub const fn get_page_bits() -> usize {
+    12
+}
 
-        let info = PageFaultInfo {
-            caused_by_user: (*context).cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
-            ip: ((*context).rip as usize).into(),
-            addr: cr2.into(),
-            // TODO
-            kind: match (*context).error {
-                _ => PageFaultKind::Unknown,
-            },
-        };
-        return virt::page_fault_handler(context.as_ref().unwrap(), &info);
-    }
+pub const fn get_max_level() -> VmLevel {
+    VmLevel::L3
+}
+
+pub const fn get_level_bits() -> usize {
+    9
 }

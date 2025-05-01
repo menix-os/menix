@@ -1,27 +1,26 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
+use crate::{
+    arch,
+    generic::{
+        clock,
+        memory::{
+            self,
+            virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
+        },
+        util,
+    },
+};
+use alloc::{alloc::GlobalAlloc, boxed::Box};
 use core::{
     alloc::Layout,
     ffi::{CStr, c_void},
     ptr::null_mut,
 };
-
-use alloc::{alloc::GlobalAlloc, boxed::Box};
 use spin::Mutex;
-pub use uacpi::*;
 
-use crate::{
-    arch::virt::PageTableEntry,
-    generic::{
-        clock,
-        memory::{
-            self, PhysAddr,
-            virt::{KERNEL_PAGE_TABLE, VmFlags},
-        },
-        misc,
-    },
-};
+pub use uacpi::*;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_addr) -> uacpi_status {
@@ -36,16 +35,16 @@ unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_add
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c_void {
-    let aligned_addr = misc::align_down(addr as usize, PageTableEntry::get_page_size());
+    let aligned_addr = util::align_down(addr as usize, arch::virt::get_page_size(VmLevel::L1));
     let difference = (addr as usize - aligned_addr);
-    let aligned_len = misc::align_up(len + difference, PageTableEntry::get_page_size());
+    let aligned_len = util::align_up(len + difference, arch::virt::get_page_size(VmLevel::L1));
     return unsafe {
         KERNEL_PAGE_TABLE
             .write()
             .map_memory(
                 aligned_addr.into(),
                 VmFlags::Read | VmFlags::Write,
-                0,
+                VmLevel::L1,
                 aligned_len,
             )
             .unwrap()
@@ -62,9 +61,11 @@ extern "C" fn uacpi_kernel_unmap(addr: *mut c_void, len: uacpi_size) {
 extern "C" fn uacpi_kernel_log(arg1: uacpi_log_level, arg2: *const uacpi_char) {
     let msg = unsafe { CStr::from_ptr(arg2) }.to_str().unwrap();
     match arg1 {
-        UACPI_LOG_WARN => warn!("acpi: {}", msg),
-        UACPI_LOG_ERROR => error!("acpi: {}", msg),
-        _ => print!("acpi: {}", msg),
+        UACPI_LOG_WARN => print_inner!("warn: acpi: ", "", "{}", msg),
+        UACPI_LOG_DEBUG => print_inner!("debug: acpi: ", "", "{}", msg),
+        UACPI_LOG_TRACE => print_inner!("trace: acpi: ", "", "{}", msg),
+        UACPI_LOG_ERROR => print_inner!("error: acpi: ", "", "{}", msg),
+        _ => print_inner!("acpi: ", "", "{}", msg),
     }
 }
 

@@ -6,11 +6,14 @@ use super::{
     page::{Page, PageAllocator},
 };
 use crate::{
-    arch::virt::PageTableEntry,
+    arch::{self},
     generic::{
         self,
-        memory::{page::AllocFlags, virt::PageTable},
-        misc::align_up,
+        memory::{
+            page::AllocFlags,
+            virt::{PageTable, VmLevel},
+        },
+        util::align_up,
     },
 };
 use alloc::{alloc::AllocError, slice};
@@ -29,7 +32,8 @@ pub fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocErr
         return Err(AllocError);
     }
 
-    let pages = align_up(bytes, PageTableEntry::get_page_size()) / PageTableEntry::get_page_size();
+    let pages = align_up(bytes, arch::virt::get_page_size(VmLevel::L1))
+        / arch::virt::get_page_size(VmLevel::L1);
     let block_order = get_order(pages);
     let result = alloc(block_order, flags);
 
@@ -100,7 +104,7 @@ fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
             write_bytes(
                 addr.as_hhdm::<u8>(),
                 0,
-                PageTableEntry::get_page_size() << frame.order,
+                arch::virt::get_page_size(VmLevel::L1) << frame.order,
             );
         }
     }
@@ -147,11 +151,11 @@ pub(crate) struct Region {
 impl Region {
     pub fn new(meta: VirtAddr, phys: PhysAddr, num_pages: PageNumber) -> Self {
         // Amount of pages which are going to get consumed by the metadata.
-        let meta_size = generic::misc::align_up(
+        let meta_size = generic::util::align_up(
             num_pages as usize * size_of::<Page>(),
-            PageTableEntry::get_page_size(),
+            arch::virt::get_page_size(VmLevel::L1),
         );
-        let meta_page_size = meta_size / PageTableEntry::get_page_size();
+        let meta_page_size = meta_size / arch::virt::get_page_size(VmLevel::L1);
 
         let mut result = Self {
             meta: meta.as_ptr(),
@@ -177,10 +181,10 @@ impl Region {
             frame += p;
         }
 
-        print!(
-            "memory: [{:#018X} - {:#018X}]\n",
+        log!(
+            "memory: [{:#018X} - {:#018X}]",
             phys.0,
-            phys.0 + (num_pages as usize * PageTableEntry::get_page_size()) - 1
+            phys.0 + (num_pages as usize * arch::virt::get_page_size(VmLevel::L1)) - 1
         );
 
         return result;
@@ -209,13 +213,13 @@ impl Region {
     /// Returns the size of this region in bytes.
     #[inline]
     pub fn get_size(&self) -> usize {
-        self.num_pages as usize * PageTableEntry::get_page_size()
+        self.num_pages as usize * arch::virt::get_page_size(VmLevel::L1)
     }
 
     /// Returns the highest address covered by this region.
     #[inline]
     pub fn get_end(&self) -> PhysAddr {
-        PhysAddr(self.phys.0 + (self.num_pages as usize * PageTableEntry::get_page_size()))
+        PhysAddr(self.phys.0 + (self.num_pages as usize * arch::virt::get_page_size(VmLevel::L1)))
     }
 
     /// Returns the start address of this region.
@@ -263,7 +267,9 @@ impl Page {
     }
 
     fn addr(&self, region: &Region) -> PhysAddr {
-        PhysAddr(region.phys.0 + (self.id(region) as usize * PageTableEntry::get_page_size()))
+        PhysAddr(
+            region.phys.0 + (self.id(region) as usize * arch::virt::get_page_size(VmLevel::L1)),
+        )
     }
 
     /// Links this page to a region.

@@ -1,4 +1,4 @@
-use super::sched::task::Task;
+use super::exec::Task;
 use alloc::{string::String, sync::Arc};
 use spin::Mutex;
 
@@ -20,7 +20,7 @@ pub struct IrqAction {
     worker: IrqHandlerFn,     // Function to call in a worker thread, if woken up by the handler.
     thread: Arc<Mutex<Task>>, // The thread to execute the worker function on.
     name: String,             // Name of the IRQ.
-    context: *mut u8,         // A generic context to pass to the handler.
+    context: *mut (),         // A generic context to pass to the handler.
 }
 
 pub enum IpiTarget {

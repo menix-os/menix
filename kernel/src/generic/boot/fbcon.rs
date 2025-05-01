@@ -7,9 +7,9 @@ use crate::generic::{
     log::{Logger, LoggerSink},
     memory::{
         PhysAddr,
-        virt::{KERNEL_PAGE_TABLE, VmFlags},
+        virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
     },
-    misc::align_up,
+    util::align_up,
 };
 
 #[derive(Default, Debug, Clone)]
@@ -64,16 +64,18 @@ pub fn init(fb: FrameBuffer) {
         .map_memory(
             fb.base,
             VmFlags::Read | VmFlags::Write,
-            0,
+            VmLevel::L1,
             fb.pitch * fb.height,
         )
         .unwrap();
 
-    print!(
-        "fbcon: Framebuffer resolution = {}x{}x{}\n",
+    log!(
+        "fbcon: Resolution = {}x{}x{}, Phys = {:#018X}, Virt = {:#018X}",
         fb.width,
         fb.height,
-        fb.cpp * 8
+        fb.cpp * 8,
+        fb.base.value(),
+        mem as usize
     );
 
     Logger::add_sink(Box::new(FbCon {

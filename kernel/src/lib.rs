@@ -22,21 +22,33 @@ pub mod macros;
 pub mod arch;
 pub mod generic;
 
-/// The high-level kernel entry point.
-/// Called by `_start`.
-/// Initializes all subsystems and starts all servers.
-#[deny(dead_code)]
+unsafe extern "C" {
+    unsafe static LD_EARLY_ARRAY_START: u8;
+    unsafe static LD_EARLY_ARRAY_END: u8;
+    unsafe static LD_INIT_ARRAY_START: u8;
+    unsafe static LD_INIT_ARRAY_END: u8;
+}
+
+/// The high-level kernel entry point. This is invoked by the prekernel environment.
 #[unsafe(no_mangle)]
 pub(crate) fn main() -> ! {
-    generic::cpu::setup_bsp();
-    generic::memory::init::init();
+    arch::core::setup_bsp();
 
-    // TODO: Run early init calls.
+    // Run early init calls.
+    unsafe {
+        let mut early_array = &raw const LD_EARLY_ARRAY_START as *const fn();
+        let early_end = &raw const LD_EARLY_ARRAY_END as *const fn();
+        while early_array < early_end {
+            (*early_array)();
+            early_array = early_array.add(1);
+        }
+    }
 
-    // Initialize allocators.
-    generic::memory::init();
+    // Initialize memory management.
+    unsafe { generic::memory::init() };
 
-    // TODO: Run init calls.
+    arch::core::perpare_cpu(unsafe { arch::core::get_per_cpu().as_mut().unwrap() });
+    // TODO: Initialize VFS.
 
     // Initialize early console.
     // TODO: Abstract console interface so it handles initialization of all consoles as well.
@@ -49,30 +61,34 @@ pub(crate) fn main() -> ! {
             generic::boot::fbcon::init(fb.clone());
         }
     }
+    generic::platform::init();
+
+    // Run init calls.
+    unsafe {
+        let mut init_array = &raw const LD_INIT_ARRAY_START as *const fn();
+        let init_end = &raw const LD_INIT_ARRAY_END as *const fn();
+        while init_array < init_end {
+            (*init_array)();
+            init_array = init_array.add(1);
+        }
+    }
+
+    // Load all modules and run their init function.
+    //generic::module::init();
 
     // Say hello to the console.
     // TODO: Get this information from posix/utsname instead.
-    print!(
-        "Menix {}.{}.{}\n",
+    log!(
+        "Menix {}.{}.{}",
         env!("CARGO_PKG_VERSION_MAJOR"),
         env!("CARGO_PKG_VERSION_MINOR"),
         env!("CARGO_PKG_VERSION_PATCH")
     );
 
-    // Load the platform subsystems.
-    generic::platform::init();
-
-    // Setup SMP.
-    generic::cpu::setup_all();
+    // TODO: Setup SMP.
 
     // TODO: Start scheduler.
 
-    // Initialize buses.
-    generic::bus::init();
-
-    // Load all modules and run their init function.
-    generic::module::init();
-
-    print!("boot: Starting init...\n");
+    log!("boot: Starting init...");
     todo!("Load init");
 }

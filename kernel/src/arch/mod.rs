@@ -1,15 +1,17 @@
+//! This module and all submodules contain architecture dependent code.
+//! All architectures should implement all functions referenced by the submodules of this module.
+
 cfg_match! {
     target_arch = "x86_64" => {
-        pub mod x86_64;
+        mod x86_64;
 
         mod internal {
             pub use super::x86_64::*;
         }
     }
+    _ => { compile_error!("Unsupported architecture!") }
 }
 
-// Re-export only parts of the architecture implementation that get called by generic code.
-pub use internal::cpu;
-pub use internal::irq;
-pub use internal::platform;
-pub use internal::virt;
+pub mod core;
+pub mod irq;
+pub mod virt;

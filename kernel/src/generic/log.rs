@@ -33,7 +33,7 @@ impl Logger {
                 }
             }
         }
-        print!("log: Registered new logging sink \"{}\".\n", name);
+        log!("log: Registered new logging sink \"{}\"", name);
     }
 
     pub fn remove_sink(name: &str) {
