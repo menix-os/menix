@@ -74,7 +74,7 @@ pub unsafe fn init() {
         // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
         if entry.address().value() < 1 << 16 {
             log!(
-                "memory: Ignoring 16-bit memory at {:#018x}",
+                "Ignoring 16-bit memory at {:#018x}",
                 entry.address().value()
             );
             // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
@@ -132,7 +132,7 @@ pub unsafe fn init() {
 
     // Remap the kernel in our own page table.
     unsafe {
-        log!("memory: Using {}-level paging for page table", paging_level);
+        log!("Using {}-level paging for page table", paging_level);
         let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level);
 
         let text_start = VirtAddr(&raw const LD_TEXT_START as usize);
@@ -152,7 +152,7 @@ pub unsafe fn init() {
                 text_end.0 - text_start.0,
             )
             .expect("Unable to map the text segment");
-        log!("memory: Mapped text segment at {:#018x}", text_start.0);
+        log!("Mapped text segment at {:#018x}", text_start.0);
 
         table
             .map_range::<BumpAllocator>(
@@ -163,7 +163,7 @@ pub unsafe fn init() {
                 rodata_end.0 - rodata_start.0,
             )
             .expect("Unable to map the rodata segment");
-        log!("memory: Mapped rodata segment at {:#018x}", rodata_start.0);
+        log!("Mapped rodata segment at {:#018x}", rodata_start.0);
 
         table
             .map_range::<BumpAllocator>(
@@ -174,7 +174,7 @@ pub unsafe fn init() {
                 data_end.0 - data_start.0,
             )
             .expect("Unable to map the data segment");
-        log!("memory: Mapped data segment at {:#018x}", data_start.0);
+        log!("Mapped data segment at {:#018x}", data_start.0);
 
         // Map physical memory.
         table
@@ -186,7 +186,7 @@ pub unsafe fn init() {
                 128 * 1024 * 1024 * 1024,
             )
             .expect("Unable to map HHDM region");
-        log!("memory: Mapped HHDM segment at {:#018x}", hhdm_address.0);
+        log!("Mapped HHDM segment at {:#018x}", hhdm_address.0);
 
         // Activate the new page table.
         table.set_active();
@@ -195,7 +195,7 @@ pub unsafe fn init() {
         let mut kernel_table = virt::KERNEL_PAGE_TABLE.write();
         *kernel_table = table;
 
-        log!("memory: Kernel map is now active");
+        log!("Kernel map is now active");
     }
 
     let mut total_pages = 0;
@@ -210,7 +210,7 @@ pub unsafe fn init() {
         // Ignore memory regions which are too small to keep track of. We reserve at least one page for metadata.
         if num_pages < 2 {
             log!(
-                "memory: Ignoring single page region at {:#018x}",
+                "Ignoring single page region at {:#018x}",
                 entry.address().value(),
             );
             continue;
@@ -230,7 +230,7 @@ pub unsafe fn init() {
     }
 
     log!(
-        "memory: Using {} KiB for page metadata, effective usable memory: {} MiB",
+        "Using {} KiB for page metadata, effective usable memory: {} MiB",
         (total_pages - actual_pages) * arch::virt::get_page_size(VmLevel::L1) / 1024,
         (actual_pages * (arch::virt::get_page_size(VmLevel::L1) - size_of::<Page>())) / 1024 / 1024
     );

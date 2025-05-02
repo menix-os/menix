@@ -81,7 +81,7 @@ pub(crate) fn init() {
                 }
             }
         }
-        log!("module: Registered {} kernel symbols", symbol_table.len());
+        log!("Registered {} kernel symbols", symbol_table.len());
     }
 
     // Load all modules provided by the bootloader.
@@ -93,13 +93,13 @@ pub(crate) fn init() {
             .unwrap_or(&file.name);
 
         if !boot_info.command_line.get_bool(name).unwrap_or(true) {
-            log!("module: Skipping \"{}\"", file.name);
+            log!("Skipping \"{}\"", file.name);
             continue;
         }
 
-        log!("module: Loading \"{}\"", file.name);
+        log!("Loading \"{}\"", file.name);
         if let Err(x) = load(&file.name, Some(&file.command_line), &file.data) {
-            log!("module: Failed to load module: {:?}", x);
+            log!("Failed to load module: {:?}", x);
         }
     }
 }
@@ -419,12 +419,12 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
         .filter(|x| *x != "menix.kso")
         .collect::<Vec<_>>();
 
-    log!("module: Loaded module \"{}\":", name);
-    log!("module:   Base Address | {:#018X}", load_base);
-    log!("module:   Description  | {}", info.description);
-    log!("module:   Version      | {}", info.version);
-    log!("module:   Author(s)    | {}", info.author);
-    log!("module:   Dependencies | {:?}", dependencies);
+    log!("Loaded module \"{}\":", name);
+    log!("  Base Address | {:#018X}", load_base);
+    log!("  Description  | {}", info.description);
+    log!("  Version      | {}", info.version);
+    log!("  Author(s)    | {}", info.author);
+    log!("  Dependencies | {:?}", dependencies);
 
     // TODO: Load dependencies
 

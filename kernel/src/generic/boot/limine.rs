@@ -67,7 +67,7 @@ extern "C" fn _start() -> ! {
 
     if let Some(x) = BOOTLOADER_REQUEST.get_response() {
         log!(
-            "boot: Booting with Limine protocol, loaded by {} {}",
+            "Booting with Limine protocol, loaded by {} {}",
             x.name(),
             x.version()
         )

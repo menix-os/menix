@@ -80,7 +80,7 @@ impl LocalApic {
         result.write_register(0x3E0, 3);
         result.write_register(0x380, result.ticks_per_10ms);
 
-        log!("apic: Initialized LAPIC for CPU {}", context.id);
+        log!("Initialized LAPIC for CPU {}", context.id);
     }
 
     const fn reg_to_x2apic(reg: u32) -> u32 {

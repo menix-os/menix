@@ -147,10 +147,7 @@ pub fn invoke(
         numbers::SYSINFO => todo!(),
         numbers::PTRACE => todo!(),
         _ => {
-            log!(
-                "syscall: Unknown syscall {:#x} requested by user program",
-                num
-            );
+            log!("Unknown syscall {:#x} requested by user program", num);
             Err(Errno::ENOSYS)
         }
     };

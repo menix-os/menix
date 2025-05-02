@@ -78,6 +78,6 @@ pub(crate) fn main() -> ! {
 
     // TODO: Start scheduler.
 
-    log!("boot: Starting init...");
+    log!("Starting init...");
     todo!("Load init");
 }

@@ -17,8 +17,16 @@ macro_rules! per_cpu {
 }
 
 #[macro_export]
-macro_rules! print_inner {
-    ($prefix:literal, $suffix:literal, $($arg:tt)*) => ({
+macro_rules! current_module_name {
+    () => {{
+        const FULL_PATH: &str = module_path!();
+        FULL_PATH.rsplit("::").next().unwrap()
+    }};
+}
+
+#[macro_export]
+macro_rules! log_inner {
+    ($prefix:expr, $suffix:literal, $($arg:tt)*) => ({
         use core::fmt::Write;
         let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
         let current_time = $crate::generic::clock::get_elapsed();
@@ -27,6 +35,7 @@ macro_rules! print_inner {
             current_time / 1000000000,
             (current_time / 1000) % 1000000
         ));
+        _ = writer.write_fmt(format_args!("{}: ", current_module_name!()));
         _ = writer.write_fmt(format_args!($prefix));
         _ = writer.write_fmt(format_args!($($arg)*));
         _ = writer.write_fmt(format_args!($suffix));
@@ -34,37 +43,31 @@ macro_rules! print_inner {
 }
 
 #[macro_export]
-macro_rules! print_old {
-    ($($arg:tt)*) => ({
-        $crate::print_inner!("", "", $($arg)*);
-    });
-}
-
-#[macro_export]
 macro_rules! log {
     ($($arg:tt)*) => ({
-        $crate::print_inner!("", "\n", $($arg)*);
+        $crate::log_inner!("\x1b[0m", "\x1b[0m\n", $($arg)*);
     });
 }
 
+/// Logs a warning.
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)*) => ({
-        $crate::print_inner!("warn: ", "\n", $($arg)*);
+        $crate::log_inner!("\x1b[1;33m", "\x1b[0m\n", $($arg)*);
     });
 }
 
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => ({
-        $crate::print_inner!("error: ", "\n", $($arg)*);
+        $crate::log_inner!("\x1b[1;31m", "\x1b[0m\n", $($arg)*);
     });
 }
 
 #[macro_export]
 macro_rules! dbg {
     ($($arg:tt)*) => ({
-        $crate::print_inner!("", "", "{:#?}\n", $($arg)*);
+        $crate::log_inner!("", "", "{:#?}\n", $($arg)*);
     });
 }
 

@@ -60,12 +60,11 @@ extern "C" fn uacpi_kernel_unmap(addr: *mut c_void, len: uacpi_size) {
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_log(arg1: uacpi_log_level, arg2: *const uacpi_char) {
     let msg = unsafe { CStr::from_ptr(arg2) }.to_str().unwrap();
+    // uACPI prints a newline at the end, so we need to print it without.
     match arg1 {
-        UACPI_LOG_WARN => print_inner!("warn: acpi: ", "", "{}", msg),
-        UACPI_LOG_DEBUG => print_inner!("debug: acpi: ", "", "{}", msg),
-        UACPI_LOG_TRACE => print_inner!("trace: acpi: ", "", "{}", msg),
-        UACPI_LOG_ERROR => print_inner!("error: acpi: ", "", "{}", msg),
-        _ => print_inner!("acpi: ", "", "{}", msg),
+        UACPI_LOG_ERROR => log_inner!("\x1b[1;31m", "\x1b[0m", "{}", msg),
+        UACPI_LOG_WARN => log_inner!("\x1b[1;33m", "\x1b[0m", "{}", msg),
+        _ => log_inner!("", "", "{}", msg),
     }
 }
 

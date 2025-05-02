@@ -35,7 +35,7 @@ impl ClockSource for TscClock {
 
         // First, always try using another known good clock to calibrate.
         let freq = if clock::has_clock() {
-            log!("tsc: Calibrating using exisiting clock");
+            log!("Calibrating using exisiting clock");
             let t1 = asm::rdtsc();
             clock::wait_ns(1_000_000_000)?;
             let t2 = asm::rdtsc();
@@ -46,7 +46,7 @@ impl ClockSource for TscClock {
         // On a normal system, this should usually never be called and is a last resort
         // since at this point we have at least the HPET timer.
         else if let Some(c) = cpuid {
-            log!("tsc: Calibrating using CPUID 0x15");
+            log!("Calibrating using CPUID 0x15");
             if c.ecx != 0 && c.ebx != 0 && c.eax != 0 {
                 c.ecx as u64 * c.ebx as u64 / c.eax as u64
             } else {
@@ -58,7 +58,7 @@ impl ClockSource for TscClock {
             return Err(ClockError::UnableToSetup);
         };
 
-        log!("tsc: Timer frequency is {freq} Hz");
+        log!("Timer frequency is {freq} Hz");
         TSC_FREQUENCY.store(freq, Ordering::Relaxed);
 
         return Ok(());

@@ -182,7 +182,7 @@ impl Region {
         }
 
         log!(
-            "memory: [{:#018X} - {:#018X}]",
+            "[{:#018X} - {:#018X}]",
             phys.0,
             phys.0 + (num_pages as usize * arch::virt::get_page_size(VmLevel::L1)) - 1
         );

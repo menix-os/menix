@@ -16,7 +16,7 @@ pub enum PciError {
 
 /// Initializes the PCI subsystem.
 pub(crate) fn init() {
-    log!("pci: Initializing the PCI subsystem");
+    log!("Initializing the PCI subsystem");
 
     // First, attempt to initialize PCI using the ACPI table "MCFG".
     #[cfg(feature = "acpi")]
@@ -25,7 +25,7 @@ pub(crate) fn init() {
         .get_bool("acpi")
         .unwrap_or(true)
     {
-        log!("pci: Using ACPI to configure PCI")
+        log!("Using ACPI to configure PCI")
     }
 
     // If there is no ACPI, resort to OpenFirmware.

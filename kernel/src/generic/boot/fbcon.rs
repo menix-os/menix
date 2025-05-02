@@ -40,6 +40,10 @@ const FONT_HEIGHT: usize = 12;
 const FONT_GLYPH_SIZE: usize = (FONT_WIDTH * FONT_HEIGHT) / 8;
 
 struct FbCon {
+    /// Current foreground color.
+    fg_col: [u8; 4],
+    /// Current background color.
+    bg_col: [u8; 4],
     /// Screen width in characters.
     ch_width: usize,
     /// Screen height in characters.
@@ -77,7 +81,7 @@ fn init() {
         .unwrap();
 
     log!(
-        "fbcon: Resolution = {}x{}x{}, Phys = {:#018X}, Virt = {:#018X}",
+        "Resolution = {}x{}x{}, Phys = {:#018X}, Virt = {:#018X}",
         fb.width,
         fb.height,
         fb.cpp * 8,
@@ -86,6 +90,8 @@ fn init() {
     );
 
     Logger::add_sink(Box::new(FbCon {
+        fg_col: [0xFF; 4],
+        bg_col: [0; 4],
         ch_width: fb.width / FONT_WIDTH,
         ch_height: fb.height / FONT_HEIGHT,
         ch_xpos: 0,
@@ -125,20 +131,21 @@ impl FbCon {
             for x in 0..FONT_WIDTH {
                 let offset = (pitch * (pix_pos.1 + y)) + (cpp * (pix_pos.0 + x));
                 let addr = self.screen;
+
                 if FONT_DATA[(code_point as usize * FONT_GLYPH_SIZE) + y]
                     & 1 << (FONT_WIDTH - x - 1)
                     != 0
                 {
                     unsafe {
-                        addr.add(offset + 0).write_volatile(0xff);
-                        addr.add(offset + 1).write_volatile(0xff);
-                        addr.add(offset + 2).write_volatile(0xff);
-                        addr.add(offset + 3).write_volatile(0xff);
+                        addr.add(offset + 0).write_volatile(self.fg_col[0]);
+                        addr.add(offset + 1).write_volatile(self.fg_col[1]);
+                        addr.add(offset + 2).write_volatile(self.fg_col[2]);
+                        addr.add(offset + 3).write_volatile(self.fg_col[3]);
                     };
-                    self.back_buffer[offset + 0] = 0xff;
-                    self.back_buffer[offset + 1] = 0xff;
-                    self.back_buffer[offset + 2] = 0xff;
-                    self.back_buffer[offset + 3] = 0xff;
+                    self.back_buffer[offset + 0] = self.fg_col[0];
+                    self.back_buffer[offset + 1] = self.fg_col[1];
+                    self.back_buffer[offset + 2] = self.fg_col[2];
+                    self.back_buffer[offset + 3] = self.fg_col[3];
                 } else {
                     unsafe {
                         addr.add(offset + 0).write_volatile(0x00);
@@ -156,6 +163,8 @@ impl FbCon {
 
         self.ch_xpos += 1;
     }
+
+    fn parse_ansi_sequence(&mut self) {}
 }
 
 unsafe impl Send for FbCon {}
@@ -166,7 +175,7 @@ impl LoggerSink for FbCon {
     }
 
     fn write(&mut self, input: &[u8]) {
-        for ch in input {
+        for (i, ch) in input.iter().enumerate() {
             match ch {
                 b'\n' => {
                     self.ch_xpos = 0;
@@ -176,6 +185,13 @@ impl LoggerSink for FbCon {
                 b'\t' => {
                     self.ch_xpos = align_up(self.ch_xpos + 1, 8);
                     continue;
+                }
+                // ANSI escape sequence parsing.
+                b'\x1e' => {
+                    let Some(x) = input.get(i + 1) else { continue };
+                    match *x {
+                        _ => continue,
+                    }
                 }
                 _ => (),
             }
