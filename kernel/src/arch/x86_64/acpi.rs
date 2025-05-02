@@ -113,7 +113,7 @@ fn hpet_init() {
     }
 }
 
-init_call!(hpet_init);
+init_call_if_cmdline!("hpet", true, hpet_init);
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_io_read8(
