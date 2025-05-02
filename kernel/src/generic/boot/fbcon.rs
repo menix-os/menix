@@ -4,6 +4,7 @@ use alloc::{boxed::Box, vec::Vec};
 use core::{intrinsics::volatile_copy_nonoverlapping_memory, ptr::NonNull};
 
 use crate::generic::{
+    boot::BootInfo,
     log::{Logger, LoggerSink},
     memory::{
         PhysAddr,
@@ -54,7 +55,13 @@ struct FbCon {
     screen: *mut u8,
 }
 
-pub fn init(fb: FrameBuffer) {
+init_call_if_cmdline!("fbcon", true, init);
+
+fn init() {
+    let Some(fb) = BootInfo::get().framebuffer.clone() else {
+        return;
+    };
+
     let mut buf = Vec::new();
     buf.resize(fb.pitch * fb.height, 0);
 

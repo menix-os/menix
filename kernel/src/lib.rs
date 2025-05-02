@@ -50,17 +50,6 @@ pub(crate) fn main() -> ! {
     arch::core::perpare_cpu(unsafe { arch::core::get_per_cpu().as_mut().unwrap() });
     // TODO: Initialize VFS.
 
-    // Initialize early console.
-    // TODO: Abstract console interface so it handles initialization of all consoles as well.
-    if BootInfo::get()
-        .command_line
-        .get_bool("fbcon")
-        .unwrap_or(true)
-    {
-        if let Some(fb) = &BootInfo::get().framebuffer {
-            generic::boot::fbcon::init(fb.clone());
-        }
-    }
     generic::platform::init();
 
     // Run init calls.
