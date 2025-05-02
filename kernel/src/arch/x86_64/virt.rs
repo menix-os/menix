@@ -3,7 +3,7 @@ use crate::generic::{
     self,
     memory::{
         PhysAddr, VirtAddr,
-        page::{self, PageFaultInfo, PageFaultKind},
+        page::{self, PageFaultCause, PageFaultInfo},
         virt::{self, PageTable, VmFlags, VmLevel},
     },
 };

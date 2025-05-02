@@ -69,9 +69,10 @@ impl ClockSource for Hpet {
     fn setup(&mut self) -> Result<(), ClockError> {
         let mut table = uacpi_table::default();
 
-        if unsafe { uacpi::uacpi_table_find_by_signature(c"HPET".as_ptr(), &raw mut table) }
-            != UACPI_STATUS_OK
-        {
+        let uacpi_status =
+            unsafe { uacpi::uacpi_table_find_by_signature(c"HPET".as_ptr(), &raw mut table) };
+        if uacpi_status != UACPI_STATUS_OK {
+            dbg!(uacpi_status);
             return Err(ClockError::Unavailable);
         }
 
@@ -107,7 +108,9 @@ impl ClockSource for Hpet {
 }
 
 fn hpet_init() {
-    clock::switch(Box::new(Hpet::default()));
+    if let Err(x) = clock::switch(Box::new(Hpet::default())) {
+        error!("acpi: Unable to setup HPET: {:?}", x);
+    }
 }
 
 init_call!(hpet_init);

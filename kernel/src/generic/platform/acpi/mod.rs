@@ -13,25 +13,7 @@ pub fn init() {
         None => panic!("No RSDP available, unable to initialize the ACPI subsystem!"),
     };
 
-    let mut uacpi_status = uacpi::UACPI_STATUS_OK;
-
-    // Get an early table window so we can initialize e.g. HPET and MADT.
-    let mut early_mem = Box::<[u8]>::new_uninit_slice(4096);
-    uacpi_status = unsafe {
-        uacpi::uacpi_setup_early_table_access(
-            early_mem.as_mut_ptr() as *mut c_void,
-            early_mem.len(),
-        )
-    };
-    if uacpi_status != uacpi::UACPI_STATUS_OK {
-        error!(
-            "acpi: Early table access failed with error {}!",
-            uacpi_status
-        );
-        return;
-    }
-
-    uacpi_status = unsafe { uacpi::uacpi_initialize(0) };
+    let mut uacpi_status = unsafe { uacpi::uacpi_initialize(0) };
     if uacpi_status != uacpi::UACPI_STATUS_OK {
         error!(
             "acpi: Initialization failed with error \"{}\"!",

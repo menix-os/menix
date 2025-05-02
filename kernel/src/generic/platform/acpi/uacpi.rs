@@ -258,7 +258,7 @@ extern "C" fn uacpi_kernel_install_interrupt_handler(
     out_irq_handle: *mut uacpi_handle,
 ) -> uacpi_status {
     // TODO
-    return UACPI_STATUS_UNIMPLEMENTED;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -267,7 +267,7 @@ extern "C" fn uacpi_kernel_uninstall_interrupt_handler(
     irq_handle: uacpi_handle,
 ) -> uacpi_status {
     // TODO
-    return UACPI_STATUS_UNIMPLEMENTED;
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]

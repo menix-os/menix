@@ -74,7 +74,7 @@ pub(crate) fn main() -> ! {
     }
 
     // Load all modules and run their init function.
-    //generic::module::init();
+    generic::module::init();
 
     // Say hello to the console.
     // TODO: Get this information from posix/utsname instead.

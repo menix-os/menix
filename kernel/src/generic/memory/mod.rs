@@ -68,13 +68,24 @@ pub unsafe fn init() {
     HHDM_START.store(hhdm_address.value(), Ordering::Relaxed);
 
     let mut memory_map = info.memory_map.lock();
-    memory_map.iter().for_each(|f| {
-        log!(
-            "memory: [{:#018x} - {:#018x}]",
-            f.address().0,
-            f.address().0 + f.length() - 1
-        )
-    });
+
+    // Remove 16-bit memory from the memory map.
+    for entry in memory_map.iter_mut() {
+        // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
+        if entry.address().value() < 1 << 16 {
+            log!(
+                "memory: Ignoring 16-bit memory at {:#018x}",
+                entry.address().value()
+            );
+            // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
+            if entry.address() + entry.length() >= PhysAddr(1 << 16) {
+                entry.set_length(entry.length() - (1 << 16) - entry.address().value());
+                entry.set_address(PhysAddr(1 << 16));
+            } else {
+                continue;
+            }
+        }
+    }
 
     // Find the highest usable memory.
     let highest_addr = memory_map
@@ -108,7 +119,7 @@ pub unsafe fn init() {
         .unwrap();
 
     // Use that to bootstrap the bump allocator.
-    bump::BUMP_PN.store(
+    bump::BUMP_CURRENT.store(
         align_up(
             bump_region.address().value(),
             arch::virt::get_page_size(VmLevel::L1),
@@ -192,21 +203,6 @@ pub unsafe fn init() {
 
     // Initialize all regions.
     for entry in memory_map.iter_mut() {
-        // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
-        if entry.address().value() < 1 << 16 {
-            log!(
-                "memory: Ignoring 16-bit memory at {:#018x}",
-                entry.address().value()
-            );
-            // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
-            if entry.address() + entry.length() >= PhysAddr(1 << 16) {
-                entry.set_length(entry.length() - (1 << 16) - entry.address().value());
-                entry.set_address(PhysAddr(1 << 16));
-            } else {
-                continue;
-            }
-        }
-
         let num_pages = align_up(entry.length(), arch::virt::get_page_size(VmLevel::L1))
             / arch::virt::get_page_size(VmLevel::L1);
         let meta_size = num_pages * size_of::<Page>();
@@ -240,7 +236,7 @@ pub unsafe fn init() {
     );
 
     // Set the MMAP base to right after the HHDM. Make sure this lands on a new PTE so we can map regular pages.
-    let pte_size = 1usize << (paging_level * arch::virt::get_level_bits());
+    let pte_size = arch::virt::get_page_size(VmLevel::L3);
     let offset = align_up(0x1000_0000_0000, pte_size);
     virt::KERNEL_MMAP_BASE_ADDR.store(hhdm_address.0 + offset, Ordering::Relaxed);
 }

@@ -107,3 +107,26 @@ macro_rules! init_call {
         };
     };
 }
+
+/// Hooks a function as an init call if a command line option equals to true.
+macro_rules! init_call_if_cmdline {
+    ($opt:literal, $default:literal, $fun:ident) => {
+        const _: () = {
+            fn __init_call_wrapper() {
+                use $crate::generic::boot::BootInfo;
+                if BootInfo::get()
+                    .command_line
+                    .get_bool($opt)
+                    .unwrap_or($default)
+                {
+                    $fun()
+                }
+            }
+
+            #[doc(hidden)]
+            #[unsafe(link_section = ".init_array")]
+            #[used]
+            static __INIT_CALL: fn() = __init_call_wrapper;
+        };
+    };
+}

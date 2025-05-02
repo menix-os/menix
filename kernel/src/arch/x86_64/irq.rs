@@ -3,7 +3,7 @@ use super::task::TaskFrame;
 use crate::arch::x86_64::gdt::Gdt;
 use crate::generic;
 use crate::generic::exec::Frame;
-use crate::generic::memory::page::{PageFaultInfo, PageFaultKind};
+use crate::generic::memory::page::{PageFaultCause, PageFaultInfo};
 use crate::generic::{irq::IrqController, memory::VirtAddr, percpu::CpuData, syscall};
 use core::arch::asm;
 use core::fmt::Display;
@@ -198,15 +198,27 @@ pub unsafe fn page_fault_handler(context: *const TrapFrame) {
     unsafe {
         asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
 
+        let mut cause = PageFaultCause::empty();
+        let err = (*context).error;
+        if err & (1 << 0) != 0 {
+            cause |= PageFaultCause::Present;
+        }
+        if err & (1 << 1) != 0 {
+            cause |= PageFaultCause::Write;
+        }
+        if err & (1 << 2) != 0 {
+            cause |= PageFaultCause::User;
+        }
+        if err & (1 << 4) != 0 {
+            cause |= PageFaultCause::Fetch;
+        }
+
         let info = PageFaultInfo {
             caused_by_user: (*context).cs & super::consts::CPL_USER as u64
                 == super::consts::CPL_USER as u64,
             ip: ((*context).rip as usize).into(),
             addr: cr2.into(),
-            // TODO
-            kind: match (*context).error {
-                _ => PageFaultKind::Unknown,
-            },
+            cause,
         };
         return generic::memory::page::page_fault_handler(context.as_ref().unwrap(), &info);
     }
@@ -214,7 +226,7 @@ pub unsafe fn page_fault_handler(context: *const TrapFrame) {
 
 unsafe extern "C" fn timer_handler(context: *mut TrapFrame) -> *mut TrapFrame {
     let lapic = unsafe { super::apic::LAPIC.get(CpuData::get()) };
-    // TODO: crate::generic::sched::run();
+    let result = generic::exec::sched::reschedule(&(unsafe { *context }).save());
     lapic.eoi();
     return context;
 }
@@ -274,7 +286,7 @@ pub unsafe extern "C" fn amd64_syscall_stub() {
             "push 0x00",                  // Context::error field
             "push 0x00",                  // Context::isr field
             push_all_regs!(),             // Push general purpose registers so they can be written to by syscalls.
-            "mov rdi, rsp",               // Put `*mut Context` as first argument.
+            "mov rdi, rsp",               // Put the trap frame struct as first argument.
             "call {syscall_handler}",     // Call syscall handler
             pop_all_regs!(),              // Pop stack values back to the general purpose registers.
             "add rsp, 0x10",              // Skip .error and .isr fields (2 * sizeof(u64))

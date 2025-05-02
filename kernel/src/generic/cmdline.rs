@@ -99,7 +99,7 @@ impl<'a> CmdLine<'a> {
 
     pub fn get_bool(&self, name: &str) -> Option<bool> {
         match self.get_string(name)? {
-            "true" | "yes" | "on" | "1" | "" /* empty string */ => Some(true),
+            "true" | "yes" | "on" | "1" => Some(true),
             "false" | "no" | "off" | "0" => Some(false),
             value => {
                 warn!("Invalid boolean value for {}: {:?}", name, value);

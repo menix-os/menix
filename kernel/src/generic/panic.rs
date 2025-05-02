@@ -14,7 +14,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
         error!("at {}", location);
     }
 
-    error!("\"{}\"", info.message());
+    error!("{}", info.message());
 
     loop {}
 }

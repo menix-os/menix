@@ -15,6 +15,8 @@ pub struct Scheduler {
     task: Option<Arc<Task>>,
 }
 
+static SCHEDULER: Scheduler = Scheduler::new();
+
 impl Scheduler {
     pub const fn new() -> Self {
         return Self {
@@ -23,28 +25,28 @@ impl Scheduler {
             task: None,
         };
     }
+}
 
-    /// Enables preemption on the current core.
-    pub fn preempt_on(&mut self) {
-        self.do_preempt.store(false, Ordering::Release);
-    }
+/// Enables preemption on the current core.
+pub fn preempt_on() {
+    SCHEDULER.do_preempt.store(false, Ordering::Release);
+}
 
-    /// Disables preemption on the current core.
-    pub fn preempt_off(&mut self) {
-        self.do_preempt.store(true, Ordering::Release);
-    }
+/// Disables preemption on the current core.
+pub fn preempt_off() {
+    SCHEDULER.do_preempt.store(true, Ordering::Release);
+}
 
-    pub fn get_current_task(&self) -> Option<Arc<Task>> {
-        match &self.task {
-            Some(x) => return Some(x.clone()),
-            None => None,
-        }
+pub fn get_current_task() -> Option<Arc<Task>> {
+    match &SCHEDULER.task {
+        Some(x) => return Some(x.clone()),
+        None => None,
     }
+}
 
-    pub fn reschedule(&mut self, mut context: *const TaskFrame) -> *const TaskFrame {
-        self.preempt_off();
-        // TODO: Reschedule
-        self.preempt_on();
-        return context;
-    }
+pub fn reschedule(mut context: &TaskFrame) -> &TaskFrame {
+    preempt_off();
+    // TODO: Reschedule
+    preempt_on();
+    return context;
 }

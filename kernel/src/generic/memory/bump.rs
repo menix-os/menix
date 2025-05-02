@@ -9,15 +9,18 @@ use crate::arch::{self};
 use alloc::alloc::AllocError;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-/// Points to the current page number for the next allocation.
-pub(crate) static BUMP_PN: AtomicUsize = AtomicUsize::new(0);
+/// Points to the current address for the next allocation.
+pub(crate) static BUMP_CURRENT: AtomicUsize = AtomicUsize::new(0);
 
 pub(crate) struct BumpAllocator;
 impl PageAllocator for BumpAllocator {
     fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
         let bytes = pages * arch::virt::get_page_size(VmLevel::L1);
-        let mem = PhysAddr(BUMP_PN.fetch_add(bytes, Ordering::Relaxed));
-        unsafe { (mem.as_hhdm() as *mut u8).write_bytes(0, bytes) };
+        let mem = PhysAddr(BUMP_CURRENT.fetch_add(bytes, Ordering::Relaxed));
+
+        if flags.contains(AllocFlags::Zeroed) {
+            unsafe { (mem.as_hhdm() as *mut u8).write_bytes(0, bytes) };
+        }
 
         return Ok(mem);
     }

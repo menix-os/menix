@@ -8,6 +8,7 @@ use crate::{
     generic::util::align_up,
 };
 use alloc::alloc::AllocError;
+use bitflags::bitflags;
 
 /// Metadata about a physical page.
 /// Keep this structure as small as possible, every single physical page has one!
@@ -58,21 +59,22 @@ pub struct PageFaultInfo {
     /// The address that was attempted to access.
     pub addr: VirtAddr,
     /// The cause of this page fault.
-    pub kind: PageFaultKind,
+    pub cause: PageFaultCause,
 }
 
-/// The origin of the page fault.
-pub enum PageFaultKind {
-    /// Issue unclear (possible corruption).
-    Unknown,
-    /// Page is not mapped in the current page table.
-    NotMapped,
-    /// Page is mapped, but can't be read from.
-    IllegalRead,
-    /// Page is mapped, but can't be written to.
-    IllegalWrite,
-    /// Page is mapped, but can't be executed on.
-    IllegalExecute,
+bitflags! {
+    /// The origin of the page fault.
+    #[derive(Debug)]
+    pub struct PageFaultCause: usize {
+        /// If set, the fault occured in a mapped page.
+        const Present = 1 << 0;
+        /// If set, the fault was caused by a write.
+        const Write = 1 << 1;
+        /// If set, the fault was caused by an instruction fetch.
+        const Fetch = 1 << 2;
+        /// If set, the fault was caused by a user access.
+        const User = 1 << 3;
+    }
 }
 
 /// Generic page fault handler. May reschedule and return a different context.
@@ -82,15 +84,7 @@ pub fn page_fault_handler<'a>(context: &'a TrapFrame, info: &PageFaultInfo) {
     }
 
     panic!(
-        "Kernel caused an unrecoverable page fault: {}! IP: {:#x}, Address: {:#x}",
-        match info.kind {
-            PageFaultKind::Unknown => "Unknown cause",
-            PageFaultKind::NotMapped => "Page was not mapped",
-            PageFaultKind::IllegalRead => "Page can't be read from",
-            PageFaultKind::IllegalWrite => "Page can't be written to",
-            PageFaultKind::IllegalExecute => "Page can't be executed on",
-        },
-        info.ip.0,
-        info.addr.0
+        "Kernel caused an unrecoverable page fault: {:?}! IP: {:#x}, Address: {:#x}",
+        info.cause, info.ip.0, info.addr.0
     );
 }
