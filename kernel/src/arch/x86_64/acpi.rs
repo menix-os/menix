@@ -8,9 +8,9 @@ use crate::generic::{
 };
 use alloc::boxed::Box;
 use core::mem::offset_of;
-use uacpi::{
-    UACPI_STATUS_OK, acpi_hpet, uacpi_handle, uacpi_size, uacpi_status, uacpi_table, uacpi_u8,
-    uacpi_u16, uacpi_u32,
+use uacpi_sys::{
+    UACPI_STATUS_OK, acpi_hpet, uacpi_handle, uacpi_size, uacpi_status, uacpi_table,
+    uacpi_table_find_by_signature, uacpi_table_unref, uacpi_u8, uacpi_u16, uacpi_u32,
 };
 
 // TODO: Use IoSpace
@@ -70,7 +70,7 @@ impl ClockSource for Hpet {
         let mut table = uacpi_table::default();
 
         let uacpi_status =
-            unsafe { uacpi::uacpi_table_find_by_signature(c"HPET".as_ptr(), &raw mut table) };
+            unsafe { uacpi_table_find_by_signature(c"HPET".as_ptr(), &raw mut table) };
         if uacpi_status != UACPI_STATUS_OK {
             dbg!(uacpi_status);
             return Err(ClockError::Unavailable);
@@ -101,7 +101,7 @@ impl ClockSource for Hpet {
             None => return Err(ClockError::UnableToSetup),
         }
 
-        unsafe { uacpi::uacpi_table_unref(&raw mut table) };
+        unsafe { uacpi_table_unref(&raw mut table) };
 
         return Ok(());
     }

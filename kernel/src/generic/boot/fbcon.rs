@@ -1,13 +1,21 @@
 // Early framebuffer boot console (likely using an EFI GOP framebuffer).
 
 use alloc::{boxed::Box, vec::Vec};
-use core::{intrinsics::volatile_copy_nonoverlapping_memory, ptr::NonNull};
+use core::{
+    alloc::{GlobalAlloc, Layout},
+    ffi::c_void,
+    ptr::null_mut,
+};
+use flanterm_sys::{flanterm_context, flanterm_write};
+use spin::Mutex;
 
 use crate::generic::{
     boot::BootInfo,
     log::{Logger, LoggerSink},
     memory::{
         PhysAddr,
+        buddy::BuddyAllocator,
+        slab::{ALLOCATOR, SlabAllocator},
         virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
     },
     util::align_up,
@@ -31,41 +39,42 @@ pub struct FrameBuffer {
     pub blue: FbColorBits,
 }
 
-unsafe impl Sync for FrameBuffer {}
-unsafe impl Send for FrameBuffer {}
-
 const FONT_DATA: &[u8] = include_bytes!("../../../assets/builtin_font.bin");
 const FONT_WIDTH: usize = 8;
 const FONT_HEIGHT: usize = 12;
 const FONT_GLYPH_SIZE: usize = (FONT_WIDTH * FONT_HEIGHT) / 8;
 
 struct FbCon {
-    /// Current foreground color.
-    fg_col: [u8; 4],
-    /// Current background color.
-    bg_col: [u8; 4],
-    /// Screen width in characters.
-    ch_width: usize,
-    /// Screen height in characters.
-    ch_height: usize,
-    /// Current cursor position on the X axis.
-    ch_xpos: usize,
-    /// Current cursor position on the Y axis.
-    ch_ypos: usize,
     /// Back buffer to draw updates on.
     back_buffer: Vec<u8>,
     /// The buffer to draw on.
     fb: FrameBuffer,
-    screen: *mut u8,
+    /// The flanterm context.
+    ctx: *mut flanterm_context,
 }
 
+unsafe impl Send for FbCon {}
+
 init_call_if_cmdline!("fbcon", true, init);
+
+unsafe extern "C" fn malloc(size: usize) -> *mut core::ffi::c_void {
+    let mem = unsafe { ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<u8>()).unwrap()) };
+    mem as *mut core::ffi::c_void
+}
+
+unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
+    unsafe {
+        ALLOCATOR.dealloc(
+            ptr as *mut u8,
+            Layout::from_size_align(size, align_of::<u8>()).unwrap(),
+        )
+    };
+}
 
 fn init() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;
     };
-
     let mut buf = Vec::new();
     buf.resize(fb.pitch * fb.height, 0);
 
@@ -89,85 +98,43 @@ fn init() {
         mem as usize
     );
 
-    Logger::add_sink(Box::new(FbCon {
-        fg_col: [0xFF; 4],
-        bg_col: [0; 4],
-        ch_width: fb.width / FONT_WIDTH,
-        ch_height: fb.height / FONT_HEIGHT,
-        ch_xpos: 0,
-        ch_ypos: 0,
-        back_buffer: buf,
-        fb,
-        screen: mem,
-    }));
-}
+    unsafe {
+        let ctx = flanterm_sys::flanterm_fb_init(
+            Some(malloc),
+            Some(free),
+            mem as *mut u32,
+            fb.width,
+            fb.height,
+            fb.pitch,
+            fb.red.size,
+            fb.red.offset,
+            fb.green.size,
+            fb.green.offset,
+            fb.blue.size,
+            fb.blue.offset,
+            null_mut(),
+            null_mut(),
+            null_mut(),
+            null_mut(),
+            null_mut(),
+            null_mut(),
+            null_mut(),
+            FONT_DATA.as_ptr() as *mut c_void,
+            FONT_WIDTH,
+            FONT_HEIGHT,
+            0,
+            1,
+            1,
+            0,
+        );
 
-impl FbCon {
-    /// Scrolls the console by one line.
-    fn scroll(&mut self) {
-        // Amount of bytes for each line.
-        let line_bytes = FONT_HEIGHT * self.fb.pitch;
-        // Copy line 1.. to 0..
-        self.back_buffer.copy_within(line_bytes.., 0);
-        // Clear the last line.
-        self.back_buffer[((self.ch_height - 1) * line_bytes)..].fill(0);
-
-        unsafe {
-            volatile_copy_nonoverlapping_memory(
-                self.screen,
-                self.back_buffer.as_ptr(),
-                self.back_buffer.len(),
-            )
-        };
+        Logger::add_sink(Box::new(FbCon {
+            back_buffer: buf,
+            fb,
+            ctx,
+        }));
     }
-
-    fn putchar(&mut self, ch: u8) {
-        let code_point = ch as u8;
-        let pix_pos = (self.ch_xpos * FONT_WIDTH, self.ch_ypos * FONT_HEIGHT);
-        let pitch = self.fb.pitch;
-        let cpp = self.fb.cpp;
-
-        for y in 0..FONT_HEIGHT {
-            for x in 0..FONT_WIDTH {
-                let offset = (pitch * (pix_pos.1 + y)) + (cpp * (pix_pos.0 + x));
-                let addr = self.screen;
-
-                if FONT_DATA[(code_point as usize * FONT_GLYPH_SIZE) + y]
-                    & 1 << (FONT_WIDTH - x - 1)
-                    != 0
-                {
-                    unsafe {
-                        addr.add(offset + 0).write_volatile(self.fg_col[0]);
-                        addr.add(offset + 1).write_volatile(self.fg_col[1]);
-                        addr.add(offset + 2).write_volatile(self.fg_col[2]);
-                        addr.add(offset + 3).write_volatile(self.fg_col[3]);
-                    };
-                    self.back_buffer[offset + 0] = self.fg_col[0];
-                    self.back_buffer[offset + 1] = self.fg_col[1];
-                    self.back_buffer[offset + 2] = self.fg_col[2];
-                    self.back_buffer[offset + 3] = self.fg_col[3];
-                } else {
-                    unsafe {
-                        addr.add(offset + 0).write_volatile(0x00);
-                        addr.add(offset + 1).write_volatile(0x00);
-                        addr.add(offset + 2).write_volatile(0x00);
-                        addr.add(offset + 3).write_volatile(0x00);
-                    };
-                    self.back_buffer[offset + 0] = 0x00;
-                    self.back_buffer[offset + 1] = 0x00;
-                    self.back_buffer[offset + 2] = 0x00;
-                    self.back_buffer[offset + 3] = 0x00;
-                }
-            }
-        }
-
-        self.ch_xpos += 1;
-    }
-
-    fn parse_ansi_sequence(&mut self) {}
 }
-
-unsafe impl Send for FbCon {}
 
 impl LoggerSink for FbCon {
     fn name(&self) -> &'static str {
@@ -175,38 +142,6 @@ impl LoggerSink for FbCon {
     }
 
     fn write(&mut self, input: &[u8]) {
-        for (i, ch) in input.iter().enumerate() {
-            match ch {
-                b'\n' => {
-                    self.ch_xpos = 0;
-                    self.ch_ypos += 1;
-                    continue;
-                }
-                b'\t' => {
-                    self.ch_xpos = align_up(self.ch_xpos + 1, 8);
-                    continue;
-                }
-                // ANSI escape sequence parsing.
-                b'\x1e' => {
-                    let Some(x) = input.get(i + 1) else { continue };
-                    match *x {
-                        _ => continue,
-                    }
-                }
-                _ => (),
-            }
-
-            if self.ch_xpos >= self.ch_width {
-                self.ch_xpos = 0;
-                self.ch_ypos += 1;
-            }
-
-            if self.ch_ypos >= self.ch_height {
-                self.scroll();
-                self.ch_ypos = self.ch_height - 1;
-            }
-
-            self.putchar(*ch);
-        }
+        unsafe { flanterm_write(self.ctx, input.as_ptr() as *const i8, input.len()) };
     }
 }

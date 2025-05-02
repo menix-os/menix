@@ -23,10 +23,8 @@ fn main() {
         "uacpi/source/uacpi.c",
         "uacpi/source/utilities.c",
     ])
-    .includes(["src/"])
     .includes(["uacpi/include/"])
     .define("UACPI_SIZED_FREES", None)
-    .define("UACPI_OVERRIDE_LIBC", None)
     .pic(true)
     .flag("-ffreestanding")
     .flag("-nostdlib");

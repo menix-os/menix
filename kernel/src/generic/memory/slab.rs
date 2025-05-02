@@ -168,13 +168,13 @@ unsafe impl GlobalAlloc for SlabAllocator {
 }
 
 #[repr(C, align(4096))]
-pub(crate) struct SlabAllocator {
+pub struct SlabAllocator {
     slabs: [Slab; 10],
 }
 
 // Register the slab allocator as the global allocator.
 #[global_allocator]
-pub(crate) static ALLOCATOR: SlabAllocator = SlabAllocator {
+pub static ALLOCATOR: SlabAllocator = SlabAllocator {
     slabs: [
         Slab::new(16),
         Slab::new(24),

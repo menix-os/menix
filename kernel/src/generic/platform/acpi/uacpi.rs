@@ -20,7 +20,7 @@ use core::{
 };
 use spin::Mutex;
 
-pub use uacpi::*;
+pub use uacpi_sys::*;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_addr) -> uacpi_status {
