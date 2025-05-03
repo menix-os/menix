@@ -1,3 +1,9 @@
+pub mod apic;
+pub mod gdt;
+pub mod idt;
+pub mod serial;
+pub mod tsc;
+
 use super::asm;
 use crate::generic::{
     clock::{self, ClockError, ClockSource},
@@ -6,7 +12,7 @@ use crate::generic::{
 use alloc::boxed::Box;
 use core::mem::offset_of;
 use uacpi_sys::{
-    UACPI_STATUS_OK, acpi_hpet, uacpi_handle, uacpi_size, uacpi_status, uacpi_table,
+    UACPI_STATUS_OK, acpi_hpet, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_table,
     uacpi_table_find_by_signature, uacpi_table_unref, uacpi_u8, uacpi_u16, uacpi_u32,
 };
 
@@ -180,4 +186,21 @@ extern "C" fn uacpi_kernel_io_write32(
         asm::write32((arg1 as usize + offset) as u16, in_value);
     }
     return UACPI_STATUS_OK;
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn uacpi_kernel_io_map(
+    base: uacpi_io_addr,
+    _len: uacpi_size,
+    out_handle: *mut uacpi_handle,
+) -> uacpi_status {
+    unsafe {
+        out_handle.write(base as uacpi_handle);
+    }
+    return UACPI_STATUS_OK;
+}
+
+#[unsafe(no_mangle)]
+extern "C" fn uacpi_kernel_io_unmap(handle: uacpi_handle) {
+    _ = handle;
 }

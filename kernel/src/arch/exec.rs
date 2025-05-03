@@ -1,5 +1,5 @@
 use super::internal;
-use crate::generic::exec::Frame;
+use crate::generic::sched::task::Frame;
 
-pub use internal::TaskFrame;
+pub use internal::task::TaskFrame;
 assert_trait_impl!(TaskFrame, Frame);

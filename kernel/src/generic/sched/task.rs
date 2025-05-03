@@ -1,9 +1,5 @@
 use crate::arch::exec::TaskFrame;
-use alloc::sync::Arc;
 use core::sync::atomic::{AtomicUsize, Ordering};
-
-pub mod sched;
-pub mod task;
 
 pub trait Frame {
     fn set_stack(&mut self, addr: usize);

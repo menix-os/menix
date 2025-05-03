@@ -1,4 +1,4 @@
-use super::exec::Task;
+use super::sched::task::Task;
 use alloc::{string::String, sync::Arc};
 use spin::Mutex;
 

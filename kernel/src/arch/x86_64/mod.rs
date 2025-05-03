@@ -1,21 +1,14 @@
 use crate::generic::irq::IrqHandlerFn;
-use gdt::{Gdt, TaskStateSegment};
 
-mod apic;
 mod asm;
 mod consts;
 pub mod core;
-mod gdt;
-mod idt;
 pub mod irq;
 pub mod platform;
-mod serial;
 pub mod task;
-mod tsc;
 pub mod virt;
 
-pub use task::TaskFrame;
-pub use virt::PageTableEntry;
+use platform::gdt::{Gdt, TaskStateSegment};
 
 #[derive(Debug)]
 #[repr(C)]
@@ -43,7 +36,7 @@ pub struct ArchPerCpu {
 }
 
 per_cpu!(
-    pub(crate) static CPU_DATA: ArchPerCpu = ArchPerCpu {
+    pub(crate) static ARCH_DATA: ArchPerCpu = ArchPerCpu {
         gdt: Gdt::new(),
         tss: TaskStateSegment::new(),
         irq_handlers: [None; 256],

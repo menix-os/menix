@@ -1,8 +1,7 @@
 use super::gdt::Gdt;
-use super::irq::*;
+use crate::arch::x86_64::irq;
 use crate::generic::memory::VirtAddr;
-use core::arch::asm;
-use core::mem::offset_of;
+use core::{arch::asm, mem::offset_of};
 use seq_macro::seq;
 use spin::Mutex;
 
@@ -36,7 +35,7 @@ pub fn init() {
 
     // Set all gates to their respective handlers.
     seq!(N in 0..256 {
-        idt.routines[N] = IdtEntry::new((interrupt_stub~N as usize).into(), 0, IdtIsrType::Interrupt);
+        idt.routines[N] = IdtEntry::new((irq::interrupt_stub~N as usize).into(), 0, IdtIsrType::Interrupt);
     });
 }
 

@@ -6,8 +6,8 @@ use super::internal;
 /// # Safety
 ///
 /// The caller must make sure that enabling interrupts is safe at this point.
-pub unsafe fn set_irq_mask(mask: bool) -> bool {
-    unsafe { internal::irq::set_irq_mask(mask) }
+pub unsafe fn set_irq_state(value: bool) -> bool {
+    unsafe { internal::irq::set_irq_state(value) }
 }
 
 /// Returns true if interrupts are enabled.

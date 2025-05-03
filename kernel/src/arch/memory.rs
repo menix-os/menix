@@ -3,7 +3,7 @@ use crate::generic::memory::PhysAddr;
 use crate::generic::memory::VirtAddr;
 use crate::generic::memory::virt::VmLevel;
 
-pub use internal::PageTableEntry;
+pub use internal::virt::PageTableEntry;
 
 /// Gets the page size for a given level.
 pub fn get_page_size(level: VmLevel) -> usize {

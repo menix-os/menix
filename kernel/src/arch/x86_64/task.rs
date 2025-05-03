@@ -1,4 +1,4 @@
-use crate::generic::exec::Frame;
+use crate::generic::sched::task::Frame;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]

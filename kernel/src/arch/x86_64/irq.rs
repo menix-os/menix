@@ -1,14 +1,16 @@
-use super::apic;
-use super::consts::CPL_USER;
-use super::task::TaskFrame;
-use crate::arch::x86_64::gdt::Gdt;
+use crate::arch::x86_64::consts::CPL_USER;
+use crate::arch::x86_64::platform::gdt::Gdt;
 use crate::generic;
-use crate::generic::exec::{Frame, sched};
 use crate::generic::memory::page::{PageFaultCause, PageFaultInfo};
+use crate::generic::percpu::CPU_DATA;
+use crate::generic::sched::task::Frame;
 use crate::generic::{irq::IrqController, percpu::CpuData, syscall};
 use core::arch::asm;
 use core::{arch::naked_asm, mem::offset_of};
 use seq_macro::seq;
+
+use super::platform::apic;
+use super::task::TaskFrame;
 
 /// Registers which are saved and restored during a context switch or interrupt.
 #[repr(C)]
@@ -150,7 +152,7 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut TrapFrame) {
         0x80 => syscall_handler(context),
         //
         _ => {
-            let cpu = &super::CPU_DATA.get(CpuData::get());
+            let cpu = &super::ARCH_DATA.get(CpuData::get());
             match cpu.irq_handlers[isr as usize] {
                 Some(x) => x(cpu.irq_map[isr as usize], cpu.irq_ctx[isr as usize]),
                 None => panic!("Got an unhandled interrupt {}!", isr),
@@ -210,9 +212,12 @@ fn page_fault_handler(context: &mut TrapFrame) {
 }
 
 fn timer_handler(context: &mut TrapFrame) {
-    let lapic = apic::LAPIC.get(CpuData::get());
+    let ctx = CpuData::get();
+    let lapic = apic::LAPIC.get(ctx);
+    let sched = CPU_DATA.get(ctx);
+
     let mut new = context.save();
-    sched::reschedule(&mut new);
+    sched.scheduler.reschedule(&mut new);
     context.restore(new);
 
     _ = lapic.eoi();
@@ -329,7 +334,6 @@ unsafe extern "C" fn interrupt_stub_internal() {
         "mov rdi, [rsp + 0x78]",    // Load the ISR value we pushed in the stub.
         "mov rsi, rsp",             // Load the frame as second argument.
         "call {interrupt_handler}", // Call interrupt handler.
-        "mov rsp, rax",             // Restore the returned frame.
         pop_all_regs!(),            // Pop all general purpose registers.
         swapgs_if_necessary!(),     // Change GS back if we came from user mode.
         "add rsp, 0x10",            // Skip .error and .isr fields.
@@ -338,13 +342,13 @@ unsafe extern "C" fn interrupt_stub_internal() {
     );
 }
 
-pub unsafe fn set_irq_mask(mask: bool) -> bool {
+pub unsafe fn set_irq_state(value: bool) -> bool {
     let old_mask = get_irq_state();
     unsafe {
-        if mask {
-            asm!("cli");
-        } else {
+        if value {
             asm!("sti");
+        } else {
+            asm!("cli");
         }
     }
     return old_mask;

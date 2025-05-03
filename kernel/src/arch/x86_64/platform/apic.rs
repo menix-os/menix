@@ -1,14 +1,14 @@
 use core::u32;
 
-use super::{
-    asm::{self},
-    consts,
-};
-use crate::generic::{
-    clock,
-    irq::{IpiTarget, IrqController, IrqError},
-    memory::PhysAddr,
-    percpu::CpuData,
+use super::asm::{self};
+use crate::{
+    arch::x86_64::consts,
+    generic::{
+        clock,
+        irq::{IpiTarget, IrqController, IrqError},
+        memory::PhysAddr,
+        percpu::CpuData,
+    },
 };
 
 #[derive(Debug)]

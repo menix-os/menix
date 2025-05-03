@@ -1,6 +1,6 @@
 //! Per-CPU data structures.
 
-use super::{exec::Task, memory::VirtAddr};
+use super::{memory::VirtAddr, sched::Scheduler};
 use crate::arch;
 use core::{
     ptr::null_mut,
@@ -22,8 +22,8 @@ pub struct CpuData {
     pub online: bool,
     /// Whether this CPU is present.
     pub present: bool,
-    /// Current task running on this CPU.
-    pub task: *mut Task,
+    /// A scheduler instance on this CPU.
+    pub scheduler: Scheduler,
 }
 
 impl CpuData {
@@ -95,7 +95,7 @@ pub static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
     user_stack: VirtAddr::null(),
     online: false,
     present: false,
-    task: null_mut(),
+    scheduler: Scheduler::uninit(),
 });
 
 /// Counts how many CPUs have been allocated. ID 0 is always used for the BSP.

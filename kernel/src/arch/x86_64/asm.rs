@@ -1,7 +1,5 @@
 #![allow(unused)]
 
-use super::gdt::GdtRegister;
-use super::idt::{IDT_SIZE, IdtRegister};
 use core::arch::{asm, global_asm};
 
 pub struct CpuIdResult {

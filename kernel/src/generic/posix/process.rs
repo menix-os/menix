@@ -1,12 +1,11 @@
-use crate::generic::exec::Task;
 use crate::generic::{
     elf::{self, ElfHdr, ElfPhdr},
-    exec::Frame,
     memory::{
         buddy::BuddyAllocator,
         virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags},
     },
     posix::errno::Errno,
+    sched::task::{Frame, Task},
 };
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};

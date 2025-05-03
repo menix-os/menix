@@ -3,9 +3,14 @@ use core::mem::offset_of;
 
 use alloc::boxed::Box;
 
-use super::{CPU_DATA, apic, consts, gdt, idt, irq, tsc};
 use crate::{
-    arch::x86_64::apic::LocalApic,
+    arch::x86_64::{
+        ARCH_DATA, consts, irq,
+        platform::{
+            apic::{self, LocalApic},
+            gdt, idt, tsc,
+        },
+    },
     generic::{
         clock,
         percpu::{CpuData, LD_PERCPU_START},
@@ -52,7 +57,7 @@ pub fn get_per_cpu() -> *mut crate::generic::percpu::CpuData {
 }
 
 pub fn perpare_cpu(context: &mut CpuData) {
-    let cpu = CPU_DATA.get(context);
+    let cpu = ARCH_DATA.get(context);
 
     // Load a GDT and TSS.
     gdt::init(&mut cpu.gdt, &mut cpu.tss);

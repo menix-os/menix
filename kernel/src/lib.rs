@@ -81,7 +81,9 @@ pub(crate) fn main() -> ! {
     // TODO: Setup SMP.
 
     // TODO: Start scheduler.
+    unsafe { arch::irq::set_irq_state(false) };
 
     log!("Starting init...");
+    loop {}
     todo!("Load init");
 }

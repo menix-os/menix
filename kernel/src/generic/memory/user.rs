@@ -1,7 +1,7 @@
 //! Safe user memory reading/writing.
 
 use super::VirtAddr;
-use core::{marker::PhantomData, ops::Deref};
+use core::marker::PhantomData;
 
 /// Provides safe access to memory from userland.
 pub struct UserBuffer<T> {

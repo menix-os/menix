@@ -138,18 +138,6 @@ extern "C" fn uacpi_kernel_pci_write32(
 }
 
 #[unsafe(no_mangle)]
-extern "C" fn uacpi_kernel_io_map(
-    base: uacpi_io_addr,
-    len: uacpi_size,
-    out_handle: *mut uacpi_handle,
-) -> uacpi_status {
-    return UACPI_STATUS_OK;
-}
-
-#[unsafe(no_mangle)]
-extern "C" fn uacpi_kernel_io_unmap(handle: uacpi_handle) {}
-
-#[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_alloc(size: uacpi_size) -> *mut c_void {
     return unsafe {
         memory::slab::ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<usize>()).unwrap())

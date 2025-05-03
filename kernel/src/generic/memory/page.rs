@@ -5,10 +5,7 @@ use super::{
 };
 use crate::{
     arch::{self, exec::TaskFrame},
-    generic::{
-        exec::{Frame, sched::reschedule},
-        util::align_up,
-    },
+    generic::util::align_up,
 };
 use alloc::alloc::AllocError;
 use bitflags::bitflags;
@@ -84,7 +81,8 @@ bitflags! {
 pub fn page_fault_handler<'a>(context: &mut TaskFrame, info: &PageFaultInfo) {
     if info.caused_by_user {
         // TODO: Send SIGSEGV and reschedule.
-        reschedule(context);
+        // Kill process.
+        // Force immediate reschedule.
     }
 
     panic!(
