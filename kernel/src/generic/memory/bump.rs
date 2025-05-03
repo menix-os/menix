@@ -15,7 +15,7 @@ pub(crate) static BUMP_CURRENT: AtomicUsize = AtomicUsize::new(0);
 pub(crate) struct BumpAllocator;
 impl PageAllocator for BumpAllocator {
     fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
-        let bytes = pages * arch::virt::get_page_size(VmLevel::L1);
+        let bytes = pages * arch::memory::get_page_size(VmLevel::L1);
         let mem = PhysAddr(BUMP_CURRENT.fetch_add(bytes, Ordering::Relaxed));
 
         if flags.contains(AllocFlags::Zeroed) {
@@ -25,7 +25,7 @@ impl PageAllocator for BumpAllocator {
         return Ok(mem);
     }
 
-    unsafe fn dealloc(addr: PhysAddr, pages: usize) {
+    unsafe fn dealloc(_addr: PhysAddr, _pages: usize) {
         unimplemented!(
             "The bump allocator is not supposed to free anything. Remove this .dealloc()"
         )

@@ -83,6 +83,7 @@ macro_rules! assert_trait_impl {
 }
 
 /// Hooks a function as an early init call.
+/// The order in which hooked functions are called is not guaranteed.
 ///
 /// # Safety
 ///

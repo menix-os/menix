@@ -1,7 +1,6 @@
-use alloc::alloc::AllocError;
 use buddy::{PageNumber, Region};
 use bump::BumpAllocator;
-use page::{AllocFlags, Page, PageAllocator};
+use page::Page;
 use virt::{PageTable, VmFlags, VmLevel};
 
 use crate::{
@@ -19,6 +18,7 @@ pub mod bump;
 pub mod mmio;
 pub mod page;
 pub mod slab;
+pub mod user;
 pub mod virt;
 
 static HHDM_START: AtomicUsize = AtomicUsize::new(0);
@@ -52,10 +52,6 @@ pub unsafe fn init() {
     let kernel_phys = info
         .kernel_phys
         .expect("Kernel physical address should have been set");
-
-    let kernel_virt = info
-        .kernel_virt
-        .expect("Kernel virtual address should have been set");
 
     let paging_level = info
         .paging_level
@@ -97,7 +93,7 @@ pub unsafe fn init() {
     // Calculate range of usable memory.
     let first_page = memory_map
         .iter()
-        .map(|x| x.address().value() / arch::virt::get_page_size(VmLevel::L1))
+        .map(|x| x.address().value() / arch::memory::get_page_size(VmLevel::L1))
         .next()
         .unwrap();
 
@@ -106,8 +102,8 @@ pub unsafe fn init() {
         .map(|x| {
             align_up(
                 x.address().value() + x.length(),
-                arch::virt::get_page_size(VmLevel::L1),
-            ) / arch::virt::get_page_size(VmLevel::L1)
+                arch::memory::get_page_size(VmLevel::L1),
+            ) / arch::memory::get_page_size(VmLevel::L1)
         })
         .last()
         .unwrap();
@@ -122,7 +118,7 @@ pub unsafe fn init() {
     bump::BUMP_CURRENT.store(
         align_up(
             bump_region.address().value(),
-            arch::virt::get_page_size(VmLevel::L1),
+            arch::memory::get_page_size(VmLevel::L1),
         ),
         Ordering::Relaxed,
     );
@@ -203,9 +199,8 @@ pub unsafe fn init() {
 
     // Initialize all regions.
     for entry in memory_map.iter_mut() {
-        let num_pages = align_up(entry.length(), arch::virt::get_page_size(VmLevel::L1))
-            / arch::virt::get_page_size(VmLevel::L1);
-        let meta_size = num_pages * size_of::<Page>();
+        let num_pages = align_up(entry.length(), arch::memory::get_page_size(VmLevel::L1))
+            / arch::memory::get_page_size(VmLevel::L1);
 
         // Ignore memory regions which are too small to keep track of. We reserve at least one page for metadata.
         if num_pages < 2 {
@@ -231,12 +226,14 @@ pub unsafe fn init() {
 
     log!(
         "Using {} KiB for page metadata, effective usable memory: {} MiB",
-        (total_pages - actual_pages) * arch::virt::get_page_size(VmLevel::L1) / 1024,
-        (actual_pages * (arch::virt::get_page_size(VmLevel::L1) - size_of::<Page>())) / 1024 / 1024
+        (total_pages - actual_pages) * arch::memory::get_page_size(VmLevel::L1) / 1024,
+        (actual_pages * (arch::memory::get_page_size(VmLevel::L1) - size_of::<Page>()))
+            / 1024
+            / 1024
     );
 
     // Set the MMAP base to right after the HHDM. Make sure this lands on a new PTE so we can map regular pages.
-    let pte_size = arch::virt::get_page_size(VmLevel::L3);
+    let pte_size = arch::memory::get_page_size(VmLevel::L3);
     let offset = align_up(0x1000_0000_0000, pte_size);
     virt::KERNEL_MMAP_BASE_ADDR.store(hhdm_address.0 + offset, Ordering::Relaxed);
 }

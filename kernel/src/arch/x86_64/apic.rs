@@ -3,7 +3,6 @@ use core::u32;
 use super::{
     asm::{self},
     consts,
-    virt::PageTableEntry,
 };
 use crate::generic::{
     clock,
@@ -15,22 +14,22 @@ use crate::generic::{
 #[derive(Debug)]
 pub struct LocalApic {
     has_x2apic: bool,
-    lapic_addr: PhysAddr,
     // How many ticks pass in 10 milliseconds.
     ticks_per_10ms: u32,
+    _lapic_addr: PhysAddr,
 }
 
 per_cpu! {
     pub(crate) static LAPIC: LocalApic = LocalApic {
         has_x2apic: false,
-        lapic_addr: PhysAddr::null(),
         ticks_per_10ms: 0,
+        _lapic_addr: PhysAddr::null(),
     };
 }
 
 impl LocalApic {
     pub fn init(context: &CpuData) {
-        let mut result = LAPIC.get(context);
+        let result = LAPIC.get(context);
 
         // Enable the APIC flag.
         let mut apic_msr = unsafe { asm::rdmsr(0x1B) };
@@ -95,7 +94,7 @@ impl LocalApic {
         }
     }
 
-    fn write_register(&self, reg: u32, value: u32) {
+    fn write_register(&mut self, reg: u32, value: u32) {
         if self.has_x2apic {
             unsafe { asm::wrmsr(Self::reg_to_x2apic(reg), value as u64) };
         } else {
@@ -109,7 +108,7 @@ impl IrqController for LocalApic {
         return self.read_register(0x20) as usize;
     }
 
-    fn eoi(&self) -> Result<(), IrqError> {
+    fn eoi(&mut self) -> Result<(), IrqError> {
         self.write_register(0xB0, 0);
         return Ok(());
     }

@@ -31,16 +31,16 @@ impl Idt {
 
 /// Loads the ISRs into the static table.
 pub fn init() {
-    unsafe {
-        // Create a new table.
-        let mut idt = IDT_TABLE.lock();
+    // Create a new table.
+    let mut idt = IDT_TABLE.lock();
 
-        // Set all gates to their respective handlers.
-        seq!(N in 0..256 {
-            idt.routines[N] = IdtEntry::new((interrupt_stub~N as usize).into(), 0, IdtIsrType::Interrupt);
-        });
-    }
+    // Set all gates to their respective handlers.
+    seq!(N in 0..256 {
+        idt.routines[N] = IdtEntry::new((interrupt_stub~N as usize).into(), 0, IdtIsrType::Interrupt);
+    });
 }
+
+early_init_call!(init);
 
 /// Sets the IDT on this CPU.
 pub fn set_idt() {
@@ -79,7 +79,7 @@ pub struct IdtEntry {
 }
 
 #[repr(u8)]
-enum IdtIsrType {
+pub enum IdtIsrType {
     Interrupt = 0xE,
     Trap = 0xF,
 }

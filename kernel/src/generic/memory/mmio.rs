@@ -1,12 +1,11 @@
-// Helpers for specification compliant structure definitions.
-
-use num_traits::PrimInt;
+//! Helpers for specification compliant MMIO accesses definitions.
 
 use super::{
     PhysAddr, VirtAddr,
     virt::{self, VmFlags, VmLevel},
 };
 use core::{marker::PhantomData, ops::RangeInclusive};
+use num_traits::PrimInt;
 
 /// Represents a region of memory mapped IO.
 pub struct Mmio {
@@ -22,7 +21,8 @@ impl Drop for Mmio {
     fn drop(&mut self) {
         virt::KERNEL_PAGE_TABLE
             .write()
-            .unmap_range(VirtAddr(self.base as usize), self.len);
+            .unmap_range(VirtAddr(self.base as usize), self.len)
+            .unwrap();
     }
 }
 
@@ -45,7 +45,6 @@ impl Mmio {
 
     /// Reads data from a single field.
     pub unsafe fn read_field<T: PrimInt>(&self, field: &MemoryField<T>) -> T {
-        let result = T::zero();
         let value = unsafe { (self.base as *mut T).byte_add(field.offset).read_volatile() };
         return match field.native_endian {
             true => value,

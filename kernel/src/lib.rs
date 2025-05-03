@@ -1,9 +1,9 @@
 #![no_std]
-#![allow(unused)]
 #![allow(clippy::needless_return)]
 #![feature(negative_impls)]
 #![feature(allocator_api)]
-// Needed for volatile memmove. This is an LLVM intrinsic, replace it with our own.
+// Needed for volatile memmove.
+// TODO: This is an LLVM intrinsic, replace it with our own.
 #![allow(internal_features)]
 #![feature(core_intrinsics)]
 #![feature(str_from_raw_parts)]
@@ -12,7 +12,7 @@
 #![feature(likely_unlikely)]
 #![no_builtins]
 
-use generic::boot::BootInfo;
+use generic::fbcon;
 
 pub extern crate alloc;
 pub extern crate core;
@@ -44,13 +44,26 @@ pub(crate) fn main() -> ! {
         }
     }
 
+    // Say hello to the console.
+    // TODO: Get this information from posix/utsname instead.
+    log!(
+        "Menix {}.{}.{}",
+        env!("CARGO_PKG_VERSION_MAJOR"),
+        env!("CARGO_PKG_VERSION_MINOR"),
+        env!("CARGO_PKG_VERSION_PATCH")
+    );
+
     // Initialize memory management.
     unsafe { generic::memory::init() };
 
-    arch::core::perpare_cpu(unsafe { arch::core::get_per_cpu().as_mut().unwrap() });
-    // TODO: Initialize VFS.
+    fbcon::init();
+
+    // TODO: Initialize virtual file system.
+    // generic::posix::fs::init();
 
     generic::platform::init();
+
+    arch::core::perpare_cpu(unsafe { arch::core::get_per_cpu().as_mut().unwrap() });
 
     // Run init calls.
     unsafe {
@@ -64,15 +77,6 @@ pub(crate) fn main() -> ! {
 
     // Load all modules and run their init function.
     generic::module::init();
-
-    // Say hello to the console.
-    // TODO: Get this information from posix/utsname instead.
-    log!(
-        "Menix {}.{}.{}",
-        env!("CARGO_PKG_VERSION_MAJOR"),
-        env!("CARGO_PKG_VERSION_MINOR"),
-        env!("CARGO_PKG_VERSION_PATCH")
-    );
 
     // TODO: Setup SMP.
 

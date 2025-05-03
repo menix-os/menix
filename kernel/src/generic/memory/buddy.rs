@@ -9,20 +9,14 @@ use crate::{
     arch::{self},
     generic::{
         self,
-        memory::{
-            page::AllocFlags,
-            virt::{PageTable, VmLevel},
-        },
+        memory::{page::AllocFlags, virt::VmLevel},
         util::align_up,
     },
 };
 use alloc::{alloc::AllocError, slice};
-use bitflags;
-use bytemuck::AnyBitPattern;
 use core::{
     hint::likely,
-    num::NonZeroUsize,
-    ptr::{NonNull, null_mut, write_bytes},
+    ptr::{NonNull, write_bytes},
 };
 use spin::Mutex;
 
@@ -32,8 +26,8 @@ pub fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocErr
         return Err(AllocError);
     }
 
-    let pages = align_up(bytes, arch::virt::get_page_size(VmLevel::L1))
-        / arch::virt::get_page_size(VmLevel::L1);
+    let pages = align_up(bytes, arch::memory::get_page_size(VmLevel::L1))
+        / arch::memory::get_page_size(VmLevel::L1);
     let block_order = get_order(pages);
     let result = alloc(block_order, flags);
 
@@ -53,7 +47,7 @@ impl PageAllocator for BuddyAllocator {
         return result;
     }
 
-    unsafe fn dealloc(addr: PhysAddr, pages: usize) {
+    unsafe fn dealloc(_addr: PhysAddr, _pages: usize) {
         todo!()
     }
 }
@@ -96,7 +90,7 @@ fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
     debug_assert!(addr >= region.phys && addr.0 < region.phys.0 + region.get_size());
 
     frame.mark_used();
-    region.num_used_pages += (1 << order);
+    region.num_used_pages += 1 << order;
 
     // If required, zero new memory.
     if flags.contains(AllocFlags::Zeroed) {
@@ -104,7 +98,7 @@ fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
             write_bytes(
                 addr.as_hhdm::<u8>(),
                 0,
-                arch::virt::get_page_size(VmLevel::L1) << frame.order,
+                arch::memory::get_page_size(VmLevel::L1) << frame.order,
             );
         }
     }
@@ -113,6 +107,8 @@ fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
 }
 
 pub unsafe fn dealloc(addr: PhysAddr, order: Order) {
+    _ = addr;
+    _ = order;
     // TODO
 }
 
@@ -153,9 +149,9 @@ impl Region {
         // Amount of pages which are going to get consumed by the metadata.
         let meta_size = generic::util::align_up(
             num_pages as usize * size_of::<Page>(),
-            arch::virt::get_page_size(VmLevel::L1),
+            arch::memory::get_page_size(VmLevel::L1),
         );
-        let meta_page_size = meta_size / arch::virt::get_page_size(VmLevel::L1);
+        let meta_page_size = meta_size / arch::memory::get_page_size(VmLevel::L1);
 
         let mut result = Self {
             meta: meta.as_ptr(),
@@ -182,9 +178,9 @@ impl Region {
         }
 
         log!(
-            "[{:#018X} - {:#018X}]",
+            "[{:#018x} - {:#018x}]",
             phys.0,
-            phys.0 + (num_pages as usize * arch::virt::get_page_size(VmLevel::L1)) - 1
+            phys.0 + (num_pages as usize * arch::memory::get_page_size(VmLevel::L1)) - 1
         );
 
         return result;
@@ -213,19 +209,13 @@ impl Region {
     /// Returns the size of this region in bytes.
     #[inline]
     pub fn get_size(&self) -> usize {
-        self.num_pages as usize * arch::virt::get_page_size(VmLevel::L1)
+        self.num_pages as usize * arch::memory::get_page_size(VmLevel::L1)
     }
 
     /// Returns the highest address covered by this region.
     #[inline]
     pub fn get_end(&self) -> PhysAddr {
-        PhysAddr(self.phys.0 + (self.num_pages as usize * arch::virt::get_page_size(VmLevel::L1)))
-    }
-
-    /// Returns the start address of this region.
-    #[inline]
-    pub fn get_start(&self) -> PhysAddr {
-        self.phys
+        PhysAddr(self.phys.0 + (self.num_pages as usize * arch::memory::get_page_size(VmLevel::L1)))
     }
 
     #[inline]
@@ -268,7 +258,7 @@ impl Page {
 
     fn addr(&self, region: &Region) -> PhysAddr {
         PhysAddr(
-            region.phys.0 + (self.id(region) as usize * arch::virt::get_page_size(VmLevel::L1)),
+            region.phys.0 + (self.id(region) as usize * arch::memory::get_page_size(VmLevel::L1)),
         )
     }
 

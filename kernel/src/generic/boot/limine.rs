@@ -1,13 +1,9 @@
 // Boot using the Limine protocol.
 
 use super::{BootFile, BootInfo, PhysMemory};
-use crate::{
-    arch,
-    generic::{
-        boot::fbcon::{FbColorBits, FrameBuffer},
-        cmdline::CmdLine,
-        memory::{PhysAddr, VirtAddr},
-    },
+use crate::generic::{
+    cmdline::CmdLine,
+    fbcon::{FbColorBits, FrameBuffer},
 };
 use core::ptr::slice_from_raw_parts;
 use limine::{BaseRevision, memory_map::EntryType, paging::Mode, request::*};
@@ -164,12 +160,6 @@ extern "C" fn _start() -> ! {
                         .unwrap(),
                     // Split off any parts of the path that come before the actual file name.
                     name: entry.path().to_str().unwrap().rsplit_once('/').unwrap().1,
-                    command_line: CmdLine::new(
-                        entry
-                            .string()
-                            .to_str()
-                            .expect("Module command line was not valid UTF-8"),
-                    ),
                 }
             };
         }
@@ -181,7 +171,7 @@ extern "C" fn _start() -> ! {
     if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
         if let Some(fb) = response.framebuffers().next() {
             // We can't call `as_hhdm` yet because it's not been initialized yet.
-            let fb_addr = (fb.addr() as usize);
+            let fb_addr = fb.addr() as usize;
             let hhdm = (HHDM_REQUEST.get_response().unwrap().offset()) as usize;
 
             info.framebuffer = Some(FrameBuffer {

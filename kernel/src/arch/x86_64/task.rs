@@ -1,5 +1,4 @@
-use crate::generic::{exec::Frame, memory::VirtAddr};
-use core::fmt::Display;
+use crate::generic::exec::Frame;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]

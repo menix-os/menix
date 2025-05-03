@@ -16,7 +16,7 @@ impl ClockSource for TscClock {
     }
 
     fn get_priority(&self) -> u8 {
-        // Never prefer the TSC over other timers.
+        // Always prefer the TSC over other timers.
         return 0;
     }
 

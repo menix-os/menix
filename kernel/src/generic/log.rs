@@ -2,7 +2,10 @@
 // TODO: Convert to struct Console
 
 use alloc::{boxed::Box, vec::Vec};
-use core::fmt;
+use core::{
+    fmt,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 use spin::Mutex;
 
 /// A sink to write logs to.
@@ -17,32 +20,31 @@ pub struct Logger {
     pub sinks: [Option<Box<dyn LoggerSink>>; 16],
 }
 
-impl Logger {
-    /// Adds a sink to the logger.
-    pub fn add_sink(sink: Box<dyn LoggerSink>) {
-        let name = sink.name();
-        {
-            let mut logger = GLOBAL_LOGGERS.lock();
-            for s in &mut logger.sinks {
-                match s {
-                    Some(_) => continue,
-                    None => {
-                        *s = Some(sink);
-                        break;
-                    }
+/// Adds a sink to the logger.
+pub fn add_sink(sink: Box<dyn LoggerSink>) {
+    let name = sink.name();
+    {
+        let mut logger = GLOBAL_LOGGERS.lock();
+        for s in &mut logger.sinks {
+            match s {
+                Some(_) => continue,
+                None => {
+                    *s = Some(sink);
+                    break;
                 }
             }
         }
-        log!("Registered new logging sink \"{}\"", name);
     }
+    log!("Registered new logging sink \"{}\"", name);
+}
 
-    pub fn remove_sink(name: &str) {
-        let mut logger = GLOBAL_LOGGERS.lock();
-        for sink in &mut logger.sinks {
-            if let Some(x) = sink {
-                if x.name() == name {
-                    *sink = None;
-                }
+/// Removes a named sink from the logger.
+pub fn remove_sink(name: &str) {
+    let mut logger = GLOBAL_LOGGERS.lock();
+    for sink in &mut logger.sinks {
+        if let Some(x) = sink {
+            if x.name() == name {
+                *sink = None;
             }
         }
     }
@@ -66,6 +68,13 @@ impl fmt::Write for Logger {
     }
 }
 
+/// A static buffer to write early messages to.
+static EARLY_BUFFER: Mutex<[u8; EARLY_BUFFER_LEN]> = Mutex::new([0; EARLY_BUFFER_LEN]);
+/// The size of the early kernel buffer.
+const EARLY_BUFFER_LEN: usize = 8192;
+/// The current offset in this logger
+static EARLY_BUFFER_ADDR: AtomicUsize = AtomicUsize::new(0);
+
 /// Global in-memory logger.
 static KERNEL_LOGGER: Mutex<Vec<u8>> = Mutex::new(Vec::new());
 
@@ -77,14 +86,25 @@ impl LoggerSink for KernelLogger {
     }
 
     fn write(&mut self, input: &[u8]) {
-        let mut logger = KERNEL_LOGGER.lock();
-        logger.extend_from_slice(input);
+        // As long as the message fits in the early buffer, use that.
+        let offset = EARLY_BUFFER_ADDR.load(Ordering::Acquire);
+
+        if offset + input.len() < EARLY_BUFFER_LEN {
+            EARLY_BUFFER.lock()[offset..][..input.len()].copy_from_slice(input);
+            EARLY_BUFFER_ADDR.fetch_add(input.len(), Ordering::Release);
+        } else {
+            let mut logger = KERNEL_LOGGER.lock();
+            logger.extend_from_slice(input);
+        }
     }
 }
 
-impl KernelLogger {
-    /// Copies the current log into a buffer.
-    pub fn get_log() -> Vec<u8> {
-        return KERNEL_LOGGER.lock().clone();
-    }
+pub fn init() {
+    add_sink(Box::new(KernelLogger));
 }
+
+pub fn get_kernel_log(target: &mut [u8]) {
+    target.copy_from_slice(&EARLY_BUFFER.lock()[0..EARLY_BUFFER_ADDR.load(Ordering::Acquire)]);
+}
+
+early_init_call!(init);

@@ -1,9 +1,6 @@
-use super::memory::VirtAddr;
+use super::{fbcon::FrameBuffer, memory::VirtAddr};
 use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
-use fbcon::FrameBuffer;
 use spin::{Mutex, Once};
-
-pub mod fbcon;
 
 // Boot method selection. Limine is the default method.
 #[cfg(all(
@@ -76,7 +73,6 @@ impl BootInfo {
 pub struct BootFile {
     pub data: &'static [u8],
     pub name: &'static str,
-    pub command_line: CmdLine<'static>,
 }
 
 impl BootFile {
@@ -84,7 +80,6 @@ impl BootFile {
         Self {
             data: &[],
             name: "",
-            command_line: CmdLine::new(""),
         }
     }
 }

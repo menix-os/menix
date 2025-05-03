@@ -1,5 +1,14 @@
 // Early framebuffer boot console (likely using an EFI GOP framebuffer).
 
+use crate::generic::{
+    boot::BootInfo,
+    log::{self, LoggerSink},
+    memory::{
+        PhysAddr,
+        slab::ALLOCATOR,
+        virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
+    },
+};
 use alloc::{boxed::Box, vec::Vec};
 use core::{
     alloc::{GlobalAlloc, Layout},
@@ -7,19 +16,6 @@ use core::{
     ptr::null_mut,
 };
 use flanterm_sys::{flanterm_context, flanterm_write};
-use spin::Mutex;
-
-use crate::generic::{
-    boot::BootInfo,
-    log::{Logger, LoggerSink},
-    memory::{
-        PhysAddr,
-        buddy::BuddyAllocator,
-        slab::{ALLOCATOR, SlabAllocator},
-        virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
-    },
-    util::align_up,
-};
 
 #[derive(Default, Debug, Clone)]
 pub struct FbColorBits {
@@ -39,10 +35,9 @@ pub struct FrameBuffer {
     pub blue: FbColorBits,
 }
 
-const FONT_DATA: &[u8] = include_bytes!("../../../assets/builtin_font.bin");
+const FONT_DATA: &[u8] = include_bytes!("../../assets/builtin_font.bin");
 const FONT_WIDTH: usize = 8;
 const FONT_HEIGHT: usize = 12;
-const FONT_GLYPH_SIZE: usize = (FONT_WIDTH * FONT_HEIGHT) / 8;
 
 struct FbCon {
     /// Back buffer to draw updates on.
@@ -54,8 +49,6 @@ struct FbCon {
 }
 
 unsafe impl Send for FbCon {}
-
-init_call_if_cmdline!("fbcon", true, init);
 
 unsafe extern "C" fn malloc(size: usize) -> *mut core::ffi::c_void {
     let mem = unsafe { ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<u8>()).unwrap()) };
@@ -71,7 +64,7 @@ unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
     };
 }
 
-fn init() {
+pub fn init() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;
     };
@@ -128,7 +121,7 @@ fn init() {
             0,
         );
 
-        Logger::add_sink(Box::new(FbCon {
+        log::add_sink(Box::new(FbCon {
             back_buffer: buf,
             fb,
             ctx,

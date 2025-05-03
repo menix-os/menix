@@ -13,5 +13,7 @@ cfg_match! {
 }
 
 pub mod core;
+pub mod exec;
 pub mod irq;
-pub mod virt;
+pub mod memory;
+pub mod platform;

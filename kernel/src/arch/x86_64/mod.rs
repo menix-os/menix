@@ -1,14 +1,6 @@
-use crate::generic::{
-    clock,
-    irq::IrqHandlerFn,
-    memory::virt::VmLevel,
-    percpu::{CpuData, LD_PERCPU_START},
-};
-use alloc::boxed::Box;
-use asm::cpuid;
+use crate::generic::irq::IrqHandlerFn;
 use gdt::{Gdt, TaskStateSegment};
 
-mod acpi;
 mod apic;
 mod asm;
 mod consts;
@@ -16,12 +8,12 @@ pub mod core;
 mod gdt;
 mod idt;
 pub mod irq;
+pub mod platform;
 mod serial;
 pub mod task;
 mod tsc;
 pub mod virt;
 
-pub use irq::TrapFrame;
 pub use task::TaskFrame;
 pub use virt::PageTableEntry;
 

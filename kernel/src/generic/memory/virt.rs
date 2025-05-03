@@ -1,11 +1,11 @@
 use super::{
-    HHDM_START, PhysAddr, VirtAddr,
-    buddy::{self, BuddyAllocator},
+    PhysAddr, VirtAddr,
+    buddy::BuddyAllocator,
     page::{AllocFlags, PageAllocator},
 };
 use crate::{
-    arch::{self, virt::PageTableEntry},
-    generic::{self, util::align_up},
+    arch::{self, memory::PageTableEntry},
+    generic::util::align_up,
 };
 use alloc::{alloc::AllocError, sync::Arc};
 use bitflags::bitflags;
@@ -103,14 +103,15 @@ impl PageTable<true> {
         level: VmLevel,
         length: usize,
     ) -> Result<*mut u8, AllocError> {
-        let aligned_len = align_up(length, arch::virt::get_page_size(VmLevel::L1));
+        let aligned_len = align_up(length, arch::memory::get_page_size(VmLevel::L1));
 
         // Increase mapping base.
         // TODO: Use actual virtual address allocator.
         let virt = KERNEL_MMAP_BASE_ADDR.fetch_add(aligned_len, Ordering::SeqCst);
 
         // Map memory.
-        self.map_range::<BuddyAllocator>(VirtAddr(virt), phys, flags, level, aligned_len);
+        self.map_range::<BuddyAllocator>(VirtAddr(virt), phys, flags, level, aligned_len)
+            .map_err(|_| AllocError)?;
         return Ok(virt as *mut u8);
     }
 }
@@ -128,7 +129,7 @@ impl<const K: bool> PageTable<K> {
     pub unsafe fn set_active(&mut self) {
         let addr = self.head.lock();
         unsafe {
-            arch::virt::set_page_table(*addr);
+            arch::memory::set_page_table(*addr);
         }
     }
 
@@ -141,7 +142,7 @@ impl<const K: bool> PageTable<K> {
         allocate: bool,
         target_level: VmLevel,
     ) -> Result<&mut PageTableEntry, PageTableError> {
-        let mut head = self.head.lock();
+        let head = self.head.lock();
         let mut current_head: *mut PageTableEntry = head.as_hhdm();
         let mut index = 0;
         let mut do_break = false;
@@ -149,10 +150,11 @@ impl<const K: bool> PageTable<K> {
         // Traverse the page table (from highest to lowest level).
         for level in (0..self.root_level).rev() {
             // Create a mask for the address part of the PTE, e.g. 0x1ff for 9 bits.
-            let addr_bits = (usize::MAX >> (usize::BITS as usize - arch::virt::get_level_bits()));
+            let addr_bits = usize::MAX >> (usize::BITS as usize - arch::memory::get_level_bits());
 
             // Determine the shift for the appropriate level, e.g. x << (12 + (9 * level)).
-            let addr_shift = arch::virt::get_page_bits() + (arch::virt::get_level_bits() * level);
+            let addr_shift =
+                arch::memory::get_page_bits() + (arch::memory::get_level_bits() * level);
 
             // Get the index for this level by masking the relevant address part.
             index = (virt.0 >> addr_shift) & addr_bits;
@@ -271,8 +273,8 @@ impl<const K: bool> PageTable<K> {
         length: usize,
     ) -> Result<(), PageTableError> {
         // TODO: Do transactional mapping.
-        let length = align_up(length, arch::virt::get_page_size(level));
-        let step = arch::virt::get_page_size(level);
+        let length = align_up(length, arch::memory::get_page_size(level));
+        let step = arch::memory::get_page_size(level);
 
         for offset in (0..length).step_by(step) {
             self.map_single::<P>(
@@ -294,9 +296,9 @@ impl<const K: bool> PageTable<K> {
         length: usize,
     ) -> Result<(), PageTableError> {
         // TODO: Do transactional mapping.
-        let length = align_up(length, arch::virt::get_page_size(VmLevel::L1));
-        let step = arch::virt::get_page_size(VmLevel::L1)
-            + (level as usize * arch::virt::get_level_bits());
+        let length = align_up(length, arch::memory::get_page_size(VmLevel::L1));
+        let step = arch::memory::get_page_size(VmLevel::L1)
+            + (level as usize * arch::memory::get_level_bits());
 
         for offset in (0..length).step_by(step) {
             self.remap_single::<BuddyAllocator>(VirtAddr(virt.0 + offset), flags, level)?;
@@ -323,35 +325,5 @@ impl<const K: bool> PageTable<K> {
                 return false;
             }
         }
-    }
-}
-
-/// Wraps a *T from a different address space.
-pub struct ForeignPtr<T> {
-    page_table: Arc<PageTable>,
-    addr: VirtAddr,
-    _p: PhantomData<T>,
-}
-
-impl<T> ForeignPtr<T> {
-    pub const fn new(page_table: Arc<PageTable>, addr: VirtAddr) -> Self {
-        Self {
-            page_table,
-            addr,
-            _p: PhantomData,
-        }
-    }
-
-    /// Gets the numeric value of this pointer.
-    pub const fn value(&self) -> VirtAddr {
-        return self.addr;
-    }
-}
-
-impl<T> Deref for ForeignPtr<T> {
-    type Target = T;
-
-    fn deref(&self) -> &Self::Target {
-        todo!()
     }
 }

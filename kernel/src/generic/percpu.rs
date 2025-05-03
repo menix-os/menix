@@ -1,16 +1,11 @@
 //! Per-CPU data structures.
 
-use super::{
-    exec::{Task, sched::Scheduler},
-    memory::VirtAddr,
-};
+use super::{exec::Task, memory::VirtAddr};
 use crate::arch;
-use alloc::{boxed::Box, sync::Arc};
 use core::{
     ptr::null_mut,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use spin::RwLock;
 
 /// Common processor-local information.
 #[derive(Debug)]
@@ -109,8 +104,8 @@ static NUM_CPUS: AtomicUsize = AtomicUsize::new(1);
 /// Extends the per-CPU data for a new CPU.
 /// Returns the new CpuData context and the new CPU ID.
 pub(crate) fn allocate_cpu() -> (&'static mut CpuData, usize) {
-    let id = NUM_CPUS.fetch_add(1, Ordering::Relaxed);
-    let percpu_size = (&raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize);
+    let _id = NUM_CPUS.fetch_add(1, Ordering::Relaxed);
+    let _percpu_size = &raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize;
     // TODO: Map new memory region, starting at end of the region. Needs page allocator.
     // TODO: Copy over default values.
     todo!();

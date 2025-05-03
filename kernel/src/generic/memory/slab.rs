@@ -6,15 +6,12 @@ use super::{
     page::{AllocFlags, PageAllocator},
     virt::VmLevel,
 };
-use crate::{
-    arch,
-    generic::util::{align_down, align_up},
-};
+use crate::{arch, generic::util::align_up};
 use core::{
     alloc::{GlobalAlloc, Layout},
     hint::unlikely,
     mem::size_of,
-    ptr::{null, null_mut, write_bytes},
+    ptr::{null_mut, write_bytes},
 };
 use spin::Mutex;
 
@@ -52,7 +49,7 @@ impl Slab {
             // Calculate the amount of bytes we need to skip in order to be able to store a reference to the slab.
             let offset = align_up(size_of::<SlabHeader>(), self.ent_size);
             // That also means we need to deduct that amount here.
-            let available_size = (arch::virt::get_page_size(VmLevel::L1)) - offset;
+            let available_size = (arch::memory::get_page_size(VmLevel::L1)) - offset;
 
             // Allocate memory for this slab.
             let mem = BuddyAllocator::alloc(1, AllocFlags::Zeroed).expect("Out of memory");
@@ -98,7 +95,7 @@ impl Slab {
 }
 
 fn find_size(size: usize) -> Option<&'static Slab> {
-    for slab in unsafe { &ALLOCATOR.slabs } {
+    for slab in &ALLOCATOR.slabs {
         if slab.ent_size >= size {
             return Some(slab);
         }
@@ -118,15 +115,15 @@ unsafe impl GlobalAlloc for SlabAllocator {
         if let Some(s) = slab {
             // The allocation fits within our defined slabs.
             // TODO: This is broken.
-            // let result = s.alloc();
-            // assert!(result as usize % layout.align() == 0);
-            // return result;
+            let result = s.alloc();
+            assert!(result as usize % layout.align() == 0);
+            return result;
         }
 
         // The allocation won't fit within our defined slabs.
         // Get how many pages have to be allocated in order to fit `size`.
-        let num_pages = align_up(layout.size(), arch::virt::get_page_size(VmLevel::L1))
-            / arch::virt::get_page_size(VmLevel::L1);
+        let num_pages = align_up(layout.size(), arch::memory::get_page_size(VmLevel::L1))
+            / arch::memory::get_page_size(VmLevel::L1);
 
         // Allocate the pages plus an additional page for metadata.
         match BuddyAllocator::alloc(num_pages + 1, AllocFlags::Zeroed) {
@@ -140,30 +137,31 @@ unsafe impl GlobalAlloc for SlabAllocator {
                 (*info).size = layout.size();
 
                 // Skip the metadata and return the next one.
-                return ret.byte_add(arch::virt::get_page_size(VmLevel::L1));
+                return ret.byte_add(arch::memory::get_page_size(VmLevel::L1));
             },
             Err(_) => return null_mut(),
         }
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
+        _ = ptr;
+        _ = layout;
         return;
-        if ptr == null_mut() {
-            return;
-        }
-
-        if ptr as usize == align_down(ptr as usize, arch::virt::get_page_size(VmLevel::L1)) {
-            unsafe {
-                let info = ptr.sub(arch::virt::get_page_size(VmLevel::L1)) as *mut SlabInfo;
-                BuddyAllocator::dealloc(info.into(), (*info).num_pages);
-            }
-        } else {
-            unsafe {
-                let header = align_down(ptr as usize, arch::virt::get_page_size(VmLevel::L1))
-                    as *mut SlabHeader;
-                //TODO: (*(*header).slab).free();
-            }
-        }
+        // TODO
+        // if ptr == null_mut() {
+        //     return;
+        // }
+        //
+        // if ptr as usize == align_down(ptr as usize, arch::memory::get_page_size(VmLevel::L1)) {
+        //     unsafe {
+        //         let info = ptr.sub(arch::memory::get_page_size(VmLevel::L1)) as *mut SlabInfo;
+        //         BuddyAllocator::dealloc(info.into(), (*info).num_pages);
+        //     }
+        // } else {
+        //     let header = align_down(ptr as usize, arch::memory::get_page_size(VmLevel::L1))
+        //         as *mut SlabHeader;
+        //     (*(*header).slab).free();
+        // }
     }
 }
 

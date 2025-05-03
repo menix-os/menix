@@ -69,7 +69,6 @@ pub(crate) fn init() {
         };
 
         let mut symbol_table = SYMBOL_TABLE.write();
-        let mut idx = 0;
         for sym in symbols {
             let name = CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]);
             if let Ok(x) = name {
@@ -98,7 +97,7 @@ pub(crate) fn init() {
         }
 
         log!("Loading \"{}\"", file.name);
-        if let Err(x) = load(&file.name, Some(&file.command_line), &file.data) {
+        if let Err(x) = load(&file.name, &file.data) {
             log!("Failed to load module: {:?}", x);
         }
     }
@@ -116,7 +115,7 @@ pub enum ModuleLoadError {
 pub static MODULE_ADDR: AtomicUsize = AtomicUsize::new(0);
 
 /// Loads a module from an ELF in memory.
-pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), ModuleLoadError> {
+pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
     let elf_hdr: &ElfHdr = bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()])
         .map_err(|_| ModuleLoadError::InvalidData)?;
 
@@ -201,11 +200,11 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                 // Fix potentially unaligned addresses.
                 let aligned_virt = align_down(
                     phdr.p_vaddr as usize,
-                    arch::virt::get_page_size(VmLevel::L1),
+                    arch::memory::get_page_size(VmLevel::L1),
                 );
                 if aligned_virt < phdr.p_vaddr as usize {
-                    memsz += arch::virt::get_page_size(VmLevel::L1)
-                        - (phdr.p_memsz as usize % arch::virt::get_page_size(VmLevel::L1));
+                    memsz += arch::memory::get_page_size(VmLevel::L1)
+                        - (phdr.p_memsz as usize % arch::memory::get_page_size(VmLevel::L1));
                 }
 
                 // Allocate physical memory.
@@ -215,7 +214,7 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                 let mut page_table = virt::KERNEL_PAGE_TABLE.write();
 
                 // Map memory with RW permissions.
-                for page in (0..=memsz + 4096).step_by(arch::virt::get_page_size(VmLevel::L1)) {
+                for page in (0..=memsz + 4096).step_by(arch::memory::get_page_size(VmLevel::L1)) {
                     page_table
                         .map_single::<BuddyAllocator>(
                             (load_base + aligned_virt + page).into(),
@@ -225,7 +224,8 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                         )
                         .map_err(|_| ModuleLoadError::AllocFailed)?;
 
-                    MODULE_ADDR.fetch_add(arch::virt::get_page_size(VmLevel::L1), Ordering::AcqRel);
+                    MODULE_ADDR
+                        .fetch_add(arch::memory::get_page_size(VmLevel::L1), Ordering::AcqRel);
                 }
 
                 let virt = load_base + phdr.p_vaddr as usize;
@@ -347,7 +347,7 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
             let symbol = symtab[sym as usize];
 
             // The address where to write the relocated address to.
-            let location = unsafe { (load_base + rela.r_offset as usize) as *mut usize };
+            let location = (load_base + rela.r_offset as usize) as *mut usize;
 
             // Do the relocation.
             match typ {
@@ -367,9 +367,9 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
                             .ok_or(ModuleLoadError::SymbolNotFound)?
                             .0;
 
-                        unsafe { kernel_symbol.st_value as usize }
+                        kernel_symbol.st_value as usize
                     } else {
-                        unsafe { (load_base + symbol.st_value as usize) }
+                        load_base + symbol.st_value as usize
                     };
 
                     unsafe {
@@ -395,8 +395,8 @@ pub fn load(name: &str, cmd: Option<&CmdLine>, data: &[u8]) -> Result<(), Module
     // Finally, remap everything so the permissions are as described.
     for (phys, virt, length, flags) in &info.mappings {
         let mut page_table = virt::KERNEL_PAGE_TABLE.write();
-        let length = align_up(*length, arch::virt::get_page_size(VmLevel::L1));
-        for page in (0..=length).step_by(arch::virt::get_page_size(VmLevel::L1)) {
+        let length = align_up(*length, arch::memory::get_page_size(VmLevel::L1));
+        for page in (0..=length).step_by(arch::memory::get_page_size(VmLevel::L1)) {
             page_table.remap_single::<BuddyAllocator>(*virt + page, *flags, VmLevel::L1);
         }
     }

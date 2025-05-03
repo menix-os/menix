@@ -1,11 +1,6 @@
-use super::{consts, irq::TrapFrame};
-use crate::generic::{
-    self,
-    memory::{
-        PhysAddr, VirtAddr,
-        page::{self, PageFaultCause, PageFaultInfo},
-        virt::{self, PageTable, VmFlags, VmLevel},
-    },
+use crate::generic::memory::{
+    PhysAddr, VirtAddr,
+    virt::{VmFlags, VmLevel},
 };
 use bitflags::bitflags;
 use core::arch::asm;
@@ -54,7 +49,7 @@ impl PageTableEntry {
         return Self { inner: 0 };
     }
 
-    pub const fn new(address: PhysAddr, flags: VmFlags, level: usize) -> Self {
+    pub const fn new(address: PhysAddr, flags: VmFlags, _level: usize) -> Self {
         let mut result = (address.value() as u64 & ADDR_MASK) | PageFlags::Present.bits();
 
         if flags.contains(VmFlags::User) {
@@ -97,8 +92,7 @@ impl PageTableEntry {
     }
 }
 
-/// Invalidates a TLB entry cache.
-fn flush_tlb(addr: VirtAddr) {
+pub fn flush_tlb(addr: VirtAddr) {
     unsafe {
         asm!("invlpg [{addr}]", addr = in(reg) addr.value());
     }

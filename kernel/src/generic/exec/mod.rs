@@ -1,11 +1,9 @@
-use crate::{
-    arch::virt::TaskFrame,
-    generic::memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
-};
-use alloc::{sync::Arc, vec};
+use crate::arch::exec::TaskFrame;
+use alloc::sync::Arc;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 pub mod sched;
+pub mod task;
 
 pub trait Frame {
     fn set_stack(&mut self, addr: usize);
@@ -35,7 +33,6 @@ pub enum TaskState {
 /// Represents the atomic scheduling structure.
 #[derive(Debug)]
 pub struct Task {
-    next: Option<Arc<Task>>,
     /// Unique identifier
     pub id: usize,
     /// The saved context of a thread while the thread is not running.
@@ -50,7 +47,6 @@ static TASK_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 impl Task {
     pub fn new() -> Self {
         return Self {
-            next: None,
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
             context: TaskFrame::new(),
             state: TaskState::Ready,

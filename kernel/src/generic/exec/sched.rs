@@ -1,6 +1,5 @@
-use crate::arch::virt::TaskFrame;
-
 use super::Task;
+use crate::arch::exec::TaskFrame;
 use alloc::sync::Arc;
 use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
@@ -44,9 +43,9 @@ pub fn get_current_task() -> Option<Arc<Task>> {
     }
 }
 
-pub fn reschedule(mut context: &TaskFrame) -> &TaskFrame {
+pub fn reschedule(context: &mut TaskFrame) {
     preempt_off();
     // TODO: Reschedule
+    _ = context;
     preempt_on();
-    return context;
 }

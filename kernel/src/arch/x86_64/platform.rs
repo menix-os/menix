@@ -1,10 +1,7 @@
 use super::asm;
 use crate::generic::{
     clock::{self, ClockError, ClockSource},
-    memory::{
-        PhysAddr,
-        virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
-    },
+    memory::virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
 };
 use alloc::boxed::Box;
 use core::mem::offset_of;
@@ -107,13 +104,11 @@ impl ClockSource for Hpet {
     }
 }
 
-fn hpet_init() {
+pub fn init() {
     if let Err(x) = clock::switch(Box::new(Hpet::default())) {
         error!("acpi: Unable to setup HPET: {:?}", x);
     }
 }
-
-init_call_if_cmdline!("hpet", true, hpet_init);
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_io_read8(

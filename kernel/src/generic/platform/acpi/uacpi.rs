@@ -1,5 +1,6 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
+#![allow(unused)]
 
 use crate::{
     arch,
@@ -35,9 +36,9 @@ unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_add
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c_void {
-    let aligned_addr = util::align_down(addr as usize, arch::virt::get_page_size(VmLevel::L1));
+    let aligned_addr = util::align_down(addr as usize, arch::memory::get_page_size(VmLevel::L1));
     let difference = (addr as usize - aligned_addr);
-    let aligned_len = util::align_up(len + difference, arch::virt::get_page_size(VmLevel::L1));
+    let aligned_len = util::align_up(len + difference, arch::memory::get_page_size(VmLevel::L1));
     return unsafe {
         KERNEL_PAGE_TABLE
             .write()

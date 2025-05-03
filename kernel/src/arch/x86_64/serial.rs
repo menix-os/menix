@@ -3,7 +3,7 @@
 use super::asm::{read8, write8};
 use crate::generic::{
     boot::BootInfo,
-    log::{Logger, LoggerSink},
+    log::{self, LoggerSink},
 };
 use alloc::boxed::Box;
 
@@ -58,7 +58,7 @@ fn init() {
         write8(COM1_BASE + 2, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
         write8(COM1_BASE + 4, 0x0B); // IRQs enabled, RTS/DSR set
     };
-    Logger::add_sink(Box::new(SerialLogger));
+    log::add_sink(Box::new(SerialLogger));
 }
 
 early_init_call!(init);

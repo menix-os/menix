@@ -1,5 +1,6 @@
+use crate::generic::memory::user::UserBuffer;
+
 use super::errno::{EResult, Errno};
-use crate::generic::memory::virt::ForeignPtr;
 
 /// Operations that can be performed on a file.
 pub trait FileOps {
@@ -47,7 +48,7 @@ pub trait FileOps {
 
     /// Performs a generic ioctl operation on the file.
     /// Returns a status code.
-    fn ioctl(&mut self, request: usize, arg: ForeignPtr<u8>) -> EResult<usize> {
+    fn ioctl(&mut self, request: usize, arg: UserBuffer<u8>) -> EResult<usize> {
         return Err(Errno::ENOSYS);
     }
 

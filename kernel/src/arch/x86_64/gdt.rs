@@ -133,9 +133,7 @@ pub struct GdtLongDesc {
 
 #[repr(u8)]
 pub enum GdtLongType {
-    Ldt = 0x2,
     TssAvailable = 0x9,
-    TssBusy = 0xB,
 }
 
 impl GdtLongDesc {

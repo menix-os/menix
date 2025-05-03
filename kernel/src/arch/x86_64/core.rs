@@ -3,10 +3,13 @@ use core::mem::offset_of;
 
 use alloc::boxed::Box;
 
-use super::{CPU_DATA, apic, consts, gdt, idt, irq, serial, tsc};
-use crate::generic::{
-    clock,
-    percpu::{CpuData, LD_PERCPU_START},
+use super::{CPU_DATA, apic, consts, gdt, idt, irq, tsc};
+use crate::{
+    arch::x86_64::apic::LocalApic,
+    generic::{
+        clock,
+        percpu::{CpuData, LD_PERCPU_START},
+    },
 };
 
 pub fn setup_bsp() {
@@ -22,7 +25,7 @@ pub fn setup_bsp() {
     );
 
     // Enable the FSGSBASE bit.
-    let mut cr4 = 0usize;
+    let mut cr4: usize;
     unsafe { asm!("mov {cr4}, cr4", cr4 = out(reg) cr4) };
     cr4 |= consts::CR4_FSGSBASE;
     unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
@@ -49,7 +52,7 @@ pub fn get_per_cpu() -> *mut crate::generic::percpu::CpuData {
 }
 
 pub fn perpare_cpu(context: &mut CpuData) {
-    let mut cpu = CPU_DATA.get(context);
+    let cpu = CPU_DATA.get(context);
 
     // Load a GDT and TSS.
     gdt::init(&mut cpu.gdt, &mut cpu.tss);
@@ -75,9 +78,9 @@ pub fn perpare_cpu(context: &mut CpuData) {
     }
 
     // Now, start manipulating the control registers.
-    let mut cr0 = 0usize;
+    let mut cr0: usize;
     unsafe { asm!("mov {cr0}, cr0", cr0 = out(reg) cr0) };
-    let mut cr4 = 0usize;
+    let mut cr4: usize;
     unsafe { asm!("mov {cr4}, cr4", cr4 = out(reg) cr4) };
 
     // Collect all relevant CPUIDs.
@@ -138,11 +141,11 @@ pub fn perpare_cpu(context: &mut CpuData) {
     // Check if the TSC exists and is also invariant.
     if cpuid1.edx & consts::CPUID_1D_TSC != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
         match clock::switch(Box::new(tsc::TscClock)) {
-            Ok(x) => {
+            Ok(_) => {
                 cr4 |= consts::CR4_TSD;
             }
             Err(e) => {
-                warn!("percpu: Not setting up the TSC: {:?}", e)
+                warn!("Not setting up the TSC: {:?}", e)
             }
         }
     }
@@ -165,6 +168,8 @@ pub fn perpare_cpu(context: &mut CpuData) {
         super::asm::wrmsr(consts::MSR_GS_BASE, context.this as u64);
         super::asm::wrmsr(consts::MSR_FS_BASE, 0);
     }
+
+    LocalApic::init(context);
 }
 
 pub fn halt() -> ! {

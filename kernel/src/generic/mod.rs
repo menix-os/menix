@@ -3,6 +3,7 @@ pub mod clock;
 pub mod cmdline;
 pub mod elf;
 pub mod exec;
+pub mod fbcon;
 pub mod irq;
 pub mod log;
 pub mod memory;

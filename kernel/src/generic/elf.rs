@@ -1,5 +1,4 @@
-use crate::arch;
-use bytemuck::{AnyBitPattern, Pod, Zeroable};
+use bytemuck::{Pod, Zeroable};
 
 // ELF Header Identification
 pub const ELF_MAG: [u8; 4] = [0x7F, b'E', b'L', b'F'];

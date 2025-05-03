@@ -1,10 +1,13 @@
+use crate::generic::exec::Task;
 use crate::generic::{
     elf::{self, ElfHdr, ElfPhdr},
     exec::Frame,
-    memory::virt::{PageTable, VmFlags},
+    memory::{
+        buddy::BuddyAllocator,
+        virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags},
+    },
     posix::errno::Errno,
 };
-use crate::generic::{exec::Task, memory::VirtAddr};
 use alloc::vec::Vec;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -20,7 +23,9 @@ impl Process {
         Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             is_user,
-            page_table: todo!(),
+            page_table: PageTable::new_user::<BuddyAllocator>(
+                KERNEL_PAGE_TABLE.read().root_level(),
+            ),
             threads: Vec::new(),
         }
     }

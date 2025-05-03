@@ -15,12 +15,12 @@ pub enum IrqStatus {
 pub type IrqHandlerFn = fn(irq: usize, context: usize) -> IrqStatus;
 
 pub struct IrqAction {
-    irq: usize,               // The IRQ number.
-    handler: IrqHandlerFn,    // Called directly to handle the IRQ.
-    worker: IrqHandlerFn,     // Function to call in a worker thread, if woken up by the handler.
-    thread: Arc<Mutex<Task>>, // The thread to execute the worker function on.
-    name: String,             // Name of the IRQ.
-    context: *mut (),         // A generic context to pass to the handler.
+    pub irq: usize,               // The IRQ number.
+    pub handler: IrqHandlerFn,    // Called directly to handle the IRQ.
+    pub worker: IrqHandlerFn, // Function to call in a worker thread, if woken up by the handler.
+    pub thread: Arc<Mutex<Task>>, // The thread to execute the worker function on.
+    pub name: String,         // Name of the IRQ.
+    pub context: *mut (),     // A generic context to pass to the handler.
 }
 
 pub enum IpiTarget {
@@ -45,7 +45,7 @@ pub trait IrqController {
     /// Gets the ID of this controller.
     fn id(&self) -> usize;
     /// Signals the end of an interrupt to the controller.
-    fn eoi(&self) -> Result<(), IrqError>;
+    fn eoi(&mut self) -> Result<(), IrqError>;
     /// Sends an inter-processor interrupt to a given `target`.
     fn send_ipi(&self, target: IpiTarget) -> Result<(), IrqError>;
 }

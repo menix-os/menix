@@ -4,8 +4,11 @@ use super::{
     virt::VmLevel,
 };
 use crate::{
-    arch::{self, virt::TrapFrame},
-    generic::util::align_up,
+    arch::{self, exec::TaskFrame},
+    generic::{
+        exec::{Frame, sched::reschedule},
+        util::align_up,
+    },
 };
 use alloc::alloc::AllocError;
 use bitflags::bitflags;
@@ -37,8 +40,8 @@ pub trait PageAllocator {
 
     /// Allocates enough consecutive pages to fit `bytes` amount of bytes.
     fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
-        let pages = align_up(bytes, arch::virt::get_page_size(VmLevel::L1))
-            / arch::virt::get_page_size(VmLevel::L1);
+        let pages = align_up(bytes, arch::memory::get_page_size(VmLevel::L1))
+            / arch::memory::get_page_size(VmLevel::L1);
         return Self::alloc(pages, flags);
     }
 
@@ -78,9 +81,10 @@ bitflags! {
 }
 
 /// Generic page fault handler. May reschedule and return a different context.
-pub fn page_fault_handler<'a>(context: &'a TrapFrame, info: &PageFaultInfo) {
+pub fn page_fault_handler<'a>(context: &mut TaskFrame, info: &PageFaultInfo) {
     if info.caused_by_user {
         // TODO: Send SIGSEGV and reschedule.
+        reschedule(context);
     }
 
     panic!(
