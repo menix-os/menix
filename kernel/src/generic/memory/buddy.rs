@@ -10,10 +10,7 @@ use crate::{
     generic::{
         self,
         memory::{page::AllocFlags, virt::VmLevel},
-        util::{
-            align_up,
-            mutex::IrqMutex,
-        },
+        util::{align_up, mutex::IrqMutex},
     },
 };
 use alloc::{alloc::AllocError, slice};

@@ -249,8 +249,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 }
 
                 // Record this mapping.
-                info.mappings
-                    .push((phys, virt.into(), memsz, flags));
+                info.mappings.push((phys, virt.into(), memsz, flags));
             }
             elf::PT_DYNAMIC => {
                 let dyntab: &[elf::ElfDyn] = bytemuck::try_cast_slice(
