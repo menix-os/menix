@@ -6,7 +6,7 @@ use core::panic::PanicInfo;
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {
     // Force unlock output in cases like panics during printing.
-    unsafe { GLOBAL_LOGGERS.force_unlock() };
+    unsafe { GLOBAL_LOGGERS.force_unlock(true) };
 
     error!("Kernel panic - Environment is unsound!");
 

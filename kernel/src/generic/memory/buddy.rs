@@ -10,7 +10,10 @@ use crate::{
     generic::{
         self,
         memory::{page::AllocFlags, virt::VmLevel},
-        util::{align_up, mutex::Mutex},
+        util::{
+            align_up,
+            mutex::{IrqMutex, Mutex},
+        },
     },
 };
 use alloc::{alloc::AllocError, slice};
@@ -121,9 +124,7 @@ pub fn get_order(pages: usize) -> Order {
 
 const MAX_ORDER: Order = 20;
 
-// TODO: Use IRQ disabling mutex instead.
-unsafe impl Send for Region {}
-static REGIONS: Mutex<[Option<Region>; 128]> = Mutex::new([None; 128]);
+static REGIONS: IrqMutex<[Option<Region>; 128]> = IrqMutex::new([None; 128]);
 
 /// A region of physical memory.
 #[derive(Debug, Clone, Copy)]

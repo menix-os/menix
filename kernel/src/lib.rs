@@ -1,5 +1,4 @@
 #![no_std]
-#![allow(clippy::needless_return)]
 #![feature(negative_impls)]
 #![feature(allocator_api)]
 #![feature(str_from_raw_parts)]
@@ -7,6 +6,9 @@
 #![feature(cfg_match)]
 #![feature(likely_unlikely)]
 #![no_builtins]
+// Clippy lints
+#![allow(clippy::needless_return)]
+#![forbid(clippy::missing_safety_doc)]
 
 pub extern crate alloc;
 pub extern crate core;
