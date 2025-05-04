@@ -82,5 +82,7 @@ pub(crate) fn main() -> ! {
     log!("Starting init...");
 
     // TODO: Start init.
-    loop {}
+    loop {
+        core::hint::spin_loop();
+    }
 }

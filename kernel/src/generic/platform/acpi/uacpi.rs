@@ -24,7 +24,7 @@ pub use uacpi_sys::*;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_addr) -> uacpi_status {
-    unsafe { *out_rsdp_address = (*super::RSDP_ADDRESS.get()).into() };
+    unsafe { *out_rsdp_address = super::RSDP_ADDRESS.get().value() as u64 };
     return UACPI_STATUS_OK;
 }
 

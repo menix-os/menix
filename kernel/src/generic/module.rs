@@ -90,7 +90,7 @@ pub(crate) fn init() {
             .name
             .split_once('.')
             .map(|(name, _)| name)
-            .unwrap_or(&file.name);
+            .unwrap_or(file.name);
 
         if !boot_info.command_line.get_bool(name).unwrap_or(true) {
             log!("Skipping \"{}\"", file.name);
@@ -398,7 +398,9 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
         let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
         let length = align_up(*length, arch::memory::get_page_size(VmLevel::L1));
         for page in (0..=length).step_by(arch::memory::get_page_size(VmLevel::L1)) {
-            page_table.remap_single::<BuddyAllocator>(*virt + page, *flags, VmLevel::L1);
+            page_table
+                .remap_single::<BuddyAllocator>(*virt + page, *flags, VmLevel::L1)
+                .map_err(|_| ModuleLoadError::AllocFailed)?;
         }
     }
 

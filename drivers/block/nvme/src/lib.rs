@@ -10,7 +10,7 @@ menix::module!("NVMe block devices", "Marvin Friedrich", main);
 
 static DRIVER: PciDriver = PciDriver {
     name: "nvme",
-    probe: probe,
+    probe,
     remove: None,
     suspend: None,
     sleep: None,

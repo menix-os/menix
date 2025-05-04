@@ -106,6 +106,9 @@ impl Process {
                     // TODO: Allocate memory.
                     let phys = todo!();
                 }
+                elf::PT_INTERP => {
+                    // TODO: Load interpreter
+                }
                 // Unknown or unhandled type. Do nothing.
                 _ => (),
             }

@@ -103,7 +103,7 @@ pub unsafe fn init() {
                 arch::memory::get_page_size(VmLevel::L1),
             ) / arch::memory::get_page_size(VmLevel::L1)
         })
-        .last()
+        .next_back()
         .unwrap();
 
     // Find the largest region there is.
@@ -281,25 +281,6 @@ macro_rules! addr_impl {
 
             pub const fn value(&self) -> usize {
                 self.0
-            }
-        }
-
-        impl Into<usize> for $ty {
-            fn into(self) -> usize {
-                self.0
-            }
-        }
-        #[cfg(target_pointer_width = "32")]
-        impl Into<u32> for $ty {
-            fn into(self) -> u32 {
-                self.0 as u32
-            }
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        impl Into<u64> for $ty {
-            fn into(self) -> u64 {
-                self.0 as u64
             }
         }
 
