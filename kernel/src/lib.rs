@@ -75,11 +75,16 @@ pub(crate) fn main() -> ! {
 
     // TODO: Setup SMP.
 
-    let path = generic::boot::BootInfo::get()
+    // Find init. If no path is given, search a few select directories.
+    let path = match generic::boot::BootInfo::get()
         .command_line
         .get_string("init")
-        .unwrap_or("/bin/init");
-    log!("Starting init...");
+    {
+        Some(x) => x,
+        // TODO: Search filesystem for init binaries.
+        None => "/usr/sbin/init",
+    };
+    log!("Starting init \"{}\"", path);
 
     // TODO: Start init.
     loop {

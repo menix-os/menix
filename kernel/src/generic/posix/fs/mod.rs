@@ -1,4 +1,4 @@
-// File system abstractions
+//! File system abstractions.
 
 use alloc::boxed::Box;
 

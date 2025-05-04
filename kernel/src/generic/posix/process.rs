@@ -84,7 +84,7 @@ impl Process {
                 ..(elf_hdr.e_phoff as usize + elf_hdr.e_phnum as usize * size_of::<ElfPhdr>())],
         ) {
             Ok(x) => x,
-            Err(x) => return Err(Errno::EINVAL),
+            Err(_) => return Err(Errno::EINVAL),
         };
 
         for phdr in phdrs {
