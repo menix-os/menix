@@ -23,7 +23,7 @@ impl Process {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             is_user,
             page_table: PageTable::new_user::<BuddyAllocator>(
-                KERNEL_PAGE_TABLE.read().root_level(),
+                KERNEL_PAGE_TABLE.lock().root_level(),
             ),
             threads: Vec::new(),
         }

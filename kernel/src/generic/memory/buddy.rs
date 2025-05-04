@@ -47,9 +47,7 @@ impl PageAllocator for BuddyAllocator {
         return result;
     }
 
-    unsafe fn dealloc(_addr: PhysAddr, _pages: usize) {
-        todo!()
-    }
+    unsafe fn dealloc(_addr: PhysAddr, _pages: usize) {}
 }
 
 fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
@@ -107,9 +105,7 @@ fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
 }
 
 pub unsafe fn dealloc(addr: PhysAddr, order: Order) {
-    _ = addr;
-    _ = order;
-    // TODO
+    todo!();
 }
 
 pub type PageNumber = u32;

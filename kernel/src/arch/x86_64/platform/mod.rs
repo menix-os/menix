@@ -82,7 +82,7 @@ impl ClockSource for Hpet {
         let hpet: *mut acpi_hpet = unsafe { table.__bindgen_anon_1.ptr } as *mut acpi_hpet;
         self.regs = Some(
             KERNEL_PAGE_TABLE
-                .write()
+                .lock()
                 .map_memory(
                     ((unsafe { *hpet }).address.address as usize).into(),
                     VmFlags::Read | VmFlags::Write,

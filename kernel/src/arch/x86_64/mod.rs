@@ -5,7 +5,7 @@ mod consts;
 pub mod core;
 pub mod irq;
 pub mod platform;
-pub mod task;
+pub mod sched;
 pub mod virt;
 
 use platform::gdt::{Gdt, TaskStateSegment};

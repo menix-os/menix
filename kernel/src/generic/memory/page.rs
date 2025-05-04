@@ -4,7 +4,7 @@ use super::{
     virt::VmLevel,
 };
 use crate::{
-    arch::{self, exec::TaskFrame},
+    arch::{self, sched::Context},
     generic::util::align_up,
 };
 use alloc::alloc::AllocError;
@@ -78,7 +78,7 @@ bitflags! {
 }
 
 /// Generic page fault handler. May reschedule and return a different context.
-pub fn page_fault_handler<'a>(context: &mut TaskFrame, info: &PageFaultInfo) {
+pub fn page_fault_handler<'a>(context: &mut Context, info: &PageFaultInfo) {
     if info.caused_by_user {
         // TODO: Send SIGSEGV and reschedule.
         // Kill process.

@@ -41,7 +41,7 @@ extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c
     let aligned_len = util::align_up(len + difference, arch::memory::get_page_size(VmLevel::L1));
     return unsafe {
         KERNEL_PAGE_TABLE
-            .write()
+            .lock()
             .map_memory(
                 aligned_addr.into(),
                 VmFlags::Read | VmFlags::Write,

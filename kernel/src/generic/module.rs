@@ -211,7 +211,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 let phys = BuddyAllocator::alloc_bytes(memsz as usize, AllocFlags::Zeroed)
                     .map_err(|_| ModuleLoadError::AllocFailed)?;
 
-                let mut page_table = virt::KERNEL_PAGE_TABLE.write();
+                let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
 
                 // Map memory with RW permissions.
                 for page in (0..=memsz + 4096).step_by(arch::memory::get_page_size(VmLevel::L1)) {
@@ -394,7 +394,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
 
     // Finally, remap everything so the permissions are as described.
     for (phys, virt, length, flags) in &info.mappings {
-        let mut page_table = virt::KERNEL_PAGE_TABLE.write();
+        let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
         let length = align_up(*length, arch::memory::get_page_size(VmLevel::L1));
         for page in (0..=length).step_by(arch::memory::get_page_size(VmLevel::L1)) {
             page_table.remap_single::<BuddyAllocator>(*virt + page, *flags, VmLevel::L1);

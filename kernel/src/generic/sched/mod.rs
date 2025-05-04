@@ -1,9 +1,9 @@
-use crate::arch::{self, exec::TaskFrame};
+use crate::arch::{self, sched::Context};
 use core::{
     ptr::null_mut,
     sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering},
 };
-use task::Task;
+use task::{Frame, Task};
 
 pub mod task;
 
@@ -37,14 +37,19 @@ impl Scheduler {
         self.do_preempt.store(true, Ordering::Release);
     }
 
-    pub fn reschedule<'a>(&mut self, context: &'a TaskFrame) -> &'a TaskFrame {
+    pub fn reschedule(&mut self, from: &Context, to: &mut Context) {
         // Disable interrupts.
         unsafe { arch::irq::set_irq_state(false) };
 
         // TODO
+        *to = *from;
 
         // Enable interrupts.
         unsafe { arch::irq::set_irq_state(true) };
-        return context;
+    }
+
+    /// Starts executing this scheduler.
+    pub fn run(&mut self) {
+        unsafe { arch::irq::set_irq_state(true) };
     }
 }

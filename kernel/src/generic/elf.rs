@@ -304,8 +304,3 @@ pub struct ElfHdr {
     pub e_shstrndx: u16,
 }
 static_assert!(size_of::<ElfHdr>() == 64);
-
-pub struct ElfAuxv {
-    atype: u32,
-    avalue: u32,
-}

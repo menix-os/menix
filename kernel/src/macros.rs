@@ -19,8 +19,21 @@ macro_rules! per_cpu {
 #[macro_export]
 macro_rules! current_module_name {
     () => {{
-        const FULL_PATH: &str = module_path!();
-        FULL_PATH.rsplit("::").next().unwrap()
+        let path = module_path!().as_bytes();
+        let mut idx = path.len() - 1;
+        let mut result = path;
+        while idx > 0 {
+            if path[idx] == b':' {
+                result = path.split_at(idx + 1).1;
+                break;
+            }
+            idx -= 1;
+        }
+
+        match str::from_utf8(result) {
+            Ok(x) => x,
+            Err(_) => panic!("Parsing error. FIXME"),
+        }
     }};
 }
 
@@ -32,10 +45,11 @@ macro_rules! log_inner {
         let current_time = $crate::generic::clock::get_elapsed();
         _ = writer.write_fmt(format_args!(
             "[{:5}.{:06}] ",
-            current_time / 1000000000,
-            (current_time / 1000) % 1000000
+            current_time / 1_000_000_000,
+            (current_time / 1000) % 1_000_000
         ));
-        _ = writer.write_fmt(format_args!("{}: ", current_module_name!()));
+        const NAME: &str = current_module_name!();
+        _ = writer.write_fmt(format_args!("{}: ", NAME));
         _ = writer.write_fmt(format_args!($prefix));
         _ = writer.write_fmt(format_args!($($arg)*));
         _ = writer.write_fmt(format_args!($suffix));

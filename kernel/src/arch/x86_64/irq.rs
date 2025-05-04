@@ -10,7 +10,7 @@ use core::{arch::naked_asm, mem::offset_of};
 use seq_macro::seq;
 
 use super::platform::apic;
-use super::task::TaskFrame;
+use super::sched::Context;
 
 /// Registers which are saved and restored during a context switch or interrupt.
 #[repr(C)]
@@ -61,8 +61,8 @@ impl Frame for TrapFrame {
         self.rip as usize
     }
 
-    fn save(&self) -> TaskFrame {
-        TaskFrame {
+    fn save(&self) -> Context {
+        Context {
             r15: self.r15,
             r14: self.r14,
             r13: self.r13,
@@ -84,7 +84,7 @@ impl Frame for TrapFrame {
         }
     }
 
-    fn restore(&mut self, saved: TaskFrame) {
+    fn restore(&mut self, saved: Context) {
         self.r15 = saved.r15;
         self.r14 = saved.r14;
         self.r13 = saved.r13;
@@ -148,7 +148,7 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut TrapFrame) {
         }
         // Timer.
         0x20 => timer_handler(context),
-        // Legacy Syscall.
+        // Legacy syscall handler.
         0x80 => syscall_handler(context),
         //
         _ => {
@@ -184,7 +184,7 @@ fn page_fault_handler(context: &mut TrapFrame) {
         asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
 
         let mut cause = PageFaultCause::empty();
-        let err = (*context).error;
+        let err = context.error;
         if err & (1 << 0) != 0 {
             cause |= PageFaultCause::Present;
         }
@@ -199,9 +199,9 @@ fn page_fault_handler(context: &mut TrapFrame) {
         }
 
         let info = PageFaultInfo {
-            caused_by_user: (*context).cs & super::consts::CPL_USER as u64
+            caused_by_user: context.cs & super::consts::CPL_USER as u64
                 == super::consts::CPL_USER as u64,
-            ip: ((*context).rip as usize).into(),
+            ip: (context.rip as usize).into(),
             addr: cr2.into(),
             cause,
         };
@@ -216,9 +216,9 @@ fn timer_handler(context: &mut TrapFrame) {
     let lapic = apic::LAPIC.get(ctx);
     let sched = CPU_DATA.get(ctx);
 
-    let mut new = context.save();
-    sched.scheduler.reschedule(&mut new);
-    context.restore(new);
+    let old_ctx = Context::new();
+    let mut new_ctx = Context::new();
+    sched.scheduler.reschedule(&old_ctx, &mut new_ctx);
 
     _ = lapic.eoi();
 }

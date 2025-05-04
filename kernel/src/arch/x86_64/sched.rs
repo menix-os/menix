@@ -2,7 +2,7 @@ use crate::generic::sched::task::Frame;
 
 #[repr(C)]
 #[derive(Debug, Clone, Copy)]
-pub struct TaskFrame {
+pub struct Context {
     pub r15: u64,
     pub r14: u64,
     pub r13: u64,
@@ -23,8 +23,8 @@ pub struct TaskFrame {
     pub rflags: u64,
 }
 
-impl TaskFrame {
-    pub fn new() -> Self {
+impl Context {
+    pub const fn new() -> Self {
         Self {
             r15: 0,
             r14: 0,
@@ -48,7 +48,7 @@ impl TaskFrame {
     }
 }
 
-impl Frame for TaskFrame {
+impl Frame for Context {
     fn set_stack(&mut self, addr: usize) {
         self.rsp = addr as u64;
     }
@@ -65,11 +65,11 @@ impl Frame for TaskFrame {
         self.rip as usize
     }
 
-    fn save(&self) -> TaskFrame {
+    fn save(&self) -> Context {
         self.clone()
     }
 
-    fn restore(&mut self, saved: TaskFrame) {
+    fn restore(&mut self, saved: Context) {
         *self = saved;
     }
 }

@@ -1,19 +1,18 @@
-// Early framebuffer boot console (likely using an EFI GOP framebuffer).
+//! Early frame buffer boot console (likely using an EFI GOP framebuffer).
 
 use crate::generic::{
     boot::BootInfo,
     log::{self, LoggerSink},
     memory::{
-        PhysAddr,
-        slab::ALLOCATOR,
+        PhysAddr, free, malloc,
         virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
     },
 };
 use alloc::{boxed::Box, vec::Vec};
 use core::{
-    alloc::{GlobalAlloc, Layout},
     ffi::c_void,
     ptr::null_mut,
+    sync::atomic::{AtomicPtr, Ordering},
 };
 use flanterm_sys::{flanterm_context, flanterm_write};
 
@@ -41,39 +40,57 @@ const FONT_HEIGHT: usize = 12;
 
 struct FbCon {
     /// Back buffer to draw updates on.
-    back_buffer: Vec<u8>,
-    /// The buffer to draw on.
+    _buf: Vec<u8>,
+    /// Frame buffer that is being drawn on.
     fb: FrameBuffer,
+    /// Start of memory mapped region that is used to access the frame buffer.
+    mem: AtomicPtr<u8>,
     /// The flanterm context.
-    ctx: *mut flanterm_context,
+    ctx: AtomicPtr<flanterm_context>,
 }
 
-unsafe impl Send for FbCon {}
+impl Drop for FbCon {
+    fn drop(&mut self) {
+        unsafe { flanterm_sys::flanterm_deinit(self.ctx.load(Ordering::Acquire), Some(free)) };
 
-unsafe extern "C" fn malloc(size: usize) -> *mut core::ffi::c_void {
-    let mem = unsafe { ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<u8>()).unwrap()) };
-    mem as *mut core::ffi::c_void
+        KERNEL_PAGE_TABLE
+            .lock()
+            .unmap_range(
+                self.mem.load(Ordering::Relaxed).into(),
+                self.fb.pitch * self.fb.height,
+            )
+            .unwrap();
+    }
 }
 
-unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
-    unsafe {
-        ALLOCATOR.dealloc(
-            ptr as *mut u8,
-            Layout::from_size_align(size, align_of::<u8>()).unwrap(),
-        )
-    };
+impl LoggerSink for FbCon {
+    fn name(&self) -> &'static str {
+        "fbcon"
+    }
+
+    fn write(&mut self, input: &[u8]) {
+        unsafe {
+            flanterm_write(
+                self.ctx.load(Ordering::Acquire),
+                input.as_ptr() as *const i8,
+                input.len(),
+            )
+        };
+    }
 }
 
+init_call_if_cmdline!("fbcon", true, init);
 pub fn init() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;
     };
-    let mut buf = Vec::new();
-    buf.resize(fb.pitch * fb.height, 0);
+
+    let mut back_buffer = Vec::new();
+    back_buffer.resize(fb.pitch * fb.height, 0);
 
     // Map the framebuffer in memory.
     let mem = KERNEL_PAGE_TABLE
-        .write()
+        .lock()
         .map_memory(
             fb.base,
             VmFlags::Read | VmFlags::Write,
@@ -83,7 +100,7 @@ pub fn init() {
         .unwrap();
 
     log!(
-        "Resolution = {}x{}x{}, Phys = {:#018X}, Virt = {:#018X}",
+        "Resolution = {}x{}x{}, Phys = {:#018x}, Virt = {:#018x}",
         fb.width,
         fb.height,
         fb.cpp * 8,
@@ -122,19 +139,10 @@ pub fn init() {
         );
 
         log::add_sink(Box::new(FbCon {
-            back_buffer: buf,
+            _buf: back_buffer,
             fb,
-            ctx,
+            mem: AtomicPtr::new(mem),
+            ctx: AtomicPtr::new(ctx),
         }));
-    }
-}
-
-impl LoggerSink for FbCon {
-    fn name(&self) -> &'static str {
-        "fbcon"
-    }
-
-    fn write(&mut self, input: &[u8]) {
-        unsafe { flanterm_write(self.ctx, input.as_ptr() as *const i8, input.len()) };
     }
 }

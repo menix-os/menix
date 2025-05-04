@@ -6,7 +6,10 @@ use super::{
     page::{AllocFlags, PageAllocator},
     virt::VmLevel,
 };
-use crate::{arch, generic::util::align_up};
+use crate::{
+    arch,
+    generic::util::{align_down, align_up},
+};
 use core::{
     alloc::{GlobalAlloc, Layout},
     hint::unlikely,
@@ -81,16 +84,30 @@ impl Slab {
             self.init();
         }
 
-        {
-            let mut head = self.head.lock();
-            let old_free = head.value() as *mut *mut ();
-            unsafe {
-                *head = (*old_free).into();
-                // Zero out the new allocation.
-                write_bytes(old_free as *mut u8, 0, self.ent_size);
-            }
-            return old_free as *mut u8;
+        let mut head = self.head.lock();
+        let old_free = head.value() as *mut *mut ();
+
+        unsafe {
+            *head = (*old_free).into();
+            // Zero out the new allocation.
+            write_bytes(old_free as *mut u8, 0, self.ent_size);
         }
+
+        return old_free as *mut u8;
+    }
+
+    fn free(&self, addr: *mut u8) {
+        if unlikely(addr == null_mut()) {
+            return;
+        }
+
+        let new_head = addr as *mut *mut ();
+        let mut head = self.head.lock();
+
+        unsafe {
+            *new_head = head.value() as *mut ();
+        }
+        *head = new_head.into();
     }
 }
 
@@ -106,7 +123,7 @@ fn find_size(size: usize) -> Option<&'static Slab> {
 unsafe impl GlobalAlloc for SlabAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // If there's nothing to allocate, don't.
-        if layout.size() == 0 {
+        if unlikely(layout.size() == 0) {
             return null_mut();
         }
 
@@ -114,9 +131,8 @@ unsafe impl GlobalAlloc for SlabAllocator {
         let slab = find_size(layout.size());
         if let Some(s) = slab {
             // The allocation fits within our defined slabs.
-            // TODO: This is broken.
             let result = s.alloc();
-            assert!(result as usize % layout.align() == 0);
+            debug_assert!(result as usize % layout.align() == 0);
             return result;
         }
 
@@ -143,25 +159,21 @@ unsafe impl GlobalAlloc for SlabAllocator {
         }
     }
 
-    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
-        _ = ptr;
-        _ = layout;
-        return;
-        // TODO
-        // if ptr == null_mut() {
-        //     return;
-        // }
-        //
-        // if ptr as usize == align_down(ptr as usize, arch::memory::get_page_size(VmLevel::L1)) {
-        //     unsafe {
-        //         let info = ptr.sub(arch::memory::get_page_size(VmLevel::L1)) as *mut SlabInfo;
-        //         BuddyAllocator::dealloc(info.into(), (*info).num_pages);
-        //     }
-        // } else {
-        //     let header = align_down(ptr as usize, arch::memory::get_page_size(VmLevel::L1))
-        //         as *mut SlabHeader;
-        //     (*(*header).slab).free();
-        // }
+    unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
+        if ptr == null_mut() {
+            return;
+        }
+
+        unsafe {
+            if ptr as usize == align_down(ptr as usize, arch::memory::get_page_size(VmLevel::L1)) {
+                let info = ptr.sub(arch::memory::get_page_size(VmLevel::L1)) as *mut SlabInfo;
+                BuddyAllocator::dealloc(info.into(), (*info).num_pages);
+            } else {
+                let header = align_down(ptr as usize, arch::memory::get_page_size(VmLevel::L1))
+                    as *mut SlabHeader;
+                (*(*header).slab).free(ptr);
+            }
+        }
     }
 }
 

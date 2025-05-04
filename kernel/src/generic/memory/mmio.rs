@@ -20,7 +20,7 @@ unsafe impl Sync for Mmio {}
 impl Drop for Mmio {
     fn drop(&mut self) {
         virt::KERNEL_PAGE_TABLE
-            .write()
+            .lock()
             .unmap_range(VirtAddr(self.base as usize), self.len)
             .unwrap();
     }
@@ -31,7 +31,7 @@ impl Mmio {
         return Self {
             phys,
             base: virt::KERNEL_PAGE_TABLE
-                .write()
+                .lock()
                 .map_memory(phys, VmFlags::Read | VmFlags::Write, VmLevel::L1, len)
                 .unwrap(),
             len,

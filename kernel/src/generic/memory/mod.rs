@@ -1,6 +1,8 @@
 use buddy::{PageNumber, Region};
 use bump::BumpAllocator;
 use page::Page;
+use slab::ALLOCATOR;
+use spin::Mutex;
 use virt::{PageTable, VmFlags, VmLevel};
 
 use crate::{
@@ -8,13 +10,15 @@ use crate::{
     generic::{boot::BootInfo, util::align_up},
 };
 use core::{
+    alloc::{GlobalAlloc, Layout},
     ops::{Add, Sub},
     ptr::{self, NonNull},
     sync::atomic::{AtomicUsize, Ordering},
 };
 
 pub mod buddy;
-pub mod bump;
+// We don't want to use the bump allocator anywhere after initial setup.
+mod bump;
 pub mod mmio;
 pub mod page;
 pub mod slab;
@@ -26,7 +30,7 @@ static HHDM_START: AtomicUsize = AtomicUsize::new(0);
 /// Global array that spans all usable physical memory.
 /// It contains important metadata about a certain page.
 /// This is virtually continuous, but not completely mapped in.
-static PAGE_METADATA: &[Page] = &[];
+static PAGE_METADATA: Mutex<&[Page]> = Mutex::new(&[]);
 
 // Symbols defined in the linker script so we can map ourselves in our page table.
 unsafe extern "C" {
@@ -188,7 +192,7 @@ pub unsafe fn init() {
         table.set_active();
 
         // Save the page table.
-        let mut kernel_table = virt::KERNEL_PAGE_TABLE.write();
+        let mut kernel_table = virt::KERNEL_PAGE_TABLE.lock();
         *kernel_table = table;
 
         log!("Kernel map is now active");
@@ -379,3 +383,19 @@ macro_rules! addr_impl {
 
 addr_impl!(PhysAddr);
 addr_impl!(VirtAddr);
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn malloc(size: usize) -> *mut core::ffi::c_void {
+    let mem = unsafe { ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<u8>()).unwrap()) };
+    mem as *mut core::ffi::c_void
+}
+
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
+    unsafe {
+        ALLOCATOR.dealloc(
+            ptr as *mut u8,
+            Layout::from_size_align(size, align_of::<u8>()).unwrap(),
+        )
+    };
+}

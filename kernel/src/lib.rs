@@ -2,17 +2,11 @@
 #![allow(clippy::needless_return)]
 #![feature(negative_impls)]
 #![feature(allocator_api)]
-// Needed for volatile memmove.
-// TODO: This is an LLVM intrinsic, replace it with our own.
-#![allow(internal_features)]
-#![feature(core_intrinsics)]
 #![feature(str_from_raw_parts)]
 #![feature(new_zeroed_alloc)]
 #![feature(cfg_match)]
 #![feature(likely_unlikely)]
 #![no_builtins]
-
-use generic::fbcon;
 
 pub extern crate alloc;
 pub extern crate core;
@@ -34,7 +28,7 @@ unsafe extern "C" {
 pub(crate) fn main() -> ! {
     arch::core::setup_bsp();
 
-    // Run early init calls.
+    // Run early init calls. These don't need memory allocations.
     unsafe {
         let mut early_array = &raw const LD_EARLY_ARRAY_START as *const fn();
         let early_end = &raw const LD_EARLY_ARRAY_END as *const fn();
@@ -56,14 +50,12 @@ pub(crate) fn main() -> ! {
     // Initialize memory management.
     unsafe { generic::memory::init() };
 
-    fbcon::init();
-
     // TODO: Initialize virtual file system.
     // generic::posix::fs::init();
 
     generic::platform::init();
 
-    arch::core::perpare_cpu(unsafe { arch::core::get_per_cpu().as_mut().unwrap() });
+    arch::core::perpare_cpu(generic::percpu::CpuData::get());
 
     // Run init calls.
     unsafe {
@@ -80,10 +72,12 @@ pub(crate) fn main() -> ! {
 
     // TODO: Setup SMP.
 
-    // TODO: Start scheduler.
-    unsafe { arch::irq::set_irq_state(false) };
-
+    let path = generic::boot::BootInfo::get()
+        .command_line
+        .get_string("init")
+        .unwrap_or("/bin/init");
     log!("Starting init...");
+
+    // TODO: Start init.
     loop {}
-    todo!("Load init");
 }

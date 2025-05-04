@@ -7,10 +7,9 @@ use crate::{
     arch::{self, memory::PageTableEntry},
     generic::util::align_up,
 };
-use alloc::{alloc::AllocError, sync::Arc};
+use alloc::alloc::AllocError;
 use bitflags::bitflags;
 use core::sync::atomic::{AtomicUsize, Ordering};
-use core::{marker::PhantomData, ops::Deref};
 use spin::{Mutex, RwLock};
 
 // Kernel constants
@@ -47,7 +46,7 @@ pub enum PageTableError {
 }
 
 // TODO: Replace with allocator.
-pub static KERNEL_PAGE_TABLE: RwLock<PageTable<true>> = RwLock::new(PageTable::new_kernel_uninit());
+pub static KERNEL_PAGE_TABLE: Mutex<PageTable<true>> = Mutex::new(PageTable::new_kernel_uninit());
 pub static KERNEL_MMAP_BASE_ADDR: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
