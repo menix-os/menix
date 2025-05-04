@@ -216,6 +216,7 @@ fn timer_handler(context: &mut TrapFrame) {
     let lapic = apic::LAPIC.get(ctx);
     let sched = CPU_DATA.get(ctx);
 
+    // TODO
     let old_ctx = Context::new();
     let mut new_ctx = Context::new();
     sched.scheduler.reschedule(&old_ctx, &mut new_ctx);

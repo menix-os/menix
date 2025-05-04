@@ -12,6 +12,9 @@ impl<T> Once<T> {
         }
     }
 
+    /// Initializes [`self`] with a concrete value.
+    /// # Safety
+    /// The caller must assert that this field has never been initialized before.
     pub unsafe fn init(&self, val: T) {
         unsafe { (*self.value.get()).write(val) };
     }

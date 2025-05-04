@@ -8,6 +8,7 @@
 #![no_builtins]
 // Clippy lints
 #![allow(clippy::needless_return)]
+#![allow(clippy::new_without_default)]
 #![forbid(clippy::missing_safety_doc)]
 
 pub extern crate alloc;

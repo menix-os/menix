@@ -378,12 +378,17 @@ macro_rules! addr_impl {
 addr_impl!(PhysAddr);
 addr_impl!(VirtAddr);
 
+/// Equivalent of C `malloc`.
 #[unsafe(no_mangle)]
-pub unsafe extern "C" fn malloc(size: usize) -> *mut core::ffi::c_void {
+pub extern "C" fn malloc(size: usize) -> *mut core::ffi::c_void {
     let mem = unsafe { ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<u8>()).unwrap()) };
     mem as *mut core::ffi::c_void
 }
 
+/// Equivalent of C `free`.
+/// # Safety
+/// The caller must make sure that `ptr` is an address handed out by [`malloc`].
+/// The caller must also assert that the same allocation is never freed twice.
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
     unsafe {

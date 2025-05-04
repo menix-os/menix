@@ -27,7 +27,10 @@ impl Drop for Mmio {
 }
 
 impl Mmio {
-    pub fn new(phys: PhysAddr, len: usize) -> Self {
+    /// Creates a new MMIO context.
+    /// # Safety
+    /// `phys` must be a valid address range that is either device memory or has been allocated by a physical memory allocator.
+    pub unsafe fn new(phys: PhysAddr, len: usize) -> Self {
         return Self {
             phys,
             base: virt::KERNEL_PAGE_TABLE
@@ -44,7 +47,7 @@ impl Mmio {
     }
 
     /// Reads data from a single field.
-    pub unsafe fn read_field<T: PrimInt>(&self, field: &MemoryField<T>) -> T {
+    pub fn read_field<T: PrimInt>(&self, field: &MemoryField<T>) -> T {
         let value = unsafe { (self.base as *mut T).byte_add(field.offset).read_volatile() };
         return match field.native_endian {
             true => value,
@@ -53,7 +56,7 @@ impl Mmio {
     }
 
     /// Writes data to a single field.
-    pub unsafe fn write_field<T: PrimInt>(&mut self, field: &MemoryField<T>, value: T) {
+    pub fn write_field<T: PrimInt>(&mut self, field: &MemoryField<T>, value: T) {
         unsafe {
             (self.base as *mut T).byte_add(field.offset).write_volatile(
                 match field.native_endian {
@@ -65,7 +68,7 @@ impl Mmio {
     }
 
     /// Reads a single element from a vector.
-    pub unsafe fn vector_read_elem<T: PrimInt>(&self, vector: &MemoryVector<T>, index: usize) -> T {
+    pub fn vector_read_elem<T: PrimInt>(&self, vector: &MemoryVector<T>, index: usize) -> T {
         assert!(index < vector.count);
         let value = unsafe {
             (self.base as *const T)
@@ -79,7 +82,7 @@ impl Mmio {
     }
 
     /// Writes a single element to a vector.
-    pub unsafe fn vector_write_elem<T: PrimInt>(
+    pub fn vector_write_elem<T: PrimInt>(
         &mut self,
         vector: &MemoryVector<T>,
         index: usize,
@@ -97,14 +100,9 @@ impl Mmio {
     }
 
     /// Reads multiple vector elements into a buffer.
-    pub unsafe fn vector_read<T: PrimInt>(
-        &self,
-        vector: &MemoryVector<T>,
-        offset: usize,
-        dest: &mut [T],
-    ) {
+    pub fn vector_read<T: PrimInt>(&self, vector: &MemoryVector<T>, offset: usize, dest: &mut [T]) {
         for (idx, elem) in dest.iter_mut().enumerate() {
-            *elem = unsafe { self.vector_read_elem(vector, offset + idx) };
+            *elem = self.vector_read_elem(vector, offset + idx);
         }
     }
 
@@ -115,7 +113,7 @@ impl Mmio {
         value: &[T],
     ) {
         for (idx, elem) in value.iter().enumerate() {
-            unsafe { self.vector_write_elem(vector, offset + idx, *elem) };
+            self.vector_write_elem(vector, offset + idx, *elem);
         }
     }
 }

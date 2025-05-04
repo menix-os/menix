@@ -106,7 +106,11 @@ fn alloc(order: Order, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
     Ok(addr)
 }
 
-pub unsafe fn dealloc(addr: PhysAddr, order: Order) {
+/// Deallocates physical memory given out by [`alloc`].
+/// # Safety
+/// The caller has to verify that `addr` is a valid and used physical address.
+/// This could otherwise corrupt global state.
+unsafe fn dealloc(addr: PhysAddr, order: Order) {
     todo!();
 }
 

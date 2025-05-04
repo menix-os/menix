@@ -1,6 +1,6 @@
 use super::gdt::Gdt;
+use crate::arch::x86_64::irq;
 use crate::generic::memory::VirtAddr;
-use crate::{arch::x86_64::irq, generic::util::mutex::Mutex};
 use core::{arch::asm, mem::offset_of};
 use seq_macro::seq;
 

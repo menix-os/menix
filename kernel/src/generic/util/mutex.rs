@@ -58,6 +58,8 @@ impl<T: ?Sized, const I: bool> Mutex<T, I> {
 
     /// Forcefully unlocks this [`Mutex`].
     /// `irq` controls if IRQs should be reactivated after unlocking.
+    /// # Safety
+    /// The caller must make sure that enabling IRQs at this point is safe.
     pub unsafe fn force_unlock(&self, irq: bool) {
         let inner = unsafe { &mut (*self.inner.get()) };
         inner.spin.unlock();

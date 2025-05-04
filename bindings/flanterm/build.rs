@@ -1,6 +1,3 @@
-use bindgen;
-use cc;
-
 fn main() {
     let mut b = cc::Build::new();
     b.files(["flanterm/flanterm.c", "flanterm/backends/fb.c"])

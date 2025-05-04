@@ -2,10 +2,7 @@
 
 use super::{memory::VirtAddr, sched::Scheduler};
 use crate::arch;
-use core::{
-    ptr::null_mut,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// Common processor-local information.
 #[derive(Debug)]
@@ -33,6 +30,8 @@ impl CpuData {
     }
 
     /// Gets the data for a specific CPU.
+    /// # Safety
+    /// The caller must make sure that `id` is valid.
     pub unsafe fn get_for(id: usize) -> &'static mut CpuData {
         assert!(
             id < NUM_CPUS.load(Ordering::Relaxed),
