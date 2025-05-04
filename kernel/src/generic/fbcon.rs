@@ -8,6 +8,8 @@ use crate::generic::{
         virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
     },
 };
+#[allow(unused)]
+use alloc::vec;
 use alloc::{boxed::Box, vec::Vec};
 use core::{
     ffi::c_void,
@@ -85,8 +87,7 @@ pub fn init() {
         return;
     };
 
-    let mut back_buffer = Vec::new();
-    back_buffer.resize(fb.pitch * fb.height, 0);
+    let back_buffer = vec![0; fb.pitch * fb.height];
 
     // Map the framebuffer in memory.
     let mem = KERNEL_PAGE_TABLE

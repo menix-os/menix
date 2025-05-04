@@ -3,7 +3,7 @@ use core::{
     ptr::null_mut,
     sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering},
 };
-use task::{Frame, Task};
+use task::Task;
 
 pub mod task;
 

@@ -153,8 +153,8 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut TrapFrame) {
         //
         _ => {
             let cpu = &super::ARCH_DATA.get(CpuData::get());
-            match cpu.irq_handlers[isr as usize] {
-                Some(x) => x(cpu.irq_map[isr as usize], cpu.irq_ctx[isr as usize]),
+            match cpu.irq_handlers[isr] {
+                Some(x) => x(cpu.irq_map[isr], cpu.irq_ctx[isr]),
                 None => panic!("Got an unhandled interrupt {}!", isr),
             };
         }
@@ -166,16 +166,16 @@ fn syscall_handler(context: &mut TrapFrame) {
     // Arguments use the SYSV C ABI.
     // Except for a3, since RCX is needed for sysret, we need a different register.
     let result = syscall::invoke(
-        (*context).rax as usize,
-        (*context).rdi as usize,
-        (*context).rsi as usize,
-        (*context).rdx as usize,
-        (*context).r10 as usize,
-        (*context).r8 as usize,
-        (*context).r9 as usize,
+        context.rax as usize,
+        context.rdi as usize,
+        context.rsi as usize,
+        context.rdx as usize,
+        context.r10 as usize,
+        context.r8 as usize,
+        context.r9 as usize,
     );
-    (*context).rax = result.0 as u64;
-    (*context).rdx = result.1 as u64;
+    context.rax = result.0 as u64;
+    context.rdx = result.1 as u64;
 }
 
 fn page_fault_handler(context: &mut TrapFrame) {

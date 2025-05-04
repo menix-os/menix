@@ -199,7 +199,7 @@ impl<const K: bool> PageTable<K> {
                             .as_hhdm()
                             .ok_or(PageTableError::PageTableEntryMissing)?,
                         pte_flags,
-                        level as usize,
+                        level,
                     );
                     current_head = next_head;
                 }

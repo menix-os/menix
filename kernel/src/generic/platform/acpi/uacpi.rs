@@ -142,7 +142,7 @@ extern "C" fn uacpi_kernel_alloc(size: uacpi_size) -> *mut c_void {
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_free(mem: *mut c_void, size: uacpi_size) {
     // Frees of NULL are a no-op in uACPI.
-    if mem == null_mut() {
+    if mem.is_null() {
         return;
     }
 

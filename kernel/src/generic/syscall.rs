@@ -153,7 +153,7 @@ pub fn invoke(
     };
 
     match result {
-        Ok(x) => return (x as usize, 0),
+        Ok(x) => return (x, 0),
         Err(x) => return (0, x as usize),
     }
 }

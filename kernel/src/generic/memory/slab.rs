@@ -96,7 +96,7 @@ impl Slab {
     }
 
     fn free(&self, addr: *mut u8) {
-        if unlikely(addr == null_mut()) {
+        if unlikely(addr.is_null()) {
             return;
         }
 
@@ -111,12 +111,7 @@ impl Slab {
 }
 
 fn find_size(size: usize) -> Option<&'static Slab> {
-    for slab in &ALLOCATOR.slabs {
-        if slab.ent_size >= size {
-            return Some(slab);
-        }
-    }
-    return None;
+    ALLOCATOR.slabs.iter().find(|&slab| slab.ent_size >= size)
 }
 
 unsafe impl GlobalAlloc for SlabAllocator {
@@ -159,7 +154,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
     }
 
     unsafe fn dealloc(&self, ptr: *mut u8, _layout: Layout) {
-        if ptr == null_mut() {
+        if ptr.is_null() {
             return;
         }
 

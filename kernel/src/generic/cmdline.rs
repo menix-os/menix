@@ -63,7 +63,7 @@ impl<'a> CmdLine<'a> {
                     Some(quote) => {
                         // Find the closing quote
                         self.data[start..]
-                            .find(|c: char| c == quote)
+                            .find(quote)
                             .map(|i| start + i)
                             .unwrap_or(self.data.len())
                     }

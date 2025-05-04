@@ -290,7 +290,7 @@ pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
     };
 
     // TODO: Allocate a stack for the TSS.
-    tss.rsp0 = Vec::with_capacity(KERNEL_STACK_SIZE as usize)
+    tss.rsp0 = Vec::with_capacity(KERNEL_STACK_SIZE)
         .leak()
         .as_mut_ptr() as *mut u8 as u64;
 

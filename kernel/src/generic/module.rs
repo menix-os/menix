@@ -7,7 +7,6 @@ use crate::{
     arch,
     generic::{
         boot::BootInfo,
-        cmdline::CmdLine,
         elf::{self, ElfHashTable, ElfRela, ElfSym},
         memory::{
             buddy::BuddyAllocator,
@@ -98,7 +97,7 @@ pub(crate) fn init() {
         }
 
         log!("Loading \"{}\"", file.name);
-        if let Err(x) = load(&file.name, &file.data) {
+        if let Err(x) = load(file.name, file.data) {
             log!("Failed to load module: {:?}", x);
         }
     }
@@ -209,7 +208,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 }
 
                 // Allocate physical memory.
-                let phys = BuddyAllocator::alloc_bytes(memsz as usize, AllocFlags::Zeroed)
+                let phys = BuddyAllocator::alloc_bytes(memsz, AllocFlags::Zeroed)
                     .map_err(|_| ModuleLoadError::AllocFailed)?;
 
                 let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
@@ -251,7 +250,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
 
                 // Record this mapping.
                 info.mappings
-                    .push((phys, virt.into(), memsz as usize, flags));
+                    .push((phys, virt.into(), memsz, flags));
             }
             elf::PT_DYNAMIC => {
                 let dyntab: &[elf::ElfDyn] = bytemuck::try_cast_slice(

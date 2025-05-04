@@ -12,7 +12,7 @@ use crate::{
         memory::{page::AllocFlags, virt::VmLevel},
         util::{
             align_up,
-            mutex::{IrqMutex, Mutex},
+            mutex::IrqMutex,
         },
     },
 };

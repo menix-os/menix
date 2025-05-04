@@ -66,7 +66,7 @@ impl Frame for Context {
     }
 
     fn save(&self) -> Context {
-        self.clone()
+        *self
     }
 
     fn restore(&mut self, saved: Context) {
