@@ -1,8 +1,9 @@
 // PCI driver handling.
 
+use crate::generic::util::mutex::Mutex;
+
 use super::{PciError, device::PciDevice};
 use alloc::collections::btree_map::BTreeMap;
-use spin::RwLock;
 
 pub type PciDriverFn = fn(dev: &PciDevice) -> Result<(), PciError>;
 
@@ -24,11 +25,11 @@ pub struct PciDriver {
     pub variants: &'static [PciVariant],
 }
 
-static DRIVERS: RwLock<BTreeMap<&'static str, PciDriver>> = RwLock::new(BTreeMap::new());
+static DRIVERS: Mutex<BTreeMap<&'static str, PciDriver>> = Mutex::new(BTreeMap::new());
 
 impl PciDriver {
     pub fn register(self) -> Result<(), PciError> {
-        let mut drivers = DRIVERS.write();
+        let mut drivers = DRIVERS.lock();
 
         if drivers.contains_key(self.name) {
             return Err(PciError::DriverAlreadyExists);

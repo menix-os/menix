@@ -1,6 +1,7 @@
 use super::{
     elf::{ElfHdr, ElfPhdr},
     memory::{PhysAddr, VirtAddr, virt::VmFlags},
+    util::mutex::Mutex,
 };
 use crate::{
     arch,
@@ -23,11 +24,11 @@ use core::{
     slice,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use spin::RwLock;
 
-static SYMBOL_TABLE: RwLock<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>> =
-    RwLock::new(BTreeMap::new());
-static MODULE_TABLE: RwLock<BTreeMap<String, ModuleInfo>> = RwLock::new(BTreeMap::new());
+// TODO: This can use RwLocks.
+static SYMBOL_TABLE: Mutex<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>> =
+    Mutex::new(BTreeMap::new());
+static MODULE_TABLE: Mutex<BTreeMap<String, ModuleInfo>> = Mutex::new(BTreeMap::new());
 
 unsafe extern "C" {
     unsafe static LD_DYNSYM_START: u8;
@@ -68,7 +69,7 @@ pub(crate) fn init() {
             slice::from_raw_parts(dynstr_start, dynstr_end as usize - dynstr_start as usize)
         };
 
-        let mut symbol_table = SYMBOL_TABLE.write();
+        let mut symbol_table = SYMBOL_TABLE.lock();
         for sym in symbols {
             let name = CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]);
             if let Ok(x) = name {
@@ -362,7 +363,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                             .to_str()
                             .map_err(|_| ModuleLoadError::InvalidData)?;
                         let kernel_symbol = SYMBOL_TABLE
-                            .read()
+                            .lock()
                             .get(name)
                             .ok_or(ModuleLoadError::SymbolNotFound)?
                             .0;

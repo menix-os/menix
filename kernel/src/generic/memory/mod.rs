@@ -2,7 +2,6 @@ use buddy::{PageNumber, Region};
 use bump::BumpAllocator;
 use page::Page;
 use slab::ALLOCATOR;
-use spin::Mutex;
 use virt::{PageTable, VmFlags, VmLevel};
 
 use crate::{
@@ -26,11 +25,6 @@ pub mod user;
 pub mod virt;
 
 static HHDM_START: AtomicUsize = AtomicUsize::new(0);
-
-/// Global array that spans all usable physical memory.
-/// It contains important metadata about a certain page.
-/// This is virtually continuous, but not completely mapped in.
-static PAGE_METADATA: Mutex<&[Page]> = Mutex::new(&[]);
 
 // Symbols defined in the linker script so we can map ourselves in our page table.
 unsafe extern "C" {

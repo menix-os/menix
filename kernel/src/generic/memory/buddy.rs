@@ -10,7 +10,7 @@ use crate::{
     generic::{
         self,
         memory::{page::AllocFlags, virt::VmLevel},
-        util::align_up,
+        util::{align_up, mutex::Mutex},
     },
 };
 use alloc::{alloc::AllocError, slice};
@@ -18,7 +18,6 @@ use core::{
     hint::likely,
     ptr::{NonNull, write_bytes},
 };
-use spin::Mutex;
 
 /// Allocates `bytes` amount in bytes of consecutive pages.
 pub fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {

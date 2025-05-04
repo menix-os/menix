@@ -10,7 +10,7 @@ use crate::{
             self,
             virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
         },
-        util,
+        util::{self, spin::SpinLock},
     },
 };
 use alloc::{alloc::GlobalAlloc, boxed::Box};
@@ -19,19 +19,13 @@ use core::{
     ffi::{CStr, c_void},
     ptr::null_mut,
 };
-use spin::Mutex;
 
 pub use uacpi_sys::*;
 
 #[unsafe(no_mangle)]
 unsafe extern "C" fn uacpi_kernel_get_rsdp(out_rsdp_address: *mut uacpi_phys_addr) -> uacpi_status {
-    match super::RSDP_ADDRESS.get() {
-        Some(x) => unsafe {
-            *out_rsdp_address = (*x).into();
-            return UACPI_STATUS_OK;
-        },
-        None => return UACPI_STATUS_INTERNAL_ERROR,
-    }
+    unsafe { *out_rsdp_address = (*super::RSDP_ADDRESS.get()).into() };
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -260,24 +254,27 @@ extern "C" fn uacpi_kernel_uninstall_interrupt_handler(
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_create_spinlock() -> uacpi_handle {
-    let mut b = Box::new(Mutex::<usize>::new(0));
+    let mut b = Box::new(SpinLock::new());
     return Box::into_raw(b) as uacpi_handle;
 }
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_free_spinlock(arg1: uacpi_handle) {
-    // TODO
+    let b = unsafe { Box::from_raw(arg1 as *mut SpinLock) };
+    drop(b);
 }
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_lock_spinlock(arg1: uacpi_handle) -> uacpi_cpu_flags {
-    // TODO
+    let spin = unsafe { (arg1 as *mut SpinLock).as_mut().unwrap() };
+    spin.lock();
     return 0;
 }
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_unlock_spinlock(arg1: uacpi_handle, arg2: uacpi_cpu_flags) {
-    // TODO
+    let spin = unsafe { (arg1 as *mut SpinLock).as_mut().unwrap() };
+    spin.unlock();
 }
 
 #[unsafe(no_mangle)]

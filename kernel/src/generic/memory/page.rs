@@ -5,7 +5,7 @@ use super::{
 };
 use crate::{
     arch::{self, sched::Context},
-    generic::util::align_up,
+    generic::util::{align_up, mutex::Mutex},
 };
 use alloc::alloc::AllocError;
 use bitflags::bitflags;
@@ -21,6 +21,11 @@ pub struct Page {
 }
 static_assert!(size_of::<Page>() <= 48);
 static_assert!(0x1000 % size_of::<Page>() == 0);
+
+/// Global array that spans all usable physical memory.
+/// It contains important metadata about a certain page.
+/// This is virtually continuous, but not completely mapped in.
+static PAGE_METADATA: Mutex<&[Page]> = Mutex::new(&[]);
 
 bitflags::bitflags! {
     pub struct AllocFlags: usize {

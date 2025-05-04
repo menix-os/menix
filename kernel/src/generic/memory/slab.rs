@@ -8,7 +8,7 @@ use super::{
 };
 use crate::{
     arch,
-    generic::util::{align_down, align_up},
+    generic::util::{align_down, align_up, mutex::Mutex},
 };
 use core::{
     alloc::{GlobalAlloc, Layout},
@@ -16,7 +16,6 @@ use core::{
     mem::size_of,
     ptr::{null_mut, write_bytes},
 };
-use spin::Mutex;
 
 #[derive(Debug)]
 struct Slab {

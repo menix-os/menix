@@ -1,4 +1,9 @@
-//! Common functions for calculations or conversions.
+//! Commonly needed data structures.
+
+pub mod mutex;
+pub mod once;
+pub mod rwlock;
+pub mod spin;
 
 /// Aligns a value to the next higher multiple of `alignment`.
 #[inline]

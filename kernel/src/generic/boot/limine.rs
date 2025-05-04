@@ -4,10 +4,10 @@ use super::{BootFile, BootInfo, PhysMemory};
 use crate::generic::{
     cmdline::CmdLine,
     fbcon::{FbColorBits, FrameBuffer},
+    util::mutex::Mutex,
 };
 use core::ptr::slice_from_raw_parts;
 use limine::{BaseRevision, memory_map::EntryType, paging::Mode, request::*};
-use spin::Mutex;
 
 #[used]
 #[unsafe(link_section = ".boot.init")]

@@ -1,6 +1,5 @@
-use super::sched::task::Task;
+use super::{sched::task::Task, util::mutex::Mutex};
 use alloc::{string::String, sync::Arc};
-use spin::Mutex;
 
 pub enum IrqStatus {
     /// Interrupt was not handled.

@@ -2,15 +2,14 @@ mod uacpi;
 
 use core::ffi::c_void;
 
-use crate::generic::{boot::BootInfo, memory::PhysAddr};
+use crate::generic::{boot::BootInfo, memory::PhysAddr, util::once::Once};
 use alloc::boxed::Box;
-use spin::Once;
 
 static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
 
 pub fn init() {
     match BootInfo::get().rsdp_addr {
-        Some(rsdp) => RSDP_ADDRESS.call_once(|| rsdp),
+        Some(rsdp) => unsafe { RSDP_ADDRESS.init(rsdp) },
         None => panic!("No RSDP available, unable to initialize the ACPI subsystem!"),
     };
 
@@ -24,11 +23,6 @@ pub fn init() {
             early_mem.as_mut_ptr() as *mut c_void,
             early_mem.len(),
         )
-    };
-
-    match BootInfo::get().rsdp_addr {
-        Some(rsdp) => RSDP_ADDRESS.call_once(|| rsdp),
-        None => panic!("No RSDP available, unable to initialize the ACPI subsystem!"),
     };
 
     if uacpi_status != uacpi::UACPI_STATUS_OK {

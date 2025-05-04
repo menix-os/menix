@@ -1,6 +1,9 @@
-use super::{fbcon::FrameBuffer, memory::VirtAddr};
+use super::{
+    fbcon::FrameBuffer,
+    memory::VirtAddr,
+    util::{mutex::Mutex, once::Once},
+};
 use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
-use spin::{Mutex, Once};
 
 // Boot method selection. Limine is the default method.
 #[cfg(all(
@@ -58,13 +61,11 @@ impl BootInfo {
     }
 
     pub fn register(self) {
-        BOOT_INFO.call_once(|| self);
+        unsafe { BOOT_INFO.init(self) };
     }
 
     pub fn get() -> &'static Self {
-        return BOOT_INFO
-            .get()
-            .expect("Boot info wasn't set yet! Did you forget to call BootInfo::register()?");
+        return BOOT_INFO.get();
     }
 }
 

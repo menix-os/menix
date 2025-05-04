@@ -1,5 +1,5 @@
+use super::util::mutex::Mutex;
 use alloc::boxed::Box;
-use spin::mutex::Mutex;
 
 pub trait ClockSource: Send {
     fn name(&self) -> &'static str;

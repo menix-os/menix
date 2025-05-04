@@ -1,12 +1,12 @@
 //! Message logs from the kernel.
 // TODO: Convert to struct Console
 
+use super::util::mutex::Mutex;
 use alloc::{boxed::Box, vec::Vec};
 use core::{
     fmt,
     sync::atomic::{AtomicUsize, Ordering},
 };
-use spin::Mutex;
 
 /// A sink to write logs to.
 pub trait LoggerSink: Send {

@@ -5,12 +5,11 @@ use super::{
 };
 use crate::{
     arch::{self, memory::PageTableEntry},
-    generic::util::align_up,
+    generic::util::{align_up, mutex::Mutex},
 };
 use alloc::alloc::AllocError;
 use bitflags::bitflags;
 use core::sync::atomic::{AtomicUsize, Ordering};
-use spin::{Mutex, RwLock};
 
 // Kernel constants
 pub const KERNEL_STACK_SIZE: usize = 0x20000;

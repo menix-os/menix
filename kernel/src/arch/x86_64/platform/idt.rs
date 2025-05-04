@@ -1,9 +1,8 @@
 use super::gdt::Gdt;
-use crate::arch::x86_64::irq;
 use crate::generic::memory::VirtAddr;
+use crate::{arch::x86_64::irq, generic::util::mutex::Mutex};
 use core::{arch::asm, mem::offset_of};
 use seq_macro::seq;
-use spin::Mutex;
 
 pub const IDT_SIZE: usize = 256;
 
@@ -31,22 +30,23 @@ impl Idt {
 /// Loads the ISRs into the static table.
 pub fn init() {
     // Create a new table.
-    let mut idt = IDT_TABLE.lock();
+    let idt = &raw mut IDT_TABLE;
 
     // Set all gates to their respective handlers.
-    seq!(N in 0..256 {
-        idt.routines[N] = IdtEntry::new((irq::interrupt_stub~N as usize).into(), 0, IdtIsrType::Interrupt);
-    });
+    unsafe {
+        seq!(N in 0..256 {
+            (*idt).routines[N] = IdtEntry::new((irq::interrupt_stub~N as usize).into(), 0, IdtIsrType::Interrupt);
+        });
+    }
 }
 
 early_init_call!(init);
 
 /// Sets the IDT on this CPU.
 pub fn set_idt() {
-    let idt = IDT_TABLE.lock();
     let idtr = IdtRegister {
         limit: (size_of::<Idt>() - 1) as u16,
-        base: (&*idt),
+        base: &raw const IDT_TABLE,
     };
     unsafe {
         asm!("lidt [{0}]", in(reg) &idtr);
@@ -54,7 +54,7 @@ pub fn set_idt() {
 }
 
 /// Global storage for the interrupt descriptor table.
-static IDT_TABLE: Mutex<Idt> = Mutex::new(Idt::new());
+static mut IDT_TABLE: Idt = Idt::new();
 
 /// Stores an interrupt service routines (ISR) handler which gets invoked during an interrupt.
 #[repr(C, packed)]
