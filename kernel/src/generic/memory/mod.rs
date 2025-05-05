@@ -195,6 +195,9 @@ pub unsafe fn init() {
     let mut total_pages = 0;
     let mut actual_pages = 0;
 
+    // Now we're done using the bump allocator.
+    // ----------------------------------------
+
     // Initialize all regions.
     for entry in memory_map.iter_mut() {
         let num_pages = align_up(entry.length(), arch::memory::get_page_size(VmLevel::L1))
