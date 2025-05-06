@@ -107,4 +107,4 @@ pub fn get_kernel_log(target: &mut [u8]) {
     target.copy_from_slice(&EARLY_BUFFER.lock()[0..EARLY_BUFFER_ADDR.load(Ordering::Acquire)]);
 }
 
-early_init_call!(init);
+//early_init_call!(init);

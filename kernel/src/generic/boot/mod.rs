@@ -89,9 +89,9 @@ impl BootFile {
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 pub struct PhysMemory {
     /// Start address of the memory region.
-    address: PhysAddr,
+    pub address: PhysAddr,
     /// Length of the memory region in bytes.
-    length: usize,
+    pub length: usize,
 }
 
 impl PhysMemory {
@@ -107,24 +107,5 @@ impl PhysMemory {
             panic!("Can't construct a PhysMemory descriptor with empty size!");
         }
         Self { address, length }
-    }
-
-    pub const fn address(&self) -> PhysAddr {
-        self.address
-    }
-
-    pub const fn length(&self) -> usize {
-        self.length
-    }
-
-    pub const fn set_address(&mut self, address: PhysAddr) {
-        self.address = address;
-    }
-
-    pub const fn set_length(&mut self, length: usize) {
-        if length == 0 {
-            panic!("Can't update a PhysMemory descriptor with empty size!");
-        }
-        self.length = length;
     }
 }

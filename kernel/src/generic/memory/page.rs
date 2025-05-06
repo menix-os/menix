@@ -1,3 +1,5 @@
+use core::sync::atomic::AtomicUsize;
+
 use super::{
     PhysAddr, VirtAddr,
     buddy::{Order, PageNumber},
@@ -17,7 +19,7 @@ pub struct Page {
     pub prev: PageNumber,
     pub next: PageNumber,
     pub order: Order,
-    _pad: u32,
+    _pad: u64,
 }
 static_assert!(size_of::<Page>() <= 48);
 static_assert!(0x1000 % size_of::<Page>() == 0);
@@ -25,7 +27,8 @@ static_assert!(0x1000 % size_of::<Page>() == 0);
 /// Global array that spans all usable physical memory.
 /// It contains important metadata about a certain page.
 /// This is virtually continuous, but not completely mapped in.
-pub static PAGE_ARRAY: Mutex<&[Page]> = Mutex::new(&[]);
+pub static PAGE_ARRAY: Mutex<&mut [Page]> = Mutex::new(&mut []);
+pub static PAGE_ARRAY_ADDR: AtomicUsize = AtomicUsize::new(0);
 
 bitflags::bitflags! {
     pub struct AllocFlags: usize {
