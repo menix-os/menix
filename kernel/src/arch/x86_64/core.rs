@@ -1,6 +1,3 @@
-use alloc::boxed::Box;
-use core::{arch::asm, mem::offset_of};
-
 use crate::{
     arch::x86_64::{
         ARCH_DATA, consts, irq,
@@ -12,9 +9,10 @@ use crate::{
     generic::{
         clock,
         percpu::{CpuData, LD_PERCPU_START},
-        sched::task::Task,
     },
 };
+use alloc::boxed::Box;
+use core::{arch::asm, mem::offset_of};
 
 pub fn setup_bsp() {
     apic::disable_legacy_pic();
@@ -52,19 +50,6 @@ pub fn get_per_cpu() -> *mut crate::generic::percpu::CpuData {
             options(nostack, preserves_flags),
         );
         return cpu;
-    }
-}
-
-pub fn get_task() -> *mut crate::generic::sched::task::Task {
-    unsafe {
-        let task: *mut Task;
-        asm!(
-            "mov {cpu}, gs:[{this}]",
-            cpu = out(reg) task,
-            this = const offset_of!(CpuData, scheduler.task),
-            options(nostack, preserves_flags),
-        );
-        return task;
     }
 }
 

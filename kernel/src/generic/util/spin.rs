@@ -4,6 +4,7 @@ use core::{
 };
 
 /// A spin lock without a specific resource connected to it.
+#[derive(Debug)]
 pub struct SpinLock(AtomicBool);
 
 impl SpinLock {

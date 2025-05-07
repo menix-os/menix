@@ -4,7 +4,10 @@ use super::{
 };
 use crate::{
     arch::{self, memory::PageTableEntry, sched::Context},
-    generic::util::{align_up, mutex::Mutex},
+    generic::{
+        sched::task::Task,
+        util::{align_up, mutex::Mutex},
+    },
 };
 use alloc::alloc::AllocError;
 use bitflags::bitflags;
@@ -352,8 +355,8 @@ bitflags! {
     }
 }
 
-/// Generic page fault handler. May reschedule and return a different context.
-pub fn page_fault_handler<'a>(context: &mut Context, info: &PageFaultInfo) {
+/// Generic page fault handler. May reschedule and return a different task to run.
+pub fn page_fault_handler<'a>(info: &PageFaultInfo) -> *mut Task {
     if info.caused_by_user {
         // TODO: Send SIGSEGV and reschedule.
         // Kill process.

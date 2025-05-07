@@ -1,3 +1,4 @@
+use super::process::{Pid, Process};
 use crate::arch::sched::Context;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -13,16 +14,19 @@ pub enum TaskState {
     Dead,
 }
 
+pub type Tid = usize;
+
 /// Represents the atomic scheduling structure.
 #[derive(Debug)]
 pub struct Task {
-    /// Unique identifier
-    pub id: usize,
-    /// The saved context of a task while it is not running.
-    /// This field is architecture specific.
+    /// The unique identifier of this task.
+    pub id: Tid,
+    /// The saved context of a task while it is not running. This field is architecture specific.
     pub context: Context,
     /// The current state of the thread.
     pub state: TaskState,
+    /// The process which this task belongs to.
+    pub parent: Option<Pid>,
 }
 
 impl Task {
@@ -31,6 +35,17 @@ impl Task {
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
             context: Context::default(),
             state: TaskState::Ready,
+            parent: None,
+        };
+    }
+
+    /// Creates a new task as a thread for a process.
+    pub fn new_thread(proc: Process) -> Self {
+        return Self {
+            id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
+            context: Context::default(),
+            state: TaskState::Ready,
+            parent: Some(proc.get_pid()),
         };
     }
 
@@ -50,9 +65,4 @@ pub trait Frame {
 
     fn set_ip(&mut self, addr: usize);
     fn get_ip(&self) -> usize;
-
-    /// Saves a copy of this frame.
-    fn save(&self) -> Context;
-    /// Reconstructs itself from a saved frame.
-    fn restore(&mut self, saved: Context);
 }

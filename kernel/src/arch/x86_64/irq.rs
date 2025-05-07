@@ -1,20 +1,22 @@
-use crate::arch::x86_64::consts::CPL_USER;
-use crate::arch::x86_64::platform::gdt::Gdt;
-use crate::generic;
-use crate::generic::memory::virt::{PageFaultCause, PageFaultInfo};
-use crate::generic::percpu::CPU_DATA;
-use crate::generic::sched::task::Frame;
-use crate::generic::{irq::IrqController, percpu::CpuData, syscall};
-use core::arch::asm;
-use core::{arch::naked_asm, mem::offset_of};
-use seq_macro::seq;
-
 use super::platform::apic;
-use super::sched::Context;
+use crate::arch::x86_64::consts::CPL_USER;
+use crate::generic::{
+    memory::virt::{PageFaultCause, PageFaultInfo},
+    percpu::CPU_DATA,
+};
+use crate::{
+    arch::x86_64::platform::gdt::Gdt,
+    generic::{self, irq::IrqController, percpu::CpuData, syscall},
+};
+use core::{
+    arch::{asm, naked_asm},
+    mem::offset_of,
+};
+use seq_macro::seq;
 
 /// Registers which are saved and restored during a context switch or interrupt.
 #[repr(C)]
-#[derive(Clone, Debug, Copy)]
+#[derive(Default, Clone, Debug, Copy)]
 pub struct TrapFrame {
     pub r15: u64,
     pub r14: u64,
@@ -43,68 +45,6 @@ pub struct TrapFrame {
     pub ss: u64,
 }
 static_assert!(size_of::<TrapFrame>() == 0xB0);
-
-impl Frame for TrapFrame {
-    fn set_stack(&mut self, addr: usize) {
-        self.rsp = addr as u64;
-    }
-
-    fn set_ip(&mut self, addr: usize) {
-        self.rip = addr as u64;
-    }
-
-    fn get_stack(&self) -> usize {
-        self.rsp as usize
-    }
-
-    fn get_ip(&self) -> usize {
-        self.rip as usize
-    }
-
-    fn save(&self) -> Context {
-        Context {
-            r15: self.r15,
-            r14: self.r14,
-            r13: self.r13,
-            r12: self.r12,
-            r11: self.r11,
-            r10: self.r10,
-            r9: self.r9,
-            r8: self.r8,
-            rsi: self.rsi,
-            rdi: self.rdi,
-            rbp: self.rbp,
-            rdx: self.rdx,
-            rcx: self.rcx,
-            rbx: self.rbx,
-            rax: self.rax,
-            rip: self.rip,
-            rsp: self.rsp,
-            rflags: self.rflags,
-        }
-    }
-
-    fn restore(&mut self, saved: Context) {
-        self.r15 = saved.r15;
-        self.r14 = saved.r14;
-        self.r13 = saved.r13;
-        self.r12 = saved.r12;
-        self.r11 = saved.r11;
-        self.r10 = saved.r10;
-        self.r9 = saved.r9;
-        self.r8 = saved.r8;
-        self.rsi = saved.rsi;
-        self.rdi = saved.rdi;
-        self.rbp = saved.rbp;
-        self.rdx = saved.rdx;
-        self.rcx = saved.rcx;
-        self.rbx = saved.rbx;
-        self.rax = saved.rax;
-        self.rip = saved.rip;
-        self.rsp = saved.rsp;
-        self.rflags = saved.rflags;
-    }
-}
 
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
 unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut TrapFrame) {
@@ -150,7 +90,7 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut TrapFrame) {
         0x20 => timer_handler(context),
         // Legacy syscall handler.
         0x80 => syscall_handler(context),
-        //
+        // Any other ISR is an IRQ with a dynamic handler.
         _ => {
             let cpu = &super::ARCH_DATA.get(CpuData::get());
             match cpu.irq_handlers[isr] {
@@ -162,29 +102,29 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut TrapFrame) {
 }
 
 /// Invoked by either the interrupt or syscall stub.
-fn syscall_handler(context: &mut TrapFrame) {
+fn syscall_handler(frame: &mut TrapFrame) {
     // Arguments use the SYSV C ABI.
     // Except for a3, since RCX is needed for sysret, we need a different register.
     let result = syscall::invoke(
-        context.rax as usize,
-        context.rdi as usize,
-        context.rsi as usize,
-        context.rdx as usize,
-        context.r10 as usize,
-        context.r8 as usize,
-        context.r9 as usize,
+        frame.rax as usize,
+        frame.rdi as usize,
+        frame.rsi as usize,
+        frame.rdx as usize,
+        frame.r10 as usize,
+        frame.r8 as usize,
+        frame.r9 as usize,
     );
-    context.rax = result.0 as u64;
-    context.rdx = result.1 as u64;
+    frame.rax = result.0 as u64;
+    frame.rdx = result.1 as u64;
 }
 
-fn page_fault_handler(context: &mut TrapFrame) {
+fn page_fault_handler(frame: &mut TrapFrame) {
     unsafe {
         let mut cr2: usize;
         asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
 
         let mut cause = PageFaultCause::empty();
-        let err = context.error;
+        let err = frame.error;
         if err & (1 << 0) != 0 {
             cause |= PageFaultCause::Present;
         }
@@ -199,29 +139,25 @@ fn page_fault_handler(context: &mut TrapFrame) {
         }
 
         let info = PageFaultInfo {
-            caused_by_user: context.cs & super::consts::CPL_USER as u64
+            caused_by_user: frame.cs & super::consts::CPL_USER as u64
                 == super::consts::CPL_USER as u64,
-            ip: (context.rip as usize).into(),
+            ip: (frame.rip as usize).into(),
             addr: cr2.into(),
             cause,
         };
-        let mut ctx = context.save();
-        generic::memory::virt::page_fault_handler(&mut ctx, &info);
-        context.restore(ctx);
+
+        generic::memory::virt::page_fault_handler(&info);
     }
 }
 
-fn timer_handler(context: &mut TrapFrame) {
+fn timer_handler(frame: &mut TrapFrame) {
     let ctx = CpuData::get();
-    let lapic = apic::LAPIC.get(ctx);
-    let sched = CPU_DATA.get(ctx);
 
-    // TODO
-    let old_ctx = Context::default();
-    let mut new_ctx = Context::default();
-    sched.scheduler.reschedule(&old_ctx, &mut new_ctx);
+    unsafe {
+        CPU_DATA.get(ctx).scheduler.tick(true);
+    }
 
-    _ = lapic.eoi();
+    apic::LAPIC.get(ctx).eoi().unwrap();
 }
 
 /// Pushes all general purpose registers onto the stack.

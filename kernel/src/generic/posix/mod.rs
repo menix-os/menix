@@ -3,5 +3,4 @@
 pub mod errno;
 pub mod file;
 pub mod fs;
-pub mod process;
 pub mod vfs;
