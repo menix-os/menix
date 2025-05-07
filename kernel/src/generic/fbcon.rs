@@ -5,7 +5,7 @@ use crate::generic::{
     log::{self, LoggerSink},
     memory::{
         PhysAddr, free, malloc,
-        pmm::Buddy,
+        pmm::FreeList,
         virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
     },
 };
@@ -93,7 +93,7 @@ pub fn init() {
     // Map the framebuffer in memory.
     let mem = KERNEL_PAGE_TABLE
         .lock()
-        .map_memory::<Buddy>(
+        .map_memory::<FreeList>(
             fb.base,
             VmFlags::Read | VmFlags::Write,
             VmLevel::L1,

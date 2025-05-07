@@ -8,7 +8,7 @@ use crate::{
         clock,
         memory::{
             self, free, malloc,
-            pmm::Buddy,
+            pmm::FreeList,
             virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
         },
         util::{self, spin::SpinLock},
@@ -37,7 +37,7 @@ extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c
     return unsafe {
         KERNEL_PAGE_TABLE
             .lock()
-            .map_memory::<Buddy>(
+            .map_memory::<FreeList>(
                 aligned_addr.into(),
                 VmFlags::Read | VmFlags::Write,
                 VmLevel::L1,

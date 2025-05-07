@@ -10,6 +10,7 @@ use crate::{
 use alloc::alloc::AllocError;
 use bitflags::bitflags;
 use core::{
+    num::NonZeroUsize,
     ptr::{NonNull, null_mut, write_bytes},
     slice,
     sync::atomic::{AtomicPtr, Ordering},
@@ -47,9 +48,7 @@ pub trait PageAllocator {
 #[repr(C)]
 pub struct Page {
     pub next: Option<NonNull<Page>>,
-    pub max_order: u8,
-    pub current_order: u8,
-    pub on_free_list: bool,
+    pub count: usize,
 }
 static_assert!(size_of::<Page>() <= 16);
 static_assert!(0x1000 % size_of::<Page>() == 0);
@@ -57,7 +56,70 @@ static_assert!(0x1000 % size_of::<Page>() == 0);
 pub static PAGE_DB: Mutex<&'static mut [Page]> = Mutex::new(&mut []);
 pub static PAGE_DB_START: AtomicPtr<()> = AtomicPtr::new(null_mut());
 
+pub static PMM: Mutex<Option<NonNull<Page>>> = Mutex::new(None);
+
+pub struct FreeList;
+impl PageAllocator for FreeList {
+    fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
+        let mut head = PMM.lock();
+        let bytes = pages * arch::memory::get_page_size(VmLevel::L1);
+
+        let mut addr = None;
+        let mut it = *head;
+        let mut prev_it = None;
+        while let Some(mut x) = it {
+            let page = unsafe { x.as_mut() };
+            if page.count < pages {
+                prev_it = it;
+                it = page.next;
+                continue;
+            }
+
+            if page.count == pages {
+                addr = Some(page.get_address());
+                if let Some(mut prev) = prev_it {
+                    let prev_page = unsafe { prev.as_mut() };
+                    prev_page.next = page.next;
+                } else {
+                    *head = page.next;
+                }
+                page.next = None;
+                page.count = 0;
+            } else {
+                page.count -= pages;
+                addr = Some(
+                    page.get_address() + page.count * arch::memory::get_page_size(VmLevel::L1),
+                );
+            }
+            break;
+        }
+
+        // TODO: Merge adjacent regions if we didn't find anything.
+        assert!(addr.is_some());
+
+        if flags.contains(AllocFlags::Zeroed) {
+            unsafe { write_bytes(addr.unwrap().as_hhdm() as *mut u8, 0, bytes) };
+        }
+
+        return addr.ok_or(AllocError);
+    }
+
+    unsafe fn dealloc(addr: PhysAddr, pages: usize) {
+        let mut head = PMM.lock();
+        let mut page_db = PAGE_DB.lock();
+        let page = page_db.get_mut(Page::idx_from_addr(addr)).unwrap();
+
+        assert!(page.count == 0);
+        assert!(page.next.is_none());
+
+        page.count = pages;
+        page.next = *head;
+        *head = NonNull::new(page);
+    }
+}
+
 impl Page {
+    #[inline]
     pub fn idx_from_addr(address: PhysAddr) -> usize {
         assert!(address.0 % arch::memory::get_page_size(VmLevel::L1) == 0);
 
@@ -77,151 +139,6 @@ impl Page {
     fn get_address(&self) -> PhysAddr {
         (self.get_pn() << arch::memory::get_page_bits()).into()
     }
-
-    fn add_to_free_list(&mut self) {
-        let order = self.current_order as usize;
-        let mut pmm = PMM.lock();
-
-        self.next = pmm.free_list[order];
-        pmm.free_list[order] = NonNull::new(self);
-
-        pmm.free_page_count[order] += 1;
-    }
-
-    fn pop_from_free_list(order: usize) -> Option<NonNull<Page>> {
-        let mut pmm = PMM.lock();
-
-        if pmm.free_list[order].is_none() {
-            return None;
-        }
-
-        // Jump to the next entry.
-        let page = pmm.free_list[order];
-        unsafe {
-            let p = page.unwrap().as_ptr();
-            (*p).on_free_list = false;
-            pmm.free_list[order] = (*p).next;
-        }
-
-        pmm.free_page_count[order] -= 1;
-
-        return page;
-    }
-}
-
-pub struct Buddy {
-    free_list: [Option<NonNull<Page>>; NUM_BUDDIES],
-    free_page_count: [usize; NUM_BUDDIES],
-}
-
-const NUM_BUDDIES: usize = 32;
-
-pub static PMM: Mutex<Buddy> = Mutex::new(Buddy {
-    free_list: [None; NUM_BUDDIES],
-    free_page_count: [0; NUM_BUDDIES],
-});
-
-impl Buddy {
-    fn order_from_size(size: usize) -> usize {
-        assert!(size >= arch::memory::get_page_size(VmLevel::L1));
-
-        return (size.trailing_zeros() as usize - arch::memory::get_page_bits())
-            .min(NUM_BUDDIES - 1);
-    }
-
-    fn size_from_order(order: usize) -> usize {
-        return 1usize << (order + arch::memory::get_page_bits());
-    }
-
-    fn free_region(start: PhysAddr, length: usize) {
-        let mut page_db = PAGE_DB.lock();
-        for offset in (0..length).step_by(arch::memory::get_page_size(VmLevel::L1)) {
-            let page = page_db
-                .get_mut(Page::idx_from_addr(start + offset))
-                .unwrap();
-
-            // Determine the highest order we can allocate in this region.
-            let mut order = (page.get_pn().trailing_zeros() as usize).min(NUM_BUDDIES - 1);
-
-            while order + Self::size_from_order(order) > length {
-                order -= 1;
-            }
-
-            page.max_order = order as u8;
-            page.current_order = order as u8;
-            page.on_free_list = false;
-        }
-
-        let mut offset = 0;
-        while offset < length {
-            let page = page_db
-                .get_mut(Page::idx_from_addr(start + offset))
-                .unwrap();
-            page.on_free_list = true;
-            offset += Self::size_from_order(page.current_order as usize);
-            page.add_to_free_list();
-        }
-    }
-
-    fn alloc_page(mut order: usize) -> Option<NonNull<Page>> {
-        assert!(order < NUM_BUDDIES);
-
-        let target_order = order;
-
-        {
-            let pmm = PMM.lock();
-            while pmm.free_list[order].is_none() {
-                if order == NUM_BUDDIES - 1 {
-                    return None;
-                }
-                order += 1;
-            }
-        }
-
-        while order != target_order {
-            let page = Page::pop_from_free_list(order).unwrap().as_ptr();
-            let buddy = page.wrapping_add((1 << order) / 2);
-            unsafe {
-                assert!((*page).current_order == order as u8);
-                assert!(
-                    (*buddy).current_order == order as u8 - 1,
-                    "Expected buddy for order {} to have order {}, but it was {}",
-                    order,
-                    order - 1,
-                    (*buddy).current_order
-                );
-
-                (*page).current_order -= 1;
-
-                (page.as_mut().unwrap()).add_to_free_list();
-                (buddy.as_mut().unwrap()).add_to_free_list();
-            }
-
-            order -= 1;
-        }
-
-        let page = Page::pop_from_free_list(order);
-
-        return page;
-    }
-}
-
-impl PageAllocator for Buddy {
-    fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
-        let size = pages * arch::memory::get_page_size(VmLevel::L1);
-        let order = Self::order_from_size(size);
-
-        let page = Self::alloc_page(order).ok_or(AllocError)?;
-        let addr = unsafe { page.as_ref() }.get_address();
-        if flags.contains(AllocFlags::Zeroed) {
-            unsafe { write_bytes(addr.as_hhdm() as *mut u8, 0, size) };
-        }
-        return Ok(addr);
-    }
-
-    unsafe fn dealloc(_addr: PhysAddr, _pages: usize) {
-        // TODO
-    }
 }
 
 /// Initializes the phyiscal memory manager.
@@ -229,17 +146,18 @@ pub fn init(memory_map: &[PhysMemory], pages: (*mut Page, usize)) {
     PAGE_DB_START.store(pages.0 as _, Ordering::Release);
     *PAGE_DB.lock() = unsafe { slice::from_raw_parts_mut(pages.0, pages.1) };
 
+    let mut total_memory = 0;
+
     // Register free regions.
     for entry in memory_map.iter() {
-        Buddy::free_region(entry.address, entry.length);
-    }
+        let mut pmm = PMM.lock();
+        let mut page_db = PAGE_DB.lock();
+        let page = page_db.get_mut(Page::idx_from_addr(entry.address)).unwrap();
+        page.count = entry.length / arch::memory::get_page_size(VmLevel::L1);
+        page.next = *pmm;
+        *pmm = NonNull::new(page);
 
-    // Count available memory.
-    let mut total_memory = 0;
-    let pmm = PMM.lock();
-
-    for order in 0..NUM_BUDDIES {
-        total_memory += pmm.free_page_count[order] * Buddy::size_from_order(order);
+        total_memory += entry.length;
     }
 
     log!("Total available memory: {} KiB", total_memory / 1024);

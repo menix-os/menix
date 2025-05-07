@@ -8,7 +8,7 @@ use super::asm;
 use crate::generic::{
     clock::{self, ClockError, ClockSource},
     memory::{
-        pmm::Buddy,
+        pmm::FreeList,
         virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
     },
 };
@@ -86,7 +86,7 @@ impl ClockSource for Hpet {
         self.regs = Some(
             KERNEL_PAGE_TABLE
                 .lock()
-                .map_memory::<Buddy>(
+                .map_memory::<FreeList>(
                     ((unsafe { *hpet }).address.address as usize).into(),
                     VmFlags::Read | VmFlags::Write,
                     VmLevel::L1,

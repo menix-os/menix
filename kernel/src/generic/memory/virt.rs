@@ -1,6 +1,6 @@
 use super::{
     PhysAddr, VirtAddr,
-    pmm::{AllocFlags, Buddy, PageAllocator},
+    pmm::{AllocFlags, FreeList, PageAllocator},
 };
 use crate::{
     arch::{self, memory::PageTableEntry, sched::Context},
@@ -315,7 +315,7 @@ impl<const K: bool> PageTable<K> {
 
     /// Checks if the address (may be unaligned) is mapped in this address space.
     pub fn is_mapped(&self, virt: VirtAddr, level: VmLevel) -> bool {
-        let pte = self.get_pte::<Buddy>(virt, false, level);
+        let pte = self.get_pte::<FreeList>(virt, false, level);
         match pte {
             Ok(x) => x.is_present(),
             Err(_) => {

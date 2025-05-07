@@ -1,5 +1,5 @@
 use bump::BumpAllocator;
-use pmm::{AllocFlags, Buddy, Page, PageAllocator};
+use pmm::{AllocFlags, FreeList, Page, PageAllocator};
 use slab::ALLOCATOR;
 use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
 
