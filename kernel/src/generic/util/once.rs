@@ -20,6 +20,7 @@ impl<T> Once<T> {
     }
 
     /// Returns the inner value.
+    #[inline]
     pub fn get(&self) -> &T {
         unsafe { (*self.value.get()).assume_init_ref() }
     }

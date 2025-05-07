@@ -22,7 +22,7 @@ pub fn setup_bsp() {
     idt::set_idt();
 
     // Check if the FSGSBASE feature is available.
-    let cpuid7 = unsafe { super::asm::cpuid(7, 0) };
+    let cpuid7 = super::asm::cpuid(7, 0);
     assert!(
         cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0,
         "FSGSBASE is required for the kernel to function, but the bit wasn't set"
@@ -101,14 +101,12 @@ pub fn perpare_cpu(context: &mut CpuData) {
     unsafe { asm!("mov {cr4}, cr4", cr4 = out(reg) cr4) };
 
     // Collect all relevant CPUIDs.
-    let (cpuid1, cpuid7, cpuid13, cpuid8000_0007) = unsafe {
-        (
-            super::asm::cpuid(1, 0),
-            super::asm::cpuid(7, 0),
-            super::asm::cpuid(13, 0),
-            super::asm::cpuid(0x8000_0007, 0),
-        )
-    };
+    let (cpuid1, cpuid7, cpuid13, cpuid8000_0007) = (
+        super::asm::cpuid(1, 0),
+        super::asm::cpuid(7, 0),
+        super::asm::cpuid(13, 0),
+        super::asm::cpuid(0x8000_0007, 0),
+    );
 
     // Enable SSE.
     cr0 &= !consts::CR0_EM; // Clear EM bit.
@@ -157,6 +155,8 @@ pub fn perpare_cpu(context: &mut CpuData) {
 
     // Check if the TSC exists and is also invariant.
     if cpuid1.edx & consts::CPUID_1D_TSC != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
+        // TODO: This will break when called more than once.
+        // TODO: Make sure to only switch if it's not already the current source.
         match clock::switch(Box::new(tsc::TscClock)) {
             Ok(_) => {
                 cr4 |= consts::CR4_TSD;

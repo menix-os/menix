@@ -102,6 +102,7 @@ macro_rules! assert_trait_impl {
 /// # Safety
 ///
 /// The caller must ensure that this call doesn't cause any heap memory allocations.
+#[macro_export]
 macro_rules! early_init_call {
     ($fun:ident) => {
         const _: () = {
@@ -115,6 +116,7 @@ macro_rules! early_init_call {
 
 /// Hooks a function as an init call.
 /// This gets called after all managers are available.
+#[macro_export]
 macro_rules! init_call {
     ($fun:ident) => {
         const _: () = {
@@ -127,6 +129,7 @@ macro_rules! init_call {
 }
 
 /// Hooks a function as an init call if a command line option equals to true.
+#[macro_export]
 macro_rules! init_call_if_cmdline {
     ($opt:literal, $default:literal, $fun:ident) => {
         const _: () = {
@@ -141,10 +144,7 @@ macro_rules! init_call_if_cmdline {
                 }
             }
 
-            #[doc(hidden)]
-            #[unsafe(link_section = ".init_array")]
-            #[used]
-            static __INIT_CALL: fn() = __init_call_wrapper;
+            $crate::init_call!(__init_call_wrapper);
         };
     };
 }

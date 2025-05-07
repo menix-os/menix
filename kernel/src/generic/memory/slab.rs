@@ -11,9 +11,9 @@ use crate::{
 };
 use core::{
     alloc::{GlobalAlloc, Layout},
-    hint::unlikely,
+    hint::{likely, unlikely},
     mem::size_of,
-    ptr::{null_mut, write_bytes},
+    ptr::null_mut,
 };
 
 #[derive(Debug)]
@@ -78,7 +78,7 @@ impl Slab {
 
     fn alloc(&self) -> *mut u8 {
         // Initialize the slab if not done already.
-        if unlikely(*self.head.lock() == VirtAddr::null()) {
+        if likely(*self.head.lock() == VirtAddr::null()) {
             self.init();
         }
 
@@ -87,8 +87,6 @@ impl Slab {
 
         unsafe {
             *head = (*old_free).into();
-            // Zero out the new allocation.
-            write_bytes(old_free as *mut u8, 0, self.ent_size);
         }
 
         return old_free as *mut u8;
@@ -109,6 +107,7 @@ impl Slab {
     }
 }
 
+#[inline]
 fn find_size(size: usize) -> Option<&'static Slab> {
     ALLOCATOR.slabs.iter().find(|&slab| slab.ent_size >= size)
 }
@@ -135,7 +134,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
             / arch::memory::get_page_size(VmLevel::L1);
 
         // Allocate the pages plus an additional page for metadata.
-        match FreeList::alloc(num_pages + 1, AllocFlags::Zeroed) {
+        match FreeList::alloc(num_pages + 1, AllocFlags::empty()) {
             Ok(mem) => unsafe {
                 // Convert the physical address to a pointer.
                 let ret: *mut u8 = mem.as_hhdm();
@@ -172,22 +171,18 @@ unsafe impl GlobalAlloc for SlabAllocator {
 
 #[repr(C, align(4096))]
 pub struct SlabAllocator {
-    slabs: [Slab; 10],
+    slabs: [Slab; 6],
 }
 
 // Register the slab allocator as the global allocator.
 #[global_allocator]
 pub static ALLOCATOR: SlabAllocator = SlabAllocator {
     slabs: [
-        Slab::new(16),
-        Slab::new(24),
         Slab::new(32),
-        Slab::new(48),
         Slab::new(64),
         Slab::new(128),
         Slab::new(256),
         Slab::new(512),
         Slab::new(1024),
-        Slab::new(2048),
     ],
 };

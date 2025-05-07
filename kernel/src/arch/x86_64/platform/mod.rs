@@ -56,8 +56,7 @@ impl ClockSource for Hpet {
     }
 
     fn get_priority(&self) -> u8 {
-        // Always prefer the HPET if we have it.
-        255
+        75
     }
 
     fn get_elapsed_ns(&self) -> usize {
@@ -115,7 +114,7 @@ impl ClockSource for Hpet {
 
 pub fn init() {
     if let Err(x) = clock::switch(Box::new(Hpet::default())) {
-        error!("acpi: Unable to setup HPET: {:?}", x);
+        error!("Unable to setup HPET: {:?}", x);
     }
 }
 

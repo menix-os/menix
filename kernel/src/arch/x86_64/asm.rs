@@ -11,7 +11,7 @@ pub struct CpuIdResult {
 
 /// Wrapper for the `cpuid` instruction.
 #[inline]
-pub unsafe fn cpuid(leaf: u32, sub_leaf: u32) -> CpuIdResult {
+pub fn cpuid(leaf: u32, sub_leaf: u32) -> CpuIdResult {
     let eax;
     let ebx;
     let ecx;

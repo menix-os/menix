@@ -37,7 +37,7 @@ impl LocalApic {
 
         // Enable the x2APIC if we have it.
         result.has_x2apic = {
-            let cpuid = unsafe { asm::cpuid(1, 0) };
+            let cpuid = asm::cpuid(1, 0);
             if cpuid.ecx & consts::CPUID_1C_X2APIC != 0 {
                 apic_msr |= 1 << 10;
                 true
