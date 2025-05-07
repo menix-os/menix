@@ -7,7 +7,8 @@ use crate::{
     generic::{
         clock,
         memory::{
-            self,
+            self, free, malloc,
+            pmm::Buddy,
             virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
         },
         util::{self, spin::SpinLock},
@@ -36,7 +37,7 @@ extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c
     return unsafe {
         KERNEL_PAGE_TABLE
             .lock()
-            .map_memory(
+            .map_memory::<Buddy>(
                 aligned_addr.into(),
                 VmFlags::Read | VmFlags::Write,
                 VmLevel::L1,
@@ -133,10 +134,7 @@ extern "C" fn uacpi_kernel_pci_write32(
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_alloc(size: uacpi_size) -> *mut c_void {
-    return unsafe {
-        memory::slab::ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<usize>()).unwrap())
-            as *mut c_void
-    };
+    return unsafe { malloc(size) };
 }
 
 #[unsafe(no_mangle)]
@@ -146,12 +144,7 @@ extern "C" fn uacpi_kernel_free(mem: *mut c_void, size: uacpi_size) {
         return;
     }
 
-    unsafe {
-        memory::slab::ALLOCATOR.dealloc(
-            mem as *mut u8,
-            Layout::from_size_align(size, align_of::<usize>()).unwrap(),
-        )
-    };
+    unsafe { free(mem, size) };
 }
 
 #[unsafe(no_mangle)]

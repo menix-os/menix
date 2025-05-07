@@ -10,7 +10,7 @@ pub fn get_page_size(level: VmLevel) -> usize {
     1 << (get_page_bits() + (get_level_bits() * level as usize))
 }
 
-/// Gets the page size for a given level.
+/// Gets the amount of bits in a page.
 pub fn get_page_bits() -> usize {
     internal::virt::get_page_bits()
 }

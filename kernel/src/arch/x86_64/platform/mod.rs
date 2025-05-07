@@ -7,7 +7,10 @@ pub mod tsc;
 use super::asm;
 use crate::generic::{
     clock::{self, ClockError, ClockSource},
-    memory::virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
+    memory::{
+        pmm::Buddy,
+        virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
+    },
 };
 use alloc::boxed::Box;
 use core::mem::offset_of;
@@ -83,7 +86,7 @@ impl ClockSource for Hpet {
         self.regs = Some(
             KERNEL_PAGE_TABLE
                 .lock()
-                .map_memory(
+                .map_memory::<Buddy>(
                     ((unsafe { *hpet }).address.address as usize).into(),
                     VmFlags::Read | VmFlags::Write,
                     VmLevel::L1,

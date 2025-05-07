@@ -1,7 +1,7 @@
 use crate::generic::{
     elf::{self, ElfHdr, ElfPhdr},
     memory::{
-        buddy::BuddyAllocator,
+        pmm::Buddy,
         virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags},
     },
     posix::errno::Errno,
@@ -22,9 +22,7 @@ impl Process {
         Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             is_user,
-            page_table: PageTable::new_user::<BuddyAllocator>(
-                KERNEL_PAGE_TABLE.lock().root_level(),
-            ),
+            page_table: PageTable::new_user::<Buddy>(KERNEL_PAGE_TABLE.lock().root_level()),
             threads: Vec::new(),
         }
     }

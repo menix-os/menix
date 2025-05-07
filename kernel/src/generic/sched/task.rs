@@ -29,7 +29,7 @@ impl Task {
     pub fn new() -> Self {
         return Self {
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
-            context: Context::new(),
+            context: Context::default(),
             state: TaskState::Ready,
         };
     }

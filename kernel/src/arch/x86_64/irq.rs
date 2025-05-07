@@ -1,7 +1,7 @@
 use crate::arch::x86_64::consts::CPL_USER;
 use crate::arch::x86_64::platform::gdt::Gdt;
 use crate::generic;
-use crate::generic::memory::page::{PageFaultCause, PageFaultInfo};
+use crate::generic::memory::virt::{PageFaultCause, PageFaultInfo};
 use crate::generic::percpu::CPU_DATA;
 use crate::generic::sched::task::Frame;
 use crate::generic::{irq::IrqController, percpu::CpuData, syscall};
@@ -206,7 +206,7 @@ fn page_fault_handler(context: &mut TrapFrame) {
             cause,
         };
         let mut ctx = context.save();
-        generic::memory::page::page_fault_handler(&mut ctx, &info);
+        generic::memory::virt::page_fault_handler(&mut ctx, &info);
         context.restore(ctx);
     }
 }
@@ -217,8 +217,8 @@ fn timer_handler(context: &mut TrapFrame) {
     let sched = CPU_DATA.get(ctx);
 
     // TODO
-    let old_ctx = Context::new();
-    let mut new_ctx = Context::new();
+    let old_ctx = Context::default();
+    let mut new_ctx = Context::default();
     sched.scheduler.reschedule(&old_ctx, &mut new_ctx);
 
     _ = lapic.eoi();

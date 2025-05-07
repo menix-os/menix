@@ -1,9 +1,10 @@
 use super::internal;
 use crate::generic::sched::task::{Frame, Task};
-
 use alloc::sync::Arc;
+
 pub use internal::sched::Context;
 assert_trait_impl!(Context, Frame);
+assert_trait_impl!(Context, Default);
 
 /// Returns the current task running on this CPU.
 /// # Note

@@ -2,8 +2,7 @@
 
 use super::{
     VirtAddr,
-    buddy::BuddyAllocator,
-    page::{AllocFlags, PageAllocator},
+    pmm::{AllocFlags, Buddy, PageAllocator},
     virt::VmLevel,
 };
 use crate::{
@@ -54,7 +53,7 @@ impl Slab {
             let available_size = (arch::memory::get_page_size(VmLevel::L1)) - offset;
 
             // Allocate memory for this slab.
-            let mem = BuddyAllocator::alloc(1, AllocFlags::Zeroed).expect("Out of memory");
+            let mem = Buddy::alloc(1, AllocFlags::Zeroed).expect("Out of memory");
             let mut head = mem.as_hhdm::<*mut ()>();
 
             // Get a reference to the start of the buffer.
@@ -136,7 +135,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
             / arch::memory::get_page_size(VmLevel::L1);
 
         // Allocate the pages plus an additional page for metadata.
-        match BuddyAllocator::alloc(num_pages + 1, AllocFlags::Zeroed) {
+        match Buddy::alloc(num_pages + 1, AllocFlags::Zeroed) {
             Ok(mem) => unsafe {
                 // Convert the physical address to a pointer.
                 let ret: *mut u8 = mem.as_hhdm();
@@ -161,7 +160,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
         unsafe {
             if ptr as usize == align_down(ptr as usize, arch::memory::get_page_size(VmLevel::L1)) {
                 let info = ptr.sub(arch::memory::get_page_size(VmLevel::L1)) as *mut SlabInfo;
-                BuddyAllocator::dealloc(info.into(), (*info).num_pages);
+                Buddy::dealloc(info.into(), (*info).num_pages);
             } else {
                 let header = align_down(ptr as usize, arch::memory::get_page_size(VmLevel::L1))
                     as *mut SlabHeader;

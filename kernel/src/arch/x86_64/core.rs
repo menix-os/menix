@@ -1,7 +1,5 @@
-use core::arch::asm;
-use core::mem::offset_of;
-
 use alloc::boxed::Box;
+use core::{arch::asm, mem::offset_of};
 
 use crate::{
     arch::x86_64::{

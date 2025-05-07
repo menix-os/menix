@@ -1,6 +1,5 @@
-use buddy::{PageNumber, Region};
 use bump::BumpAllocator;
-use page::{AllocFlags, Page, PageAllocator};
+use pmm::{AllocFlags, Buddy, Page, PageAllocator};
 use slab::ALLOCATOR;
 use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
 
@@ -19,16 +18,16 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-pub mod buddy;
+use super::util::once::Once;
+
 // We don't want to use the bump allocator anywhere after initial setup.
 mod bump;
 pub mod mmio;
-pub mod page;
+pub mod pmm;
 pub mod slab;
 pub mod user;
 pub mod virt;
-
-static HHDM_START: AtomicUsize = AtomicUsize::new(0);
+pub mod vmm;
 
 // Symbols defined in the linker script so we can map ourselves in our page table.
 unsafe extern "C" {
@@ -39,6 +38,150 @@ unsafe extern "C" {
     unsafe static LD_RODATA_END: u8;
     unsafe static LD_DATA_START: u8;
     unsafe static LD_DATA_END: u8;
+}
+
+static HHDM_START: Once<VirtAddr> = Once::new();
+
+/// Represents a physical address. It can't be directly read from or written to.
+#[repr(transparent)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct PhysAddr(usize);
+
+impl PhysAddr {
+    pub fn as_hhdm<T>(self) -> *mut T {
+        VirtAddr(self.0 + HHDM_START.get().0).as_ptr()
+    }
+}
+
+/// Represents a virtual address. It can't be directly read from or written to.
+/// Note: Not the same as a pointer. A `VirtAddr` might point into another
+/// process's memory that is not mapped in the kernel.
+#[repr(transparent)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct VirtAddr(usize);
+
+impl VirtAddr {
+    pub fn as_ptr<T>(self) -> *mut T {
+        return ptr::with_exposed_provenance_mut(self.0);
+    }
+
+    /// Returns the physical address mapped in the kernel for this [`VirtAddr`].
+    pub fn as_hhdm(self) -> Option<PhysAddr> {
+        return self.0.checked_sub(HHDM_START.get().0).map(PhysAddr);
+    }
+}
+
+macro_rules! addr_impl {
+    ($ty:ty) => {
+        impl $ty {
+            pub const fn null() -> Self {
+                Self(0)
+            }
+
+            pub const fn new(value: usize) -> Self {
+                Self(value)
+            }
+
+            pub const fn value(&self) -> usize {
+                self.0
+            }
+        }
+
+        impl From<usize> for $ty {
+            fn from(addr: usize) -> Self {
+                Self(addr)
+            }
+        }
+
+        #[cfg(target_pointer_width = "32")]
+        impl From<u32> for $ty {
+            fn from(addr: u32) -> Self {
+                Self(addr as usize)
+            }
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        impl From<u64> for $ty {
+            fn from(addr: u64) -> Self {
+                Self(addr as usize)
+            }
+        }
+
+        impl<T> From<*const T> for $ty {
+            fn from(ptr: *const T) -> Self {
+                Self(ptr as usize)
+            }
+        }
+
+        impl<T> From<*mut T> for $ty {
+            fn from(ptr: *mut T) -> Self {
+                Self(ptr as usize)
+            }
+        }
+
+        impl<T> From<NonNull<T>> for $ty {
+            fn from(ptr: NonNull<T>) -> Self {
+                Self(ptr.as_ptr() as usize)
+            }
+        }
+
+        impl Add for $ty {
+            type Output = Self;
+
+            fn add(self, rhs: Self) -> Self::Output {
+                Self(self.0 + rhs.0)
+            }
+        }
+
+        impl Sub for $ty {
+            type Output = Self;
+
+            fn sub(self, rhs: Self) -> Self::Output {
+                Self(self.0 - rhs.0)
+            }
+        }
+
+        impl Add<usize> for $ty {
+            type Output = Self;
+
+            fn add(self, rhs: usize) -> Self::Output {
+                Self(self.0 + rhs)
+            }
+        }
+
+        impl Sub<usize> for $ty {
+            type Output = Self;
+
+            fn sub(self, rhs: usize) -> Self::Output {
+                Self(self.0 - rhs)
+            }
+        }
+    };
+}
+
+addr_impl!(PhysAddr);
+addr_impl!(VirtAddr);
+
+/// Equivalent of C `malloc`.
+#[unsafe(no_mangle)]
+pub extern "C" fn malloc(size: usize) -> *mut core::ffi::c_void {
+    let mem =
+        unsafe { ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<usize>()).unwrap()) };
+    mem as *mut core::ffi::c_void
+}
+
+/// Equivalent of C `free`.
+/// # Safety
+/// The caller must make sure that `ptr` is an address handed out by [`malloc`].
+/// The caller must also assert that the same allocation is never freed twice.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
+    unsafe {
+        ALLOCATOR.dealloc(
+            ptr as *mut u8,
+            Layout::from_size_align(size, align_of::<usize>()).unwrap(),
+        )
+    };
 }
 
 /// Bootstraps the memory allocators and kernel virtual page table.
@@ -62,7 +205,7 @@ pub unsafe fn init() {
         .hhdm_address
         .expect("HHDM address should have been set");
 
-    HHDM_START.store(hhdm_address.value(), Ordering::Relaxed);
+    unsafe { HHDM_START.init(hhdm_address) };
 
     let mut memory_map = info.memory_map.lock();
 
@@ -81,8 +224,8 @@ pub unsafe fn init() {
             continue;
         }
 
-        log!(
-            "Ignoring 16-bit memory starting at {:#018x}",
+        warn!(
+            "Dropping 16-bit memory starting at {:#018x}",
             entry.address.value()
         );
 
@@ -223,24 +366,6 @@ pub unsafe fn init() {
         }
     }
 
-    unsafe {
-        let mut l = page::PAGE_ARRAY.lock();
-        *l = slice::from_raw_parts_mut(page_base as *mut Page, page_length);
-        page::PAGE_ARRAY_ADDR.store(page_base, Ordering::Relaxed);
-    }
-
-    #[cfg(debug_assertions)]
-    {
-        // Perform a sanity check by accessing all page array entries.
-        let l = page::PAGE_ARRAY.lock();
-        for entry in memory_map.iter() {
-            let start = entry.address.0 >> 12;
-            for page in start..(start + (entry.length >> 12)) {
-                unsafe { l.as_ptr().add(page).read_volatile() };
-            }
-        }
-    }
-
     log!("Initalized page array region at {:#018x}", page_base);
 
     // Finally, make sure to mark the allocated memory as used before the real allocator looks at the memory map.
@@ -260,181 +385,12 @@ pub unsafe fn init() {
     // Now we're done using the bump allocator.
     // ----------------------------------------
 
-    // Initialize the buddy allocator by converting the memory map to regions.
-    let mut total_pages = 0;
-
-    for entry in memory_map.iter_mut() {
-        if entry.length == 0 {
-            continue;
-        }
-
-        let num_pages = align_down(entry.length, arch::memory::get_page_size(VmLevel::L1))
-            / arch::memory::get_page_size(VmLevel::L1);
-
-        let region = Region::new(entry.address, num_pages as PageNumber);
-        region.register();
-
-        total_pages += num_pages;
-    }
-
-    log!(
-        "Total usable memory detected: {} MiB",
-        total_pages * (arch::memory::get_page_size(VmLevel::L1)) / 1024 / 1024
-    );
-
-    log!(
-        "Using {} KiB for page metadata, effective usable memory: {} MiB",
-        allocated_bytes / 1024,
-        (total_pages * (arch::memory::get_page_size(VmLevel::L1)) - allocated_bytes) / 1024 / 1024
-    );
+    // Initialize the physical memory allocator.
+    pmm::init(&memory_map, (page_base as *mut Page, page_length));
 
     // Set the MMAP base to right after the page table. Make sure this lands on a new PTE so we can map regular pages.
     // TODO: Use a virtual memory allocator instead.
     let pte_size = arch::memory::get_page_size(VmLevel::L3);
     let offset = align_up(0x1000_0000_0000, pte_size);
     virt::KERNEL_MMAP_BASE_ADDR.store(page_base + offset, Ordering::Relaxed);
-}
-
-/// Represents a physical address. It can't be directly read from or written to.
-#[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PhysAddr(usize);
-
-impl PhysAddr {
-    pub fn as_hhdm<T>(self) -> *mut T {
-        VirtAddr(self.0 + HHDM_START.load(Ordering::Relaxed)).as_ptr()
-    }
-}
-
-/// Represents a virtual address. It can't be directly read from or written to.
-/// Note: Not the same as a pointer. A `VirtAddr` might point into another
-/// process's memory that is not mapped in the kernel.
-#[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct VirtAddr(usize);
-
-impl VirtAddr {
-    pub fn as_ptr<T>(self) -> *mut T {
-        return ptr::with_exposed_provenance_mut(self.0);
-    }
-
-    /// Returns the physical address mapped in the kernel for this [`VirtAddr`].
-    pub fn as_hhdm(self) -> Option<PhysAddr> {
-        return self
-            .0
-            .checked_sub(HHDM_START.load(Ordering::Relaxed))
-            .map(PhysAddr);
-    }
-}
-
-macro_rules! addr_impl {
-    ($ty:ty) => {
-        impl $ty {
-            pub const fn null() -> Self {
-                Self(0)
-            }
-
-            pub const fn new(value: usize) -> Self {
-                Self(value)
-            }
-
-            pub const fn value(&self) -> usize {
-                self.0
-            }
-        }
-
-        impl From<usize> for $ty {
-            fn from(addr: usize) -> Self {
-                Self(addr)
-            }
-        }
-
-        #[cfg(target_pointer_width = "32")]
-        impl From<u32> for $ty {
-            fn from(addr: u32) -> Self {
-                Self(addr as usize)
-            }
-        }
-
-        #[cfg(target_pointer_width = "64")]
-        impl From<u64> for $ty {
-            fn from(addr: u64) -> Self {
-                Self(addr as usize)
-            }
-        }
-
-        impl<T> From<*const T> for $ty {
-            fn from(ptr: *const T) -> Self {
-                Self(ptr as usize)
-            }
-        }
-
-        impl<T> From<*mut T> for $ty {
-            fn from(ptr: *mut T) -> Self {
-                Self(ptr as usize)
-            }
-        }
-
-        impl<T> From<NonNull<T>> for $ty {
-            fn from(ptr: NonNull<T>) -> Self {
-                Self(ptr.as_ptr() as usize)
-            }
-        }
-
-        impl Add for $ty {
-            type Output = Self;
-
-            fn add(self, rhs: Self) -> Self::Output {
-                Self(self.0 + rhs.0)
-            }
-        }
-
-        impl Sub for $ty {
-            type Output = Self;
-
-            fn sub(self, rhs: Self) -> Self::Output {
-                Self(self.0 - rhs.0)
-            }
-        }
-
-        impl Add<usize> for $ty {
-            type Output = Self;
-
-            fn add(self, rhs: usize) -> Self::Output {
-                Self(self.0 + rhs)
-            }
-        }
-
-        impl Sub<usize> for $ty {
-            type Output = Self;
-
-            fn sub(self, rhs: usize) -> Self::Output {
-                Self(self.0 - rhs)
-            }
-        }
-    };
-}
-
-addr_impl!(PhysAddr);
-addr_impl!(VirtAddr);
-
-/// Equivalent of C `malloc`.
-#[unsafe(no_mangle)]
-pub extern "C" fn malloc(size: usize) -> *mut core::ffi::c_void {
-    let mem = unsafe { ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<u8>()).unwrap()) };
-    mem as *mut core::ffi::c_void
-}
-
-/// Equivalent of C `free`.
-/// # Safety
-/// The caller must make sure that `ptr` is an address handed out by [`malloc`].
-/// The caller must also assert that the same allocation is never freed twice.
-#[unsafe(no_mangle)]
-pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
-    unsafe {
-        ALLOCATOR.dealloc(
-            ptr as *mut u8,
-            Layout::from_size_align(size, align_of::<u8>()).unwrap(),
-        )
-    };
 }

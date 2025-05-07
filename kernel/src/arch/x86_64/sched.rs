@@ -1,7 +1,7 @@
 use crate::generic::sched::task::Frame;
 
 #[repr(C)]
-#[derive(Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone, Copy)]
 pub struct Context {
     pub r15: u64,
     pub r14: u64,
@@ -21,31 +21,6 @@ pub struct Context {
     pub rip: u64,
     pub rsp: u64,
     pub rflags: u64,
-}
-
-impl Context {
-    pub const fn new() -> Self {
-        Self {
-            r15: 0,
-            r14: 0,
-            r13: 0,
-            r12: 0,
-            r11: 0,
-            r10: 0,
-            r9: 0,
-            r8: 0,
-            rsi: 0,
-            rdi: 0,
-            rbp: 0,
-            rdx: 0,
-            rcx: 0,
-            rbx: 0,
-            rax: 0,
-            rip: 0,
-            rsp: 0,
-            rflags: 0,
-        }
-    }
 }
 
 impl Frame for Context {

@@ -1,10 +1,9 @@
 use super::{
     PhysAddr, VirtAddr,
-    buddy::BuddyAllocator,
-    page::{AllocFlags, PageAllocator},
+    pmm::{AllocFlags, Buddy, PageAllocator},
 };
 use crate::{
-    arch::{self, memory::PageTableEntry},
+    arch::{self, memory::PageTableEntry, sched::Context},
     generic::util::{align_up, mutex::Mutex},
 };
 use alloc::alloc::AllocError;
@@ -94,7 +93,7 @@ impl PageTable<true> {
     }
 
     /// Maps physical memory to a free area in virtual address space.
-    pub fn map_memory(
+    pub fn map_memory<P: PageAllocator>(
         &mut self,
         phys: PhysAddr,
         flags: VmFlags,
@@ -108,7 +107,7 @@ impl PageTable<true> {
         let virt = KERNEL_MMAP_BASE_ADDR.fetch_add(aligned_len, Ordering::SeqCst);
 
         // Map memory.
-        self.map_range::<BuddyAllocator>(VirtAddr(virt), phys, flags, level, aligned_len)
+        self.map_range::<P>(VirtAddr(virt), phys, flags, level, aligned_len)
             .map_err(|_| AllocError)?;
         return Ok(virt as *mut u8);
     }
@@ -286,7 +285,7 @@ impl<const K: bool> PageTable<K> {
     }
 
     /// Changes the permissions on a mapping of consecutive memory.
-    pub fn remap_range(
+    pub fn remap_range<P: PageAllocator>(
         &mut self,
         virt: VirtAddr,
         flags: VmFlags,
@@ -299,7 +298,7 @@ impl<const K: bool> PageTable<K> {
             + (level as usize * arch::memory::get_level_bits());
 
         for offset in (0..length).step_by(step) {
-            self.remap_single::<BuddyAllocator>(VirtAddr(virt.0 + offset), flags, level)?;
+            self.remap_single::<P>(VirtAddr(virt.0 + offset), flags, level)?;
         }
         return Ok(());
     }
@@ -316,7 +315,7 @@ impl<const K: bool> PageTable<K> {
 
     /// Checks if the address (may be unaligned) is mapped in this address space.
     pub fn is_mapped(&self, virt: VirtAddr, level: VmLevel) -> bool {
-        let pte = self.get_pte::<BuddyAllocator>(virt, false, level);
+        let pte = self.get_pte::<Buddy>(virt, false, level);
         match pte {
             Ok(x) => x.is_present(),
             Err(_) => {
@@ -324,4 +323,45 @@ impl<const K: bool> PageTable<K> {
             }
         }
     }
+}
+
+/// Abstract information about a page fault.
+pub struct PageFaultInfo {
+    /// Fault caused by the user.
+    pub caused_by_user: bool,
+    /// The instruction pointer address.
+    pub ip: VirtAddr,
+    /// The address that was attempted to access.
+    pub addr: VirtAddr,
+    /// The cause of this page fault.
+    pub cause: PageFaultCause,
+}
+
+bitflags! {
+    /// The origin of the page fault.
+    #[derive(Debug)]
+    pub struct PageFaultCause: usize {
+        /// If set, the fault occured in a mapped page.
+        const Present = 1 << 0;
+        /// If set, the fault was caused by a write.
+        const Write = 1 << 1;
+        /// If set, the fault was caused by an instruction fetch.
+        const Fetch = 1 << 2;
+        /// If set, the fault was caused by a user access.
+        const User = 1 << 3;
+    }
+}
+
+/// Generic page fault handler. May reschedule and return a different context.
+pub fn page_fault_handler<'a>(context: &mut Context, info: &PageFaultInfo) {
+    if info.caused_by_user {
+        // TODO: Send SIGSEGV and reschedule.
+        // Kill process.
+        // Force immediate reschedule.
+    }
+
+    panic!(
+        "Kernel caused an unrecoverable page fault: {:?}! IP: {:#x}, Address: {:#x}",
+        info.cause, info.ip.0, info.addr.0
+    );
 }

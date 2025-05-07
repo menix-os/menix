@@ -2,7 +2,7 @@
 
 use super::{
     PhysAddr,
-    page::{AllocFlags, PageAllocator},
+    pmm::{AllocFlags, PageAllocator},
     virt::VmLevel,
 };
 use crate::arch::{self};
