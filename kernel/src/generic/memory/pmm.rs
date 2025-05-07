@@ -10,7 +10,6 @@ use crate::{
 use alloc::alloc::AllocError;
 use bitflags::bitflags;
 use core::{
-    num::NonZeroUsize,
     ptr::{NonNull, null_mut, write_bytes},
     slice,
     sync::atomic::{AtomicPtr, Ordering},

@@ -1,5 +1,5 @@
 use bump::BumpAllocator;
-use pmm::{AllocFlags, FreeList, Page, PageAllocator};
+use pmm::{AllocFlags, Page, PageAllocator};
 use slab::ALLOCATOR;
 use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
 
@@ -14,8 +14,7 @@ use core::{
     alloc::{GlobalAlloc, Layout},
     ops::{Add, Sub},
     ptr::{self, NonNull},
-    slice,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::Ordering,
 };
 
 use super::util::once::Once;
@@ -27,7 +26,6 @@ pub mod pmm;
 pub mod slab;
 pub mod user;
 pub mod virt;
-pub mod vmm;
 
 // Symbols defined in the linker script so we can map ourselves in our page table.
 unsafe extern "C" {
