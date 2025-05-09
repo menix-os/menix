@@ -1,17 +1,15 @@
 #![no_std]
-#![allow(unused)]
-#![allow(clippy::needless_return)]
 #![feature(negative_impls)]
-#![feature(naked_functions)]
 #![feature(allocator_api)]
-// Needed for volatile memmove
-#![allow(internal_features)]
-#![feature(core_intrinsics)]
 #![feature(str_from_raw_parts)]
 #![feature(new_zeroed_alloc)]
 #![feature(cfg_match)]
-
-use generic::boot::BootInfo;
+#![feature(likely_unlikely)]
+#![no_builtins]
+// Clippy lints
+#![allow(clippy::needless_return)]
+#![allow(clippy::new_without_default)]
+#![forbid(clippy::missing_safety_doc)]
 
 pub extern crate alloc;
 pub extern crate core;
@@ -21,57 +19,86 @@ pub mod macros;
 pub mod arch;
 pub mod generic;
 
-/// The high-level kernel entry point.
-/// Called by `_start`.
-/// Initializes all subsystems and starts all servers.
-#[deny(dead_code)]
-pub(crate) fn main() -> ! {
-    let info = BootInfo::get();
+unsafe extern "C" {
+    unsafe static LD_EARLY_ARRAY_START: u8;
+    unsafe static LD_EARLY_ARRAY_END: u8;
+    unsafe static LD_INIT_ARRAY_START: u8;
+    unsafe static LD_INIT_ARRAY_END: u8;
+}
 
-    unsafe { arch::irq::interrupt_disable() };
-    generic::cpu::setup_bsp();
+/// Runs early init functions. This has to be called as the very first thing after `_start`!
+/// # Safety
+/// Not calling this function will lead to undefined behavior!
+#[forbid(dead_code)]
+pub(crate) unsafe fn early_init() {
+    arch::core::setup_bsp();
 
-    // Initialize allocators.
-    {
-        let hhdm = info
-            .hhdm_address
-            .expect("HHDM address should have been set!");
-        generic::memory::init(&info.memory_map, hhdm);
-        generic::memory::virt::init(hhdm, info.kernel_phys, info.kernel_virt);
+    // Run early init calls. These don't need memory allocations.
+    unsafe {
+        let mut early_array = &raw const LD_EARLY_ARRAY_START as *const fn();
+        let early_end = &raw const LD_EARLY_ARRAY_END as *const fn();
+        while early_array < early_end {
+            (*early_array)();
+            early_array = early_array.add(1);
+        }
     }
+}
 
+#[forbid(dead_code)]
+pub(crate) fn init() {
+    unsafe {
+        let mut init_array = &raw const LD_INIT_ARRAY_START as *const fn();
+        let init_end = &raw const LD_INIT_ARRAY_END as *const fn();
+        while init_array < init_end {
+            (*init_array)();
+            init_array = init_array.add(1);
+        }
+    }
+}
+
+/// The high-level kernel entry point. This is invoked by the prekernel environment.
+#[unsafe(no_mangle)]
+pub(crate) fn main() -> ! {
     // Say hello to the console.
     // TODO: Get this information from posix/utsname instead.
-    print!(
-        "Menix {}.{}.{}\n",
+    log!(
+        "Menix {}.{}.{}",
         env!("CARGO_PKG_VERSION_MAJOR"),
         env!("CARGO_PKG_VERSION_MINOR"),
         env!("CARGO_PKG_VERSION_PATCH")
     );
 
-    // Initialize early console.
-    // TODO: Abstract console interface so it handles initialization of all consoles as well.
-    if let Some(fb) = &info.framebuffer {
-        generic::boot::bootcon::init(fb.clone());
-    }
+    // Initialize memory management.
+    unsafe { generic::memory::init() };
 
-    // Load the ACPI subsystem.
-    #[cfg(feature = "acpi")]
-    if let Some(rsdp) = info.rsdp_addr {
-        generic::platform::acpi::init(rsdp);
-    }
+    // TODO: Initialize virtual file system.
+    // generic::posix::fs::init();
 
-    // Setup SMP.
-    generic::cpu::setup_all();
+    generic::platform::init();
 
-    // TODO: Start scheduler.
+    arch::core::perpare_cpu(generic::percpu::CpuData::get());
 
-    // Initialize buses.
-    generic::bus::init();
+    // Run init calls.
+    init();
 
     // Load all modules and run their init function.
     generic::module::init();
 
-    print!("boot: Starting init...\n");
-    todo!("Load init");
+    // TODO: Setup SMP.
+
+    // Find init. If no path is given, search a few select directories.
+    let path = match generic::boot::BootInfo::get()
+        .command_line
+        .get_string("init")
+    {
+        Some(x) => x,
+        // TODO: Search filesystem for init binaries.
+        None => "/usr/sbin/init",
+    };
+    log!("Starting init \"{}\"", path);
+
+    // TODO: Start init.
+    loop {
+        core::hint::spin_loop();
+    }
 }

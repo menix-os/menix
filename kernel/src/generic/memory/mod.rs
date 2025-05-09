@@ -1,46 +1,62 @@
-use crate::arch::page::PageTableEntry;
-use alloc::alloc::{AllocError, Allocator};
-use core::{
-    alloc::Layout,
-    ptr::{self, NonNull},
-};
-use spin::Mutex;
-use talc::{ClaimOnOom, Span, Talc, Talck};
+use bump::BumpAllocator;
+use pmm::{AllocFlags, Page, PageAllocator};
+use slab::ALLOCATOR;
+use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
 
+use crate::{
+    arch::{self, memory::get_page_size},
+    generic::{
+        boot::BootInfo,
+        util::{align_down, align_up},
+    },
+};
+use core::{
+    alloc::{GlobalAlloc, Layout},
+    ops::{Add, Sub},
+    ptr::{self, NonNull},
+    sync::atomic::Ordering,
+};
+
+use super::util::once::Once;
+
+// We don't want to use the bump allocator anywhere after initial setup.
+mod bump;
 pub mod mmio;
-pub mod page;
-pub mod phys;
+pub mod pmm;
+pub mod slab;
+pub mod user;
 pub mod virt;
+
+// Symbols defined in the linker script so we can map ourselves in our page table.
+unsafe extern "C" {
+    unsafe static LD_KERNEL_START: u8;
+    unsafe static LD_TEXT_START: u8;
+    unsafe static LD_TEXT_END: u8;
+    unsafe static LD_RODATA_START: u8;
+    unsafe static LD_RODATA_END: u8;
+    unsafe static LD_DATA_START: u8;
+    unsafe static LD_DATA_END: u8;
+}
+
+static HHDM_START: Once<VirtAddr> = Once::new();
 
 /// Represents a physical address. It can't be directly read from or written to.
 #[repr(transparent)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct PhysAddr(pub usize);
+pub struct PhysAddr(usize);
+
+impl PhysAddr {
+    pub fn as_hhdm<T>(self) -> *mut T {
+        VirtAddr(self.0 + HHDM_START.get().0).as_ptr()
+    }
+}
 
 /// Represents a virtual address. It can't be directly read from or written to.
 /// Note: Not the same as a pointer. A `VirtAddr` might point into another
 /// process's memory that is not mapped in the kernel.
 #[repr(transparent)]
 #[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct VirtAddr(pub usize);
-
-impl<T> From<*const T> for VirtAddr {
-    fn from(ptr: *const T) -> Self {
-        Self(ptr as usize)
-    }
-}
-
-impl<T> From<*mut T> for VirtAddr {
-    fn from(ptr: *mut T) -> Self {
-        Self(ptr as usize)
-    }
-}
-
-impl<T> From<NonNull<T>> for VirtAddr {
-    fn from(ptr: NonNull<T>) -> Self {
-        Self(ptr.as_ptr() as usize)
-    }
-}
+pub struct VirtAddr(usize);
 
 impl VirtAddr {
     pub fn as_ptr<T>(self) -> *mut T {
@@ -48,107 +64,331 @@ impl VirtAddr {
     }
 
     /// Returns the physical address mapped in the kernel for this [`VirtAddr`].
-    pub fn get_kernel_phys(self) -> Option<PhysAddr> {
-        return self
-            .0
-            .checked_sub(PageTableEntry::get_hhdm_addr().0)
-            .map(PhysAddr);
+    pub fn as_hhdm(self) -> Option<PhysAddr> {
+        return self.0.checked_sub(HHDM_START.get().0).map(PhysAddr);
     }
 }
 
-/// Describes how a memory region is used.
-#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
-pub enum PhysMemoryUsage {
-    /// Free and usable memory.
-    Free,
-    /// Memory reserved by the System.
-    Reserved,
-    /// Used by boot loader structures.
-    Bootloader,
-    /// Kernel and modules are loaded here.
-    Kernel,
-    /// Unknown memory region.
-    #[default]
-    Unknown,
-}
+macro_rules! addr_impl {
+    ($ty:ty) => {
+        impl $ty {
+            pub const fn null() -> Self {
+                Self(0)
+            }
 
-/// Describes a region of physical memory.
-#[derive(Clone, Copy, Debug, Default)]
-pub struct PhysMemory {
-    /// Start address of the memory region.
-    pub address: PhysAddr,
-    /// Length of the memory region in bytes.
-    pub length: usize,
-    /// How this memory region is used.
-    pub usage: PhysMemoryUsage,
-}
+            pub const fn new(value: usize) -> Self {
+                Self(value)
+            }
 
-impl PhysMemory {
-    pub const fn new() -> Self {
-        Self {
-            address: PhysAddr(0),
-            length: 0,
-            usage: PhysMemoryUsage::Unknown,
+            pub const fn value(&self) -> usize {
+                self.0
+            }
         }
-    }
-}
 
-pub static EARLY_MEMORY: [u8; 0x10000] = [0u8; 0x10000];
-
-#[global_allocator]
-pub static ALLOCATOR: Talck<spin::Mutex<()>, ClaimOnOom> = Talc::new(unsafe {
-    ClaimOnOom::new(Span::from_array(
-        core::ptr::addr_of!(EARLY_MEMORY).cast_mut(),
-    ))
-})
-.lock();
-
-/// Allocates data that is aligned on page boundaries.
-pub struct PageAlloc;
-unsafe impl Allocator for PageAlloc {
-    fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
-        ALLOCATOR.allocate(layout.align_to(PageTableEntry::get_page_size()).unwrap())
-    }
-    unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
-        unsafe {
-            ALLOCATOR.deallocate(
-                ptr,
-                layout.align_to(PageTableEntry::get_page_size()).unwrap(),
-            )
+        impl From<usize> for $ty {
+            fn from(addr: usize) -> Self {
+                Self(addr)
+            }
         }
-    }
+
+        #[cfg(target_pointer_width = "32")]
+        impl From<u32> for $ty {
+            fn from(addr: u32) -> Self {
+                Self(addr as usize)
+            }
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        impl From<u64> for $ty {
+            fn from(addr: u64) -> Self {
+                Self(addr as usize)
+            }
+        }
+
+        impl<T> From<*const T> for $ty {
+            fn from(ptr: *const T) -> Self {
+                Self(ptr as usize)
+            }
+        }
+
+        impl<T> From<*mut T> for $ty {
+            fn from(ptr: *mut T) -> Self {
+                Self(ptr as usize)
+            }
+        }
+
+        impl<T> From<NonNull<T>> for $ty {
+            fn from(ptr: NonNull<T>) -> Self {
+                Self(ptr.as_ptr() as usize)
+            }
+        }
+
+        impl Add for $ty {
+            type Output = Self;
+
+            fn add(self, rhs: Self) -> Self::Output {
+                Self(self.0 + rhs.0)
+            }
+        }
+
+        impl Sub for $ty {
+            type Output = Self;
+
+            fn sub(self, rhs: Self) -> Self::Output {
+                Self(self.0 - rhs.0)
+            }
+        }
+
+        impl Add<usize> for $ty {
+            type Output = Self;
+
+            fn add(self, rhs: usize) -> Self::Output {
+                Self(self.0 + rhs)
+            }
+        }
+
+        impl Sub<usize> for $ty {
+            type Output = Self;
+
+            fn sub(self, rhs: usize) -> Self::Output {
+                Self(self.0 - rhs)
+            }
+        }
+    };
 }
 
-/// Initializes the physical memory manager.
-/// `temp_base`: A temporary base address which can be used to directly access physical memory.
+addr_impl!(PhysAddr);
+addr_impl!(VirtAddr);
+
+/// Equivalent of C `malloc`.
+#[unsafe(no_mangle)]
+pub extern "C" fn malloc(size: usize) -> *mut core::ffi::c_void {
+    let mem =
+        unsafe { ALLOCATOR.alloc(Layout::from_size_align(size, align_of::<usize>()).unwrap()) };
+    mem as *mut core::ffi::c_void
+}
+
+/// Equivalent of C `free`.
+/// # Safety
+/// The caller must make sure that `ptr` is an address handed out by [`malloc`].
+/// The caller must also assert that the same allocation is never freed twice.
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
+    unsafe {
+        ALLOCATOR.dealloc(
+            ptr as *mut u8,
+            Layout::from_size_align(size, align_of::<usize>()).unwrap(),
+        )
+    };
+}
+
+/// Bootstraps the memory allocators and kernel virtual page table.
+///
+/// # Safety
+///
+/// Must be called as soon as control is handed to [`crate::main`] or the system won't function!
 #[deny(dead_code)]
-pub(crate) fn init(memory_map: &[PhysMemory], temp_base: VirtAddr) {
-    let mut alloc = ALLOCATOR.lock();
-    for region in memory_map {
-        if region.usage != PhysMemoryUsage::Free {
+pub unsafe fn init() {
+    let info = BootInfo::get();
+
+    let kernel_phys = info
+        .kernel_phys
+        .expect("Kernel physical address should have been set");
+
+    let paging_level = info
+        .paging_level
+        .expect("Paging level should have been set");
+
+    let hhdm_address = info
+        .hhdm_address
+        .expect("HHDM address should have been set");
+
+    unsafe { HHDM_START.init(hhdm_address) };
+
+    let mut memory_map = info.memory_map.lock();
+
+    // Print the memory map.
+    memory_map.iter().for_each(|x| {
+        log!(
+            "[{:#018x} - {:#018x}]",
+            x.address.0,
+            x.address.0 + x.length - 1
+        )
+    });
+
+    // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
+    for entry in memory_map.iter_mut() {
+        if entry.address.value() >= 1 << 16 {
             continue;
         }
 
-        let actual = unsafe {
-            alloc.claim(Span::from_base_size(
-                temp_base.as_ptr::<u8>().byte_add(region.address.0),
-                region.length,
-            ))
-        };
+        warn!(
+            "Dropping 16-bit memory starting at {:#018x}",
+            entry.address.value()
+        );
 
-        match actual {
-            Ok(x) => {
-                if let Some((start, end)) = x.get_base_acme() {
-                    print!(
-                        "memory: Claimed memory region [{:p} - {:p}] ({:#x} bytes)\n",
-                        start,
-                        end,
-                        x.size()
-                    );
-                }
-            }
-            Err(_) => todo!(),
+        // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
+        if entry.address + entry.length >= PhysAddr(1 << 16) {
+            entry.length -= (1 << 16) - entry.address.value();
+            entry.address = PhysAddr(1 << 16);
+        } else {
+            entry.length = 0;
         }
     }
-    print!("memory: Initialized memory allocator.\n");
+
+    let highest_addr = memory_map
+        .iter()
+        .map(|x| (x.address.value() + x.length))
+        .max()
+        .unwrap();
+
+    // Find the largest region there is for the bump allocator.
+    let bump_region = memory_map
+        .iter()
+        .max_by(|x, y| x.length.cmp(&y.length))
+        .unwrap();
+
+    bump::BUMP_CURRENT.store(
+        align_up(
+            bump_region.address.value(),
+            arch::memory::get_page_size(VmLevel::L1),
+        ),
+        Ordering::Relaxed,
+    );
+
+    // Now we can start making page allocations!
+    // ------------------------------------
+
+    // Remap the kernel in our own page table.
+    unsafe {
+        log!("Using {}-level paging for page table", paging_level);
+        let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level);
+
+        let text_start = VirtAddr(&raw const LD_TEXT_START as usize);
+        let text_end = VirtAddr(&raw const LD_TEXT_END as usize);
+        let rodata_start = VirtAddr(&raw const LD_RODATA_START as usize);
+        let rodata_end = VirtAddr(&raw const LD_RODATA_END as usize);
+        let data_start = VirtAddr(&raw const LD_DATA_START as usize);
+        let data_end = VirtAddr(&raw const LD_DATA_END as usize);
+        let kernel_start = VirtAddr(&raw const LD_KERNEL_START as usize);
+
+        table
+            .map_range::<BumpAllocator>(
+                text_start,
+                PhysAddr(text_start.0 - kernel_start.0 + kernel_phys.0),
+                VmFlags::Read | VmFlags::Exec,
+                VmLevel::L1,
+                text_end.0 - text_start.0,
+            )
+            .expect("Unable to map the text segment");
+        log!("Mapped text segment at {:#018x}", text_start.0);
+
+        table
+            .map_range::<BumpAllocator>(
+                rodata_start,
+                PhysAddr(rodata_start.0 - kernel_start.0 + kernel_phys.0),
+                VmFlags::Read,
+                VmLevel::L1,
+                rodata_end.0 - rodata_start.0,
+            )
+            .expect("Unable to map the rodata segment");
+        log!("Mapped rodata segment at {:#018x}", rodata_start.0);
+
+        table
+            .map_range::<BumpAllocator>(
+                data_start,
+                PhysAddr(data_start.0 - kernel_start.0 + kernel_phys.0),
+                VmFlags::Read | VmFlags::Write,
+                VmLevel::L1,
+                data_end.0 - data_start.0,
+            )
+            .expect("Unable to map the data segment");
+        log!("Mapped data segment at {:#018x}", data_start.0);
+
+        // Map physical memory.
+        table
+            .map_range::<BumpAllocator>(
+                hhdm_address,
+                PhysAddr::null(),
+                VmFlags::Read | VmFlags::Write,
+                VmLevel::L3,
+                highest_addr,
+            )
+            .expect("Unable to map HHDM region");
+        log!("Mapped HHDM segment at {:#018x}", hhdm_address.0);
+
+        // Activate the new page table.
+        table.set_active();
+
+        // Save the page table.
+        let mut kernel_table = virt::KERNEL_PAGE_TABLE.lock();
+        *kernel_table = table;
+
+        log!("Kernel map is now active");
+    }
+
+    // We record metadata for every single page of available memory in a large array.
+    // This array is contiguous in virtual memory, but is sparsely populated.
+    // Only those array entries which represent usable memory are mapped.
+
+    // The offset where we start mapping the page array.
+    let page_base = align_up(hhdm_address.0 + highest_addr, 0x1000_0000_0000);
+    let page_length = highest_addr / size_of::<Page>();
+    for entry in memory_map.iter() {
+        if entry.length == 0 {
+            continue;
+        }
+
+        let page_size = get_page_size(VmLevel::L1);
+        let length = align_up((entry.length / page_size) * size_of::<Page>(), page_size);
+        let virt = align_down(
+            page_base + (entry.address.0 / page_size * size_of::<Page>()),
+            page_size,
+        );
+
+        let mut kernel_table = KERNEL_PAGE_TABLE.lock();
+        for page in (0..=length).step_by(page_size) {
+            // We can't free any memory at this point, so we have to make sure we need every single one.
+            if kernel_table.is_mapped((virt + page).into(), VmLevel::L1) {
+                continue;
+            }
+
+            kernel_table
+                .map_single::<BumpAllocator>(
+                    (virt + page).into(),
+                    BumpAllocator::alloc(1, AllocFlags::Zeroed).unwrap(),
+                    VmFlags::Read | VmFlags::Write,
+                    VmLevel::L1,
+                )
+                .unwrap();
+        }
+    }
+
+    log!("Initalized page array region at {:#018x}", page_base);
+
+    // Finally, make sure to mark the allocated memory as used before the real allocator looks at the memory map.
+    let allocated_bytes = align_up(
+        bump::BUMP_CURRENT.load(Ordering::Relaxed) - bump_region.address.value(),
+        get_page_size(VmLevel::L1),
+    );
+    {
+        let bump_region = memory_map
+            .iter_mut()
+            .max_by(|x, y| x.length.cmp(&y.length))
+            .unwrap();
+        bump_region.address.0 += allocated_bytes;
+        bump_region.length -= allocated_bytes;
+    }
+
+    // Now we're done using the bump allocator.
+    // ----------------------------------------
+
+    // Initialize the physical memory allocator.
+    pmm::init(&memory_map, (page_base as *mut Page, page_length));
+
+    // Set the MMAP base to right after the page table. Make sure this lands on a new PTE so we can map regular pages.
+    // TODO: Use a virtual memory allocator instead.
+    let pte_size = arch::memory::get_page_size(VmLevel::L3);
+    let offset = align_up(0x1000_0000_0000, pte_size);
+    virt::KERNEL_MMAP_BASE_ADDR.store(page_base + offset, Ordering::Relaxed);
 }

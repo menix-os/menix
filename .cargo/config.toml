@@ -5,4 +5,11 @@ build-std-features = ["compiler-builtins-mem"]
 
 # Using `build` instead of this causes the LSP to panic because it also affects build scripts.
 [target.'cfg(target_os = "none")']
-rustflags = "-C prefer-dynamic=yes"
+rustflags = [
+	"-C",
+	"prefer-dynamic=yes",
+	"-C",
+	"symbol-mangling-version=v0",
+	"-C",
+	"metadata=",
+]

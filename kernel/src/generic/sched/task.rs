@@ -1,8 +1,5 @@
-use crate::{
-    arch::irq::InterruptFrame,
-    generic::memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
-};
-use alloc::{sync::Arc, vec};
+use super::process::{Pid, Process};
+use crate::arch::sched::Context;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Clone, Copy, Debug)]
@@ -17,34 +14,55 @@ pub enum TaskState {
     Dead,
 }
 
+pub type Tid = usize;
+
 /// Represents the atomic scheduling structure.
 #[derive(Debug)]
 pub struct Task {
-    next: Option<Arc<Task>>,
-    /// Unique identifier
-    pub id: usize,
-    /// The saved context of a thread while the thread is not running.
-    pub context: InterruptFrame,
+    /// The unique identifier of this task.
+    pub id: Tid,
+    /// The saved context of a task while it is not running. This field is architecture specific.
+    pub context: Context,
     /// The current state of the thread.
     pub state: TaskState,
+    /// The process which this task belongs to.
+    pub parent: Option<Pid>,
+}
+
+impl Task {
+    pub fn new() -> Self {
+        return Self {
+            id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
+            context: Context::default(),
+            state: TaskState::Ready,
+            parent: None,
+        };
+    }
+
+    /// Creates a new task as a thread for a process.
+    pub fn new_thread(proc: Process) -> Self {
+        return Self {
+            id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
+            context: Context::default(),
+            state: TaskState::Ready,
+            parent: Some(proc.get_pid()),
+        };
+    }
+
+    pub fn with_entry(mut self, entry_point: usize, stack: usize) -> Self {
+        self.context.set_ip(entry_point);
+        self.context.set_stack(stack);
+        return self;
+    }
 }
 
 /// Global counter to provide new task IDs.
 static TASK_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-impl Task {
-    pub fn new() -> Self {
-        return Self {
-            next: None,
-            id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
-            context: InterruptFrame::new(),
-            state: TaskState::Ready,
-        };
-    }
+pub trait Frame {
+    fn set_stack(&mut self, addr: usize);
+    fn get_stack(&self) -> usize;
 
-    pub const fn with_entry(mut self, entry_point: VirtAddr, stack: VirtAddr) -> Self {
-        self.context.set_ip(entry_point);
-        self.context.set_stack(stack);
-        return self;
-    }
+    fn set_ip(&mut self, addr: usize);
+    fn get_ip(&self) -> usize;
 }

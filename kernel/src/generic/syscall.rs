@@ -147,16 +147,13 @@ pub fn invoke(
         numbers::SYSINFO => todo!(),
         numbers::PTRACE => todo!(),
         _ => {
-            print!(
-                "syscall: Unknown syscall {:#x} requested by user program\n",
-                num
-            );
+            log!("Unknown syscall {:#x} requested by user program", num);
             Err(Errno::ENOSYS)
         }
     };
 
     match result {
-        Ok(x) => return (x as usize, 0),
+        Ok(x) => return (x, 0),
         Err(x) => return (0, x as usize),
     }
 }

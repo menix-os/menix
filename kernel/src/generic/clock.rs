@@ -1,5 +1,5 @@
+use super::util::mutex::Mutex;
 use alloc::boxed::Box;
-use spin::mutex::Mutex;
 
 pub trait ClockSource: Send {
     fn name(&self) -> &'static str;
@@ -51,10 +51,7 @@ pub fn switch(mut new_source: Box<dyn ClockSource>) -> Result<(), ClockError> {
         Ok(())
     }?;
 
-    print!(
-        "clock: Switching to clock source \"{}\"\n",
-        new_source.name()
-    );
+    log!("Switching to clock source \"{}\"", new_source.name());
 
     new_source.setup()?;
 
@@ -76,7 +73,7 @@ pub fn has_clock() -> bool {
 pub fn wait_ns(time: usize) -> Result<(), ClockError> {
     if CLOCK.lock().current.is_none() {
         error!(
-            "clock: Unable to sleep for {} nanoseconds. No clock source available, this would block forever!\n",
+            "Unable to sleep for {} nanoseconds. No clock source available, this would block forever!",
             time
         );
         return Err(ClockError::Unavailable);

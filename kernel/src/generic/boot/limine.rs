@@ -1,13 +1,13 @@
 // Boot using the Limine protocol.
 
-use super::{BootFile, BootInfo};
+use super::{BootFile, BootInfo, PhysMemory};
 use crate::generic::{
-    boot::bootcon::{FbColorBits, FrameBuffer},
     cmdline::CmdLine,
-    memory::{PhysAddr, PhysMemory, PhysMemoryUsage, VirtAddr},
+    fbcon::{FbColorBits, FrameBuffer},
+    util::mutex::Mutex,
 };
 use core::ptr::slice_from_raw_parts;
-use limine::{BaseRevision, memory_map::EntryType, request::*};
+use limine::{BaseRevision, memory_map::EntryType, paging::Mode, request::*};
 
 #[used]
 #[unsafe(link_section = ".boot.init")]
@@ -34,6 +34,9 @@ pub static MEMMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
 pub static HHDM_REQUEST: HhdmRequest = HhdmRequest::new();
 
 #[unsafe(link_section = ".boot")]
+pub static PAGING_REQUEST: PagingModeRequest = PagingModeRequest::new();
+
+#[unsafe(link_section = ".boot")]
 pub static KERNEL_ADDR_REQUEST: ExecutableAddressRequest = ExecutableAddressRequest::new();
 
 #[unsafe(link_section = ".boot")]
@@ -51,16 +54,18 @@ pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 #[unsafe(link_section = ".boot")]
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 
-static mut MEMMAP_BUF: [PhysMemory; 128] = [PhysMemory::new(); 128];
+static mut MEMMAP_BUF: [PhysMemory; 128] = [PhysMemory::empty(); 128];
 static mut FILE_BUF: [BootFile; 128] = [BootFile::new(); 128];
 
 #[unsafe(no_mangle)]
 extern "C" fn _start() -> ! {
+    unsafe { crate::early_init() };
+
     let mut info = BootInfo::new();
 
     if let Some(x) = BOOTLOADER_REQUEST.get_response() {
-        print!(
-            "boot: Booting with Limine protocol, loaded by {} {}\n",
+        log!(
+            "Booting with Limine protocol, loaded by {} {}",
             x.name(),
             x.version()
         )
@@ -78,33 +83,55 @@ extern "C" fn _start() -> ! {
         // in the boot process since there is no dynamic memory allocator available yet.
         // 128 entries should be enough for all use cases.
         let entries = MEMMAP_REQUEST.get_response().unwrap().entries();
-        for (i, entry) in entries.iter().enumerate() {
-            unsafe {
+        let mut total_entries = 0;
+        entries
+            .iter()
+            .filter(|x| x.entry_type == EntryType::USABLE)
+            .enumerate()
+            .for_each(|(i, entry)| unsafe {
                 MEMMAP_BUF[i] = PhysMemory {
                     length: entry.length as usize,
-                    usage: match entry.entry_type {
-                        EntryType::USABLE => PhysMemoryUsage::Free,
-                        EntryType::RESERVED => PhysMemoryUsage::Reserved,
-                        EntryType::FRAMEBUFFER => PhysMemoryUsage::Reserved,
-                        EntryType::EXECUTABLE_AND_MODULES => PhysMemoryUsage::Kernel,
-                        _ => PhysMemoryUsage::Unknown,
-                    },
-                    address: PhysAddr(entry.base as usize),
+                    address: entry.base.into(),
                 };
-            }
-        }
+                total_entries += 1;
+            });
 
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();
 
-        info.hhdm_address = Some(VirtAddr(
-            HHDM_REQUEST.get_response().unwrap().offset() as usize
-        ));
-        unsafe {
-            info.memory_map = &MEMMAP_BUF[0..entries.len()];
+        info.hhdm_address = Some(HHDM_REQUEST.get_response().unwrap().offset().into());
+
+        let paging = PAGING_REQUEST.get_response().unwrap().mode();
+        #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
+        {
+            if paging == Mode::FOUR_LEVEL {
+                info.paging_level = Some(4);
+            } else if paging == Mode::FIVE_LEVEL {
+                info.paging_level = Some(5);
+            }
         }
-        info.kernel_phys = PhysAddr(kernel_addr.physical_base() as usize);
-        info.kernel_virt = VirtAddr(kernel_addr.virtual_base() as usize);
+        #[cfg(target_arch = "riscv64")]
+        {
+            if paging == Mode::SV39 {
+                info.paging_level = Some(3);
+            } else if paging == Mode::SV48 {
+                info.paging_level = Some(4);
+            } else if paging == Mode::SV57 {
+                info.paging_level = Some(5);
+            }
+        }
+        #[cfg(target_arch = "loongarch64")]
+        {
+            if paging == Mode::FOUR_LEVEL {
+                info.paging_level = Some(4);
+            }
+        }
+
+        unsafe {
+            info.memory_map = Mutex::new(&mut MEMMAP_BUF[0..total_entries]);
+        }
+        info.kernel_phys = Some(kernel_addr.physical_base().into());
+        info.kernel_virt = Some(kernel_addr.virtual_base().into());
     }
 
     // Convert the command line from bytes to UTF-8 if there is any.
@@ -114,14 +141,15 @@ extern "C" fn _start() -> ! {
     };
 
     // The RSDP is a physical address.
-    info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| PhysAddr(x.address()));
+    info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| (x.address().into()));
 
     // The FDT is a virtual address.
     info.fdt_addr = DTB_REQUEST.get_response().map(|x| {
-        PhysAddr(unsafe {
+        unsafe {
             x.dtb_ptr()
                 .byte_sub(HHDM_REQUEST.get_response().unwrap().offset() as usize)
-        } as usize)
+        }
+        .into()
     });
 
     // Get all modules.
@@ -134,12 +162,6 @@ extern "C" fn _start() -> ! {
                         .unwrap(),
                     // Split off any parts of the path that come before the actual file name.
                     name: entry.path().to_str().unwrap().rsplit_once('/').unwrap().1,
-                    command_line: CmdLine::new(
-                        entry
-                            .string()
-                            .to_str()
-                            .expect("Module command line was not valid UTF-8"),
-                    ),
                 }
             };
         }
@@ -150,8 +172,12 @@ extern "C" fn _start() -> ! {
 
     if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
         if let Some(fb) = response.framebuffers().next() {
+            // We can't call `as_hhdm` yet because it's not been initialized yet.
+            let fb_addr = fb.addr() as usize;
+            let hhdm = (HHDM_REQUEST.get_response().unwrap().offset()) as usize;
+
             info.framebuffer = Some(FrameBuffer {
-                screen: fb.addr(),
+                base: (fb_addr - hhdm).into(),
                 width: fb.width() as usize,
                 height: fb.height() as usize,
                 pitch: fb.pitch() as usize,

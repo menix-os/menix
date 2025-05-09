@@ -1,9 +1,9 @@
-use super::memory::{PhysMemory, VirtAddr};
+use super::{
+    fbcon::FrameBuffer,
+    memory::VirtAddr,
+    util::{mutex::Mutex, once::Once},
+};
 use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
-use bootcon::FrameBuffer;
-use spin::Once;
-
-pub mod bootcon;
 
 // Boot method selection. Limine is the default method.
 #[cfg(all(
@@ -24,14 +24,16 @@ pub struct BootInfo {
     pub command_line: CmdLine<'static>,
     /// Files given to the bootloader.
     pub files: &'static [BootFile],
-    /// Temporary base address for the kernel to access physical memory.
+    /// Base address for the kernel to access physical memory.
     pub hhdm_address: Option<VirtAddr>,
+    /// How many levels the page table has.
+    pub paging_level: Option<usize>,
     /// A list of valid physical memory.
-    pub memory_map: &'static [PhysMemory],
+    pub memory_map: Mutex<&'static mut [PhysMemory]>,
     /// The start of the physical kernel address.
-    pub kernel_phys: PhysAddr,
+    pub kernel_phys: Option<PhysAddr>,
     /// The start of the virtual kernel address.
-    pub kernel_virt: VirtAddr,
+    pub kernel_virt: Option<VirtAddr>,
     /// Base address of the RSDT/XSDT ACPI table.
     pub rsdp_addr: Option<PhysAddr>,
     /// Base address of a flattened device tree in memory.
@@ -48,9 +50,10 @@ impl BootInfo {
             command_line: CmdLine::new(""),
             files: &[],
             hhdm_address: None,
-            memory_map: &[],
-            kernel_phys: PhysAddr(0),
-            kernel_virt: VirtAddr(0),
+            paging_level: None,
+            memory_map: Mutex::new(&mut []),
+            kernel_phys: None,
+            kernel_virt: None,
             rsdp_addr: None,
             fdt_addr: None,
             framebuffer: None,
@@ -58,13 +61,11 @@ impl BootInfo {
     }
 
     pub fn register(self) {
-        BOOT_INFO.call_once(|| self);
+        unsafe { BOOT_INFO.init(self) };
     }
 
     pub fn get() -> &'static Self {
-        return BOOT_INFO
-            .get()
-            .expect("Boot info wasn't set yet! Did you forget to call BootInfo::set()?");
+        return BOOT_INFO.get();
     }
 }
 
@@ -73,7 +74,6 @@ impl BootInfo {
 pub struct BootFile {
     pub data: &'static [u8],
     pub name: &'static str,
-    pub command_line: CmdLine<'static>,
 }
 
 impl BootFile {
@@ -81,7 +81,31 @@ impl BootFile {
         Self {
             data: &[],
             name: "",
-            command_line: CmdLine::new(""),
         }
+    }
+}
+
+/// Describes a region of physical memory.
+#[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
+pub struct PhysMemory {
+    /// Start address of the memory region.
+    pub address: PhysAddr,
+    /// Length of the memory region in bytes.
+    pub length: usize,
+}
+
+impl PhysMemory {
+    pub const fn empty() -> Self {
+        Self {
+            address: PhysAddr::null(),
+            length: 0,
+        }
+    }
+
+    pub const fn new(address: PhysAddr, length: usize) -> Self {
+        if length == 0 {
+            panic!("Can't construct a PhysMemory descriptor with empty size!");
+        }
+        Self { address, length }
     }
 }

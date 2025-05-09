@@ -1,6 +1,3 @@
-use bindgen;
-use cc;
-
 fn main() {
     let mut b = cc::Build::new();
     b.files([
@@ -41,6 +38,7 @@ fn main() {
         .wrap_unsafe_ops(true)
         .derive_default(true)
         .derive_debug(true)
+        .prepend_enum_name(false)
         .header("src/wrapper.h")
         .clang_arg("-Iuacpi/include/")
         .generate()

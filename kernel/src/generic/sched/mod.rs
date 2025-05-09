@@ -1,51 +1,57 @@
-use crate::arch::irq::InterruptFrame;
-use alloc::sync::Arc;
-use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use crate::arch::{self};
+use core::{
+    ptr::null_mut,
+    sync::atomic::{AtomicPtr, Ordering},
+};
 use task::Task;
 
+use super::util::spin::SpinLock;
+
+pub mod process;
 pub mod task;
 
-/// An instance of a scheduler. Each CPU has one instance running to coordinate thead management.
+/// An instance of a scheduler. Each CPU has one instance running to coordinate thread management.
 #[derive(Debug)]
 pub struct Scheduler {
-    /// Determines if this scheduler should be allowed to preempt the currently running task.
-    do_preempt: AtomicBool,
-    /// Amount of ticks the current thread has been running for.
-    ticks_active: AtomicUsize,
-    /// The active task on this scheduler instance.
-    task: Option<Arc<Task>>,
+    /// The currently running task on this scheduler instance.
+    pub(crate) current: AtomicPtr<Task>,
+    pub(crate) lock: SpinLock,
+    ticks_active: usize,
+    preempt_level: usize,
+    preempt_queued: bool,
 }
 
 impl Scheduler {
-    pub const fn new() -> Self {
+    pub const fn uninit() -> Self {
         return Self {
-            do_preempt: AtomicBool::new(false),
-            ticks_active: AtomicUsize::new(0),
-            task: None,
+            current: AtomicPtr::new(null_mut()),
+            lock: SpinLock::new(),
+            ticks_active: 0,
+            preempt_level: 0,
+            preempt_queued: false,
         };
     }
 
-    /// Enables preemption on the current core.
-    pub fn preempt_on(&mut self) {
-        self.do_preempt.store(false, Ordering::Release);
+    /// Forces an immediate reschedule on the calling CPU.
+    pub fn reschedule_now() {
+        arch::sched::reschedule_now();
     }
 
-    /// Disables preemption on the current core.
-    pub fn preempt_off(&mut self) {
-        self.do_preempt.store(true, Ordering::Release);
+    /// Runs the scheduler. `preempt` tells the scheduler if it's supposed to handle preemption or not.
+    /// # Safety
+    /// Do not call this directly! Only the architecture implementation for scheduling calls this function.
+    pub(crate) unsafe fn tick<'a>(&mut self, preempt: bool) {
+        // Disable interrupts.
+
+        // TODO
+        let from = self.current.load(Ordering::Relaxed);
+
+        // Enable interrupts.
+        unsafe { arch::irq::set_irq_state(true) };
     }
 
-    pub fn get_current_task(&self) -> Option<Arc<Task>> {
-        match &self.task {
-            Some(x) => return Some(x.clone()),
-            None => None,
-        }
-    }
-
-    pub fn reschedule<'a>(&mut self, mut context: &'a InterruptFrame) -> &'a InterruptFrame {
-        self.preempt_off();
-        // TODO: Reschedule
-        self.preempt_on();
-        return context;
+    /// Starts executing this scheduler.
+    pub(crate) fn start(&mut self) {
+        unsafe { arch::irq::set_irq_state(true) };
     }
 }

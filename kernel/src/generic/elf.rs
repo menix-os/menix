@@ -1,5 +1,4 @@
-use crate::arch;
-use bytemuck::{AnyBitPattern, Pod, Zeroable};
+use bytemuck::{Pod, Zeroable};
 
 // ELF Header Identification
 pub const ELF_MAG: [u8; 4] = [0x7F, b'E', b'L', b'F'];
@@ -135,6 +134,36 @@ pub const AT_EGID: u32 = 14;
 pub const AT_L4_AUX: u32 = 0xf0;
 pub const AT_L4_ENV: u32 = 0xf1;
 
+pub const R_X86_64_NONE: u32 = 0;
+pub const R_X86_64_64: u32 = 1;
+pub const R_X86_64_COPY: u32 = 5;
+pub const R_X86_64_GLOB_DAT: u32 = 6;
+pub const R_X86_64_JUMP_SLOT: u32 = 7;
+pub const R_X86_64_RELATIVE: u32 = 8;
+
+pub const R_RISCV_NONE: u32 = 0;
+pub const R_RISCV_64: u32 = 2;
+pub const R_RISCV_RELATIVE: u32 = 3;
+pub const R_RISCV_COPY: u32 = 4;
+pub const R_RISCV_JUMP_SLOT: u32 = 5;
+
+cfg_match! {
+    target_arch = "x86_64" => {
+        pub const R_COMMON_NONE: u32 = R_X86_64_NONE;
+        pub const R_COMMON_64: u32 = R_X86_64_64;
+        pub const R_COMMON_GLOB_DAT: u32 = R_X86_64_GLOB_DAT;
+        pub const R_COMMON_JUMP_SLOT: u32 = R_X86_64_JUMP_SLOT;
+        pub const R_COMMON_RELATIVE: u32 = R_X86_64_RELATIVE;
+    }
+    target_arch = "riscv64" => {
+        pub const R_COMMON_NONE: u32 = R_RISCV_NONE;
+        pub const R_COMMON_64: u32 = R_RISCV_64;
+        pub const R_COMMON_GLOB_DAT: u32 = R_RISCV_64;
+        pub const R_COMMON_JUMP_SLOT: u32 = R_RISCV_JUMP_SLOT;
+        pub const R_COMMON_RELATIVE: u32 = R_RISCV_RELATIVE;
+    }
+}
+
 #[cfg(target_pointer_width = "64")]
 pub type ElfAddr = u64;
 #[cfg(target_pointer_width = "64")]
@@ -216,6 +245,31 @@ pub struct ElfDyn {
     pub d_val: u32,
 }
 
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[cfg(target_pointer_width = "64")]
+pub struct ElfRela {
+    pub r_offset: ElfAddr,
+    pub r_info: u64,
+    pub r_addend: i64,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+#[cfg(target_pointer_width = "32")]
+pub struct ElfRela {
+    pub r_offset: ElfAddr,
+    pub r_info: u32,
+    pub r_addend: i32,
+}
+
+#[repr(C)]
+#[derive(Debug, Clone, Copy, Pod, Zeroable)]
+pub struct ElfHashTable {
+    pub nbucket: u32,
+    pub nchain: u32,
+}
+
 /// ELF header
 #[repr(C)]
 #[derive(Debug, Clone, Copy, Pod, Zeroable)]
@@ -250,8 +304,3 @@ pub struct ElfHdr {
     pub e_shstrndx: u16,
 }
 static_assert!(size_of::<ElfHdr>() == 64);
-
-pub struct ElfAuxv {
-    atype: u32,
-    avalue: u32,
-}

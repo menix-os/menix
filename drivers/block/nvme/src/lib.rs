@@ -1,19 +1,16 @@
 #![no_std]
 
-use menix::generic::{
-    bus::pci::{
-        PciError,
-        device::PciDevice,
-        driver::{PciDriver, PciVariant},
-    },
-    cmdline::CmdLine,
+use menix::generic::platform::pci::{
+    PciError,
+    device::PciDevice,
+    driver::{PciDriver, PciVariant},
 };
 
 menix::module!("NVMe block devices", "Marvin Friedrich", main);
 
 static DRIVER: PciDriver = PciDriver {
     name: "nvme",
-    probe: probe,
+    probe,
     remove: None,
     suspend: None,
     sleep: None,
@@ -24,6 +21,6 @@ pub fn probe(_dev: &PciDevice) -> Result<(), PciError> {
     todo!();
 }
 
-pub fn main(_args: CmdLine) {
+pub fn main() {
     _ = DRIVER.register();
 }

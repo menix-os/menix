@@ -1,41 +1,50 @@
-// Helpers for specification compliant structure definitions.
-
-use num_traits::PrimInt;
+//! Helpers for structured MMIO accesses.
 
 use super::{
     PhysAddr, VirtAddr,
-    virt::{self, VmFlags},
+    pmm::FreeList,
+    virt::{self, VmFlags, VmLevel},
 };
-use core::{marker::PhantomData, ops::RangeInclusive};
+use core::marker::PhantomData;
+use num_traits::PrimInt;
 
 /// Represents a region of memory mapped IO.
 pub struct Mmio {
-    phys: PhysAddr,
-    base: *mut u8,
+    /// A pointer to the start of this region in virtual memory.
+    base: *mut (),
+    /// The length of this region in bytes.
     len: usize,
+    /// Whether we made any virtual allocations we have to clean up.
+    // TODO: Maybe a VMM can detect that?
+    needs_unmap: bool,
 }
 
 unsafe impl Send for Mmio {}
 unsafe impl Sync for Mmio {}
 
-impl Drop for Mmio {
-    fn drop(&mut self) {
-        virt::KERNEL_PAGE_TABLE
-            .write()
-            .unmap_range(VirtAddr(self.base as usize), self.len);
-    }
-}
-
 impl Mmio {
-    pub fn new(phys: PhysAddr, len: usize) -> Self {
+    /// Creates a new MMIO context over device memory.
+    /// # Safety
+    /// `phys` must be pointing to the start of the device memory region.
+    pub unsafe fn new_mmio(phys: PhysAddr, len: usize) -> Self {
         return Self {
-            phys,
-            base: virt::KERNEL_PAGE_TABLE.write().map_memory(
-                phys,
-                VmFlags::Read | VmFlags::Write,
-                0,
-                len,
-            ),
+            // TODO: When adding memory type support, map this as uncacheable.
+            base: virt::KERNEL_PAGE_TABLE
+                .lock()
+                .map_memory::<FreeList>(phys, VmFlags::Read | VmFlags::Write, VmLevel::L1, len)
+                .unwrap() as *mut (),
+            needs_unmap: true,
+            len,
+        };
+    }
+
+    /// Creates a new MMIO context over allocated memory.
+    /// # Safety
+    /// `addr` must be a valid address within the kernel page table.
+    pub unsafe fn new_memory(addr: *mut (), len: usize) -> Self {
+        return Self {
+            base: addr,
+            needs_unmap: false,
             len,
         };
     }
@@ -46,8 +55,7 @@ impl Mmio {
     }
 
     /// Reads data from a single field.
-    pub unsafe fn read_field<T: PrimInt>(&self, field: &MemoryField<T>) -> T {
-        let result = T::zero();
+    pub fn read<T: PrimInt>(&self, field: &MmioField<T>) -> T {
         let value = unsafe { (self.base as *mut T).byte_add(field.offset).read_volatile() };
         return match field.native_endian {
             true => value,
@@ -56,7 +64,7 @@ impl Mmio {
     }
 
     /// Writes data to a single field.
-    pub unsafe fn write_field<T: PrimInt>(&mut self, field: &MemoryField<T>, value: T) {
+    pub fn write<T: PrimInt>(&mut self, field: &MmioField<T>, value: T) {
         unsafe {
             (self.base as *mut T).byte_add(field.offset).write_volatile(
                 match field.native_endian {
@@ -67,8 +75,24 @@ impl Mmio {
         }
     }
 
+    /// Reads multiple elements into a buffer.
+    pub fn read_array<T: PrimInt>(&self, vector: &MmioArray<T>, offset: usize, dest: &mut [T]) {
+        assert!(dest.len() == vector.count);
+        for (idx, elem) in dest.iter_mut().enumerate() {
+            *elem = self.read_at(vector, offset + idx);
+        }
+    }
+
+    /// Writes multiple array elements from a buffer.
+    pub fn write_array<T: PrimInt>(&mut self, vector: &MmioArray<T>, offset: usize, value: &[T]) {
+        assert!(value.len() == vector.count);
+        for (idx, elem) in value.iter().enumerate() {
+            self.write_at(vector, offset + idx, *elem);
+        }
+    }
+
     /// Reads a single element from a vector.
-    pub unsafe fn vector_read_elem<T: PrimInt>(&self, vector: &MemoryVector<T>, index: usize) -> T {
+    pub fn read_at<T: PrimInt>(&self, vector: &MmioArray<T>, index: usize) -> T {
         assert!(index < vector.count);
         let value = unsafe {
             (self.base as *const T)
@@ -82,12 +106,7 @@ impl Mmio {
     }
 
     /// Writes a single element to a vector.
-    pub unsafe fn vector_write_elem<T: PrimInt>(
-        &mut self,
-        vector: &MemoryVector<T>,
-        index: usize,
-        value: T,
-    ) {
+    pub fn write_at<T: PrimInt>(&mut self, vector: &MmioArray<T>, index: usize, value: T) {
         assert!(index < vector.count);
         unsafe {
             (self.base as *mut T)
@@ -98,131 +117,52 @@ impl Mmio {
                 });
         }
     }
+}
 
-    /// Reads multiple vector elements into a buffer.
-    pub unsafe fn vector_read<T: PrimInt>(
-        &self,
-        vector: &MemoryVector<T>,
-        offset: usize,
-        dest: &mut [T],
-    ) {
-        for (idx, elem) in dest.iter_mut().enumerate() {
-            *elem = unsafe { self.vector_read_elem(vector, offset + idx) };
-        }
-    }
-
-    pub fn vector_write<T: PrimInt>(
-        &mut self,
-        vector: &MemoryVector<T>,
-        offset: usize,
-        value: &[T],
-    ) {
-        for (idx, elem) in value.iter().enumerate() {
-            unsafe { self.vector_write_elem(vector, offset + idx, *elem) };
+impl Drop for Mmio {
+    fn drop(&mut self) {
+        if self.needs_unmap {
+            virt::KERNEL_PAGE_TABLE
+                .lock()
+                .unmap_range(VirtAddr(self.base as usize), self.len)
+                .unwrap();
         }
     }
 }
 
 /// Single member of a structure.
 #[derive(Debug)]
-pub struct MemoryField<T: PrimInt> {
+pub struct MmioField<T: PrimInt> {
     _p: PhantomData<T>,
     offset: usize,
-    len: usize,
     native_endian: bool,
 }
 
-impl<T: PrimInt> MemoryField<T> {
+impl<T: PrimInt> MmioField<T> {
     /// Creates a new field with native endianness.
     /// `offset` is in units of bytes.
-    pub const fn new_ne(offset: usize) -> Self {
+    pub const fn new(offset: usize) -> Self {
         Self {
             _p: PhantomData,
             offset,
-            len: size_of::<T>(),
             native_endian: true,
         }
     }
 
-    /// Creates a new field with little endianness.
-    /// `offset` is in units of bytes.
-    pub const fn new_le(offset: usize) -> Self {
-        Self {
-            _p: PhantomData,
-            offset,
-            len: size_of::<T>(),
-            native_endian: is_little_endian(),
-        }
+    /// Marks this field as little endian.
+    pub const fn with_le(mut self) -> Self {
+        self.native_endian = is_little_endian();
+        self
     }
 
-    /// Creates a new field with big endianness.
-    /// `offset` is in units of bytes.
-    pub const fn new_be(offset: usize) -> Self {
-        Self {
-            _p: PhantomData,
-            offset,
-            len: size_of::<T>(),
-            native_endian: !is_little_endian(),
-        }
-    }
-
-    /// Creates a new field with native endianness.
-    /// `offset` and `len` are in units of bytes.
-    pub const fn new_ne_with_len(offset: usize, len: usize) -> Self {
-        Self {
-            _p: PhantomData,
-            offset,
-            len,
-            native_endian: true,
-        }
-    }
-
-    /// Creates a new field with little endianness.
-    /// `offset` and `len` are in units of bytes.
-    pub const fn new_le_with_len(offset: usize, len: usize) -> Self {
-        Self {
-            _p: PhantomData,
-            offset,
-            len,
-            native_endian: is_little_endian(),
-        }
-    }
-
-    /// Creates a new field with big endianness.
-    /// `offset` and `len` are in units of bytes.
-    pub const fn new_be_with_len(offset: usize, len: usize) -> Self {
-        Self {
-            _p: PhantomData,
-            offset,
-            len,
-            native_endian: !is_little_endian(),
-        }
+    /// Marks this field as little endian.
+    pub const fn with_be(mut self) -> Self {
+        self.native_endian = !is_little_endian();
+        self
     }
 }
 
-/// A bit field.
-pub struct MemoryBitField {
-    start: usize,
-    len: usize,
-}
-
-impl MemoryBitField {
-    /// Creates a new bit field starting at bit `start`, with a length of `len` bits.
-    pub const fn new(start: usize, len: usize) -> Self {
-        Self { start, len }
-    }
-
-    /// Creates a new bit field starting at bit `start` and ending at bit `end`.
-    /// `end` is inclusive.
-    pub const fn new_range(range: RangeInclusive<usize>) -> Self {
-        Self {
-            start: *range.start(),
-            len: *range.end() - *range.start() + 1,
-        }
-    }
-}
-
-pub struct MemoryVector<T> {
+pub struct MmioArray<T> {
     _p: PhantomData<T>,
     offset: usize,
     stride: usize,
@@ -230,8 +170,8 @@ pub struct MemoryVector<T> {
     native_endian: bool,
 }
 
-impl<T> MemoryVector<T> {
-    pub const fn new_ne(offset: usize, count: usize) -> Self {
+impl<T> MmioArray<T> {
+    pub const fn new(offset: usize, count: usize) -> Self {
         Self {
             _p: PhantomData,
             offset,
@@ -239,6 +179,18 @@ impl<T> MemoryVector<T> {
             count,
             native_endian: true,
         }
+    }
+
+    /// Marks this array as little endian.
+    pub const fn with_le(mut self) -> Self {
+        self.native_endian = is_little_endian();
+        self
+    }
+
+    /// Marks this array as little endian.
+    pub const fn with_be(mut self) -> Self {
+        self.native_endian = !is_little_endian();
+        self
     }
 
     pub const fn new_ne_with_stride(offset: usize, count: usize, stride: usize) -> Self {
