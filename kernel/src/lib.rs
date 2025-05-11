@@ -26,11 +26,9 @@ unsafe extern "C" {
     unsafe static LD_INIT_ARRAY_END: u8;
 }
 
-/// Runs early init functions. This has to be called as the very first thing after `_start`!
-/// # Safety
-/// Not calling this function will lead to undefined behavior!
-#[forbid(dead_code)]
-pub(crate) unsafe fn early_init() {
+/// The high-level kernel entry point. This is invoked by the prekernel environment.
+#[unsafe(no_mangle)]
+pub(crate) fn main() -> ! {
     arch::core::setup_bsp();
 
     // Run early init calls. These don't need memory allocations.
@@ -42,23 +40,7 @@ pub(crate) unsafe fn early_init() {
             early_array = early_array.add(1);
         }
     }
-}
 
-#[forbid(dead_code)]
-pub(crate) fn init() {
-    unsafe {
-        let mut init_array = &raw const LD_INIT_ARRAY_START as *const fn();
-        let init_end = &raw const LD_INIT_ARRAY_END as *const fn();
-        while init_array < init_end {
-            (*init_array)();
-            init_array = init_array.add(1);
-        }
-    }
-}
-
-/// The high-level kernel entry point. This is invoked by the prekernel environment.
-#[unsafe(no_mangle)]
-pub(crate) fn main() -> ! {
     // Say hello to the console.
     // TODO: Get this information from posix/utsname instead.
     log!(
@@ -79,7 +61,14 @@ pub(crate) fn main() -> ! {
     arch::core::perpare_cpu(generic::percpu::CpuData::get());
 
     // Run init calls.
-    init();
+    unsafe {
+        let mut init_array = &raw const LD_INIT_ARRAY_START as *const fn();
+        let init_end = &raw const LD_INIT_ARRAY_END as *const fn();
+        while init_array < init_end {
+            (*init_array)();
+            init_array = init_array.add(1);
+        }
+    }
 
     // Load all modules and run their init function.
     generic::module::init();

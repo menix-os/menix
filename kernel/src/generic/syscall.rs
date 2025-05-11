@@ -1,162 +1,6 @@
-use super::posix::errno::{EResult, Errno};
+#![allow(unused)]
 
-/// Executes the syscall as identified by `num`.
-pub fn invoke(
-    num: usize,
-    _a0: usize,
-    _a1: usize,
-    _a2: usize,
-    _a3: usize,
-    _a4: usize,
-    _a5: usize,
-) -> (usize, usize) {
-    let result: EResult<usize> = match num {
-        numbers::EXIT => todo!(),
-        numbers::SYSLOG => todo!(),
-        numbers::UNAME => todo!(),
-        numbers::ARCHCTL => todo!(),
-        numbers::REBOOT => todo!(),
-        numbers::MMAP => todo!(),
-        numbers::MUNMAP => todo!(),
-        numbers::MPROTECT => todo!(),
-        numbers::MADVISE => todo!(),
-        numbers::SIGPROCMASK => todo!(),
-        numbers::SIGSUSPEND => todo!(),
-        numbers::SIGPENDING => todo!(),
-        numbers::SIGACTION => todo!(),
-        numbers::SIGTIMEDWAIT => todo!(),
-        numbers::SIGALTSTACK => todo!(),
-        numbers::EXECVE => todo!(),
-        numbers::FORK => todo!(),
-        numbers::KILL => todo!(),
-        numbers::GETTID => todo!(),
-        numbers::GETPID => todo!(),
-        numbers::GETPPID => todo!(),
-        numbers::WAITID => todo!(),
-        numbers::WAITPID => todo!(),
-        numbers::READ => todo!(),
-        numbers::PREAD => todo!(),
-        numbers::WRITE => todo!(),
-        numbers::PWRITE => todo!(),
-        numbers::SEEK => todo!(),
-        numbers::IOCTL => todo!(),
-        numbers::OPENAT => todo!(),
-        numbers::CLOSE => todo!(),
-        numbers::STAT => todo!(),
-        numbers::FSTAT => todo!(),
-        numbers::STATVFS => todo!(),
-        numbers::FSTATVFS => todo!(),
-        numbers::FACCESSAT => todo!(),
-        numbers::FCNTL => todo!(),
-        numbers::FTRUNCATE => todo!(),
-        numbers::FALLOCATE => todo!(),
-        numbers::UTIMENSAT => todo!(),
-        numbers::PSELECT => todo!(),
-        numbers::MKNODAT => todo!(),
-        numbers::READDIR => todo!(),
-        numbers::GETCWD => todo!(),
-        numbers::CHDIR => todo!(),
-        numbers::FCHDIR => todo!(),
-        numbers::MKDIRAT => todo!(),
-        numbers::RMDIRAT => todo!(),
-        numbers::GETDENTS => todo!(),
-        numbers::RENAMEAT => todo!(),
-        numbers::FCHMOD => todo!(),
-        numbers::FCHMODAT => todo!(),
-        numbers::FCHOWNAT => todo!(),
-        numbers::LINKAT => todo!(),
-        numbers::SYMLINKAT => todo!(),
-        numbers::UNLINKAT => todo!(),
-        numbers::READLINKAT => todo!(),
-        numbers::FLOCK => todo!(),
-        numbers::POLL => todo!(),
-        numbers::DUP => todo!(),
-        numbers::DUP3 => todo!(),
-        numbers::SYNC => todo!(),
-        numbers::FSYNC => todo!(),
-        numbers::FDATASYNC => todo!(),
-        numbers::GETGROUPS => todo!(),
-        numbers::SETGROUPS => todo!(),
-        numbers::GETSID => todo!(),
-        numbers::SETSID => todo!(),
-        numbers::SETUID => todo!(),
-        numbers::GETUID => todo!(),
-        numbers::SETGID => todo!(),
-        numbers::GETGID => todo!(),
-        numbers::GETEUID => todo!(),
-        numbers::SETEUID => todo!(),
-        numbers::GETEGID => todo!(),
-        numbers::SETEGID => todo!(),
-        numbers::GETPGID => todo!(),
-        numbers::SETPGID => todo!(),
-        numbers::GETRESUID => todo!(),
-        numbers::SETRESUID => todo!(),
-        numbers::GETRESGID => todo!(),
-        numbers::SETRESGID => todo!(),
-        numbers::SETREUID => todo!(),
-        numbers::SETREGID => todo!(),
-        numbers::UMASK => todo!(),
-        numbers::PIPE => todo!(),
-        numbers::FUTEX_WAIT => todo!(),
-        numbers::FUTEX_WAKE => todo!(),
-        numbers::THREAD_CREATE => todo!(),
-        numbers::THREAD_KILL => todo!(),
-        numbers::THREAD_EXIT => todo!(),
-        numbers::THREAD_SETNAME => todo!(),
-        numbers::THREAD_GETNAME => todo!(),
-        numbers::TIMER_CREATE => todo!(),
-        numbers::TIMER_SET => todo!(),
-        numbers::TIMER_DELETE => todo!(),
-        numbers::ITIMER_GET => todo!(),
-        numbers::ITIMER_SET => todo!(),
-        numbers::CLOCK_GET => todo!(),
-        numbers::CLOCK_GETRES => todo!(),
-        numbers::SLEEP => todo!(),
-        numbers::YIELD => todo!(),
-        numbers::CHROOT => todo!(),
-        numbers::MOUNT => todo!(),
-        numbers::UMOUNT => todo!(),
-        numbers::SWAPON => todo!(),
-        numbers::SWAPOFF => todo!(),
-        numbers::SOCKET => todo!(),
-        numbers::SOCKETPAIR => todo!(),
-        numbers::SHUTDOWN => todo!(),
-        numbers::BIND => todo!(),
-        numbers::CONNECT => todo!(),
-        numbers::ACCEPT => todo!(),
-        numbers::LISTEN => todo!(),
-        numbers::GETPEERNAME => todo!(),
-        numbers::GETSOCKNAME => todo!(),
-        numbers::GETSOCKOPT => todo!(),
-        numbers::SETSOCKOPT => todo!(),
-        numbers::SENDMSG => todo!(),
-        numbers::SENDTO => todo!(),
-        numbers::RECVMSG => todo!(),
-        numbers::RECVFROM => todo!(),
-        numbers::GETHOSTNAME => todo!(),
-        numbers::SETHOSTNAME => todo!(),
-        numbers::GETENTROPY => todo!(),
-        numbers::GETRUSAGE => todo!(),
-        numbers::GETRLIMIT => todo!(),
-        numbers::SETRLIMIT => todo!(),
-        numbers::GETPRIORITY => todo!(),
-        numbers::SETPRIORITY => todo!(),
-        numbers::SCHED_GETPARAM => todo!(),
-        numbers::SCHED_SETPARAM => todo!(),
-        numbers::GETCPU => todo!(),
-        numbers::SYSINFO => todo!(),
-        numbers::PTRACE => todo!(),
-        _ => {
-            log!("Unknown syscall {:#x} requested by user program", num);
-            Err(Errno::ENOSYS)
-        }
-    };
-
-    match result {
-        Ok(x) => return (x, 0),
-        Err(x) => return (0, x as usize),
-    }
-}
+use super::errno::{EResult, Errno};
 
 mod numbers {
     pub const EXIT: usize = 0;
@@ -294,4 +138,29 @@ mod numbers {
     pub const GETCPU: usize = 132;
     pub const SYSINFO: usize = 133;
     pub const PTRACE: usize = 134;
+}
+
+/// Executes the syscall as identified by `num`.
+/// Returns a tuple of (value, error) to the user. An error code of 0 inidcates success.
+/// If the error code is not 0, `value` is not valid and indicates failure.
+pub fn invoke(
+    num: usize,
+    a0: usize,
+    a1: usize,
+    a2: usize,
+    a3: usize,
+    a4: usize,
+    a5: usize,
+) -> (usize, usize) {
+    let result: EResult<usize> = match num {
+        _ => {
+            log!("Unknown syscall {:#x} requested by user program", num);
+            Err(Errno::ENOSYS)
+        }
+    };
+
+    match result {
+        Ok(x) => return (x, 0),
+        Err(x) => return (0, x as usize),
+    }
 }

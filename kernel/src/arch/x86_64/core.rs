@@ -3,10 +3,12 @@ use crate::{
         ARCH_DATA, consts, irq,
         platform::{
             apic::{self, LocalApic},
-            gdt, idt, tsc,
+            gdt, idt,
+            tsc::{self, TscClock},
         },
     },
     generic::{
+        boot::BootInfo,
         clock,
         percpu::{CpuData, LD_PERCPU_START},
     },
@@ -54,6 +56,9 @@ pub fn get_per_cpu() -> *mut crate::generic::percpu::CpuData {
 }
 
 pub fn perpare_cpu(context: &mut CpuData) {
+    let mut cr0: usize;
+    let mut cr4: usize;
+
     let cpu = ARCH_DATA.get(context);
 
     // Load a GDT and TSS.
@@ -77,13 +82,10 @@ pub fn perpare_cpu(context: &mut CpuData) {
         super::asm::wrmsr(consts::MSR_LSTAR, irq::amd64_syscall_stub as u64);
         // Set the flag mask to everything except the second bit (always has to be enabled).
         super::asm::wrmsr(consts::MSR_SFMASK, (!2u32) as u64);
-    }
 
-    // Now, start manipulating the control registers.
-    let mut cr0: usize;
-    unsafe { asm!("mov {cr0}, cr0", cr0 = out(reg) cr0) };
-    let mut cr4: usize;
-    unsafe { asm!("mov {cr4}, cr4", cr4 = out(reg) cr4) };
+        asm!("mov {cr0}, cr0", cr0 = out(reg) cr0);
+        asm!("mov {cr4}, cr4", cr4 = out(reg) cr4);
+    }
 
     // Collect all relevant CPUIDs.
     let (cpuid1, cpuid7, cpuid13, cpuid8000_0007) = (
@@ -120,7 +122,7 @@ pub fn perpare_cpu(context: &mut CpuData) {
         unsafe { super::asm::wrxcr(0, xcr0) };
 
         // Change callbacks from FXSAVE to XSAVE.
-        cpu.fpu_size = cpuid13.ecx as usize;
+        cpu.fpu_size = cpuid13.ecx as usize; // ECX contains the size of the FPU block to save.
         cpu.fpu_save = super::asm::xsave;
         cpu.fpu_restore = super::asm::xrstor;
     }
@@ -142,12 +144,14 @@ pub fn perpare_cpu(context: &mut CpuData) {
     if cpuid1.edx & consts::CPUID_1D_TSC != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
         // TODO: This will break when called more than once.
         // TODO: Make sure to only switch if it's not already the current source.
-        match clock::switch(Box::new(tsc::TscClock)) {
-            Ok(_) => {
-                cr4 |= consts::CR4_TSD;
-            }
-            Err(e) => {
-                warn!("Not setting up the TSC: {:?}", e)
+        if tsc::init().is_ok() {
+            cr4 |= consts::CR4_TSD;
+            if BootInfo::get()
+                .command_line
+                .get_bool("tsc")
+                .unwrap_or(false)
+            {
+                _ = clock::switch(Box::new(TscClock));
             }
         }
     }
@@ -158,12 +162,12 @@ pub fn perpare_cpu(context: &mut CpuData) {
     );
     cr4 |= consts::CR4_FSGSBASE;
 
-    // Write back the modified control register values.
-    unsafe { asm!("mov cr0, {cr0}", cr0 = in(reg) cr0) };
-    unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
-
-    // Set FSGSBASE contents.
     unsafe {
+        // Write back the modified control register values.
+        asm!("mov cr0, {cr0}", cr0 = in(reg) cr0);
+        asm!("mov cr4, {cr4}", cr4 = in(reg) cr4);
+
+        // Set FSGSBASE contents.
         // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
         super::asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
         // We will save a reference to this struct in GS_BASE.

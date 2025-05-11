@@ -1,4 +1,4 @@
-// Boot using the Limine protocol.
+//! Boot using the Limine protocol.
 
 use super::{BootFile, BootInfo, PhysMemory};
 use crate::generic::{
@@ -59,8 +59,6 @@ static mut FILE_BUF: [BootFile; 128] = [BootFile::new(); 128];
 
 #[unsafe(no_mangle)]
 extern "C" fn _start() -> ! {
-    unsafe { crate::early_init() };
-
     let mut info = BootInfo::new();
 
     if let Some(x) = BOOTLOADER_REQUEST.get_response() {

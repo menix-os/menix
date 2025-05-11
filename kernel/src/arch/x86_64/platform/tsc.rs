@@ -24,49 +24,50 @@ impl ClockSource for TscClock {
         return 255;
     }
 
+    // TODO: This wraps after like 5 seconds. Fix this, then renable tsc as default.
     fn get_elapsed_ns(&self) -> usize {
         return (asm::rdtsc() * 1_000_000_000 / TSC_FREQUENCY.load(Ordering::Relaxed)
             - TSC_BASE.load(Ordering::Relaxed)) as usize;
     }
+}
 
-    fn setup(&mut self) -> Result<(), ClockError> {
-        // Check if we have the TSC info leaf.
-        let cpuid = match asm::cpuid(0x8000_0000, 0).eax >= 0x15 {
-            true => Some(asm::cpuid(0x15, 0)),
-            false => None,
-        };
+pub(crate) fn init() -> Result<(), ClockError> {
+    // Check if we have the TSC info leaf.
+    let cpuid = match asm::cpuid(0x8000_0000, 0).eax >= 0x15 {
+        true => Some(asm::cpuid(0x15, 0)),
+        false => None,
+    };
 
-        // First, always try using another known good clock to calibrate.
-        let freq = if clock::has_clock() {
-            log!("Calibrating using exisiting clock");
+    // First, always try using another known good clock to calibrate.
+    let freq = if clock::has_clock() {
+        log!("Calibrating using exisiting clock");
 
-            // Wait for 100ms.
-            let t1 = asm::rdtsc();
-            clock::wait_ns(100_000_000)?;
-            let t2 = asm::rdtsc();
+        // Wait for 100ms.
+        let t1 = asm::rdtsc();
+        clock::wait_ns(100_000_000)?;
+        let t2 = asm::rdtsc();
 
-            // We want the frequency in Hz.
-            // TODO: This might be imprecise.
-            (t2 - t1) * 10
-        } else if let Some(c) = cpuid {
-            // If we have no timer (yet), the only way we can calibrate the TSC is if CPUID gives us the frequency.
-            // On a normal system, this should usually never be called and is a last resort
-            // since at this point we have at least the HPET timer.
-            log!("Calibrating using CPUID 0x15");
-            if c.ecx != 0 && c.ebx != 0 && c.eax != 0 {
-                c.ecx as u64 * c.ebx as u64 / c.eax as u64
-            } else {
-                return Err(ClockError::InvalidConfiguration);
-            }
+        // We want the frequency in Hz.
+        // TODO: This might be imprecise.
+        (t2 - t1) * 10
+    } else if let Some(c) = cpuid {
+        // If we have no timer (yet), the only way we can calibrate the TSC is if CPUID gives us the frequency.
+        // On a normal system, this should usually never be called and is a last resort
+        // since at this point we have at least the HPET timer.
+        log!("Calibrating using CPUID 0x15");
+        if c.ecx != 0 && c.ebx != 0 && c.eax != 0 {
+            c.ecx as u64 * c.ebx as u64 / c.eax as u64
+        } else {
+            return Err(ClockError::InvalidConfiguration);
         }
-        // We tried.
-        else {
-            return Err(ClockError::UnableToSetup);
-        };
-
-        log!("Timer frequency is {} MHz ({} Hz)", freq / 1_000_000, freq);
-        TSC_FREQUENCY.store(freq, Ordering::Relaxed);
-
-        return Ok(());
     }
+    // We tried.
+    else {
+        return Err(ClockError::UnableToSetup);
+    };
+
+    log!("Timer frequency is {} MHz ({} Hz)", freq / 1_000_000, freq);
+    TSC_FREQUENCY.store(freq, Ordering::Relaxed);
+
+    return Ok(());
 }

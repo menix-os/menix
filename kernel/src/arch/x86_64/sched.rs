@@ -1,36 +1,19 @@
-use super::irq::TrapFrame;
-use crate::generic::{
-    memory::VirtAddr,
-    percpu::CpuData,
-    sched::task::{Frame, Task},
-};
+use crate::generic::{memory::VirtAddr, percpu::CpuData, sched::task::Task};
 use core::{arch::asm, mem::offset_of};
 
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
 pub struct Context {
-    pub frame: TrapFrame,
+    pub rbx: u64,
+    pub rbp: u64,
+    pub r12: u64,
+    pub r13: u64,
+    pub r14: u64,
+    pub r15: u64,
+    pub rip: u64,
     pub fsbase: u64,
     pub gsbase: u64,
     pub saved_fpu: VirtAddr,
-}
-
-impl Frame for Context {
-    fn set_stack(&mut self, addr: usize) {
-        self.frame.rsp = addr as u64;
-    }
-
-    fn get_stack(&self) -> usize {
-        self.frame.rsp as usize
-    }
-
-    fn set_ip(&mut self, addr: usize) {
-        self.frame.rip = addr as u64;
-    }
-
-    fn get_ip(&self) -> usize {
-        self.frame.rip as usize
-    }
 }
 
 pub fn get_task() -> *mut Task {
@@ -44,10 +27,6 @@ pub fn get_task() -> *mut Task {
         );
         return task;
     }
-}
-
-pub fn reschedule_now() {
-    todo!();
 }
 
 pub fn switch(from: *mut Task, to: *mut Task) {

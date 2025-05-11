@@ -1,8 +1,4 @@
-use bump::BumpAllocator;
-use pmm::{AllocFlags, Page, PageAllocator};
-use slab::ALLOCATOR;
-use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
-
+use super::util::once::Once;
 use crate::{
     arch::{self, memory::get_page_size},
     generic::{
@@ -10,14 +6,16 @@ use crate::{
         util::{align_down, align_up},
     },
 };
+use bump::BumpAllocator;
 use core::{
     alloc::{GlobalAlloc, Layout},
     ops::{Add, Sub},
     ptr::{self, NonNull},
     sync::atomic::Ordering,
 };
-
-use super::util::once::Once;
+use pmm::{AllocFlags, Page, PageAllocator};
+use slab::ALLOCATOR;
+use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
 
 // We don't want to use the bump allocator anywhere after initial setup.
 mod bump;

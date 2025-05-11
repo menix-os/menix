@@ -1,3 +1,6 @@
+//! Global timer management.
+// TODO: Try to get rid of some locks.
+
 use super::util::mutex::Mutex;
 use alloc::boxed::Box;
 
@@ -12,8 +15,6 @@ pub trait ClockSource: Send {
 
     /// Gets the elapsed nanoseconds since initialization of this timer.
     fn get_elapsed_ns(&self) -> usize;
-
-    fn setup(&mut self) -> Result<(), ClockError>;
 }
 
 #[derive(Debug, PartialEq)]
@@ -52,8 +53,6 @@ pub fn switch(mut new_source: Box<dyn ClockSource>) -> Result<(), ClockError> {
     }?;
 
     log!("Switching to clock source \"{}\"", new_source.name());
-
-    new_source.setup()?;
 
     // Save the current counter.
     let elapsed = get_elapsed();

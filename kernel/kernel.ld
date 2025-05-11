@@ -15,46 +15,36 @@ SECTIONS
     . = 0xffffffff80000000;
     LD_KERNEL_START = .;
 
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
     /* Code */
-    .text ALIGN(CONSTANT(MAXPAGESIZE)) : {
+    .text : {
         LD_TEXT_START = .;
         KEEP(*(.boot.init))
         KEEP(*(.boot))
         KEEP(*(.boot.fini))
         *(.init)
-        *(.text)
-        *(.text.*)
+        *(.text .text.*)
         *(.fini)
-        *(.plt)
-        *(.plt.*)
-    } :text
-
-    .dynsym : {
-        LD_DYNSYM_START = .;
-        *(.dynsym)
-        LD_DYNSYM_END = .;
-    } :text
-
-    .dynstr : {
-        LD_DYNSTR_START = .;
-        *(.dynstr)
-        LD_DYNSTR_END = .;
+        *(.plt .plt.*)
     } :text
 
     LD_TEXT_END = .;
 
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
     /* Read-only data */
-    .rodata ALIGN(CONSTANT(MAXPAGESIZE)) : {
+    .rodata : {
         LD_RODATA_START = .;
-        *(.rodata)
-        *(.rodata.*)
-        *(.got)
-        *(.got.*)
+        *(.rodata .rodata.*)
+        *(.got .got.*)
         LD_RODATA_END = .;
     } :rodata
 
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
     /* Read-Write data */
-    .data ALIGN(CONSTANT(MAXPAGESIZE)) : {
+    .data : {
         LD_DATA_START = .;
 
         LD_EARLY_ARRAY_START = .;
@@ -65,8 +55,21 @@ SECTIONS
         *(.init_array)
         LD_INIT_ARRAY_END = .;
 
-        *(.data)
-        *(.data.*)
+        *(.data .data.*)
+    } :data
+
+    /* Dynamic symbols */
+    .dynsym : {
+        LD_DYNSYM_START = .;
+        *(.dynsym)
+        LD_DYNSYM_END = .;
+    } :data
+
+    /* Dynamic symbol names */
+    .dynstr : {
+        LD_DYNSTR_START = .;
+        *(.dynstr)
+        LD_DYNSTR_END = .;
     } :data
 
     /* Dynamic tags */
@@ -76,8 +79,7 @@ SECTIONS
 
     /* Zero-initialized memory */
     .bss ALIGN(CONSTANT(MAXPAGESIZE)) : {
-        *(.*bss)
-        *(.*bss.*)
+        *(.*bss .*bss.*)
         *(COMMON)
     } :data
 

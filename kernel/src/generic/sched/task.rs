@@ -25,14 +25,14 @@ pub struct Task {
     pub context: Context,
     /// The current state of the thread.
     pub state: TaskState,
-    /// The process which this task belongs to.
+    /// The process which this task belongs to. A value of [`None`] indicates a kernel task.
     pub parent: Option<Pid>,
 }
 
 impl Task {
     pub fn new() -> Self {
         return Self {
-            id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
+            id: TASK_ID_COUNTER.fetch_add(1, Ordering::Acquire),
             context: Context::default(),
             state: TaskState::Ready,
             parent: None,
@@ -42,27 +42,13 @@ impl Task {
     /// Creates a new task as a thread for a process.
     pub fn new_thread(proc: Process) -> Self {
         return Self {
-            id: TASK_ID_COUNTER.fetch_add(1, Ordering::Relaxed),
+            id: TASK_ID_COUNTER.fetch_add(1, Ordering::Acquire),
             context: Context::default(),
             state: TaskState::Ready,
             parent: Some(proc.get_pid()),
         };
     }
-
-    pub fn with_entry(mut self, entry_point: usize, stack: usize) -> Self {
-        self.context.set_ip(entry_point);
-        self.context.set_stack(stack);
-        return self;
-    }
 }
 
 /// Global counter to provide new task IDs.
 static TASK_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-pub trait Frame {
-    fn set_stack(&mut self, addr: usize);
-    fn get_stack(&self) -> usize;
-
-    fn set_ip(&mut self, addr: usize);
-    fn get_ip(&self) -> usize;
-}

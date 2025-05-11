@@ -101,7 +101,9 @@ macro_rules! assert_trait_impl {
 ///
 /// # Safety
 ///
-/// The caller must ensure that this call doesn't cause any heap memory allocations.
+/// The caller must ensure that this call follows the following rules:
+/// - The function may not allocate any heap memory.
+/// - The function may not reference [`BootInfo`].
 #[macro_export]
 macro_rules! early_init_call {
     ($fun:ident) => {

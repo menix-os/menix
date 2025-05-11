@@ -40,8 +40,6 @@ pub fn init() {
     }
 }
 
-early_init_call!(init);
-
 /// Sets the IDT on this CPU.
 pub fn set_idt() {
     let idtr = IdtRegister {

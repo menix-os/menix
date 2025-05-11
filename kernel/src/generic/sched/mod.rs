@@ -32,11 +32,6 @@ impl Scheduler {
         };
     }
 
-    /// Forces an immediate reschedule on the calling CPU.
-    pub fn reschedule_now() {
-        arch::sched::reschedule_now();
-    }
-
     /// Runs the scheduler. `preempt` tells the scheduler if it's supposed to handle preemption or not.
     /// # Safety
     /// Do not call this directly! Only the architecture implementation for scheduling calls this function.

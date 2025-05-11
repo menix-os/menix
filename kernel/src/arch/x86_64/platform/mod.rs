@@ -70,8 +70,11 @@ impl ClockSource for Hpet {
             None => 0,
         };
     }
+}
 
-    fn setup(&mut self) -> Result<(), ClockError> {
+impl Hpet {
+    fn new() -> Result<Self, ClockError> {
+        let mut result = Hpet::default();
         let mut table = uacpi_table::default();
 
         let uacpi_status =
@@ -82,7 +85,7 @@ impl ClockSource for Hpet {
         }
 
         let hpet: *mut acpi_hpet = unsafe { table.__bindgen_anon_1.ptr } as *mut acpi_hpet;
-        self.regs = Some(
+        result.regs = Some(
             KERNEL_PAGE_TABLE
                 .lock()
                 .map_memory::<FreeList>(
@@ -94,9 +97,9 @@ impl ClockSource for Hpet {
                 .unwrap() as *mut u64,
         );
 
-        match self.regs {
+        match result.regs {
             Some(x) => unsafe {
-                self.period = (x
+                result.period = (x
                     .byte_add(offset_of!(HpetRegisters, capabilities))
                     .read_volatile()
                     >> 32) as u32;
@@ -108,13 +111,13 @@ impl ClockSource for Hpet {
 
         unsafe { uacpi_table_unref(&raw mut table) };
 
-        return Ok(());
+        return Ok(result);
     }
 }
 
 pub fn init() {
-    if let Err(x) = clock::switch(Box::new(Hpet::default())) {
-        error!("Unable to setup HPET: {:?}", x);
+    if let Ok(x) = Hpet::new() {
+        _ = clock::switch(Box::new(x));
     }
 }
 
