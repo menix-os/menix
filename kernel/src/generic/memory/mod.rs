@@ -15,6 +15,7 @@ use crate::{
     },
 };
 use bump::BumpAllocator;
+use bytemuck::AnyBitPattern;
 use core::{
     alloc::{GlobalAlloc, Layout},
     ops::{Add, Sub},
@@ -25,22 +26,11 @@ use pmm::{AllocFlags, Page, PageAllocator};
 use slab::ALLOCATOR;
 use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
 
-// Symbols defined in the linker script so we can map ourselves in our page table.
-unsafe extern "C" {
-    unsafe static LD_KERNEL_START: u8;
-    unsafe static LD_TEXT_START: u8;
-    unsafe static LD_TEXT_END: u8;
-    unsafe static LD_RODATA_START: u8;
-    unsafe static LD_RODATA_END: u8;
-    unsafe static LD_DATA_START: u8;
-    unsafe static LD_DATA_END: u8;
-}
-
 static HHDM_START: Once<VirtAddr> = Once::new();
 
 /// Represents a physical address. It can't be directly read from or written to.
 #[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, AnyBitPattern)]
 pub struct PhysAddr(usize);
 
 impl PhysAddr {
@@ -53,7 +43,7 @@ impl PhysAddr {
 /// Note: Not the same as a pointer. A `VirtAddr` might point into another
 /// process's memory that is not mapped in the kernel.
 #[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, AnyBitPattern)]
 pub struct VirtAddr(usize);
 
 impl VirtAddr {
@@ -262,13 +252,13 @@ pub unsafe fn init() {
         log!("Using {}-level paging for page table", paging_level);
         let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level);
 
-        let text_start = VirtAddr(&raw const LD_TEXT_START as usize);
-        let text_end = VirtAddr(&raw const LD_TEXT_END as usize);
-        let rodata_start = VirtAddr(&raw const LD_RODATA_START as usize);
-        let rodata_end = VirtAddr(&raw const LD_RODATA_END as usize);
-        let data_start = VirtAddr(&raw const LD_DATA_START as usize);
-        let data_end = VirtAddr(&raw const LD_DATA_END as usize);
-        let kernel_start = VirtAddr(&raw const LD_KERNEL_START as usize);
+        let text_start = VirtAddr(&raw const crate::LD_TEXT_START as usize);
+        let text_end = VirtAddr(&raw const crate::LD_TEXT_END as usize);
+        let rodata_start = VirtAddr(&raw const crate::LD_RODATA_START as usize);
+        let rodata_end = VirtAddr(&raw const crate::LD_RODATA_END as usize);
+        let data_start = VirtAddr(&raw const crate::LD_DATA_START as usize);
+        let data_end = VirtAddr(&raw const crate::LD_DATA_END as usize);
+        let kernel_start = VirtAddr(&raw const crate::LD_KERNEL_START as usize);
 
         table
             .map_range::<BumpAllocator>(
@@ -389,4 +379,5 @@ pub unsafe fn init() {
     let pte_size = arch::memory::get_page_size(VmLevel::L3);
     let offset = align_up(0x1000_0000_0000, pte_size);
     virt::KERNEL_MMAP_BASE_ADDR.store(page_base + offset, Ordering::Relaxed);
+    super::module::MODULE_ADDR.store(page_base + offset + offset, Ordering::Relaxed);
 }

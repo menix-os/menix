@@ -20,6 +20,8 @@ SECTIONS
         *(.debug_gdb_scripts)
     } :null
 
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
     /* Code */
     .text : {
         *(.init)
@@ -29,6 +31,8 @@ SECTIONS
         *(.plt)
         *(.plt.*)
     } :text
+
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
 
     /* Read-only data */
     .rodata : {
@@ -49,6 +53,8 @@ SECTIONS
     .mod.desc : {
         KEEP(*(.mod.desc))
     } :rodata :moddesc
+
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
 
     /* Read-Write data */
     .data : {
@@ -79,7 +85,6 @@ SECTIONS
     .dynamic : {
         *(.dynamic)
     } :data :dynamic
-
 
     /DISCARD/ :
     {

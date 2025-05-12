@@ -37,7 +37,12 @@ impl PciDriver {
 
         drivers.insert(self.name, self);
 
-        log!("Registered new driver \"{}\"", self.name);
+        log!(
+            "Registered new PCI driver \"{}\" with {} variant{}",
+            self.name,
+            self.variants.len(),
+            if self.variants.len() != 1 { "s" } else { "" }
+        );
 
         return Ok(());
     }

@@ -48,7 +48,7 @@ macro_rules! log_inner {
             current_time / 1_000_000_000,
             (current_time / 1000) % 1_000_000
         ));
-        const NAME: &str = current_module_name!();
+        const NAME: &str = $crate::current_module_name!();
         _ = writer.write_fmt(format_args!("{}: ", NAME));
         _ = writer.write_fmt(format_args!($prefix));
         _ = writer.write_fmt(format_args!($($arg)*));

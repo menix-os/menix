@@ -25,10 +25,17 @@ pub(crate) fn init() {
         .get_bool("acpi")
         .unwrap_or(true)
     {
-        log!("Using ACPI to configure PCI")
+        log!("Using ACPI to configure PCI");
+        return;
     }
 
     // If there is no ACPI, resort to OpenFirmware.
     #[cfg(feature = "openfw")]
-    {}
+    if BootInfo::get()
+        .command_line
+        .get_bool("openfw")
+        .unwrap_or(true)
+    {
+        // TODO
+    }
 }

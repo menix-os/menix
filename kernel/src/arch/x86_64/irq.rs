@@ -47,8 +47,8 @@ pub struct TrapFrame {
 static_assert!(size_of::<TrapFrame>() == 0xB0);
 
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
-unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut TrapFrame) {
-    let context = unsafe { context.as_mut().unwrap() };
+unsafe extern "C" fn interrupt_handler(context: *mut TrapFrame) {
+    let isr = (unsafe { *context }).isr as usize;
     match isr as u8 {
         // Exceptions.
         0x0E => page_fault_handler(context),
@@ -102,29 +102,31 @@ unsafe extern "C" fn interrupt_handler(isr: usize, context: *mut TrapFrame) {
 }
 
 /// Invoked by either the interrupt or syscall stub.
-fn syscall_handler(frame: &mut TrapFrame) {
-    // Arguments use the SYSV C ABI.
-    // Except for a3, since RCX is needed for sysret, we need a different register.
-    let result = syscall::invoke(
-        frame.rax as usize,
-        frame.rdi as usize,
-        frame.rsi as usize,
-        frame.rdx as usize,
-        frame.r10 as usize,
-        frame.r8 as usize,
-        frame.r9 as usize,
-    );
-    frame.rax = result.0 as u64;
-    frame.rdx = result.1 as u64;
+extern "C" fn syscall_handler(frame: *mut TrapFrame) {
+    unsafe {
+        // Arguments use the SYSV C ABI.
+        // Except for a3, since RCX is needed for sysret, we need a different register.
+        let result = syscall::invoke(
+            (*frame).rax as usize,
+            (*frame).rdi as usize,
+            (*frame).rsi as usize,
+            (*frame).rdx as usize,
+            (*frame).r10 as usize,
+            (*frame).r8 as usize,
+            (*frame).r9 as usize,
+        );
+        (*frame).rax = result.0 as u64;
+        (*frame).rdx = result.1 as u64;
+    }
 }
 
-fn page_fault_handler(frame: &mut TrapFrame) {
+extern "C" fn page_fault_handler(frame: *mut TrapFrame) {
     unsafe {
         let mut cr2: usize;
         asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
 
         let mut cause = PageFaultCause::empty();
-        let err = frame.error;
+        let err = (*frame).error;
         if err & (1 << 0) != 0 {
             cause |= PageFaultCause::Present;
         }
@@ -139,9 +141,9 @@ fn page_fault_handler(frame: &mut TrapFrame) {
         }
 
         let info = PageFaultInfo {
-            caused_by_user: frame.cs & super::consts::CPL_USER as u64
+            caused_by_user: (*frame).cs & super::consts::CPL_USER as u64
                 == super::consts::CPL_USER as u64,
-            ip: (frame.rip as usize).into(),
+            ip: ((*frame).rip as usize).into(),
             addr: cr2.into(),
             cause,
         };
@@ -150,7 +152,7 @@ fn page_fault_handler(frame: &mut TrapFrame) {
     }
 }
 
-fn timer_handler(frame: &mut TrapFrame) {
+extern "C" fn timer_handler(frame: *mut TrapFrame) {
     let ctx = CpuData::get();
 
     unsafe {
@@ -268,8 +270,7 @@ unsafe extern "C" fn interrupt_stub_internal() {
         swapgs_if_necessary!(),     // Load the kernel GS base.
         push_all_regs!(),           // Push all general purpose registers.
         "xor rbp, rbp",             // Zero out the base pointer since we can't trust it.
-        "mov rdi, [rsp + 0x78]",    // Load the ISR value we pushed in the stub.
-        "mov rsi, rsp",             // Load the frame as second argument.
+        "mov rdi, rsp",             // Load the frame as second argument.
         "call {interrupt_handler}", // Call interrupt handler.
         pop_all_regs!(),            // Pop all general purpose registers.
         swapgs_if_necessary!(),     // Change GS back if we came from user mode.

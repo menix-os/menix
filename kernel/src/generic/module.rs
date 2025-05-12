@@ -18,7 +18,6 @@ use crate::{
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{
     ffi::CStr,
-    ptr::null,
     slice,
     sync::atomic::{AtomicUsize, Ordering},
 };
@@ -35,7 +34,7 @@ unsafe extern "C" {
     unsafe static LD_DYNSTR_END: u8;
 }
 
-type ModuleEntryFn = unsafe extern "C" fn(args: *const u8, len: usize);
+type ModuleEntryFn = unsafe extern "C" fn();
 
 /// Stores metadata about a module.
 #[derive(Debug)]
@@ -58,8 +57,8 @@ pub(crate) fn init() {
     // Add all kernel symbols to a table so we can perform dynamic linking.
     {
         let symbols = unsafe {
-            slice::from_raw_parts(
-                dynsym_start as *const elf::ElfSym,
+            slice::from_raw_parts_mut(
+                dynsym_start as *mut elf::ElfSym,
                 (dynsym_end as usize - dynsym_start as usize) / size_of::<elf::ElfSym>(),
             )
         };
@@ -69,6 +68,9 @@ pub(crate) fn init() {
 
         let mut symbol_table = SYMBOL_TABLE.lock();
         for sym in symbols {
+            // Fix the addresses in the symbols because relocating doesn't relocate the symbol address.
+            sym.st_value += &raw const crate::LD_KERNEL_START as u64;
+
             let name = CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]);
             if let Ok(x) = name {
                 if let Ok(s) = x.to_str() {
@@ -118,7 +120,11 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
     let elf_hdr: &ElfHdr = bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()])
         .map_err(|_| ModuleLoadError::InvalidData)?;
 
-    if elf_hdr.e_ident[0..4] != elf::ELF_MAG {
+    if elf_hdr.e_ident[0..4] != elf::ELF_MAG
+        || elf_hdr.e_ident[elf::EI_VERSION] != elf::EV_CURRENT
+        || elf_hdr.e_ident[elf::EI_OSABI] != elf::ELFOSABI_SYSV
+        || elf_hdr.e_machine != elf::EM_CURRENT
+    {
         return Err(ModuleLoadError::InvalidData);
     }
 
@@ -126,31 +132,16 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
     if elf_hdr.e_ident[elf::EI_CLASS] != elf::ELFCLASS32 {
         return Err(ModuleLoadError::InvalidData);
     }
-
     #[cfg(target_pointer_width = "64")]
     if elf_hdr.e_ident[elf::EI_CLASS] != elf::ELFCLASS64 {
         return Err(ModuleLoadError::InvalidData);
     }
-
     #[cfg(target_endian = "little")]
     if elf_hdr.e_ident[elf::EI_DATA] != elf::ELFDATA2LSB {
         return Err(ModuleLoadError::InvalidData);
     }
-
     #[cfg(target_endian = "big")]
     if elf_hdr.e_ident[EI_DATA] != ELFDATA2MSB {
-        return Err(ModuleLoadError::InvalidData);
-    }
-
-    if elf_hdr.e_ident[elf::EI_VERSION] != elf::EV_CURRENT {
-        return Err(ModuleLoadError::InvalidData);
-    }
-
-    if elf_hdr.e_ident[elf::EI_OSABI] != elf::ELFOSABI_SYSV {
-        return Err(ModuleLoadError::InvalidData);
-    }
-
-    if elf_hdr.e_machine != elf::EM_CURRENT {
         return Err(ModuleLoadError::InvalidData);
     }
 
@@ -191,7 +182,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
             elf::PT_LOAD => {
                 // Record where the first PHDR was loaded at.
                 if load_base == 0 {
-                    load_base = MODULE_ADDR.load(Ordering::SeqCst);
+                    load_base = MODULE_ADDR.load(Ordering::Acquire);
                 }
 
                 let mut memsz = phdr.p_memsz as usize;
@@ -213,7 +204,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
 
                 // Map memory with RW permissions.
-                for page in (0..=memsz + 4096).step_by(arch::memory::get_page_size(VmLevel::L1)) {
+                for page in (0..memsz).step_by(arch::memory::get_page_size(VmLevel::L1)) {
                     page_table
                         .map_single::<FreeList>(
                             (load_base + aligned_virt + page).into(),
@@ -248,7 +239,8 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 }
 
                 // Record this mapping.
-                info.mappings.push((phys, virt.into(), memsz, flags));
+                info.mappings
+                    .push((phys, (load_base + aligned_virt).into(), memsz, flags));
             }
             elf::PT_DYNAMIC => {
                 let dyntab: &[elf::ElfDyn] = bytemuck::try_cast_slice(
@@ -391,10 +383,10 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
     }
 
     // Finally, remap everything so the permissions are as described.
-    for (phys, virt, length, flags) in &info.mappings {
+    for (_, virt, length, flags) in &info.mappings {
         let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
         let length = align_up(*length, arch::memory::get_page_size(VmLevel::L1));
-        for page in (0..=length).step_by(arch::memory::get_page_size(VmLevel::L1)) {
+        for page in (0..length).step_by(arch::memory::get_page_size(VmLevel::L1)) {
             page_table
                 .remap_single::<FreeList>(*virt + page, *flags, VmLevel::L1)
                 .map_err(|_| ModuleLoadError::AllocFailed)?;
@@ -420,7 +412,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
         .collect::<Vec<_>>();
 
     log!("Loaded module \"{}\":", name);
-    log!("  Base Address | {:#018X}", load_base);
+    log!("  Base Address | {:#x}", load_base);
     log!("  Description  | {}", info.description);
     log!("  Version      | {}", info.version);
     log!("  Author(s)    | {}", info.author);
@@ -428,17 +420,15 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
 
     // TODO: Load dependencies
 
-    // Save the entry point and call it.
-    unsafe {
-        let mut temp_entry = Some(elf_hdr.e_entry);
-        fix_addr(&mut temp_entry);
+    // TODO: Call init array
 
-        info.entry = Some(core::mem::transmute(
-            load_base + temp_entry.unwrap() as usize,
-        ));
+    // Call the entry.
+    unsafe {
+        info.entry = Some(core::mem::transmute(load_base + elf_hdr.e_entry as usize));
 
         if let Some(entry_point) = info.entry {
-            entry_point(null(), 0);
+            log!("Calling the entry point {:p}", entry_point);
+            (entry_point)();
         }
     }
 

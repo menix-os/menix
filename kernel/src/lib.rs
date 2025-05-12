@@ -24,6 +24,13 @@ unsafe extern "C" {
     unsafe static LD_EARLY_ARRAY_END: u8;
     unsafe static LD_INIT_ARRAY_START: u8;
     unsafe static LD_INIT_ARRAY_END: u8;
+    unsafe static LD_KERNEL_START: u8;
+    unsafe static LD_TEXT_START: u8;
+    unsafe static LD_TEXT_END: u8;
+    unsafe static LD_RODATA_START: u8;
+    unsafe static LD_RODATA_END: u8;
+    unsafe static LD_DATA_START: u8;
+    unsafe static LD_DATA_END: u8;
 }
 
 /// The high-level kernel entry point. This is invoked by the prekernel environment.

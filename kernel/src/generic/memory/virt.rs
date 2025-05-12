@@ -260,6 +260,7 @@ impl<const K: bool> PageTable<K> {
                 },
             level as usize,
         );
+        crate::arch::memory::flush_tlb(virt);
         return Ok(());
     }
 
@@ -307,7 +308,8 @@ impl<const K: bool> PageTable<K> {
     }
 
     /// Un-maps a page from this address space.
-    pub fn unmap(&mut self, virt: VirtAddr) -> Result<(), PageTableError> {
+    pub fn unmap_single(&mut self, virt: VirtAddr) -> Result<(), PageTableError> {
+        crate::arch::memory::flush_tlb(virt);
         todo!();
     }
 
