@@ -1,9 +1,8 @@
 mod uacpi;
 
-use core::ffi::c_void;
-
 use crate::generic::{boot::BootInfo, memory::PhysAddr, util::once::Once};
 use alloc::boxed::Box;
+use core::ffi::c_void;
 
 static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
 

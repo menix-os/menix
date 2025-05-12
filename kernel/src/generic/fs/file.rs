@@ -1,4 +1,4 @@
-use super::errno::{EResult, Errno};
+use crate::generic::errno::{EResult, Errno};
 use crate::generic::memory::user::UserBuffer;
 
 /// Operations that can be performed on a file.

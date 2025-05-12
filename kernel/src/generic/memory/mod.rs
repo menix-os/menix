@@ -1,3 +1,11 @@
+// We don't want to use the bump allocator anywhere after initial setup.
+mod bump;
+pub mod mmio;
+pub mod pmm;
+pub mod slab;
+pub mod user;
+pub mod virt;
+
 use super::util::once::Once;
 use crate::{
     arch::{self, memory::get_page_size},
@@ -16,14 +24,6 @@ use core::{
 use pmm::{AllocFlags, Page, PageAllocator};
 use slab::ALLOCATOR;
 use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
-
-// We don't want to use the bump allocator anywhere after initial setup.
-mod bump;
-pub mod mmio;
-pub mod pmm;
-pub mod slab;
-pub mod user;
-pub mod virt;
 
 // Symbols defined in the linker script so we can map ourselves in our page table.
 unsafe extern "C" {
