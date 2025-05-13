@@ -118,7 +118,6 @@ impl PageAllocator for FreeList {
 }
 
 impl Page {
-    #[inline]
     pub fn idx_from_addr(address: PhysAddr) -> usize {
         assert!(address.0 % arch::memory::get_page_size(VmLevel::L1) == 0);
 

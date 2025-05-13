@@ -35,7 +35,7 @@ impl Scheduler {
     /// Runs the scheduler. `preempt` tells the scheduler if it's supposed to handle preemption or not.
     /// # Safety
     /// Do not call this directly! Only the architecture implementation for scheduling calls this function.
-    pub(crate) unsafe fn tick<'a>(&mut self, preempt: bool) {
+    pub(crate) unsafe fn tick(&mut self, preempt: bool) {
         // Disable interrupts.
 
         // TODO
