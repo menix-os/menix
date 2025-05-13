@@ -18,3 +18,4 @@ opt-level = 3
 debug = false
 overflow-checks = false
 strip = true
+lto = "fat"
