@@ -427,7 +427,6 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
         info.entry = Some(core::mem::transmute(load_base + elf_hdr.e_entry as usize));
 
         if let Some(entry_point) = info.entry {
-            log!("Calling the entry point {:p}", entry_point);
             (entry_point)();
         }
     }
