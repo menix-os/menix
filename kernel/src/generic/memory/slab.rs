@@ -107,7 +107,6 @@ impl Slab {
     }
 }
 
-#[inline]
 fn find_size(size: usize) -> Option<&'static Slab> {
     ALLOCATOR.slabs.iter().find(|&slab| slab.ent_size >= size)
 }
