@@ -13,5 +13,5 @@ pub mod panic;
 pub mod percpu;
 pub mod platform;
 pub mod sched;
-pub mod syscall;
+pub mod sys;
 pub mod util;

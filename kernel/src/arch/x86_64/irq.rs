@@ -1,3 +1,4 @@
+use super::consts;
 use super::platform::apic;
 use crate::arch::x86_64::consts::CPL_USER;
 use crate::generic::{
@@ -6,7 +7,7 @@ use crate::generic::{
 };
 use crate::{
     arch::x86_64::platform::gdt::Gdt,
-    generic::{self, irq::IrqController, percpu::CpuData, syscall},
+    generic::{self, irq::IrqController, percpu::CpuData},
 };
 use core::{
     arch::{asm, naked_asm},
@@ -106,7 +107,7 @@ extern "C" fn syscall_handler(frame: *mut TrapFrame) {
     unsafe {
         // Arguments use the SYSV C ABI.
         // Except for a3, since RCX is needed for sysret, we need a different register.
-        let result = syscall::invoke(
+        let result = generic::sys::invoke(
             (*frame).rax as usize,
             (*frame).rdi as usize,
             (*frame).rsi as usize,
@@ -141,8 +142,7 @@ extern "C" fn page_fault_handler(frame: *mut TrapFrame) {
         }
 
         let info = PageFaultInfo {
-            caused_by_user: (*frame).cs & super::consts::CPL_USER as u64
-                == super::consts::CPL_USER as u64,
+            caused_by_user: (*frame).cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
             ip: ((*frame).rip as usize).into(),
             addr: cr2.into(),
             cause,
@@ -297,7 +297,7 @@ pub fn get_irq_state() -> bool {
     unsafe {
         asm!("pushf; pop {0}", out(reg) flags);
     }
-    return flags & (super::consts::RFLAGS_IF as u64) == 0;
+    return flags & (consts::RFLAGS_IF as u64) == 0;
 }
 
 pub fn wait_for_irq() {

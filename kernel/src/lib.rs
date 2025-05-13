@@ -38,7 +38,10 @@ unsafe extern "C" {
 pub(crate) fn main() -> ! {
     arch::core::setup_bsp();
 
-    // Run early init calls. These don't need memory allocations.
+    // Initialize memory management.
+    unsafe { generic::memory::init() };
+
+    // Run early init calls.
     unsafe {
         let mut early_array = &raw const LD_EARLY_ARRAY_START as *const fn();
         let early_end = &raw const LD_EARLY_ARRAY_END as *const fn();
@@ -56,9 +59,6 @@ pub(crate) fn main() -> ! {
         env!("CARGO_PKG_VERSION_MINOR"),
         env!("CARGO_PKG_VERSION_PATCH")
     );
-
-    // Initialize memory management.
-    unsafe { generic::memory::init() };
 
     // TODO: Initialize virtual file system.
     // generic::posix::fs::init();
