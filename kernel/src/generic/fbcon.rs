@@ -82,7 +82,7 @@ impl LoggerSink for FbCon {
     }
 }
 
-init_call_if_cmdline!("fbcon", true, init);
+early_init_call_if_cmdline!("fbcon", true, init);
 pub fn init() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;

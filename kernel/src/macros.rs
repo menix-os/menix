@@ -98,12 +98,6 @@ macro_rules! assert_trait_impl {
 
 /// Hooks a function as an early init call.
 /// The order in which hooked functions are called is not guaranteed.
-///
-/// # Safety
-///
-/// The caller must ensure that this call follows the following rules:
-/// - The function may not allocate any heap memory.
-/// - The function may not reference [`BootInfo`].
 #[macro_export]
 macro_rules! early_init_call {
     ($fun:ident) => {
@@ -112,6 +106,27 @@ macro_rules! early_init_call {
             #[unsafe(link_section = ".early_array")]
             #[used]
             static __EARLY_INIT_CALL: unsafe fn() = $fun;
+        };
+    };
+}
+
+/// Hooks a function as an early init call if a command line option equals to true.
+#[macro_export]
+macro_rules! early_init_call_if_cmdline {
+    ($opt:literal, $default:literal, $fun:ident) => {
+        const _: () = {
+            fn __init_call_wrapper() {
+                use $crate::generic::boot::BootInfo;
+                if BootInfo::get()
+                    .command_line
+                    .get_bool($opt)
+                    .unwrap_or($default)
+                {
+                    $fun()
+                }
+            }
+
+            $crate::early_init_call!(__init_call_wrapper);
         };
     };
 }
