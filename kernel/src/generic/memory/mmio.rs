@@ -142,6 +142,7 @@ impl<T: PrimInt> MmioField<T> {
     /// Creates a new field with native endianness.
     /// `offset` is in units of bytes.
     pub const fn new(offset: usize) -> Self {
+        assert!(offset % size_of::<T>() == 0);
         Self {
             _p: PhantomData,
             offset,
