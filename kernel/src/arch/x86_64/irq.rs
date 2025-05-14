@@ -1,9 +1,10 @@
-use super::consts;
-use super::platform::apic;
-use crate::arch::x86_64::consts::CPL_USER;
-use crate::generic::{
-    memory::virt::{PageFaultCause, PageFaultInfo},
-    percpu::CPU_DATA,
+use super::{consts, platform::apic, sched::Context};
+use crate::{
+    arch::x86_64::consts::CPL_USER,
+    generic::{
+        memory::virt::{PageFaultCause, PageFaultInfo},
+        percpu::CPU_DATA,
+    },
 };
 use crate::{
     arch::x86_64::platform::gdt::Gdt,
@@ -15,40 +16,8 @@ use core::{
 };
 use seq_macro::seq;
 
-/// Registers which are saved and restored during a context switch or interrupt.
-#[repr(C)]
-#[derive(Default, Clone, Debug, Copy)]
-pub struct TrapFrame {
-    pub r15: u64,
-    pub r14: u64,
-    pub r13: u64,
-    pub r12: u64,
-    pub r11: u64,
-    pub r10: u64,
-    pub r9: u64,
-    pub r8: u64,
-    pub rsi: u64,
-    pub rdi: u64,
-    pub rbp: u64,
-    pub rdx: u64,
-    pub rcx: u64,
-    pub rbx: u64,
-    pub rax: u64,
-    // Pushed onto the stack by the interrupt handler stubs.
-    pub isr: u64,
-    // Pushed onto the stack by the CPU if the interrupt has an error code.
-    pub error: u64,
-    // Pushed onto the stack by the CPU during an interrupt.
-    pub rip: u64,
-    pub cs: u64,
-    pub rflags: u64,
-    pub rsp: u64,
-    pub ss: u64,
-}
-static_assert!(size_of::<TrapFrame>() == 0xB0);
-
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
-unsafe extern "C" fn interrupt_handler(context: *mut TrapFrame) {
+unsafe extern "C" fn interrupt_handler(context: *mut Context) {
     let isr = (unsafe { *context }).isr as usize;
     match isr as u8 {
         // Exceptions.
@@ -103,7 +72,7 @@ unsafe extern "C" fn interrupt_handler(context: *mut TrapFrame) {
 }
 
 /// Invoked by either the interrupt or syscall stub.
-extern "C" fn syscall_handler(frame: *mut TrapFrame) {
+extern "C" fn syscall_handler(frame: *mut Context) {
     unsafe {
         // Arguments use the SYSV C ABI.
         // Except for a3, since RCX is needed for sysret, we need a different register.
@@ -121,7 +90,7 @@ extern "C" fn syscall_handler(frame: *mut TrapFrame) {
     }
 }
 
-extern "C" fn page_fault_handler(frame: *mut TrapFrame) {
+extern "C" fn page_fault_handler(frame: *mut Context) {
     unsafe {
         let mut cr2: usize;
         asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
@@ -152,7 +121,7 @@ extern "C" fn page_fault_handler(frame: *mut TrapFrame) {
     }
 }
 
-extern "C" fn timer_handler(frame: *mut TrapFrame) {
+extern "C" fn timer_handler(frame: *mut Context) {
     let ctx = CpuData::get();
 
     unsafe {
@@ -160,6 +129,32 @@ extern "C" fn timer_handler(frame: *mut TrapFrame) {
     }
 
     apic::LAPIC.get(ctx).eoi().unwrap();
+}
+
+pub unsafe fn set_irq_state(value: bool) -> bool {
+    let old_mask = get_irq_state();
+    unsafe {
+        if value {
+            asm!("sti");
+        } else {
+            asm!("cli");
+        }
+    }
+    return old_mask;
+}
+
+pub fn get_irq_state() -> bool {
+    let mut flags: u64;
+    unsafe {
+        asm!("pushf; pop {0}", out(reg) flags);
+    }
+    return flags & (consts::RFLAGS_IF as u64) == 0;
+}
+
+pub fn wait_for_irq() {
+    unsafe {
+        asm!("hlt");
+    }
 }
 
 /// Pushes all general purpose registers onto the stack.
@@ -246,7 +241,7 @@ seq! { N in 0..256 {
     #[unsafe(naked)]
     pub(crate) unsafe extern "C" fn interrupt_stub~N() {
         naked_asm!(
-            // These codes push an error on the stack.
+            // These codes push an error on the stack. Do nothing.
             ".if ({i} == 8 || ({i} >= 10 && {i} <= 14) || {i} == 17 || {i} == 21 || {i} == 29 || {i} == 30)",
             // All other ones don't, so we need to push something ourselves.
             ".else",
@@ -262,46 +257,30 @@ seq! { N in 0..256 {
     }
 }}
 
-// To avoid having 256 big functions with essentially the same logic,
-// this function is meant to do the actual heavy lifting.
+/// To avoid having 256 big functions with essentially the same logic,
+/// this function is meant to do the actual heavy lifting.
 #[unsafe(naked)]
 unsafe extern "C" fn interrupt_stub_internal() {
     naked_asm!(
         swapgs_if_necessary!(),     // Load the kernel GS base.
         push_all_regs!(),           // Push all general purpose registers.
+        "cld",                      // Clear direction flag.
         "xor rbp, rbp",             // Zero out the base pointer since we can't trust it.
         "mov rdi, rsp",             // Load the frame as second argument.
         "call {interrupt_handler}", // Call interrupt handler.
-        pop_all_regs!(),            // Pop all general purpose registers.
-        swapgs_if_necessary!(),     // Change GS back if we came from user mode.
-        "add rsp, 0x10",            // Skip .error and .isr fields.
-        "iretq",                    // Leave.
-        interrupt_handler = sym interrupt_handler
+        "jmp {interrupt_return}",   // Leave.
+        interrupt_handler = sym interrupt_handler,
+        interrupt_return = sym interrupt_return
     );
 }
 
-pub unsafe fn set_irq_state(value: bool) -> bool {
-    let old_mask = get_irq_state();
-    unsafe {
-        if value {
-            asm!("sti");
-        } else {
-            asm!("cli");
-        }
-    }
-    return old_mask;
-}
-
-pub fn get_irq_state() -> bool {
-    let mut flags: u64;
-    unsafe {
-        asm!("pushf; pop {0}", out(reg) flags);
-    }
-    return flags & (consts::RFLAGS_IF as u64) == 0;
-}
-
-pub fn wait_for_irq() {
-    unsafe {
-        asm!("hlt");
-    }
+/// Returns from an interrupt frame.
+#[unsafe(naked)]
+pub unsafe extern "C" fn interrupt_return() {
+    naked_asm!(
+        pop_all_regs!(),        // Pop all general purpose registers.
+        swapgs_if_necessary!(), // Change GS back if we came from user mode.
+        "add rsp, 0x10",        // Skip .error and .isr fields.
+        "iretq",
+    );
 }

@@ -42,7 +42,7 @@ pub fn setup_bsp() {
     }
 }
 
-pub fn get_per_cpu() -> *mut crate::generic::percpu::CpuData {
+pub fn get_per_cpu() -> *mut CpuData {
     unsafe {
         let cpu: *mut CpuData;
         asm!(

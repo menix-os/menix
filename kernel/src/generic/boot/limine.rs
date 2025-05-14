@@ -25,9 +25,6 @@ pub static END_MARKER: RequestsEndMarker = RequestsEndMarker::new();
 pub static BOOTLOADER_REQUEST: BootloaderInfoRequest = BootloaderInfoRequest::new();
 
 #[unsafe(link_section = ".boot")]
-pub static STACK_SIZE: StackSizeRequest = StackSizeRequest::new().with_size(256 * 1024); // We want 256 KiB of stack.
-
-#[unsafe(link_section = ".boot")]
 pub static MEMMAP_REQUEST: MemoryMapRequest = MemoryMapRequest::new();
 
 #[unsafe(link_section = ".boot")]
@@ -59,22 +56,8 @@ static mut FILE_BUF: [BootFile; 128] = [BootFile::new(); 128];
 
 #[unsafe(no_mangle)]
 extern "C" fn _start() -> ! {
+    // Start collecting boot info.
     let mut info = BootInfo::new();
-
-    if let Some(x) = BOOTLOADER_REQUEST.get_response() {
-        log!(
-            "Booting with Limine protocol, loaded by {} {}",
-            x.name(),
-            x.version()
-        )
-    };
-
-    // Make sure the stack size request was respected by the bootloader.
-    // That way we can be sure we have enough stack memory for our allocations.
-    // We might not be able to boot otherwise.
-    _ = STACK_SIZE
-        .get_response()
-        .expect("Unable to boot without enough stack memory");
 
     {
         // Convert the memory map. This buffer has to be fixed since at this point
@@ -200,5 +183,5 @@ extern "C" fn _start() -> ! {
     info.register();
 
     // Call the kernel common entry point.
-    crate::main();
+    crate::entry();
 }
