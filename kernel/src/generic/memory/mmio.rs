@@ -55,7 +55,7 @@ impl Mmio {
     }
 
     /// Reads data from a single field.
-    pub fn read<T: PrimInt>(&self, field: &MmioField<T>) -> T {
+    pub fn read<T: PrimInt>(&self, field: MmioField<T>) -> T {
         let value = unsafe { (self.base as *mut T).byte_add(field.offset).read_volatile() };
         return match field.native_endian {
             true => value,
@@ -64,7 +64,7 @@ impl Mmio {
     }
 
     /// Writes data to a single field.
-    pub fn write<T: PrimInt>(&mut self, field: &MmioField<T>, value: T) {
+    pub fn write<T: PrimInt>(&mut self, field: MmioField<T>, value: T) {
         unsafe {
             (self.base as *mut T).byte_add(field.offset).write_volatile(
                 match field.native_endian {
@@ -76,7 +76,7 @@ impl Mmio {
     }
 
     /// Reads multiple elements into a buffer.
-    pub fn read_array<T: PrimInt>(&self, vector: &MmioArray<T>, offset: usize, dest: &mut [T]) {
+    pub fn read_array<T: PrimInt>(&self, vector: MmioArray<T>, offset: usize, dest: &mut [T]) {
         assert!(dest.len() == vector.count);
         for (idx, elem) in dest.iter_mut().enumerate() {
             *elem = self.read_at(vector, offset + idx);
@@ -84,7 +84,7 @@ impl Mmio {
     }
 
     /// Writes multiple array elements from a buffer.
-    pub fn write_array<T: PrimInt>(&mut self, vector: &MmioArray<T>, offset: usize, value: &[T]) {
+    pub fn write_array<T: PrimInt>(&mut self, vector: MmioArray<T>, offset: usize, value: &[T]) {
         assert!(value.len() == vector.count);
         for (idx, elem) in value.iter().enumerate() {
             self.write_at(vector, offset + idx, *elem);
@@ -92,7 +92,7 @@ impl Mmio {
     }
 
     /// Reads a single element from a vector.
-    pub fn read_at<T: PrimInt>(&self, vector: &MmioArray<T>, index: usize) -> T {
+    pub fn read_at<T: PrimInt>(&self, vector: MmioArray<T>, index: usize) -> T {
         assert!(index < vector.count);
         let value = unsafe {
             (self.base as *const T)
@@ -106,7 +106,7 @@ impl Mmio {
     }
 
     /// Writes a single element to a vector.
-    pub fn write_at<T: PrimInt>(&mut self, vector: &MmioArray<T>, index: usize, value: T) {
+    pub fn write_at<T: PrimInt>(&mut self, vector: MmioArray<T>, index: usize, value: T) {
         assert!(index < vector.count);
         unsafe {
             (self.base as *mut T)
@@ -131,7 +131,7 @@ impl Drop for Mmio {
 }
 
 /// Single member of a structure.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct MmioField<T: PrimInt> {
     _p: PhantomData<T>,
     offset: usize,
@@ -162,6 +162,7 @@ impl<T: PrimInt> MmioField<T> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct MmioArray<T> {
     _p: PhantomData<T>,
     offset: usize,

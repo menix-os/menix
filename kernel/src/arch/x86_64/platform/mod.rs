@@ -1,5 +1,6 @@
 pub mod apic;
 pub mod gdt;
+mod hpet;
 pub mod idt;
 pub mod serial;
 pub mod tsc;
@@ -7,116 +8,16 @@ pub mod tsc;
 use super::asm;
 use crate::generic::{
     clock::{self, ClockError, ClockSource},
-    memory::{
-        pmm::FreeList,
-        virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
-    },
+    memory::mmio::Mmio,
 };
 use alloc::boxed::Box;
-use core::mem::offset_of;
 use uacpi_sys::{
     UACPI_STATUS_OK, acpi_hpet, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_table,
     uacpi_table_find_by_signature, uacpi_table_unref, uacpi_u8, uacpi_u16, uacpi_u32,
 };
 
-// TODO: Use IoSpace
-#[repr(C, packed)]
-struct HpetRegisters {
-    capabilities: u64,
-    _pad0: u64,
-    configuration: u64,
-    _pad1: u64,
-    interrupt_status: u64,
-    _pad2: [u64; 0x19],
-    main_counter: u64,
-    _pad3: u64,
-}
-
-#[derive(Default)]
-pub struct Hpet {
-    regs: Option<*mut u64>, // TODO: Use IoSpace
-    period: u32,
-}
-
-unsafe impl Send for Hpet {}
-unsafe impl Sync for Hpet {}
-
-impl ClockSource for Hpet {
-    fn name(&self) -> &'static str {
-        "hpet"
-    }
-
-    fn reset(&mut self) {
-        if let Some(x) = self.regs {
-            unsafe {
-                x.byte_add(offset_of!(HpetRegisters, main_counter))
-                    .write_volatile(0)
-            };
-        }
-    }
-
-    fn get_priority(&self) -> u8 {
-        75
-    }
-
-    fn get_elapsed_ns(&self) -> usize {
-        return match self.regs {
-            Some(x) => unsafe {
-                (x.byte_add(offset_of!(HpetRegisters, main_counter))
-                    .read_volatile()
-                    * self.period as u64
-                    / 1_000_000) as usize
-            },
-            None => 0,
-        };
-    }
-}
-
-impl Hpet {
-    fn new() -> Result<Self, ClockError> {
-        let mut result = Hpet::default();
-        let mut table = uacpi_table::default();
-
-        let uacpi_status =
-            unsafe { uacpi_table_find_by_signature(c"HPET".as_ptr(), &raw mut table) };
-        if uacpi_status != UACPI_STATUS_OK {
-            dbg!(uacpi_status);
-            return Err(ClockError::Unavailable);
-        }
-
-        let hpet: *mut acpi_hpet = unsafe { table.__bindgen_anon_1.ptr } as *mut acpi_hpet;
-        result.regs = Some(
-            KERNEL_PAGE_TABLE
-                .lock()
-                .map_memory::<FreeList>(
-                    ((unsafe { *hpet }).address.address as usize).into(),
-                    VmFlags::Read | VmFlags::Write,
-                    VmLevel::L1,
-                    size_of::<HpetRegisters>(),
-                )
-                .unwrap() as *mut u64,
-        );
-
-        match result.regs {
-            Some(x) => unsafe {
-                result.period = (x
-                    .byte_add(offset_of!(HpetRegisters, capabilities))
-                    .read_volatile()
-                    >> 32) as u32;
-                let cfg = x.byte_add(offset_of!(HpetRegisters, configuration));
-                cfg.write_volatile(cfg.read_volatile() | 1);
-            },
-            None => return Err(ClockError::UnableToSetup),
-        }
-
-        unsafe { uacpi_table_unref(&raw mut table) };
-
-        return Ok(result);
-    }
-}
-
 pub fn init() {
-    if let Ok(x) = Hpet::new() {
+    if let Ok(x) = hpet::Hpet::new() {
         _ = clock::switch(Box::new(x));
     }
 }
