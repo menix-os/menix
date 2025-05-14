@@ -7,11 +7,11 @@ use alloc::boxed::Box;
 pub trait ClockSource: Send {
     fn name(&self) -> &'static str;
 
-    /// Sets the elapsed nanoseconds to start counting at.
-    fn reset(&mut self);
-
     /// A priority of a clock source. A high value equals a high priority.
     fn get_priority(&self) -> u8;
+
+    /// Sets the elapsed nanoseconds to start counting at.
+    fn reset(&mut self);
 
     /// Gets the elapsed nanoseconds since initialization of this timer.
     fn get_elapsed_ns(&self) -> usize;
