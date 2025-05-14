@@ -10,6 +10,7 @@ use crate::{
 use alloc::alloc::AllocError;
 use bitflags::bitflags;
 use core::{
+    hint::unlikely,
     ptr::{NonNull, null_mut, write_bytes},
     slice,
     sync::atomic::{AtomicPtr, Ordering},
@@ -68,13 +69,13 @@ impl PageAllocator for FreeList {
         let mut prev_it = None;
         while let Some(mut x) = it {
             let page = unsafe { x.as_mut() };
-            if page.count < pages {
+            if unlikely(page.count < pages) {
                 prev_it = it;
                 it = page.next;
                 continue;
             }
 
-            if page.count == pages {
+            if unlikely(page.count == pages) {
                 addr = Some(page.get_address());
                 if let Some(mut prev) = prev_it {
                     let prev_page = unsafe { prev.as_mut() };
@@ -94,7 +95,7 @@ impl PageAllocator for FreeList {
         }
 
         // TODO: Merge adjacent regions if we didn't find anything.
-        assert!(addr.is_some());
+        debug_assert!(addr.is_some());
 
         if flags.contains(AllocFlags::Zeroed) {
             unsafe { write_bytes(addr.unwrap().as_hhdm() as *mut u8, 0, bytes) };
@@ -108,8 +109,8 @@ impl PageAllocator for FreeList {
         let mut page_db = PAGE_DB.lock();
         let page = page_db.get_mut(Page::idx_from_addr(addr)).unwrap();
 
-        assert!(page.count == 0);
-        assert!(page.next.is_none());
+        debug_assert!(page.count == 0);
+        debug_assert!(page.next.is_none());
 
         page.count = pages;
         page.next = *head;
@@ -118,8 +119,9 @@ impl PageAllocator for FreeList {
 }
 
 impl Page {
+    #[inline]
     pub fn idx_from_addr(address: PhysAddr) -> usize {
-        assert!(address.0 % arch::memory::get_page_size(VmLevel::L1) == 0);
+        debug_assert!(address.0 % arch::memory::get_page_size(VmLevel::L1) == 0);
 
         let pn = address.0 >> arch::memory::get_page_bits();
         return pn;
@@ -130,10 +132,11 @@ impl Page {
         let page: *const Page = self;
         let page = page as usize;
         let db = PAGE_DB_START.load(Ordering::Relaxed) as usize;
-        assert!(page >= db, "{:#018x} >= {:#018x}", page, db);
+        debug_assert!(page >= db, "{:#018x} >= {:#018x}", page, db);
         return (page - db) / size_of::<Page>();
     }
 
+    #[inline]
     fn get_address(&self) -> PhysAddr {
         (self.get_pn() << arch::memory::get_page_bits()).into()
     }

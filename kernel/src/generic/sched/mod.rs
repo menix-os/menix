@@ -34,15 +34,18 @@ impl Scheduler {
 
     /// Runs the scheduler. `preempt` tells the scheduler if it's supposed to handle preemption or not.
     /// # Safety
-    /// Do not call this directly! Only the architecture implementation for scheduling calls this function.
+    /// Do not call this directly!
     pub(crate) unsafe fn tick(&mut self, preempt: bool) {
         // Disable interrupts.
 
-        // TODO
         let from = self.current.load(Ordering::Relaxed);
+        // TODO
+        let to = self.current.load(Ordering::Relaxed);
 
         // Enable interrupts.
         unsafe { arch::irq::set_irq_state(true) };
+
+        arch::sched::switch(from, to);
     }
 
     /// Starts executing this scheduler.

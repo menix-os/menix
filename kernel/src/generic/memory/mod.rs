@@ -378,6 +378,7 @@ pub unsafe fn init() {
     // TODO: Use a virtual memory allocator instead.
     let pte_size = arch::memory::get_page_size(VmLevel::L3);
     let offset = align_up(0x1000_0000_0000, pte_size);
+
     virt::KERNEL_MMAP_BASE_ADDR.store(page_base + offset, Ordering::Relaxed);
     super::module::MODULE_ADDR.store(page_base + offset + offset, Ordering::Relaxed);
 }

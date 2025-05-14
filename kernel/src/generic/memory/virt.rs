@@ -3,7 +3,7 @@ use super::{
     pmm::{AllocFlags, FreeList, PageAllocator},
 };
 use crate::{
-    arch::{self, memory::PageTableEntry, sched::Context},
+    arch::{self, memory::PageTableEntry},
     generic::{
         sched::task::Task,
         util::{align_up, mutex::Mutex},

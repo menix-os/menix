@@ -7,7 +7,7 @@ use crate::{
     generic::{
         clock,
         memory::{
-            self, free, malloc,
+            free, malloc,
             pmm::FreeList,
             virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
         },
@@ -16,7 +16,6 @@ use crate::{
 };
 use alloc::{alloc::GlobalAlloc, boxed::Box};
 use core::{
-    alloc::Layout,
     ffi::{CStr, c_void},
     ptr::null_mut,
 };
@@ -134,6 +133,10 @@ extern "C" fn uacpi_kernel_pci_write32(
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_alloc(size: uacpi_size) -> *mut c_void {
+    if size == 0 {
+        return null_mut();
+    }
+
     return unsafe { malloc(size) };
 }
 

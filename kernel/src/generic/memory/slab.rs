@@ -53,7 +53,7 @@ impl Slab {
             let available_size = (arch::memory::get_page_size(VmLevel::L1)) - offset;
 
             // Allocate memory for this slab.
-            let mem = FreeList::alloc(1, AllocFlags::Zeroed).expect("Out of memory");
+            let mem = FreeList::alloc(1, AllocFlags::empty()).expect("Out of memory");
             let mut head = mem.as_hhdm::<*mut ()>();
 
             // Get a reference to the start of the buffer.
@@ -107,6 +107,7 @@ impl Slab {
     }
 }
 
+#[inline]
 fn find_size(size: usize) -> Option<&'static Slab> {
     ALLOCATOR.slabs.iter().find(|&slab| slab.ent_size >= size)
 }
@@ -170,18 +171,20 @@ unsafe impl GlobalAlloc for SlabAllocator {
 
 #[repr(C, align(4096))]
 pub struct SlabAllocator {
-    slabs: [Slab; 6],
+    slabs: [Slab; 8],
 }
 
 // Register the slab allocator as the global allocator.
 #[global_allocator]
 pub static ALLOCATOR: SlabAllocator = SlabAllocator {
     slabs: [
+        Slab::new(8),
+        Slab::new(16),
+        Slab::new(24),
         Slab::new(32),
         Slab::new(64),
         Slab::new(128),
         Slab::new(256),
         Slab::new(512),
-        Slab::new(1024),
     ],
 };

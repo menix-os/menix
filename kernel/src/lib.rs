@@ -33,9 +33,10 @@ unsafe extern "C" {
     unsafe static LD_DATA_END: u8;
 }
 
-/// The high-level kernel entry point. This is invoked by the prekernel environment.
+/// Initializes all important kernel structures.
+/// This is invoked by the prekernel environment.
 #[unsafe(no_mangle)]
-pub(crate) fn main() -> ! {
+pub(crate) fn entry() -> ! {
     arch::core::setup_bsp();
 
     // Initialize memory management.
@@ -51,6 +52,12 @@ pub(crate) fn main() -> ! {
         }
     }
 
+    main();
+}
+
+/// The high-level kernel entry point. This is invoked by the prekernel environment.
+#[unsafe(no_mangle)]
+pub(crate) fn main() -> ! {
     // Say hello to the console.
     // TODO: Get this information from posix/utsname instead.
     log!(
@@ -81,6 +88,7 @@ pub(crate) fn main() -> ! {
     generic::module::init();
 
     // TODO: Setup SMP.
+    unsafe { arch::irq::set_irq_state(true) };
 
     // Find init. If no path is given, search a few select directories.
     let path = match generic::boot::BootInfo::get()
