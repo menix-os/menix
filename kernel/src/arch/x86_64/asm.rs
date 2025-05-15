@@ -151,3 +151,67 @@ pub unsafe fn write32(port: u16, value: u32) {
         asm!("out dx, eax", in("dx") port, in("eax") value, options(nomem, nostack, preserves_flags));
     }
 }
+
+#[inline]
+pub unsafe fn read_ds() -> u16 {
+    unsafe {
+        let mut value = 0;
+        asm!("mov {0:x}, ds", out(reg) value);
+        return value;
+    }
+}
+
+#[inline]
+pub unsafe fn read_es() -> u16 {
+    unsafe {
+        let mut value = 0;
+        asm!("mov {0:x}, es", out(reg) value);
+        return value;
+    }
+}
+
+#[inline]
+pub unsafe fn read_fs() -> u16 {
+    unsafe {
+        let mut value = 0;
+        asm!("mov {0:x}, fs", out(reg) value);
+        return value;
+    }
+}
+
+#[inline]
+pub unsafe fn read_gs() -> u16 {
+    unsafe {
+        let mut value = 0;
+        asm!("mov {0:x}, gs", out(reg) value);
+        return value;
+    }
+}
+
+#[inline]
+pub unsafe fn write_ds(value: u16) {
+    unsafe {
+        asm!("mov ds, {0:x}", in(reg) value);
+    }
+}
+
+#[inline]
+pub unsafe fn write_es(value: u16) {
+    unsafe {
+        asm!("mov es, {0:x}", in(reg) value);
+    }
+}
+
+#[inline]
+pub unsafe fn write_fs(value: u16) {
+    unsafe {
+        asm!("mov fs, {0:x}", in(reg) value);
+    }
+}
+
+#[inline]
+pub unsafe fn write_gs(value: u16) {
+    unsafe {
+        asm!("mov gs, {0:x}", in(reg) value);
+    }
+}

@@ -1,6 +1,7 @@
 use crate::arch::x86_64::consts::CPL_KERNEL;
 use crate::arch::x86_64::consts::CPL_USER;
 use crate::generic::memory::virt::KERNEL_STACK_SIZE;
+use alloc::boxed::Box;
 use alloc::vec::Vec;
 use bitflags::bitflags;
 use core::arch::asm;
@@ -289,10 +290,9 @@ pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
         ),
     };
 
-    // TODO: Allocate a stack for the TSS.
-    tss.rsp0 = Vec::with_capacity(KERNEL_STACK_SIZE)
-        .leak()
-        .as_mut_ptr() as *mut u8 as u64;
+    // Allocate an initial stack for the TSS.
+    let stack = unsafe { Box::new_zeroed_slice(KERNEL_STACK_SIZE).assume_init() };
+    tss.rsp0 = Box::leak(stack).as_mut_ptr() as *mut u8 as u64 + KERNEL_STACK_SIZE as u64;
 
     // Construct a register to hold the GDT base and limit.
     let gdtr = GdtRegister {

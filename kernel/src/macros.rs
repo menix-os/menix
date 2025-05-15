@@ -17,6 +17,19 @@ macro_rules! per_cpu {
 }
 
 #[macro_export]
+macro_rules! container_of {
+    ($st: ty, $field: expr, $value: expr) => {{
+        // TODO: Should probably check if value and field have the same type.
+        let _ptr = $value as *mut u8;
+        if _ptr.is_null() {
+            core::ptr::null_mut()
+        } else {
+            unsafe { (_ptr.sub(offset_of!($st, $field))) as *mut $st }
+        }
+    }};
+}
+
+#[macro_export]
 macro_rules! current_module_name {
     () => {{
         let path = module_path!().as_bytes();

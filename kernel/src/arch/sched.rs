@@ -19,8 +19,18 @@ pub fn get_task() -> *mut Task {
 }
 
 /// Switches the current CPU context from one task to another.
-pub fn switch(from: *mut Task, to: *mut Task) {
-    internal::sched::switch(from, to);
+pub unsafe fn switch(from: *mut Task, to: *mut Task) -> *mut Task {
+    unsafe { internal::sched::switch(from, to) }
+}
+
+pub fn init_task(
+    task: &mut TaskContext,
+    entry: extern "C" fn(usize) -> !,
+    arg: usize,
+    stack_start: usize,
+    is_user: bool,
+) {
+    internal::sched::init_task(task, entry, arg, stack_start, is_user);
 }
 
 /// Transitions to user mode at a specified IP and SP.
