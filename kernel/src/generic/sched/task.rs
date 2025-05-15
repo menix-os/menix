@@ -1,5 +1,6 @@
 use super::process::{Pid, Process};
-use crate::arch;
+use crate::{arch, generic::memory::virt::KERNEL_STACK_SIZE};
+use alloc::{boxed::Box, sync::Arc};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 #[derive(Clone, Copy, Debug)]
@@ -21,45 +22,51 @@ pub type Tid = usize;
 /// Represents the atomic scheduling structure.
 #[derive(Debug)]
 pub struct Task {
-    /// The unique identifier of this task.
-    id: Tid,
-    /// The saved context of a task while it is not running.
-    pub context: arch::sched::Context,
+    /// The saved context of user mode registers.
+    pub user_context: arch::sched::Context,
     /// The saved context of a task while it is not running.
     pub task_context: arch::sched::TaskContext,
+    /// The kernel stack for this task.
+    pub stack: Box<[u8]>,
+    /// The unique identifier of this task.
+    id: Tid,
     /// The current state of the thread.
     state: TaskState,
     /// The process which this task belongs to.
-    parent: Pid,
+    process: Option<Pid>,
     /// If this task is a user task. `false` forbids this task to ever enter user mode.
     is_user: bool,
 }
 
 impl Task {
-    pub fn new(is_user: bool) -> Self {
-        return Self {
+    /// Creates a new task.
+    pub fn new(
+        entry: extern "C" fn(usize) -> !,
+        arg: usize,
+        parent: Option<&Process>,
+        is_user: bool,
+    ) -> Arc<Self> {
+        let mut result = Self {
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Acquire),
-            context: arch::sched::Context::default(),
+            user_context: arch::sched::Context::default(),
             task_context: arch::sched::TaskContext::default(),
             state: TaskState::Ready,
-            parent: 0,
+            process: parent.map(|x| x.get_pid()),
             is_user,
+            stack: unsafe { Box::new_zeroed_slice(KERNEL_STACK_SIZE).assume_init() },
         };
+        arch::sched::init_task(
+            &mut result.task_context,
+            entry,
+            arg,
+            result.stack.as_ptr() as usize,
+            is_user,
+        );
+
+        return Arc::new(result);
     }
 
-    /// Creates a new task as a thread for a process.
-    pub fn new_thread(proc: &Process) -> Self {
-        return Self {
-            id: TASK_ID_COUNTER.fetch_add(1, Ordering::Acquire),
-            context: arch::sched::Context::default(),
-            task_context: arch::sched::TaskContext::default(),
-            state: TaskState::Ready,
-            parent: proc.get_pid(),
-            is_user: proc.is_user(),
-        };
-    }
-
-    /// Returns true if this is a user process.
+    /// Returns true if this is a user task.
     #[inline]
     pub const fn is_user(&self) -> bool {
         self.is_user

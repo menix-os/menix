@@ -11,6 +11,9 @@
 #![allow(clippy::new_without_default)]
 #![forbid(clippy::missing_safety_doc)]
 
+use alloc::{boxed::Box, sync::Arc};
+use generic::{percpu::CpuData, sched::task::Task};
+
 pub extern crate alloc;
 pub extern crate core;
 
@@ -35,8 +38,7 @@ unsafe extern "C" {
 
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
-#[unsafe(no_mangle)]
-pub(crate) fn entry() -> ! {
+pub(crate) fn main() -> ! {
     arch::core::setup_bsp();
 
     // Initialize memory management.
@@ -52,12 +54,6 @@ pub(crate) fn entry() -> ! {
         }
     }
 
-    main();
-}
-
-/// The high-level kernel entry point. This is invoked by the prekernel environment.
-#[unsafe(no_mangle)]
-pub(crate) fn main() -> ! {
     // Say hello to the console.
     // TODO: Get this information from posix/utsname instead.
     log!(
@@ -71,8 +67,8 @@ pub(crate) fn main() -> ! {
     // generic::posix::fs::init();
 
     generic::platform::init();
-
-    arch::core::perpare_cpu(generic::percpu::CpuData::get());
+    // TODO: Move this to platform::init and do SMP setup.
+    arch::core::perpare_cpu(CpuData::get());
 
     // Run init calls.
     unsafe {
@@ -87,9 +83,13 @@ pub(crate) fn main() -> ! {
     // Load all modules and run their init function.
     generic::module::init();
 
-    // TODO: Setup SMP.
-    unsafe { arch::irq::set_irq_state(true) };
+    // Set up scheduler.
+    generic::sched::add_task(Task::new(run_init, 0, None, false));
+    CpuData::get().scheduler.start();
+}
 
+/// The high-level kernel entry point. This is invoked by the scheduler once it's running.
+extern "C" fn run_init(_arg: usize) -> ! {
     // Find init. If no path is given, search a few select directories.
     let path = match generic::boot::BootInfo::get()
         .command_line

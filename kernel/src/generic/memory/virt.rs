@@ -13,7 +13,6 @@ use alloc::alloc::AllocError;
 use bitflags::bitflags;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
-// Kernel constants
 pub const KERNEL_STACK_SIZE: usize = 0x20000;
 
 bitflags! {

@@ -1,22 +1,28 @@
-use super::{consts::CPL_USER, core::get_per_cpu, platform::gdt::Gdt};
+use super::{ARCH_DATA, core::get_per_cpu, platform::gdt::Gdt};
 use crate::{
     arch::{
         self,
         x86_64::{asm::wrmsr, consts},
     },
-    generic::{percpu::CpuData, sched::task::Task},
+    generic::{memory::virt::KERNEL_STACK_SIZE, percpu::CpuData, sched::task::Task},
 };
-use core::{arch::asm, mem::offset_of};
+use core::{
+    arch::{asm, naked_asm},
+    mem::offset_of,
+};
 
 #[repr(C)]
 #[derive(Default, Debug, Clone, Copy)]
 pub struct TaskContext {
-    pub rbx: u64,
-    pub rbp: u64,
-    pub r12: u64,
-    pub r13: u64,
-    pub r14: u64,
-    pub r15: u64,
+    pub rsp: u64,
+    pub fpu_region: *mut u8,
+    pub ds: u16,
+    pub es: u16,
+    pub fs: u16,
+    pub gs: u16,
+    pub fsbase: u64,
+    pub gsbase: u64,
+    pub restarted: bool,
 }
 
 #[repr(C)]
@@ -63,7 +69,118 @@ pub fn get_task() -> *mut Task {
     }
 }
 
-pub fn switch(from: *mut Task, to: *mut Task) {}
+pub unsafe fn switch(from: *mut Task, to: *mut Task) -> *mut Task {
+    unsafe {
+        let cpu = ARCH_DATA.get(CpuData::get());
+        cpu.tss.rsp0 = (*to).stack.as_ptr() as u64 + KERNEL_STACK_SIZE as u64;
+
+        if (*from).is_user() {
+            (cpu.fpu_save)((*from).task_context.fpu_region);
+            (*from).task_context.ds = super::asm::read_ds();
+            (*from).task_context.es = super::asm::read_es();
+            (*from).task_context.fs = super::asm::read_fs();
+            (*from).task_context.gs = super::asm::read_gs();
+        }
+
+        if (*to).is_user() {
+            (cpu.fpu_restore)((*to).task_context.fpu_region);
+            (*to).task_context.ds = super::asm::read_ds();
+            (*to).task_context.es = super::asm::read_es();
+            (*to).task_context.fs = super::asm::read_fs();
+
+            // If we have to change the GS segment we need to reload the MSR, otherwise we lose its value.
+            if (*to).task_context.gs != super::asm::read_gs() {
+                let percpu = get_per_cpu();
+                super::asm::write_gs((*to).task_context.gs);
+                wrmsr(consts::MSR_GS_BASE, percpu as u64);
+            }
+
+            wrmsr(consts::MSR_FS_BASE, (*to).task_context.fsbase);
+            // KERNEL_GS_BASE is the inactive base (swapped to during iretq/sysretq).
+            wrmsr(consts::MSR_KERNEL_GS_BASE, (*to).task_context.gsbase);
+        }
+
+        let old = switch_thunk(&raw mut (*from).task_context.rsp, (*to).task_context.rsp);
+        return container_of!(Task, task_context.rsp, old);
+    }
+}
+
+/// The task frame consists of registers that the C ABI marks as callee-saved.
+/// The order of these fields is important.
+#[repr(C)]
+struct TaskFrame {
+    /// Entry point
+    rbx: u64,
+    rbp: u64,
+    /// First argument
+    r12: u64,
+    r13: u64,
+    r14: u64,
+    r15: u64,
+    /// Return address.
+    rip: u64,
+}
+
+#[unsafe(naked)]
+unsafe extern "C" fn switch_thunk(old_rsp: *mut u64, new_rsp: u64) -> *mut u64 {
+    naked_asm!(
+        "sub rsp, 0x30", // Make room for all regs (except RIP).
+        "mov [rsp + 0x00], rbx",
+        "mov [rsp + 0x08], rbp",
+        "mov [rsp + 0x10], r12",
+        "mov [rsp + 0x18], r13",
+        "mov [rsp + 0x20], r14",
+        "mov [rsp + 0x28], r15",
+        "mov [rdi], rsp", // Save the old pointer.
+        "mov rsp, rsi",   // Set the new pointer.
+        "mov rbx, [rsp + 0x00]",
+        "mov rbp, [rsp + 0x08]",
+        "mov r12, [rsp + 0x10]",
+        "mov r13, [rsp + 0x18]",
+        "mov r14, [rsp + 0x20]",
+        "mov r15, [rsp + 0x28]",
+        "add rsp, 0x30",
+        "mov rax, rdi", // Return the old pointer.
+        "ret"           // This will conveniently move us to the RIP we put at this stack entry.
+    );
+}
+
+pub fn init_task(
+    context: &mut TaskContext,
+    entry: extern "C" fn(usize) -> !,
+    arg: usize,
+    stack_start: usize,
+    is_user: bool,
+) {
+    // Prepare a dummy stack with an entry point function to return to.
+    unsafe {
+        let frame = ((stack_start + KERNEL_STACK_SIZE) as *mut TaskFrame).sub(1);
+        (*frame).rbx = entry as u64;
+        (*frame).r12 = arg as u64;
+        (*frame).rip = task_entry_thunk as u64;
+        context.rsp = frame as u64;
+    }
+}
+
+/// This function only calls [`task_entry`] by moving values from calle saved regs to use the C ABI.
+#[unsafe(naked)]
+unsafe extern "C" fn task_entry_thunk() -> ! {
+    naked_asm!(
+        "mov rdi, rax", // This comes directly from `switch_thunk`.
+        "mov rsi, rbx",
+        "mov rdx, r12",
+        "call {task_thunk}",
+        "ud2",
+        task_thunk = sym task_entry,
+    );
+}
+
+unsafe extern "C" fn task_entry(old_rsp: u64, entry: extern "C" fn(usize), arg: usize) -> ! {
+    // Very unsafe trick to get the task for this RSP.
+    let task = container_of!(Task, task_context.rsp, old_rsp);
+    unsafe { (entry)(arg) };
+    unreachable!();
+}
 
 pub unsafe fn jump_to_user(ip: usize, sp: usize) -> ! {
     unsafe {

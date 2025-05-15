@@ -1,4 +1,5 @@
 use crate::arch::{self};
+use alloc::sync::Arc;
 use core::{
     ptr::null_mut,
     sync::atomic::{AtomicPtr, Ordering},
@@ -36,20 +37,27 @@ impl Scheduler {
     /// # Safety
     /// Do not call this directly!
     pub(crate) unsafe fn tick(&mut self, preempt: bool) {
-        // Disable interrupts.
+        unsafe {
+            arch::irq::set_irq_state(false);
 
-        let from = self.current.load(Ordering::Relaxed);
+            // TODO: select the next task.
+            let from = self.current.load(Ordering::Relaxed);
+            let to = self.current.load(Ordering::Relaxed);
+
+            arch::sched::switch(from.as_mut().unwrap(), to.as_mut().unwrap());
+
+            arch::irq::set_irq_state(true);
+        };
+    }
+
+    /// Starts running this scheduler.
+    pub(crate) fn start(&mut self) -> ! {
         // TODO
-        let to = self.current.load(Ordering::Relaxed);
-
-        // Enable interrupts.
-        unsafe { arch::irq::set_irq_state(true) };
-
-        arch::sched::switch(from, to);
+        unreachable!();
     }
+}
 
-    /// Starts executing this scheduler.
-    pub(crate) fn start(&mut self) {
-        unsafe { arch::irq::set_irq_state(true) };
-    }
+/// Adds a task to the global runqeue.
+pub fn add_task(task: Arc<Task>) {
+    // TODO
 }
