@@ -11,7 +11,6 @@
 #![allow(clippy::new_without_default)]
 #![forbid(clippy::missing_safety_doc)]
 
-use alloc::{boxed::Box, sync::Arc};
 use generic::{percpu::CpuData, sched::task::Task};
 
 pub extern crate alloc;
@@ -84,7 +83,10 @@ pub(crate) fn main() -> ! {
     generic::module::init();
 
     // Set up scheduler.
-    generic::sched::add_task(Task::new(run_init, 0, None, false));
+    generic::sched::add_task(
+        Task::new(run_init, 0, None, false).expect("Couldn't create kernel task"),
+    );
+
     CpuData::get().scheduler.start();
 }
 

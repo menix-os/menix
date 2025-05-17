@@ -55,7 +55,7 @@ impl Mmio {
     }
 
     /// Reads data from a single field.
-    pub fn read<T: PrimInt>(&self, field: MmioField<T>) -> T {
+    pub fn read<T: PrimInt>(&self, field: Field<T>) -> T {
         let value = unsafe { (self.base as *mut T).byte_add(field.offset).read_volatile() };
         return match field.native_endian {
             true => value,
@@ -64,7 +64,7 @@ impl Mmio {
     }
 
     /// Writes data to a single field.
-    pub fn write<T: PrimInt>(&mut self, field: MmioField<T>, value: T) {
+    pub fn write<T: PrimInt>(&mut self, field: Field<T>, value: T) {
         unsafe {
             (self.base as *mut T).byte_add(field.offset).write_volatile(
                 match field.native_endian {
@@ -76,7 +76,7 @@ impl Mmio {
     }
 
     /// Reads multiple elements into a buffer.
-    pub fn read_array<T: PrimInt>(&self, vector: MmioArray<T>, offset: usize, dest: &mut [T]) {
+    pub fn read_array<T: PrimInt>(&self, vector: Array<T>, offset: usize, dest: &mut [T]) {
         assert!(dest.len() == vector.count);
         for (idx, elem) in dest.iter_mut().enumerate() {
             *elem = self.read_at(vector, offset + idx);
@@ -84,7 +84,7 @@ impl Mmio {
     }
 
     /// Writes multiple array elements from a buffer.
-    pub fn write_array<T: PrimInt>(&mut self, vector: MmioArray<T>, offset: usize, value: &[T]) {
+    pub fn write_array<T: PrimInt>(&mut self, vector: Array<T>, offset: usize, value: &[T]) {
         assert!(value.len() == vector.count);
         for (idx, elem) in value.iter().enumerate() {
             self.write_at(vector, offset + idx, *elem);
@@ -92,7 +92,7 @@ impl Mmio {
     }
 
     /// Reads a single element from a vector.
-    pub fn read_at<T: PrimInt>(&self, vector: MmioArray<T>, index: usize) -> T {
+    pub fn read_at<T: PrimInt>(&self, vector: Array<T>, index: usize) -> T {
         assert!(index < vector.count);
         let value = unsafe {
             (self.base as *const T)
@@ -106,7 +106,7 @@ impl Mmio {
     }
 
     /// Writes a single element to a vector.
-    pub fn write_at<T: PrimInt>(&mut self, vector: MmioArray<T>, index: usize, value: T) {
+    pub fn write_at<T: PrimInt>(&mut self, vector: Array<T>, index: usize, value: T) {
         assert!(index < vector.count);
         unsafe {
             (self.base as *mut T)
@@ -132,13 +132,13 @@ impl Drop for Mmio {
 
 /// Single member of a structure.
 #[derive(Debug, Clone, Copy)]
-pub struct MmioField<T: PrimInt> {
+pub struct Field<T: PrimInt> {
     _p: PhantomData<T>,
     offset: usize,
     native_endian: bool,
 }
 
-impl<T: PrimInt> MmioField<T> {
+impl<T: PrimInt> Field<T> {
     /// Creates a new field with native endianness.
     /// `offset` is in units of bytes.
     pub const fn new(offset: usize) -> Self {
@@ -163,8 +163,42 @@ impl<T: PrimInt> MmioField<T> {
     }
 }
 
+/// Single member of a structure.
 #[derive(Debug, Clone, Copy)]
-pub struct MmioArray<T> {
+pub struct BitField<T: PrimInt> {
+    _p: PhantomData<T>,
+    offset: usize,
+    native_endian: bool,
+}
+
+impl<T: PrimInt> BitField<T> {
+    /// Creates a new field with native endianness.
+    /// `offset` is in units of bytes.
+    pub const fn new(offset: usize) -> Self {
+        assert!(offset % size_of::<T>() == 0);
+        Self {
+            _p: PhantomData,
+            offset,
+            native_endian: true,
+        }
+    }
+
+    /// Marks this field as little endian.
+    pub const fn with_le(mut self) -> Self {
+        self.native_endian = is_little_endian();
+        self
+    }
+
+    /// Marks this field as little endian.
+    pub const fn with_be(mut self) -> Self {
+        self.native_endian = !is_little_endian();
+        self
+    }
+}
+
+/// An array.
+#[derive(Debug, Clone, Copy)]
+pub struct Array<T> {
     _p: PhantomData<T>,
     offset: usize,
     stride: usize,
@@ -172,7 +206,7 @@ pub struct MmioArray<T> {
     native_endian: bool,
 }
 
-impl<T> MmioArray<T> {
+impl<T> Array<T> {
     pub const fn new(offset: usize, count: usize) -> Self {
         Self {
             _p: PhantomData,
@@ -195,60 +229,10 @@ impl<T> MmioArray<T> {
         self
     }
 
-    pub const fn new_ne_with_stride(offset: usize, count: usize, stride: usize) -> Self {
+    pub const fn with_stride(mut self, stride: usize) -> Self {
         assert!(stride >= size_of::<T>(), "Elements may not overlap");
-
-        Self {
-            _p: PhantomData,
-            offset,
-            stride,
-            count,
-            native_endian: true,
-        }
-    }
-
-    pub const fn new_le(offset: usize, count: usize) -> Self {
-        Self {
-            _p: PhantomData,
-            offset,
-            stride: size_of::<T>(),
-            count,
-            native_endian: is_little_endian(),
-        }
-    }
-
-    pub const fn new_le_with_stride(offset: usize, count: usize, stride: usize) -> Self {
-        assert!(stride >= size_of::<T>(), "Elements may not overlap");
-
-        Self {
-            _p: PhantomData,
-            offset,
-            stride,
-            count,
-            native_endian: is_little_endian(),
-        }
-    }
-
-    pub const fn new_be(offset: usize, count: usize) -> Self {
-        Self {
-            _p: PhantomData,
-            offset,
-            stride: size_of::<T>(),
-            count,
-            native_endian: !is_little_endian(),
-        }
-    }
-
-    pub const fn new_be_with_stride(offset: usize, count: usize, stride: usize) -> Self {
-        assert!(stride >= size_of::<T>(), "Elements may not overlap");
-
-        Self {
-            _p: PhantomData,
-            offset,
-            stride,
-            count,
-            native_endian: !is_little_endian(),
-        }
+        self.stride = stride;
+        self
     }
 }
 

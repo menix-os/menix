@@ -1,5 +1,8 @@
 use super::process::{Pid, Process};
-use crate::{arch, generic::memory::virt::KERNEL_STACK_SIZE};
+use crate::{
+    arch,
+    generic::{errno::Errno, memory::virt::KERNEL_STACK_SIZE},
+};
 use alloc::{boxed::Box, sync::Arc};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -45,7 +48,7 @@ impl Task {
         arg: usize,
         parent: Option<&Process>,
         is_user: bool,
-    ) -> Arc<Self> {
+    ) -> Result<Arc<Self>, Errno> {
         let mut result = Self {
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Acquire),
             user_context: arch::sched::Context::default(),
@@ -55,15 +58,16 @@ impl Task {
             is_user,
             stack: unsafe { Box::new_zeroed_slice(KERNEL_STACK_SIZE).assume_init() },
         };
+
         arch::sched::init_task(
             &mut result.task_context,
             entry,
             arg,
             result.stack.as_ptr() as usize,
             is_user,
-        );
+        )?;
 
-        return Arc::new(result);
+        return Ok(Arc::new(result));
     }
 
     /// Returns true if this is a user task.
