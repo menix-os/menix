@@ -4,7 +4,15 @@ use crate::{
         self,
         x86_64::{asm::wrmsr, consts},
     },
-    generic::{memory::virt::KERNEL_STACK_SIZE, percpu::CpuData, sched::task::Task},
+    generic::{
+        errno::Errno,
+        memory::{
+            pmm::{AllocFlags, FreeList, PageAllocator},
+            virt::KERNEL_STACK_SIZE,
+        },
+        percpu::CpuData,
+        sched::task::Task,
+    },
 };
 use core::{
     arch::{asm, naked_asm},
@@ -151,7 +159,8 @@ pub fn init_task(
     arg: usize,
     stack_start: usize,
     is_user: bool,
-) {
+) -> Result<(), Errno> {
+    let cpu = ARCH_DATA.get(CpuData::get());
     // Prepare a dummy stack with an entry point function to return to.
     unsafe {
         let frame = ((stack_start + KERNEL_STACK_SIZE) as *mut TaskFrame).sub(1);
@@ -159,7 +168,21 @@ pub fn init_task(
         (*frame).r12 = arg as u64;
         (*frame).rip = task_entry_thunk as u64;
         context.rsp = frame as u64;
+
+        if is_user {
+            context.fpu_region = FreeList::alloc_bytes(cpu.fpu_size, AllocFlags::Zeroed)
+                .map_err(|_| Errno::ENOMEM)?
+                .as_hhdm();
+            context.ds = super::asm::read_ds();
+            context.es = super::asm::read_es();
+            context.fs = super::asm::read_fs();
+            context.gs = super::asm::read_gs();
+            context.fsbase = super::asm::rdmsr(consts::MSR_FS_BASE);
+            context.gsbase = super::asm::rdmsr(consts::MSR_KERNEL_GS_BASE);
+        }
     }
+
+    Ok(())
 }
 
 /// This function only calls [`task_entry`] by moving values from calle saved regs to use the C ABI.
@@ -169,17 +192,14 @@ unsafe extern "C" fn task_entry_thunk() -> ! {
         "mov rdi, rax", // This comes directly from `switch_thunk`.
         "mov rsi, rbx",
         "mov rdx, r12",
-        "call {task_thunk}",
-        "ud2",
+        "jmp {task_thunk}",
         task_thunk = sym task_entry,
     );
 }
 
-unsafe extern "C" fn task_entry(old_rsp: u64, entry: extern "C" fn(usize), arg: usize) -> ! {
-    // Very unsafe trick to get the task for this RSP.
-    let task = container_of!(Task, task_context.rsp, old_rsp);
-    unsafe { (entry)(arg) };
-    unreachable!();
+/// Sets up some task fields and calls the entry point.
+unsafe extern "C" fn task_entry(old_rsp: u64, entry: extern "C" fn(usize) -> !, arg: usize) -> ! {
+    (entry)(arg);
 }
 
 pub unsafe fn jump_to_user(ip: usize, sp: usize) -> ! {
@@ -195,10 +215,8 @@ pub unsafe fn jump_to_user(ip: usize, sp: usize) -> ! {
     context.rip = ip as u64;
     context.rsp = sp as u64;
     context.rflags = 0x200;
-    //context.cs = offset_of!(Gdt, user_code64) as u64 | CPL_USER as u64;
-    //context.ss = offset_of!(Gdt, user_data) as u64 | CPL_USER as u64;
-    context.cs = offset_of!(Gdt, kernel_code) as u64;
-    context.ss = offset_of!(Gdt, kernel_data) as u64;
+    context.cs = offset_of!(Gdt, user_code64) as u64 | consts::CPL_USER as u64;
+    context.ss = offset_of!(Gdt, user_data) as u64 | consts::CPL_USER as u64;
 
     // Clear segment registers. Because this also clears GSBASE, we have to restore it immediately.
     unsafe {

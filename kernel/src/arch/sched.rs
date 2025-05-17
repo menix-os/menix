@@ -1,4 +1,5 @@
 use super::internal;
+use crate::generic::errno::Errno;
 use crate::generic::sched::task::Task;
 
 pub use internal::sched::Context;
@@ -29,8 +30,8 @@ pub fn init_task(
     arg: usize,
     stack_start: usize,
     is_user: bool,
-) {
-    internal::sched::init_task(task, entry, arg, stack_start, is_user);
+) -> Result<(), Errno> {
+    internal::sched::init_task(task, entry, arg, stack_start, is_user)
 }
 
 /// Transitions to user mode at a specified IP and SP.

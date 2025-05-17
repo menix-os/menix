@@ -12,12 +12,11 @@ pub struct Hpet {
 }
 
 mod regs {
-    use crate::generic::memory::mmio::MmioField;
+    use crate::generic::memory::mmio::Field;
 
-    pub const CAPABILITIES: MmioField<u64> = MmioField::new(0);
-    pub const CONFIGURATION: MmioField<u64> = MmioField::new(0x10);
-    pub const INTERRUPT_STATUS: MmioField<u64> = MmioField::new(0x20);
-    pub const MAIN_COUNTER: MmioField<u64> = MmioField::new(0xF0);
+    pub const CAPABILITIES: Field<u64> = Field::new(0);
+    pub const CONFIGURATION: Field<u64> = Field::new(0x10);
+    pub const MAIN_COUNTER: Field<u64> = Field::new(0xF0);
 }
 
 impl ClockSource for Hpet {
@@ -44,6 +43,7 @@ impl Hpet {
         let mut table = uacpi_table::default();
         let uacpi_status =
             unsafe { uacpi_table_find_by_signature(c"HPET".as_ptr(), &raw mut table) };
+
         if uacpi_status != UACPI_STATUS_OK {
             dbg!(uacpi_status);
             return Err(ClockError::Unavailable);
@@ -51,13 +51,11 @@ impl Hpet {
 
         let hpet: *mut acpi_hpet = unsafe { table.__bindgen_anon_1.ptr } as *mut acpi_hpet;
         let mut mmio = unsafe { Mmio::new_mmio(((*hpet).address.address as usize).into(), 0x1000) };
-
-        let period = (mmio.read(regs::CAPABILITIES) >> 32) as u32;
+        unsafe { uacpi_table_unref(&raw mut table) };
 
         // Enable timer.
         mmio.write(regs::CONFIGURATION, mmio.read(regs::CONFIGURATION) | 1);
-
-        unsafe { uacpi_table_unref(&raw mut table) };
+        let period = (mmio.read(regs::CAPABILITIES) >> 32) as u32;
 
         return Ok(Hpet {
             regs: mmio,
