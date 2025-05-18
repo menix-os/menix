@@ -1,11 +1,10 @@
+use super::task::Task;
 use crate::generic::memory::{
     pmm::FreeList,
     virt::{KERNEL_PAGE_TABLE, PageTable},
 };
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 use core::sync::atomic::{AtomicUsize, Ordering};
-
-use super::task::Task;
 
 pub type Pid = usize;
 
@@ -13,6 +12,7 @@ pub type Pid = usize;
 pub struct Process {
     /// The unique identifier of this process.
     id: Pid,
+    name: String,
     page_table: PageTable,
     threads: Vec<Task>,
     is_user: bool,
@@ -21,9 +21,10 @@ pub struct Process {
 static PID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 impl Process {
-    pub fn new(is_user: bool) -> Self {
+    pub fn new(name: String, is_user: bool) -> Self {
         Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
+            name,
             page_table: PageTable::new_user::<FreeList>(KERNEL_PAGE_TABLE.lock().root_level()),
             threads: Vec::new(),
             is_user,

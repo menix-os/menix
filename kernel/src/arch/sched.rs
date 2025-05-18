@@ -15,13 +15,20 @@ assert_trait_impl!(TaskContext, Copy);
 /// Returns the current task running on this CPU.
 /// # Note
 /// The implementation of this function must be an atomic operation for this to be memory safe!
-pub fn get_task() -> *mut Task {
+pub fn get_task() -> *const Task {
     internal::sched::get_task()
 }
 
 /// Switches the current CPU context from one task to another.
-pub unsafe fn switch(from: *mut Task, to: *mut Task) -> *mut Task {
+pub unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe { internal::sched::switch(from, to) }
+}
+
+/// Forces a rescheduling rescheduling interrupt.
+/// # Safety
+/// Rescheduling must be safe at the point of this call.
+pub unsafe fn force_reschedule() {
+    unsafe { internal::sched::force_reschedule() }
 }
 
 pub fn init_task(

@@ -1,12 +1,16 @@
 use super::process::{Pid, Process};
 use crate::{
     arch,
-    generic::{errno::Errno, memory::virt::KERNEL_STACK_SIZE},
+    generic::{errno::Errno, memory::virt::KERNEL_STACK_SIZE, util::mutex::Mutex},
 };
-use alloc::{boxed::Box, sync::Arc};
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{
+    alloc::Layout,
+    panic,
+    ptr::NonNull,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TaskState {
     /// Currently being executed.
     Running,
@@ -25,12 +29,13 @@ pub type Tid = usize;
 /// Represents the atomic scheduling structure.
 #[derive(Debug)]
 pub struct Task {
-    /// The saved context of user mode registers.
-    pub user_context: arch::sched::Context,
+    /// A pointer to the saved context of user mode registers.
+    pub user_context: Option<NonNull<arch::sched::Context>>,
     /// The saved context of a task while it is not running.
-    pub task_context: arch::sched::TaskContext,
+    pub task_context: Mutex<arch::sched::TaskContext>,
     /// The kernel stack for this task.
-    pub stack: Box<[u8]>,
+    // TODO: Use kernel stack structure that handles memory management.
+    pub stack: *mut (),
     /// The unique identifier of this task.
     id: Tid,
     /// The current state of the thread.
@@ -48,32 +53,54 @@ impl Task {
         arg: usize,
         parent: Option<&Process>,
         is_user: bool,
-    ) -> Result<Arc<Self>, Errno> {
-        let mut result = Self {
+    ) -> Result<Self, Errno> {
+        // TODO: see above
+        const STACK_LAYOUT: Layout = match Layout::from_size_align(KERNEL_STACK_SIZE, 0x1000) {
+            Ok(x) => x,
+            Err(_) => panic!("Layout error"),
+        };
+
+        let result = Self {
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Acquire),
-            user_context: arch::sched::Context::default(),
-            task_context: arch::sched::TaskContext::default(),
+            user_context: None,
+            task_context: Mutex::new(arch::sched::TaskContext::default()),
             state: TaskState::Ready,
             process: parent.map(|x| x.get_pid()),
             is_user,
-            stack: unsafe { Box::new_zeroed_slice(KERNEL_STACK_SIZE).assume_init() },
+            stack: unsafe { alloc::alloc::alloc_zeroed(STACK_LAYOUT) as *mut () },
         };
 
         arch::sched::init_task(
-            &mut result.task_context,
+            &mut result.task_context.lock(),
             entry,
             arg,
-            result.stack.as_ptr() as usize,
+            result.stack as usize,
             is_user,
         )?;
 
-        return Ok(Arc::new(result));
+        return Ok(result);
     }
 
     /// Returns true if this is a user task.
     #[inline]
     pub const fn is_user(&self) -> bool {
         self.is_user
+    }
+
+    /// Returns the ID of this task.
+    #[inline]
+    pub const fn get_id(&self) -> Tid {
+        self.id
+    }
+
+    /// Returns the process which this task belongs to. If it doesn't belong to any, [`None`] is returned.
+    #[inline]
+    pub const fn get_process(&self) -> Option<Pid> {
+        self.process
+    }
+
+    pub fn is_ready(&self) -> bool {
+        self.state == TaskState::Ready
     }
 }
 

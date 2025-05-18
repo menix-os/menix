@@ -291,6 +291,7 @@ pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
     };
 
     // Allocate an initial stack for the TSS.
+    // TODO: Use kernel stack struct.
     let stack = unsafe { Box::new_zeroed_slice(KERNEL_STACK_SIZE).assume_init() };
     tss.rsp0 = Box::leak(stack).as_mut_ptr() as *mut u8 as u64 + KERNEL_STACK_SIZE as u64;
 

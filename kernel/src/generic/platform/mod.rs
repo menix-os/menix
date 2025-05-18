@@ -1,5 +1,3 @@
-use super::boot::BootInfo;
-
 #[cfg(feature = "acpi")]
 pub mod acpi;
 
@@ -8,6 +6,8 @@ pub mod openfw;
 
 #[cfg(feature = "pci")]
 pub mod pci;
+
+use super::{boot::BootInfo, percpu::CpuData};
 
 #[deny(dead_code)]
 pub fn init() {
@@ -19,6 +19,12 @@ pub fn init() {
     }
 
     // TODO: OpenFirmware support.
+
+    // Initialize BSP.
+    crate::arch::core::perpare_cpu(CpuData::get());
+    // TODO: Initialize other cores.
+
+    // Initalize system busses.
 
     #[cfg(feature = "pci")]
     pci::init();

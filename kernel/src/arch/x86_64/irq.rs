@@ -57,7 +57,7 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
             );
         }
         // Timer.
-        0x20 => timer_handler(context),
+        0x20 => timer_handler(),
         // Legacy syscall handler.
         0x80 => syscall_handler(context),
         // Any other ISR is an IRQ with a dynamic handler.
@@ -121,14 +121,13 @@ extern "C" fn page_fault_handler(frame: *mut Context) {
     }
 }
 
-extern "C" fn timer_handler(frame: *mut Context) {
-    let ctx = CpuData::get();
-
+extern "C" fn timer_handler() {
+    let cpu = CPU_DATA.get(CpuData::get());
     unsafe {
-        CPU_DATA.get(ctx).scheduler.tick(true);
+        let (from, to) = cpu.scheduler.start_reschedule(true);
+        apic::LAPIC.get(CpuData::get()).eoi().unwrap();
+        cpu.scheduler.finish_reschedule(from, to);
     }
-
-    apic::LAPIC.get(ctx).eoi().unwrap();
 }
 
 pub unsafe fn set_irq_state(value: bool) -> bool {

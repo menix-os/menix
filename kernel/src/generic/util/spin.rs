@@ -23,4 +23,9 @@ impl SpinLock {
     pub fn unlock(&mut self) {
         self.0.store(false, Ordering::Release);
     }
+
+    #[inline(always)]
+    pub fn is_locked(&self) -> bool {
+        self.0.load(Ordering::Acquire)
+    }
 }

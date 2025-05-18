@@ -6,14 +6,11 @@ pub mod serial;
 pub mod tsc;
 
 use super::asm;
-use crate::generic::{
-    clock::{self, ClockError, ClockSource},
-    memory::mmio::Mmio,
-};
+use crate::generic::clock::{self};
 use alloc::boxed::Box;
 use uacpi_sys::{
-    UACPI_STATUS_OK, acpi_hpet, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_table,
-    uacpi_table_find_by_signature, uacpi_table_unref, uacpi_u8, uacpi_u16, uacpi_u32,
+    UACPI_STATUS_OK, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_u8, uacpi_u16,
+    uacpi_u32,
 };
 
 pub fn init() {
