@@ -1,5 +1,7 @@
 // Slab allocator
 
+use alloc::alloc::{AllocError, Allocator};
+
 use super::{
     VirtAddr,
     pmm::{AllocFlags, FreeList, PageAllocator},
@@ -13,7 +15,7 @@ use core::{
     alloc::{GlobalAlloc, Layout},
     hint::{likely, unlikely},
     mem::size_of,
-    ptr::null_mut,
+    ptr::{NonNull, null_mut},
 };
 
 #[derive(Debug)]
@@ -112,6 +114,26 @@ fn find_size(size: usize) -> Option<&'static Slab> {
     ALLOCATOR.slabs.iter().find(|&slab| slab.ent_size >= size)
 }
 
+#[repr(C, align(4096))]
+pub struct SlabAllocator {
+    slabs: [Slab; 8],
+}
+
+// Register the slab allocator as the global allocator.
+#[global_allocator]
+pub static ALLOCATOR: SlabAllocator = SlabAllocator {
+    slabs: [
+        Slab::new(8),
+        Slab::new(16),
+        Slab::new(24),
+        Slab::new(32),
+        Slab::new(64),
+        Slab::new(128),
+        Slab::new(256),
+        Slab::new(512),
+    ],
+};
+
 unsafe impl GlobalAlloc for SlabAllocator {
     unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         // If there's nothing to allocate, don't.
@@ -168,23 +190,3 @@ unsafe impl GlobalAlloc for SlabAllocator {
         }
     }
 }
-
-#[repr(C, align(4096))]
-pub struct SlabAllocator {
-    slabs: [Slab; 8],
-}
-
-// Register the slab allocator as the global allocator.
-#[global_allocator]
-pub static ALLOCATOR: SlabAllocator = SlabAllocator {
-    slabs: [
-        Slab::new(8),
-        Slab::new(16),
-        Slab::new(24),
-        Slab::new(32),
-        Slab::new(64),
-        Slab::new(128),
-        Slab::new(256),
-        Slab::new(512),
-    ],
-};

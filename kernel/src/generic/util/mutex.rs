@@ -56,6 +56,11 @@ impl<T: ?Sized, const I: bool> Mutex<T, I> {
         MutexGuard { parent: self, irq }
     }
 
+    pub fn is_locked(&self) -> bool {
+        let inner = unsafe { &*self.inner.get() };
+        inner.spin.is_locked()
+    }
+
     /// Forcefully unlocks this [`Mutex`].
     /// `irq` controls if IRQs should be reactivated after unlocking.
     /// # Safety

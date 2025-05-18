@@ -11,6 +11,7 @@
 #![allow(clippy::new_without_default)]
 #![forbid(clippy::missing_safety_doc)]
 
+use arch::irq::wait_for_irq;
 use generic::{percpu::CpuData, sched::task::Task};
 
 pub extern crate alloc;
@@ -66,8 +67,6 @@ pub(crate) fn main() -> ! {
     // generic::posix::fs::init();
 
     generic::platform::init();
-    // TODO: Move this to platform::init and do SMP setup.
-    arch::core::perpare_cpu(CpuData::get());
 
     // Run init calls.
     unsafe {
@@ -83,11 +82,16 @@ pub(crate) fn main() -> ! {
     generic::module::init();
 
     // Set up scheduler.
-    generic::sched::add_task(
-        Task::new(run_init, 0, None, false).expect("Couldn't create kernel task"),
-    );
+    CpuData::get()
+        .scheduler
+        .add_task(Task::new(test, 1, None, false).unwrap());
+    CpuData::get()
+        .scheduler
+        .add_task(Task::new(test, 2, None, false).unwrap());
 
-    CpuData::get().scheduler.start();
+    let init = Task::new(run_init, 0, None, false).expect("Couldn't create kernel task");
+
+    CpuData::get().scheduler.start(init);
 }
 
 /// The high-level kernel entry point. This is invoked by the scheduler once it's running.
@@ -106,5 +110,12 @@ extern "C" fn run_init(_arg: usize) -> ! {
     // TODO: Start init.
     loop {
         core::hint::spin_loop();
+    }
+}
+
+extern "C" fn test(func: usize) -> ! {
+    loop {
+        log!("Hello from test func with arg {func}");
+        wait_for_irq();
     }
 }
