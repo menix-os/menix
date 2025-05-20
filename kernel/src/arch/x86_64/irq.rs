@@ -24,8 +24,7 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
         0x0E => page_fault_handler(context),
         // Unhandled exceptions.
         0x00..0x20 => {
-            error!("Registers:\n{:?}", context);
-            panic!(
+            error!(
                 "Got an unhandled CPU exception: {} (ISR {})!",
                 match isr {
                     0x00 => "Division Error",
@@ -55,6 +54,44 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
                 },
                 isr
             );
+            unsafe {
+                error!(
+                    "rax {:016x} rbx {:016x} rcx {:016x} rdx {:016x}",
+                    (*context).rax,
+                    (*context).rbx,
+                    (*context).rcx,
+                    (*context).rdx
+                );
+                error!(
+                    "rbp {:016x} rdi {:016x} rsi {:016x} r8  {:016x}",
+                    (*context).rbp,
+                    (*context).rdi,
+                    (*context).rsi,
+                    (*context).r8
+                );
+                error!(
+                    "r9  {:016x} r10 {:016x} r11 {:016x} r12 {:016x}",
+                    (*context).r9,
+                    (*context).r10,
+                    (*context).r11,
+                    (*context).r12,
+                );
+                error!(
+                    "r13 {:016x} r14 {:016x} r15 {:016x} rfl {:016x}",
+                    (*context).r13,
+                    (*context).r14,
+                    (*context).r15,
+                    (*context).rflags
+                );
+                error!(
+                    "rsp {:016x} rip {:016x} cs  {:016x} ss  {:016x}",
+                    (*context).rsp,
+                    (*context).rip,
+                    (*context).cs,
+                    (*context).ss
+                );
+            }
+            panic!();
         }
         // Timer.
         0x20 => timer_handler(),
