@@ -97,6 +97,9 @@ impl Scheduler {
     /// Completes the reschedule with values provided by [`Self::start_reschedule`].
     /// This is seperate so e.g. an interrupt handler can signal an EOI before the switch.
     pub(crate) unsafe fn finish_reschedule(&mut self, from: *const Task, to: *const Task) {
+        if from == to {
+            return;
+        }
         unsafe { arch::sched::switch(from, to) };
     }
 }
