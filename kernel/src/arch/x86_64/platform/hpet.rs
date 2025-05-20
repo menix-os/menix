@@ -45,7 +45,6 @@ impl Hpet {
             unsafe { uacpi_table_find_by_signature(c"HPET".as_ptr(), &raw mut table) };
 
         if uacpi_status != UACPI_STATUS_OK {
-            dbg!(uacpi_status);
             return Err(ClockError::Unavailable);
         }
 
