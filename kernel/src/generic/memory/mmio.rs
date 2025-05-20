@@ -163,22 +163,24 @@ impl<T: PrimInt> Field<T> {
     }
 }
 
-/// Single member of a structure.
+/// A bit-sized member of a structure.
 #[derive(Debug, Clone, Copy)]
 pub struct BitField<T: PrimInt> {
     _p: PhantomData<T>,
-    offset: usize,
+    bit_offset: usize,
+    bit_size: usize,
     native_endian: bool,
 }
 
 impl<T: PrimInt> BitField<T> {
     /// Creates a new field with native endianness.
     /// `offset` is in units of bytes.
-    pub const fn new(offset: usize) -> Self {
-        assert!(offset % size_of::<T>() == 0);
+    pub const fn new(bit_offset: usize, bit_size: usize) -> Self {
+        assert!(bit_size <= size_of::<T>() * 8);
         Self {
             _p: PhantomData,
-            offset,
+            bit_offset,
+            bit_size,
             native_endian: true,
         }
     }
