@@ -11,10 +11,6 @@
 #![allow(clippy::new_without_default)]
 #![forbid(clippy::missing_safety_doc)]
 
-use core::hint;
-
-use generic::{percpu::CpuData, sched::task::Task};
-
 pub extern crate alloc;
 pub extern crate core;
 
@@ -22,6 +18,8 @@ pub extern crate core;
 pub mod macros;
 pub mod arch;
 pub mod generic;
+
+use generic::{percpu::CpuData, sched::task::Task};
 
 unsafe extern "C" {
     unsafe static LD_EARLY_ARRAY_START: u8;
@@ -98,10 +96,9 @@ extern "C" fn run_init(_arg: usize) -> ! {
         // TODO: Search filesystem for init binaries.
         None => "/usr/sbin/init",
     };
+
     log!("Starting init \"{}\"", path);
 
     // TODO: Start init.
-    loop {
-        hint::spin_loop();
-    }
+    unreachable!();
 }
