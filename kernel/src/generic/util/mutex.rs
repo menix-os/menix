@@ -77,6 +77,11 @@ impl<T: ?Sized, const I: bool> Mutex<T, I> {
 }
 
 impl<T, const I: bool> Mutex<T, I> {
+    pub unsafe fn inner(&self) -> &mut T {
+        let inner = unsafe { &mut *self.inner.get() };
+        &mut inner.data
+    }
+
     pub fn into_inner(self) -> T {
         let inner = unsafe { &mut *self.inner.get() };
         inner.spin.lock();

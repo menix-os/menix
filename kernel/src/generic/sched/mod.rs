@@ -2,10 +2,7 @@ pub mod process;
 pub mod task;
 
 use super::util::spin::SpinLock;
-use crate::{
-    arch::{self},
-    generic::irq,
-};
+use crate::arch;
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::{
     ptr::null_mut,
@@ -16,7 +13,7 @@ use task::{Task, Tid};
 /// An instance of a scheduler. Each CPU has one instance running to coordinate thread management.
 #[derive(Debug)]
 pub struct Scheduler {
-    /// The currently running task on this scheduler instance.
+    /// The currently running task on this scheduler instance. Use [`Self::get_current`] instead.
     pub(crate) current: AtomicPtr<Task>,
     pub(crate) lock: SpinLock,
     ticks_active: usize,
@@ -38,6 +35,7 @@ impl Scheduler {
     }
 
     pub fn add_task(&mut self, task: Task) {
+        log!("New task {} added to run queue", task.get_id());
         self.run_queue.insert(task.get_id(), Arc::new(task));
     }
 
@@ -58,17 +56,22 @@ impl Scheduler {
         let task = Arc::new(initial);
 
         self.run_queue.insert(task.get_id(), task.clone());
-        self.current
-            .store(Arc::into_raw(task) as *mut _, Ordering::Release);
-        unsafe { arch::irq::set_irq_state(true) };
-        unsafe { arch::sched::force_reschedule() };
 
+        // We create a dummy thread on the stack which only exists to start the scheduler since
+        // the scheduler assumes that there's always a task running. Since this is a dead end,
+        // we don't actually add this to the run queue.
+        let dummy = Task::new(dummy_fn, 0, None, false).unwrap();
+
+        unsafe {
+            let to = Arc::into_raw(task);
+            self.current.store(to as *mut _, Ordering::Relaxed);
+            self.finish_reschedule(&raw const dummy, to);
+        }
         unreachable!("Failed to start scheduling!");
     }
 
     fn next(&self) -> Option<Arc<Task>> {
         let current_tid = Self::get_current().get_id();
-
         let filter = |&(_, b): &(&Tid, &Arc<Task>)| b.is_ready();
 
         self.run_queue
@@ -83,13 +86,21 @@ impl Scheduler {
     /// # Safety
     /// The returned value *must* be used by the caller to finish the task switch with [`Self::finish_reschedule`].
     pub(crate) unsafe fn start_reschedule(&mut self, preempt: bool) -> (*const Task, *const Task) {
+        let irq_state = unsafe { arch::irq::set_irq_state(false) };
         let from = self.current.load(Ordering::Relaxed);
         let to = Arc::into_raw(self.next().unwrap());
+
         self.current.store(to as *mut Task, Ordering::Relaxed);
         return (from, to);
     }
 
+    /// Completes the reschedule with values provided by [`Self::start_reschedule`].
+    /// This is seperate so e.g. an interrupt handler can signal an EOI before the switch.
     pub(crate) unsafe fn finish_reschedule(&mut self, from: *const Task, to: *const Task) {
         unsafe { arch::sched::switch(from, to) };
     }
+}
+
+extern "C" fn dummy_fn(_: usize) -> ! {
+    unreachable!("This is a dummy function, somehow the dummy task ended up in the scheduler");
 }

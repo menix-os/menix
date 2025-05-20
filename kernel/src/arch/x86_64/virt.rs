@@ -92,26 +92,26 @@ impl PageTableEntry {
     }
 }
 
-pub fn flush_tlb(addr: VirtAddr) {
+pub(in crate::arch) fn flush_tlb(addr: VirtAddr) {
     unsafe {
         asm!("invlpg [{addr}]", addr = in(reg) addr.value());
     }
 }
 
-pub unsafe fn set_page_table(addr: PhysAddr) {
+pub(in crate::arch) unsafe fn set_page_table(addr: PhysAddr) {
     unsafe {
         asm!("mov cr3, {addr}", addr = in(reg) addr.value());
     }
 }
 
-pub const fn get_page_bits() -> usize {
+pub(in crate::arch) const fn get_page_bits() -> usize {
     12
 }
 
-pub const fn get_max_level() -> VmLevel {
+pub(in crate::arch) const fn get_max_level() -> VmLevel {
     VmLevel::L3
 }
 
-pub const fn get_level_bits() -> usize {
+pub(in crate::arch) const fn get_level_bits() -> usize {
     9
 }

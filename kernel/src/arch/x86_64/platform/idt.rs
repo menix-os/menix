@@ -35,7 +35,7 @@ pub fn init() {
     // Set all gates to their respective handlers.
     unsafe {
         seq!(N in 0..256 {
-            (*idt).routines[N] = IdtEntry::new((irq::interrupt_stub~N as usize).into(), 0, IdtIsrType::Interrupt);
+            (*idt).routines[N] = IdtEntry::new((irq::interrupt_stub~N as usize).into(), 0, GateType::Interrupt);
         });
     }
 }
@@ -76,7 +76,7 @@ pub struct IdtEntry {
 }
 
 #[repr(u8)]
-pub enum IdtIsrType {
+pub enum GateType {
     Interrupt = 0xE,
     Trap = 0xF,
 }
@@ -96,7 +96,7 @@ impl IdtEntry {
     }
 
     /// Creates a new ISR entry.
-    const fn new(base: VirtAddr, interrupt_stack: u8, isr_type: IdtIsrType) -> Self {
+    const fn new(base: VirtAddr, interrupt_stack: u8, gate: GateType) -> Self {
         assert!(interrupt_stack <= 2, "`ist` must be 0, 1 or 2!");
 
         Self {
@@ -105,10 +105,7 @@ impl IdtEntry {
             selector: offset_of!(Gdt, kernel_code) as u16,
             ist: interrupt_stack,
             attributes: 1 << 7 // = Present
-                | match isr_type {
-                    IdtIsrType::Interrupt => 0xE,
-                    IdtIsrType::Trap => 0xF,
-                },
+                | gate as u8,
             base1: (base.value() >> 16) as u16,
             base2: (base.value() >> 32) as u32,
             reserved: 0,

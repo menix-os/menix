@@ -1,5 +1,6 @@
 use super::internal;
 use crate::generic::errno::Errno;
+use crate::generic::memory::VirtAddr;
 use crate::generic::sched::task::Task;
 
 pub use internal::sched::Context;
@@ -35,7 +36,7 @@ pub fn init_task(
     task: &mut TaskContext,
     entry: extern "C" fn(usize) -> !,
     arg: usize,
-    stack_start: usize,
+    stack_start: VirtAddr,
     is_user: bool,
 ) -> Result<(), Errno> {
     internal::sched::init_task(task, entry, arg, stack_start, is_user)
@@ -44,7 +45,7 @@ pub fn init_task(
 /// Transitions to user mode at a specified IP and SP.
 /// # Safety
 /// `ip` and `sp` have to point to valid and mapped addresses in the current address space.
-pub unsafe fn jump_to_user(ip: usize, sp: usize) {
+pub unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) {
     unsafe { internal::sched::jump_to_user(ip, sp) };
 }
 

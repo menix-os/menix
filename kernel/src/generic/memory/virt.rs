@@ -3,7 +3,7 @@ use super::{
     pmm::{AllocFlags, FreeList, PageAllocator},
 };
 use crate::{
-    arch::{self, memory::PageTableEntry},
+    arch::{self, virt::PageTableEntry},
     generic::{
         sched::task::Task,
         util::{align_up, mutex::Mutex},
@@ -102,7 +102,7 @@ impl PageTable<true> {
         level: VmLevel,
         length: usize,
     ) -> Result<*mut u8, AllocError> {
-        let aligned_len = align_up(length, arch::memory::get_page_size(VmLevel::L1));
+        let aligned_len = align_up(length, arch::virt::get_page_size(VmLevel::L1));
 
         // Increase mapping base.
         // TODO: Use actual virtual address allocator.
@@ -128,7 +128,7 @@ impl<const K: bool> PageTable<K> {
     pub unsafe fn set_active(&mut self) {
         let addr = self.head.lock();
         unsafe {
-            arch::memory::set_page_table(*addr);
+            arch::virt::set_page_table(*addr);
         }
     }
 
@@ -149,11 +149,10 @@ impl<const K: bool> PageTable<K> {
         // Traverse the page table (from highest to lowest level).
         for level in (0..self.root_level).rev() {
             // Create a mask for the address part of the PTE, e.g. 0x1ff for 9 bits.
-            let addr_bits = usize::MAX >> (usize::BITS as usize - arch::memory::get_level_bits());
+            let addr_bits = usize::MAX >> (usize::BITS as usize - arch::virt::get_level_bits());
 
             // Determine the shift for the appropriate level, e.g. x << (12 + (9 * level)).
-            let addr_shift =
-                arch::memory::get_page_bits() + (arch::memory::get_level_bits() * level);
+            let addr_shift = arch::virt::get_page_bits() + (arch::virt::get_level_bits() * level);
 
             // Get the index for this level by masking the relevant address part.
             index = (virt.0 >> addr_shift) & addr_bits;
@@ -259,7 +258,7 @@ impl<const K: bool> PageTable<K> {
                 },
             level as usize,
         );
-        crate::arch::memory::flush_tlb(virt);
+        crate::arch::virt::flush_tlb(virt);
         return Ok(());
     }
 
@@ -273,8 +272,8 @@ impl<const K: bool> PageTable<K> {
         length: usize,
     ) -> Result<(), PageTableError> {
         // TODO: Do transactional mapping.
-        let length = align_up(length, arch::memory::get_page_size(level));
-        let step = arch::memory::get_page_size(level);
+        let length = align_up(length, arch::virt::get_page_size(level));
+        let step = arch::virt::get_page_size(level);
 
         for offset in (0..length).step_by(step) {
             self.map_single::<P>(
@@ -296,9 +295,9 @@ impl<const K: bool> PageTable<K> {
         length: usize,
     ) -> Result<(), PageTableError> {
         // TODO: Do transactional mapping.
-        let length = align_up(length, arch::memory::get_page_size(VmLevel::L1));
-        let step = arch::memory::get_page_size(VmLevel::L1)
-            + (level as usize * arch::memory::get_level_bits());
+        let length = align_up(length, arch::virt::get_page_size(VmLevel::L1));
+        let step = arch::virt::get_page_size(VmLevel::L1)
+            + (level as usize * arch::virt::get_level_bits());
 
         for offset in (0..length).step_by(step) {
             self.remap_single::<P>(VirtAddr(virt.0 + offset), flags, level)?;
@@ -308,7 +307,7 @@ impl<const K: bool> PageTable<K> {
 
     /// Un-maps a page from this address space.
     pub fn unmap_single(&mut self, virt: VirtAddr) -> Result<(), PageTableError> {
-        crate::arch::memory::flush_tlb(virt);
+        crate::arch::virt::flush_tlb(virt);
         todo!();
     }
 

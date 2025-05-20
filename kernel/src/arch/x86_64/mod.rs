@@ -1,5 +1,3 @@
-use crate::generic::irq::IrqHandlerFn;
-
 mod asm;
 mod consts;
 pub mod core;
@@ -8,6 +6,7 @@ pub mod platform;
 pub mod sched;
 pub mod virt;
 
+use crate::generic::irq::IrqHandlerFn;
 use platform::gdt::{Gdt, TaskStateSegment};
 
 #[derive(Debug)]

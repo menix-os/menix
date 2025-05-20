@@ -190,11 +190,11 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 // Fix potentially unaligned addresses.
                 let aligned_virt = align_down(
                     phdr.p_vaddr as usize,
-                    arch::memory::get_page_size(VmLevel::L1),
+                    arch::virt::get_page_size(VmLevel::L1),
                 );
                 if aligned_virt < phdr.p_vaddr as usize {
-                    memsz += arch::memory::get_page_size(VmLevel::L1)
-                        - (phdr.p_memsz as usize % arch::memory::get_page_size(VmLevel::L1));
+                    memsz += arch::virt::get_page_size(VmLevel::L1)
+                        - (phdr.p_memsz as usize % arch::virt::get_page_size(VmLevel::L1));
                 }
 
                 // Allocate physical memory.
@@ -204,7 +204,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
 
                 // Map memory with RW permissions.
-                for page in (0..memsz).step_by(arch::memory::get_page_size(VmLevel::L1)) {
+                for page in (0..memsz).step_by(arch::virt::get_page_size(VmLevel::L1)) {
                     page_table
                         .map_single::<FreeList>(
                             (load_base + aligned_virt + page).into(),
@@ -214,8 +214,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                         )
                         .map_err(|_| ModuleLoadError::AllocFailed)?;
 
-                    MODULE_ADDR
-                        .fetch_add(arch::memory::get_page_size(VmLevel::L1), Ordering::AcqRel);
+                    MODULE_ADDR.fetch_add(arch::virt::get_page_size(VmLevel::L1), Ordering::AcqRel);
                 }
 
                 let virt = load_base + phdr.p_vaddr as usize;
@@ -385,8 +384,8 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
     // Finally, remap everything so the permissions are as described.
     for (_, virt, length, flags) in &info.mappings {
         let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
-        let length = align_up(*length, arch::memory::get_page_size(VmLevel::L1));
-        for page in (0..length).step_by(arch::memory::get_page_size(VmLevel::L1)) {
+        let length = align_up(*length, arch::virt::get_page_size(VmLevel::L1));
+        for page in (0..length).step_by(arch::virt::get_page_size(VmLevel::L1)) {
             page_table
                 .remap_single::<FreeList>(*virt + page, *flags, VmLevel::L1)
                 .map_err(|_| ModuleLoadError::AllocFailed)?;

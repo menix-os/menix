@@ -16,12 +16,18 @@ SECTIONS
 
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
-    /* Code */
-    .text : {
-        LD_TEXT_START = .;
+    LD_TEXT_START = .;
+
+    .boot : {
         KEEP(*(.boot.init))
         KEEP(*(.boot))
         KEEP(*(.boot.fini))
+    } :text
+
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
+    /* Code */
+    .text : {
         *(.init)
         *(.text .text.*)
         *(.fini)

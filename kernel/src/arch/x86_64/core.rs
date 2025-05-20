@@ -16,7 +16,7 @@ use crate::{
 use alloc::boxed::Box;
 use core::{arch::asm, mem::offset_of};
 
-pub fn setup_bsp() {
+pub(in crate::arch) fn setup_bsp() {
     apic::disable_legacy_pic();
     idt::init();
     idt::set_idt();
@@ -42,7 +42,7 @@ pub fn setup_bsp() {
     }
 }
 
-pub fn get_per_cpu() -> *mut CpuData {
+pub(in crate::arch) fn get_per_cpu() -> *mut CpuData {
     unsafe {
         let cpu: *mut CpuData;
         asm!(
@@ -55,7 +55,7 @@ pub fn get_per_cpu() -> *mut CpuData {
     }
 }
 
-pub fn perpare_cpu(context: &mut CpuData) {
+pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
     let mut cr0: usize;
     let mut cr4: usize;
 
@@ -80,8 +80,10 @@ pub fn perpare_cpu(context: &mut CpuData) {
         );
         // Set syscall entry point.
         super::asm::wrmsr(consts::MSR_LSTAR, irq::amd64_syscall_stub as u64);
-        // Set the flag mask to everything except the second bit (always has to be enabled).
-        super::asm::wrmsr(consts::MSR_SFMASK, (!2u32) as u64);
+        super::asm::wrmsr(
+            consts::MSR_SFMASK,
+            (consts::RFLAGS_AC | consts::RFLAGS_DF | consts::RFLAGS_IF) as u64,
+        );
 
         asm!("mov {cr0}, cr0", cr0 = out(reg) cr0);
         asm!("mov {cr4}, cr4", cr4 = out(reg) cr4);
@@ -178,7 +180,7 @@ pub fn perpare_cpu(context: &mut CpuData) {
     LocalApic::init(context);
 }
 
-pub fn halt() -> ! {
+pub(in crate::arch) fn halt() -> ! {
     loop {
         unsafe {
             core::arch::asm!("cli; hlt");
