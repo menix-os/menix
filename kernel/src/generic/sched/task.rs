@@ -1,7 +1,11 @@
 use super::process::{Pid, Process};
 use crate::{
-    arch,
-    generic::{errno::Errno, memory::virt::KERNEL_STACK_SIZE, util::mutex::Mutex},
+    arch::{self},
+    generic::{
+        errno::Errno,
+        memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
+        util::mutex::Mutex,
+    },
 };
 use core::{
     alloc::Layout,
@@ -35,7 +39,7 @@ pub struct Task {
     pub task_context: Mutex<arch::sched::TaskContext>,
     /// The kernel stack for this task.
     // TODO: Use kernel stack structure that handles memory management.
-    pub stack: *mut (),
+    pub stack: VirtAddr,
     /// The unique identifier of this task.
     id: Tid,
     /// The current state of the thread.
@@ -67,14 +71,14 @@ impl Task {
             state: TaskState::Ready,
             process: parent.map(|x| x.get_pid()),
             is_user,
-            stack: unsafe { alloc::alloc::alloc_zeroed(STACK_LAYOUT) as *mut () },
+            stack: unsafe { alloc::alloc::alloc_zeroed(STACK_LAYOUT).into() },
         };
 
         arch::sched::init_task(
             &mut result.task_context.lock(),
             entry,
             arg,
-            result.stack as usize,
+            result.stack,
             is_user,
         )?;
 
@@ -105,4 +109,4 @@ impl Task {
 }
 
 /// Global counter to provide new task IDs.
-static TASK_ID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+static TASK_ID_COUNTER: AtomicUsize = AtomicUsize::new(1);

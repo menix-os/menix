@@ -14,6 +14,6 @@ cfg_match! {
 
 pub mod core;
 pub mod irq;
-pub mod memory;
 pub mod platform;
 pub mod sched;
+pub mod virt;

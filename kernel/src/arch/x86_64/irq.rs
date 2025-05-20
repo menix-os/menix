@@ -19,6 +19,7 @@ use seq_macro::seq;
 /// Invoked by an interrupt stub. Its only job is to call the platform independent syscall handler.
 unsafe extern "C" fn interrupt_handler(context: *mut Context) {
     let isr = (unsafe { *context }).isr as usize;
+
     match isr as u8 {
         // Exceptions.
         0x0E => page_fault_handler(context),
@@ -54,43 +55,7 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
                 },
                 isr
             );
-            unsafe {
-                error!(
-                    "rax {:016x} rbx {:016x} rcx {:016x} rdx {:016x}",
-                    (*context).rax,
-                    (*context).rbx,
-                    (*context).rcx,
-                    (*context).rdx
-                );
-                error!(
-                    "rbp {:016x} rdi {:016x} rsi {:016x} r8  {:016x}",
-                    (*context).rbp,
-                    (*context).rdi,
-                    (*context).rsi,
-                    (*context).r8
-                );
-                error!(
-                    "r9  {:016x} r10 {:016x} r11 {:016x} r12 {:016x}",
-                    (*context).r9,
-                    (*context).r10,
-                    (*context).r11,
-                    (*context).r12,
-                );
-                error!(
-                    "r13 {:016x} r14 {:016x} r15 {:016x} rfl {:016x}",
-                    (*context).r13,
-                    (*context).r14,
-                    (*context).r15,
-                    (*context).rflags
-                );
-                error!(
-                    "rsp {:016x} rip {:016x} cs  {:016x} ss  {:016x}",
-                    (*context).rsp,
-                    (*context).rip,
-                    (*context).cs,
-                    (*context).ss
-                );
-            }
+            unsafe { print_context(context) };
             panic!();
         }
         // Timer.
@@ -106,6 +71,46 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
             };
         }
     };
+}
+
+unsafe fn print_context(context: *const Context) {
+    unsafe {
+        error!(
+            "rax {:016x} rbx {:016x} rcx {:016x} rdx {:016x}",
+            (*context).rax,
+            (*context).rbx,
+            (*context).rcx,
+            (*context).rdx
+        );
+        error!(
+            "rbp {:016x} rdi {:016x} rsi {:016x} r8  {:016x}",
+            (*context).rbp,
+            (*context).rdi,
+            (*context).rsi,
+            (*context).r8
+        );
+        error!(
+            "r9  {:016x} r10 {:016x} r11 {:016x} r12 {:016x}",
+            (*context).r9,
+            (*context).r10,
+            (*context).r11,
+            (*context).r12,
+        );
+        error!(
+            "r13 {:016x} r14 {:016x} r15 {:016x} rfl {:016x}",
+            (*context).r13,
+            (*context).r14,
+            (*context).r15,
+            (*context).rflags
+        );
+        error!(
+            "rsp {:016x} rip {:016x} cs  {:016x} ss  {:016x}",
+            (*context).rsp,
+            (*context).rip,
+            (*context).cs,
+            (*context).ss
+        );
+    }
 }
 
 /// Invoked by either the interrupt or syscall stub.
@@ -127,7 +132,7 @@ extern "C" fn syscall_handler(frame: *mut Context) {
     }
 }
 
-extern "C" fn page_fault_handler(frame: *mut Context) {
+fn page_fault_handler(frame: *mut Context) {
     unsafe {
         let mut cr2: usize;
         asm!("mov {cr2}, cr2", cr2 = out(reg) cr2);
@@ -158,7 +163,7 @@ extern "C" fn page_fault_handler(frame: *mut Context) {
     }
 }
 
-extern "C" fn timer_handler() {
+fn timer_handler() {
     let cpu = CPU_DATA.get(CpuData::get());
     unsafe {
         let (from, to) = cpu.scheduler.start_reschedule(true);
@@ -167,7 +172,7 @@ extern "C" fn timer_handler() {
     }
 }
 
-pub unsafe fn set_irq_state(value: bool) -> bool {
+pub(in crate::arch) unsafe fn set_irq_state(value: bool) -> bool {
     let old_mask = get_irq_state();
     unsafe {
         if value {
@@ -179,15 +184,15 @@ pub unsafe fn set_irq_state(value: bool) -> bool {
     return old_mask;
 }
 
-pub fn get_irq_state() -> bool {
+pub(in crate::arch) fn get_irq_state() -> bool {
     let mut flags: u64;
     unsafe {
         asm!("pushf; pop {0}", out(reg) flags);
     }
-    return flags & (consts::RFLAGS_IF as u64) == 0;
+    return flags & (consts::RFLAGS_IF as u64) != 0;
 }
 
-pub fn wait_for_irq() {
+pub(in crate::arch) fn wait_for_irq() {
     unsafe {
         asm!("hlt");
     }
@@ -233,27 +238,26 @@ macro_rules! pop_all_regs {
 #[unsafe(naked)]
 pub unsafe extern "C" fn amd64_syscall_stub() {
     naked_asm!(
-        "cli",                        // Disable interrupts.
-        "swapgs",                     // Change GS to kernel mode.
-        "mov gs:{user_stack}, rsp",   // Save user stack to `Cpu.user_stack`.
-        "mov rsp, gs:{kernel_stack}", // Restore kernel stack from `Cpu.kernel_stack`.
-        "cld",                        // Clear direction bit from RFLAGS
+        "swapgs",
+        "mov gs:{user_stack}, rsp",
+        "mov rsp, gs:{kernel_stack}",
+        "cld",
         // We're pretending to be an interrupt, so fill the bottom fields of `Context`.
         "push {user_data}",           // SS and CS are not changed during SYSCALL. Use `Gdt::user_data | CPL_USER`.
-        "push gs:{user_stack}",       // Save the user stack pointer.
+        "push gs:{user_stack}",
         "push r11",                   // RFLAGS is moved into r11 by the CPU.
         "push {user_code64}",         // Same as SS. Use `Gdt::user_code64 | CPL_USER`
         "push rcx",                   // RIP is moved into rcx by the CPU.
         "push 0x00",                  // Context::error field
         "push 0x00",                  // Context::isr field
-        push_all_regs!(),             // Push general purpose registers so they can be written to by syscalls.
+        push_all_regs!(),
         "mov rdi, rsp",               // Put the trap frame struct as first argument.
         "call {syscall_handler}",     // Call syscall handler
-        pop_all_regs!(),              // Pop stack values back to the general purpose registers.
+        "cli",
+        pop_all_regs!(),
         "add rsp, 0x10",              // Skip .error and .isr fields (2 * sizeof(u64))
         "mov rsp, gs:{user_stack}",   // Load user stack from `Cpu.user_stack`.
-        "swapgs",                     // Change GS to user mode.
-        "sti",                        // Resume interrupts.
+        "swapgs",
         "sysretq",                    // Return to user mode.
 
         syscall_handler = sym syscall_handler,
@@ -314,6 +318,7 @@ unsafe extern "C" fn interrupt_stub_internal() {
 #[unsafe(naked)]
 pub unsafe extern "C" fn interrupt_return() {
     naked_asm!(
+        "cli",
         pop_all_regs!(),        // Pop all general purpose registers.
         swapgs_if_necessary!(), // Change GS back if we came from user mode.
         "add rsp, 0x10",        // Skip .error and .isr fields.

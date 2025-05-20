@@ -8,7 +8,7 @@ pub mod virt;
 
 use super::util::once::Once;
 use crate::{
-    arch::{self, memory::get_page_size},
+    arch::{self, virt::get_page_size},
     generic::{
         boot::BootInfo,
         util::{align_down, align_up},
@@ -60,6 +60,7 @@ impl VirtAddr {
 macro_rules! addr_impl {
     ($ty:ty) => {
         impl $ty {
+            #[inline]
             pub const fn null() -> Self {
                 Self(0)
             }
@@ -68,6 +69,7 @@ macro_rules! addr_impl {
                 Self(value)
             }
 
+            #[inline]
             pub const fn value(&self) -> usize {
                 self.0
             }
@@ -239,7 +241,7 @@ pub unsafe fn init() {
     bump::BUMP_CURRENT.store(
         align_up(
             bump_region.address.value(),
-            arch::memory::get_page_size(VmLevel::L1),
+            arch::virt::get_page_size(VmLevel::L1),
         ),
         Ordering::Relaxed,
     );
@@ -376,7 +378,7 @@ pub unsafe fn init() {
 
     // Set the MMAP base to right after the page table. Make sure this lands on a new PTE so we can map regular pages.
     // TODO: Use a virtual memory allocator instead.
-    let pte_size = arch::memory::get_page_size(VmLevel::L3);
+    let pte_size = arch::virt::get_page_size(VmLevel::L3);
     let offset = align_up(0x1000_0000_0000, pte_size);
 
     virt::KERNEL_MMAP_BASE_ADDR.store(page_base + offset, Ordering::Relaxed);

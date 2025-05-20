@@ -11,7 +11,8 @@
 #![allow(clippy::new_without_default)]
 #![forbid(clippy::missing_safety_doc)]
 
-use arch::irq::wait_for_irq;
+use core::hint;
+
 use generic::{percpu::CpuData, sched::task::Task};
 
 pub extern crate alloc;
@@ -82,15 +83,7 @@ pub(crate) fn main() -> ! {
     generic::module::init();
 
     // Set up scheduler.
-    CpuData::get()
-        .scheduler
-        .add_task(Task::new(test, 1, None, false).unwrap());
-    CpuData::get()
-        .scheduler
-        .add_task(Task::new(test, 2, None, false).unwrap());
-
     let init = Task::new(run_init, 0, None, false).expect("Couldn't create kernel task");
-
     CpuData::get().scheduler.start(init);
 }
 
@@ -109,13 +102,6 @@ extern "C" fn run_init(_arg: usize) -> ! {
 
     // TODO: Start init.
     loop {
-        core::hint::spin_loop();
-    }
-}
-
-extern "C" fn test(func: usize) -> ! {
-    loop {
-        log!("Hello from test func with arg {func}");
-        wait_for_irq();
+        hint::spin_loop();
     }
 }

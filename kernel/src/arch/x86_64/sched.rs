@@ -7,6 +7,7 @@ use crate::{
     generic::{
         errno::Errno,
         memory::{
+            VirtAddr,
             pmm::{AllocFlags, FreeList, PageAllocator},
             virt::KERNEL_STACK_SIZE,
         },
@@ -17,6 +18,7 @@ use crate::{
 use core::{
     arch::{asm, naked_asm},
     mem::offset_of,
+    ptr::null_mut,
 };
 
 #[repr(C)]
@@ -91,10 +93,10 @@ struct TaskFrame {
     rip: u64,
 }
 
-pub unsafe fn switch(from: *const Task, to: *const Task) {
+pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe {
         let cpu = ARCH_DATA.get(CpuData::get());
-        cpu.tss.rsp0 = (*to).stack as u64 + KERNEL_STACK_SIZE as u64;
+        cpu.tss.rsp0 = (*to).stack.value() as u64 + KERNEL_STACK_SIZE as u64;
 
         if (*from).is_user() {
             let mut from_context = (*from).task_context.lock();
@@ -123,55 +125,53 @@ pub unsafe fn switch(from: *const Task, to: *const Task) {
             wrmsr(consts::MSR_KERNEL_GS_BASE, to_context.gsbase);
         }
 
-        // Because we will otherwise never be able to break out, forcefully unlock this mutex.
-        let old_rsp = &raw mut ((*from).task_context.lock()).rsp;
-        (*from).task_context.force_unlock(false);
+        let old_rsp = &raw mut (*from).task_context.inner().rsp;
+        let new_rsp = &raw mut (*to).task_context.inner().rsp;
 
-        let new_rsp = (*to).task_context.lock().rsp;
-
-        // TODO: This is probably still broken.
-        asm!(
-            "sub rsp, 0x30", // Make room for all regs (except RIP).
-            "mov [rsp + {rbx}], rbx",
-            "mov [rsp + {rbp}], rbp",
-            "mov [rsp + {r12}], r12",
-            "mov [rsp + {r13}], r13",
-            "mov [rsp + {r14}], r14",
-            "mov [rsp + {r15}], r15",
-            "mov [{old_rsp}], rsp", // Save the old pointer.
-            "mov rsp, {new_rsp}",   // Set the new pointer.
-            "mov rbx, [rsp + {rbx}]",
-            "mov rbp, [rsp + {rbp}]",
-            "mov r12, [rsp + {r12}]",
-            "mov r13, [rsp + {r13}]",
-            "mov r14, [rsp + {r14}]",
-            "mov r15, [rsp + {r15}]",
-            "add rsp, 0x30",
-            "ret", // This will conveniently move us to the RIP we put at this stack entry.
-            old_rsp = in(reg) old_rsp,
-            new_rsp = in(reg) new_rsp,
-            rbx = const offset_of!(TaskFrame, rbx),
-            rbp = const offset_of!(TaskFrame, rbp),
-            r12 = const offset_of!(TaskFrame, r12),
-            r13 = const offset_of!(TaskFrame, r13),
-            r14 = const offset_of!(TaskFrame, r14),
-            r15 = const offset_of!(TaskFrame, r15),
-        );
-        unreachable!();
+        perform_switch(old_rsp, new_rsp);
     }
 }
 
-pub fn init_task(
+#[unsafe(naked)]
+pub unsafe extern "C" fn perform_switch(old_rsp: *mut u64, new_rsp: *mut u64) {
+    naked_asm!(
+        "sub rsp, 0x30", // Make room for all regs (except RIP).
+        "mov [rsp + {rbx}], rbx",
+        "mov [rsp + {rbp}], rbp",
+        "mov [rsp + {r12}], r12",
+        "mov [rsp + {r13}], r13",
+        "mov [rsp + {r14}], r14",
+        "mov [rsp + {r15}], r15",
+        "mov [rdi], rsp", // rdi = old_rsp
+        "mov rsp, [rsi]",   // rsi = new_rsp
+        "mov rbx, [rsp + {rbx}]",
+        "mov rbp, [rsp + {rbp}]",
+        "mov r12, [rsp + {r12}]",
+        "mov r13, [rsp + {r13}]",
+        "mov r14, [rsp + {r14}]",
+        "mov r15, [rsp + {r15}]",
+        "add rsp, 0x30",
+        "ret", // This will conveniently move us to the RIP we put at this stack entry.
+        rbx = const offset_of!(TaskFrame, rbx),
+        rbp = const offset_of!(TaskFrame, rbp),
+        r12 = const offset_of!(TaskFrame, r12),
+        r13 = const offset_of!(TaskFrame, r13),
+        r14 = const offset_of!(TaskFrame, r14),
+        r15 = const offset_of!(TaskFrame, r15)
+    );
+}
+
+pub(in crate::arch) fn init_task(
     context: &mut TaskContext,
     entry: extern "C" fn(usize) -> !,
     arg: usize,
-    stack_start: usize,
+    stack_start: VirtAddr,
     is_user: bool,
 ) -> Result<(), Errno> {
     let cpu = ARCH_DATA.get(CpuData::get());
     // Prepare a dummy stack with an entry point function to return to.
     unsafe {
-        let frame = ((stack_start + KERNEL_STACK_SIZE) as *mut TaskFrame).sub(1);
+        let frame = ((stack_start.value() + KERNEL_STACK_SIZE) as *mut TaskFrame).sub(1);
         (*frame).rbx = entry as u64;
         (*frame).r12 = arg as u64;
         (*frame).rip = task_entry_thunk as u64;
@@ -213,7 +213,7 @@ pub unsafe fn force_reschedule() {
     unsafe { asm!("int 0x20") }; // TODO: Don't hard code this.
 }
 
-pub unsafe fn jump_to_user(ip: usize, sp: usize) -> ! {
+pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
     unsafe {
         assert!(
             (*get_task()).is_user(),
@@ -223,8 +223,8 @@ pub unsafe fn jump_to_user(ip: usize, sp: usize) -> ! {
 
     // Create a new context for the user jump.
     let mut context = Context::default();
-    context.rip = ip as u64;
-    context.rsp = sp as u64;
+    context.rip = ip.value() as u64;
+    context.rsp = sp.value() as u64;
     context.rflags = 0x200;
     context.cs = offset_of!(Gdt, user_code64) as u64 | consts::CPL_USER as u64;
     context.ss = offset_of!(Gdt, user_data) as u64 | consts::CPL_USER as u64;
@@ -246,7 +246,7 @@ pub unsafe fn jump_to_user(ip: usize, sp: usize) -> ! {
     }
 }
 
-pub unsafe fn jump_to_user_context(context: *mut Context) -> ! {
+pub(in crate::arch) unsafe fn jump_to_user_context(context: *mut Context) -> ! {
     unsafe {
         assert!(
             (*get_task()).is_user(),

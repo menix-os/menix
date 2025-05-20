@@ -2,7 +2,6 @@ use crate::arch::x86_64::consts::CPL_KERNEL;
 use crate::arch::x86_64::consts::CPL_USER;
 use crate::generic::memory::virt::KERNEL_STACK_SIZE;
 use alloc::boxed::Box;
-use alloc::vec::Vec;
 use bitflags::bitflags;
 use core::arch::asm;
 use core::mem::offset_of;

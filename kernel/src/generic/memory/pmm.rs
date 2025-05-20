@@ -31,8 +31,8 @@ pub trait PageAllocator {
 
     /// Allocates enough consecutive pages to fit `bytes` amount of bytes.
     fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
-        let pages = align_up(bytes, arch::memory::get_page_size(VmLevel::L1))
-            / arch::memory::get_page_size(VmLevel::L1);
+        let pages = align_up(bytes, arch::virt::get_page_size(VmLevel::L1))
+            / arch::virt::get_page_size(VmLevel::L1);
         return Self::alloc(pages, flags);
     }
 
@@ -62,7 +62,7 @@ pub struct FreeList;
 impl PageAllocator for FreeList {
     fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
         let mut head = PMM.lock();
-        let bytes = pages * arch::memory::get_page_size(VmLevel::L1);
+        let bytes = pages * arch::virt::get_page_size(VmLevel::L1);
 
         let mut addr = None;
         let mut it = *head;
@@ -87,9 +87,8 @@ impl PageAllocator for FreeList {
                 page.count = 0;
             } else {
                 page.count -= pages;
-                addr = Some(
-                    page.get_address() + page.count * arch::memory::get_page_size(VmLevel::L1),
-                );
+                addr =
+                    Some(page.get_address() + page.count * arch::virt::get_page_size(VmLevel::L1));
             }
             break;
         }
@@ -121,9 +120,9 @@ impl PageAllocator for FreeList {
 impl Page {
     #[inline]
     pub fn idx_from_addr(address: PhysAddr) -> usize {
-        debug_assert!(address.0 % arch::memory::get_page_size(VmLevel::L1) == 0);
+        debug_assert!(address.0 % arch::virt::get_page_size(VmLevel::L1) == 0);
 
-        let pn = address.0 >> arch::memory::get_page_bits();
+        let pn = address.0 >> arch::virt::get_page_bits();
         return pn;
     }
 
@@ -138,7 +137,7 @@ impl Page {
 
     #[inline]
     fn get_address(&self) -> PhysAddr {
-        (self.get_pn() << arch::memory::get_page_bits()).into()
+        (self.get_pn() << arch::virt::get_page_bits()).into()
     }
 }
 
@@ -154,7 +153,7 @@ pub fn init(memory_map: &[PhysMemory], pages: (*mut Page, usize)) {
         let mut pmm = PMM.lock();
         let mut page_db = PAGE_DB.lock();
         let page = page_db.get_mut(Page::idx_from_addr(entry.address)).unwrap();
-        page.count = entry.length / arch::memory::get_page_size(VmLevel::L1);
+        page.count = entry.length / arch::virt::get_page_size(VmLevel::L1);
         page.next = *pmm;
         *pmm = NonNull::new(page);
 
