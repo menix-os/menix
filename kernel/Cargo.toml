@@ -10,23 +10,19 @@ crate-type = ["dylib"]
 bindgen = "0.71.1"
 
 [dependencies]
+uapi = { path = "../bindings/uapi" }
+uacpi-sys = { path = "../bindings/uacpi" }
+flanterm-sys = { path = "../bindings/flanterm" }
 bitflags = "2.9.0"
 cfg-if = "1.0.0"
 seq-macro = "0.3.6"
 bytemuck = { version = "1.22.0", features = ["derive", "min_const_generics"] }
 num-traits = { version = "0.2.19", default-features = false }
 limine = { version = "0.4.0", optional = true }
-uapi = { path = "../bindings/uapi" }
-uacpi-sys = { path = "../bindings/uacpi", optional = true }
-flanterm-sys = { path = "../bindings/flanterm" }
 
 [features]
-default = ["boot_limine", "all"]
-all = ["acpi", "openfw", "pci"]
+default = ["boot_limine"]
+
 # Boot protocols
 boot_limine = ["dep:limine"]
-# Firmware
-acpi = ["dep:uacpi-sys", "pci"]
-openfw = []
-# Bus
-pci = []
+boot_uefi = []

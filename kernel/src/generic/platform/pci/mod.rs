@@ -1,9 +1,6 @@
-// PCI/PCIe bus implementation
+//! PCI bus implementation
 
 use crate::generic::boot::BootInfo;
-
-#[cfg(not(any(feature = "acpi", feature = "openfw")))]
-compile_error!("PCI needs some form of firmware support in order to work!");
 
 pub mod device;
 pub mod driver;
@@ -19,7 +16,12 @@ pub(crate) fn init() {
     log!("Initializing the PCI subsystem");
 
     // First, attempt to initialize PCI using the ACPI table "MCFG".
-    #[cfg(feature = "acpi")]
+    #[cfg(any(
+        target_arch = "x86_64",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+        target_arch = "loongarch64"
+    ))]
     if BootInfo::get()
         .command_line
         .get_bool("acpi")
@@ -30,12 +32,15 @@ pub(crate) fn init() {
     }
 
     // If there is no ACPI, resort to OpenFirmware.
-    #[cfg(feature = "openfw")]
     if BootInfo::get()
         .command_line
         .get_bool("openfw")
         .unwrap_or(true)
     {
-        // TODO
+        todo!();
     }
+
+    panic!(
+        "Unable to configure PCI without either ACPI or OpenFirmware. Reboot with `acpi=on`, `openfw=on` or `pci=off`"
+    );
 }
