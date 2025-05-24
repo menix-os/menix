@@ -21,19 +21,6 @@ pub(in crate::arch) unsafe fn setup_bsp() {
     idt::init();
     idt::set_idt();
 
-    // Check if the FSGSBASE feature is available.
-    let cpuid7 = super::asm::cpuid(7, 0);
-    assert!(
-        cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0,
-        "FSGSBASE is required for the kernel to function, but the bit wasn't set"
-    );
-
-    // Enable the FSGSBASE bit.
-    let mut cr4: usize;
-    unsafe { asm!("mov {cr4}, cr4", cr4 = out(reg) cr4) };
-    cr4 |= consts::CR4_FSGSBASE;
-    unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
-
     // Set FSGSBASE contents.
     unsafe {
         super::asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
@@ -146,23 +133,21 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
     if cpuid1.edx & consts::CPUID_1D_TSC != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
         // TODO: This will break when called more than once.
         // TODO: Make sure to only switch if it's not already the current source.
-        if tsc::init().is_ok() {
-            cr4 |= consts::CR4_TSD;
-            if BootInfo::get()
-                .command_line
-                .get_bool("tsc")
-                .unwrap_or(false)
-            {
+        if BootInfo::get()
+            .command_line
+            .get_bool("tsc")
+            .unwrap_or(false)
+        {
+            if tsc::init().is_ok() {
+                cr4 |= consts::CR4_TSD;
                 _ = clock::switch(Box::new(TscClock));
             }
         }
     }
 
-    assert!(
-        cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0,
-        "FSGSBASE is required for the kernel to function, but the bit wasn't set"
-    );
-    cr4 |= consts::CR4_FSGSBASE;
+    if cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0 {
+        cr4 |= consts::CR4_FSGSBASE;
+    }
 
     unsafe {
         // Write back the modified control register values.
