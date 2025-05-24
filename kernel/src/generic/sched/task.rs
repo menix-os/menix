@@ -2,8 +2,8 @@ use super::process::{Pid, Process};
 use crate::{
     arch::{self},
     generic::{
-        errno::Errno,
         memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
+        posix::errno::EResult,
         util::mutex::Mutex,
     },
 };
@@ -57,7 +57,7 @@ impl Task {
         arg: usize,
         parent: Option<&Process>,
         is_user: bool,
-    ) -> Result<Self, Errno> {
+    ) -> EResult<Self> {
         // TODO: see above
         const STACK_LAYOUT: Layout = match Layout::from_size_align(KERNEL_STACK_SIZE, 0x1000) {
             Ok(x) => x,

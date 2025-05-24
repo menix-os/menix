@@ -5,20 +5,19 @@ use crate::{
         x86_64::{asm::wrmsr, consts},
     },
     generic::{
-        errno::Errno,
         memory::{
             VirtAddr,
             pmm::{AllocFlags, FreeList, PageAllocator},
             virt::KERNEL_STACK_SIZE,
         },
         percpu::CpuData,
+        posix::errno::{EResult, Errno},
         sched::task::Task,
     },
 };
 use core::{
     arch::{asm, naked_asm},
     mem::offset_of,
-    ptr::null_mut,
 };
 
 #[repr(C)]
@@ -143,7 +142,7 @@ pub unsafe extern "C" fn perform_switch(old_rsp: *mut u64, new_rsp: *mut u64) {
         "mov [rsp + {r14}], r14",
         "mov [rsp + {r15}], r15",
         "mov [rdi], rsp", // rdi = old_rsp
-        "mov rsp, [rsi]",   // rsi = new_rsp
+        "mov rsp, [rsi]", // rsi = new_rsp
         "mov rbx, [rsp + {rbx}]",
         "mov rbp, [rsp + {rbp}]",
         "mov r12, [rsp + {r12}]",
@@ -167,7 +166,7 @@ pub(in crate::arch) fn init_task(
     arg: usize,
     stack_start: VirtAddr,
     is_user: bool,
-) -> Result<(), Errno> {
+) -> EResult<()> {
     let cpu = ARCH_DATA.get(CpuData::get());
     // Prepare a dummy stack with an entry point function to return to.
     unsafe {

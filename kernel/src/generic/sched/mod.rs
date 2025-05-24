@@ -23,7 +23,7 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    pub(crate) const fn uninit() -> Self {
+    pub(crate) const fn new() -> Self {
         return Self {
             current: AtomicPtr::new(null_mut()),
             lock: SpinLock::new(),

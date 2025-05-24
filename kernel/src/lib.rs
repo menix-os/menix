@@ -21,32 +21,19 @@ pub mod generic;
 
 use generic::{percpu::CpuData, sched::task::Task};
 
-unsafe extern "C" {
-    unsafe static LD_EARLY_ARRAY_START: u8;
-    unsafe static LD_EARLY_ARRAY_END: u8;
-    unsafe static LD_INIT_ARRAY_START: u8;
-    unsafe static LD_INIT_ARRAY_END: u8;
-    unsafe static LD_KERNEL_START: u8;
-    unsafe static LD_TEXT_START: u8;
-    unsafe static LD_TEXT_END: u8;
-    unsafe static LD_RODATA_START: u8;
-    unsafe static LD_RODATA_END: u8;
-    unsafe static LD_DATA_START: u8;
-    unsafe static LD_DATA_END: u8;
-}
-
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
 pub(crate) fn main() -> ! {
-    arch::core::setup_bsp();
-
-    // Initialize memory management.
-    unsafe { generic::memory::init() };
+    unsafe {
+        arch::core::setup_bsp();
+        generic::memory::init();
+    }
 
     // Run early init calls.
     unsafe {
-        let mut early_array = &raw const LD_EARLY_ARRAY_START as *const fn();
-        let early_end = &raw const LD_EARLY_ARRAY_END as *const fn();
+        let mut early_array =
+            &raw const generic::memory::virt::LD_EARLY_ARRAY_START as *const fn();
+        let early_end = &raw const generic::memory::virt::LD_EARLY_ARRAY_END as *const fn();
         while early_array < early_end {
             (*early_array)();
             early_array = early_array.add(1);
@@ -54,30 +41,27 @@ pub(crate) fn main() -> ! {
     }
 
     // Say hello to the console.
-    // TODO: Get this information from posix/utsname instead.
     log!(
-        "Menix {}.{}.{}",
-        env!("CARGO_PKG_VERSION_MAJOR"),
-        env!("CARGO_PKG_VERSION_MINOR"),
-        env!("CARGO_PKG_VERSION_PATCH")
+        "{} {} {} {}",
+        generic::posix::utsname::SYSNAME,
+        generic::posix::utsname::RELEASE,
+        generic::posix::utsname::VERSION,
+        generic::posix::utsname::MACHINE
     );
 
-    // TODO: Initialize virtual file system.
-    // generic::posix::fs::init();
-
+    generic::posix::fs::init();
     generic::platform::init();
 
     // Run init calls.
     unsafe {
-        let mut init_array = &raw const LD_INIT_ARRAY_START as *const fn();
-        let init_end = &raw const LD_INIT_ARRAY_END as *const fn();
+        let mut init_array = &raw const generic::memory::virt::LD_INIT_ARRAY_START as *const fn();
+        let init_end = &raw const generic::memory::virt::LD_INIT_ARRAY_END as *const fn();
         while init_array < init_end {
             (*init_array)();
             init_array = init_array.add(1);
         }
     }
 
-    // Load all modules and run their init function.
     generic::module::init();
 
     // Set up scheduler.
@@ -86,7 +70,7 @@ pub(crate) fn main() -> ! {
 }
 
 /// The high-level kernel entry point. This is invoked by the scheduler once it's running.
-extern "C" fn run_init(_arg: usize) -> ! {
+extern "C" fn run_init(_: usize) -> ! {
     // Find init. If no path is given, search a few select directories.
     let path = match generic::boot::BootInfo::get()
         .command_line

@@ -34,7 +34,7 @@ unsafe extern "C" {
     unsafe static LD_DYNSTR_END: u8;
 }
 
-type ModuleEntryFn = unsafe extern "C" fn();
+type ModuleEntryFn = extern "C" fn();
 
 /// Stores metadata about a module.
 #[derive(Debug)]
@@ -69,7 +69,7 @@ pub(crate) fn init() {
         let mut symbol_table = SYMBOL_TABLE.lock();
         for sym in symbols {
             // Fix the addresses in the symbols because relocating doesn't relocate the symbol address.
-            sym.st_value += &raw const crate::LD_KERNEL_START as u64;
+            sym.st_value += &raw const virt::LD_KERNEL_START as u64;
 
             let name = CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]);
             if let Ok(x) = name {

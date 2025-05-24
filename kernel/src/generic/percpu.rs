@@ -94,7 +94,7 @@ pub static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
     user_stack: VirtAddr::null(),
     online: false,
     present: false,
-    scheduler: Scheduler::uninit(),
+    scheduler: Scheduler::new(),
 });
 
 /// Counts how many CPUs have been allocated. ID 0 is always used for the BSP.
