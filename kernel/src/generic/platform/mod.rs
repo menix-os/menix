@@ -1,10 +1,13 @@
-#[cfg(feature = "acpi")]
+#[cfg(any(
+    target_arch = "x86_64",
+    target_arch = "aarch64",
+    target_arch = "riscv64",
+    target_arch = "loongarch64"
+))]
 pub mod acpi;
 
-#[cfg(feature = "openfw")]
 pub mod openfw;
 
-#[cfg(feature = "pci")]
 pub mod pci;
 
 use super::{boot::BootInfo, percpu::CpuData};
@@ -13,7 +16,12 @@ use super::{boot::BootInfo, percpu::CpuData};
 pub fn init() {
     let info = BootInfo::get();
 
-    #[cfg(feature = "acpi")]
+    #[cfg(any(
+        target_arch = "x86_64",
+        target_arch = "aarch64",
+        target_arch = "riscv64",
+        target_arch = "loongarch64"
+    ))]
     if info.command_line.get_bool("acpi").unwrap_or(true) {
         acpi::init();
     }
@@ -24,8 +32,8 @@ pub fn init() {
     crate::arch::core::perpare_cpu(CpuData::get());
     // TODO: Initialize other cores.
 
-    // Initalize system busses.
-
-    #[cfg(feature = "pci")]
-    pci::init();
+    // Initalize system buses.
+    if info.command_line.get_bool("pci").unwrap_or(true) {
+        pci::init();
+    }
 }
