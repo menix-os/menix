@@ -2,8 +2,8 @@ use super::internal;
 use crate::generic::percpu::CpuData;
 
 /// Sets up the Bootstrap Processor.
-pub fn setup_bsp() {
-    internal::core::setup_bsp();
+pub unsafe fn setup_bsp() {
+    unsafe { internal::core::setup_bsp() };
 }
 
 /// Returns the per-CPU data of this CPU.

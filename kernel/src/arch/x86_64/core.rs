@@ -16,7 +16,7 @@ use crate::{
 use alloc::boxed::Box;
 use core::{arch::asm, mem::offset_of};
 
-pub(in crate::arch) fn setup_bsp() {
+pub(in crate::arch) unsafe fn setup_bsp() {
     apic::disable_legacy_pic();
     idt::init();
     idt::set_idt();

@@ -254,13 +254,13 @@ pub unsafe fn init() {
         log!("Using {}-level paging for page table", paging_level);
         let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level);
 
-        let text_start = VirtAddr(&raw const crate::LD_TEXT_START as usize);
-        let text_end = VirtAddr(&raw const crate::LD_TEXT_END as usize);
-        let rodata_start = VirtAddr(&raw const crate::LD_RODATA_START as usize);
-        let rodata_end = VirtAddr(&raw const crate::LD_RODATA_END as usize);
-        let data_start = VirtAddr(&raw const crate::LD_DATA_START as usize);
-        let data_end = VirtAddr(&raw const crate::LD_DATA_END as usize);
-        let kernel_start = VirtAddr(&raw const crate::LD_KERNEL_START as usize);
+        let text_start = VirtAddr(&raw const virt::LD_TEXT_START as usize);
+        let text_end = VirtAddr(&raw const virt::LD_TEXT_END as usize);
+        let rodata_start = VirtAddr(&raw const virt::LD_RODATA_START as usize);
+        let rodata_end = VirtAddr(&raw const virt::LD_RODATA_END as usize);
+        let data_start = VirtAddr(&raw const virt::LD_DATA_START as usize);
+        let data_end = VirtAddr(&raw const virt::LD_DATA_END as usize);
+        let kernel_start = VirtAddr(&raw const virt::LD_KERNEL_START as usize);
 
         table
             .map_range::<BumpAllocator>(

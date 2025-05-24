@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use super::errno::{EResult, Errno};
+use super::posix::errno::{EResult, Errno};
 
 mod numbers {
     pub const EXIT: usize = 0;
@@ -143,7 +143,7 @@ mod numbers {
 /// Executes the syscall as identified by `num`.
 /// Returns a tuple of (value, error) to the user. An error code of 0 inidcates success.
 /// If the error code is not 0, `value` is not valid and indicates failure.
-pub fn invoke(
+pub fn dispatch(
     num: usize,
     a0: usize,
     a1: usize,

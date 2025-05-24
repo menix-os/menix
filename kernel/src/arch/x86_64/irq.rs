@@ -60,8 +60,6 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
         }
         // Timer.
         0x20 => timer_handler(),
-        // Legacy syscall handler.
-        0x80 => syscall_handler(context),
         // Any other ISR is an IRQ with a dynamic handler.
         _ => {
             let cpu = &super::ARCH_DATA.get(CpuData::get());
@@ -118,7 +116,7 @@ extern "C" fn syscall_handler(frame: *mut Context) {
     unsafe {
         // Arguments use the SYSV C ABI.
         // Except for a3, since RCX is needed for sysret, we need a different register.
-        let result = generic::sys::invoke(
+        let result = generic::sys::dispatch(
             (*frame).rax as usize,
             (*frame).rdi as usize,
             (*frame).rsi as usize,

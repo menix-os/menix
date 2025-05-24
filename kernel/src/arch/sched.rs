@@ -1,6 +1,6 @@
 use super::internal;
-use crate::generic::errno::Errno;
 use crate::generic::memory::VirtAddr;
+use crate::generic::posix::errno::EResult;
 use crate::generic::sched::task::Task;
 
 pub use internal::sched::Context;
@@ -25,7 +25,7 @@ pub unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe { internal::sched::switch(from, to) }
 }
 
-/// Forces a rescheduling rescheduling interrupt.
+/// Forces a rescheduling interrupt.
 /// # Safety
 /// Rescheduling must be safe at the point of this call.
 pub unsafe fn force_reschedule() {
@@ -38,7 +38,7 @@ pub fn init_task(
     arg: usize,
     stack_start: VirtAddr,
     is_user: bool,
-) -> Result<(), Errno> {
+) -> EResult<()> {
     internal::sched::init_task(task, entry, arg, stack_start, is_user)
 }
 
