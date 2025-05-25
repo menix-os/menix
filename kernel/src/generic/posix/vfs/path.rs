@@ -1,6 +1,5 @@
-use core::fmt::Display;
-
 use alloc::string::{String, ToString};
+use core::fmt::Display;
 
 /// Represents an owned file system path.
 #[derive(Debug)]

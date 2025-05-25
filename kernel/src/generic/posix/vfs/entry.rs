@@ -1,31 +1,38 @@
-use super::{node::Node, path::PathBuf};
+use super::{inode::INode, path::PathBuf};
 use crate::generic::posix::errno::{EResult, Errno};
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{collections::btree_set::BTreeSet, string::String, sync::Arc};
 
-/// A cached directory entry as part of the VFS.
+/// This struct represents an entry in the VFS.
+/// It points to a [`node::Node`], which is like
+/// Th
 #[derive(Debug)]
 pub struct Entry {
     /// The name of this entry.
     pub name: String,
+
+    /// The parent of this entry.
     /// A [`None`] value indicates that this entry is the root.
-    pub parent: Option<Arc<Entry>>,
+    parent: Option<Arc<Entry>>,
+
     /// A list of this node's children which have been accessed and cached so far.
-    children: Vec<Arc<Entry>>,
-    node: Option<Arc<Node>>,
+    // TODO: Replace with HashSet for better performance.
+    children: BTreeSet<Arc<Entry>>,
+
+    /// The underlying [`INode`] this entry is pointing to.
+    link: Option<Arc<INode>>,
 }
 
 impl Entry {
-    pub fn new(name: String, parent: Option<Arc<Self>>) -> EResult<Arc<Self>> {
-        if name.contains('/') || name.contains('\0') {
-            return Err(Errno::EINVAL);
-        }
+    pub fn new(name: String, parent: Option<Arc<Self>>, link: Option<Arc<INode>>) -> Arc<Self> {
+        debug_assert!(!name.contains('/'));
+        debug_assert!(!name.contains('\0'));
 
-        Ok(Arc::new(Entry {
+        Arc::new(Entry {
             name,
             parent,
-            children: Vec::new(),
-            node: None,
-        }))
+            children: BTreeSet::new(),
+            link,
+        })
     }
 
     /// Returns the absolute path to this entry.
