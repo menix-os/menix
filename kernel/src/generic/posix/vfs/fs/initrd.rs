@@ -1,7 +1,12 @@
-//! Parsing for a USTAR-based ram disk.
+//! The initrd (initial ram disk) is a CPIO archive which is loaded into memory
+//! by the bootloader.
+//!
+//! This allows the kernel to load drivers needed in order to boot from a
+//! block device. It also usually contains the init process which is responsible
+//! for actually loading the modules and mounting the real root file system from
+//! disk.
 
-use super::node::Node;
-use crate::generic::util;
+use crate::generic::{posix::vfs::inode::INode, util};
 use alloc::sync::Arc;
 use bytemuck::AnyBitPattern;
 
@@ -25,6 +30,7 @@ struct UStarFsHeader {
     devminor: [u8; 8],
     prefix: [u8; 155],
 }
+static_assert!(size_of::<UStarFsHeader>() == 500);
 
 #[repr(u8)]
 enum UStarFileType {
@@ -49,7 +55,7 @@ fn oct2bin(str: &[u8]) -> usize {
     return n;
 }
 
-pub fn load(data: &[u8], mount: Arc<Node>) {
+pub fn load(data: &[u8], mount: Arc<INode>) {
     let offset = 0;
     let mut name_override = None;
 
