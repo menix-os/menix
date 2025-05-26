@@ -56,7 +56,7 @@ pub(crate) fn main() -> ! {
         generic::posix::utsname::MACHINE
     );
 
-    generic::posix::fs::init();
+    generic::posix::vfs::init();
     generic::platform::init();
 
     // Run init calls.

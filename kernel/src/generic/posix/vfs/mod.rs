@@ -12,6 +12,8 @@ pub mod path;
 static ROOT: Once<Arc<INode>> = Once::new();
 
 pub(crate) fn init() {
+    todo!();
+
     for file in BootInfo::get().files {
         fs::initrd::load(file.data, ROOT.get().clone());
     }
