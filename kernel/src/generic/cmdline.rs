@@ -8,6 +8,10 @@ impl<'a> CmdLine<'a> {
         return Self { data };
     }
 
+    pub fn inner(&self) -> &'a str {
+        self.data
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&'a str, Option<&'a str>)> {
         let mut idx = 0;
 

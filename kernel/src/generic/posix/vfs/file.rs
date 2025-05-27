@@ -24,24 +24,28 @@ pub trait FileOps {
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
     fn read(&self, file: &File, buffer: &mut [u8]) -> EResult<(usize, isize)> {
+        _ = (file, buffer);
         return Err(Errno::ENOSYS);
     }
 
     /// Writes a buffer to the file.
     /// Returns actual bytes written.
     fn write(&self, file: &File, buffer: &[u8]) -> EResult<usize> {
+        _ = (file, buffer);
         return Err(Errno::ENOSYS);
     }
 
     /// Seeks inside the file.
     /// Returns the new absolute offset.
     fn seek(&self, file: &File, offset: isize, whence: isize) -> EResult<usize> {
+        _ = (file, offset, whence);
         return Err(Errno::ENOSYS);
     }
 
     /// Performs a generic ioctl operation on the file.
     /// Returns a status code.
     fn ioctl(&self, file: &File, request: usize, arg: usize) -> EResult<usize> {
+        _ = (file, request, arg);
         return Err(Errno::ENOSYS);
     }
 

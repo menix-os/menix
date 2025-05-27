@@ -11,7 +11,9 @@
 #![allow(clippy::new_without_default)]
 #![forbid(clippy::missing_safety_doc)]
 
+#[macro_use]
 pub extern crate alloc;
+#[macro_use]
 pub extern crate core;
 
 #[macro_use]
@@ -55,6 +57,8 @@ pub(crate) fn main() -> ! {
         generic::posix::utsname::VERSION,
         generic::posix::utsname::MACHINE
     );
+
+    log!("Command line: {}", BootInfo::get().command_line.inner());
 
     generic::posix::vfs::init();
     generic::platform::init();

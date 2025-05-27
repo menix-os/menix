@@ -1,26 +1,26 @@
-use alloc::string::{String, ToString};
-use core::fmt::Display;
+use alloc::{borrow::ToOwned, string::String, vec::Vec};
+use core::fmt::{Display, Formatter, Write};
 
 /// Represents an owned file system path.
 #[derive(Debug)]
-pub struct PathBuf(String);
+pub struct PathBuf(Vec<u8>);
 
 impl PathBuf {
     pub fn new() -> Self {
-        PathBuf(String::new())
+        PathBuf(Vec::new())
     }
 
     pub fn new_root() -> Self {
-        PathBuf(b'/'.to_string())
+        PathBuf(vec![b'/'])
     }
 
-    pub unsafe fn from_string_unchecked(string: String) -> Self {
-        PathBuf(string)
+    pub unsafe fn from_unchecked(value: Vec<u8>) -> Self {
+        PathBuf(value)
     }
 }
 
 impl Display for PathBuf {
-    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str(&self.0)
+    fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
+        f.write_str(&String::from_utf8_lossy(&self.0))
     }
 }
