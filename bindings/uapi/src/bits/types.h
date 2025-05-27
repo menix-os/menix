@@ -13,23 +13,23 @@ typedef unsigned int __u32;
 typedef signed long __i64;
 typedef unsigned long __u64;
 
-typedef __SIZE_TYPE__ size_t;
+typedef __SIZE_TYPE__ __usize;
 
 typedef long off_t;
 typedef long off64_t;
 
-typedef long blksize_t;
-typedef long blkcnt_t;
-typedef long clockid_t;
-typedef unsigned long dev_t;
-typedef unsigned int gid_t;
-typedef long ino_t;
-typedef int mode_t;
-typedef int nlink_t;
-typedef int pid_t;
-typedef unsigned long long rlim_t;
-typedef unsigned int uid_t;
-typedef __u64 fsblkcnt_t;
-typedef __u64 fsfilcnt_t;
+typedef __usize blksize_t;
+typedef __usize blkcnt_t;
+typedef __usize clockid_t;
+typedef __usize dev_t;
+typedef __usize gid_t;
+typedef __usize ino_t;
+typedef __u32 mode_t;
+typedef __usize nlink_t;
+typedef __usize pid_t;
+typedef __usize rlim_t;
+typedef __usize uid_t;
+typedef __usize fsblkcnt_t;
+typedef __usize fsfilcnt_t;
 
 #endif

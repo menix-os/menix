@@ -1,14 +1,13 @@
 use super::{inode::INode, path::PathBuf};
 use crate::generic::posix::errno::{EResult, Errno};
-use alloc::{collections::btree_set::BTreeSet, string::String, sync::Arc};
+use alloc::{collections::btree_set::BTreeSet, sync::Arc, vec::Vec};
 
 /// This struct represents an entry in the VFS.
 /// It points to a [`node::Node`], which is like
-/// Th
 #[derive(Debug)]
 pub struct Entry {
     /// The name of this entry.
-    pub name: String,
+    pub name: Vec<u8>,
 
     /// The parent of this entry.
     /// A [`None`] value indicates that this entry is the root.
@@ -23,10 +22,7 @@ pub struct Entry {
 }
 
 impl Entry {
-    pub fn new(name: String, parent: Option<Arc<Self>>, link: Option<Arc<INode>>) -> Arc<Self> {
-        debug_assert!(!name.contains('/'));
-        debug_assert!(!name.contains('\0'));
-
+    pub fn new(name: Vec<u8>, parent: Option<Arc<Self>>, link: Option<Arc<INode>>) -> Arc<Self> {
         Arc::new(Entry {
             name,
             parent,
@@ -36,27 +32,25 @@ impl Entry {
     }
 
     /// Returns the absolute path to this entry.
-    pub fn get_path(this: &Arc<Self>) -> EResult<PathBuf> {
+    pub fn get_path(self: &Arc<Self>) -> EResult<PathBuf> {
         // If there are no parent nodes, we're already at the root.
-        if this.parent.is_none() {
+        if self.parent.is_none() {
             return Ok(PathBuf::new_root());
         }
 
-        let mut result = String::with_capacity(uapi::PATH_MAX as usize);
-        let mut current = this;
+        let mut result = vec![0u8; uapi::PATH_MAX as usize];
+        let mut offset = uapi::PATH_MAX as usize;
+        let mut current = self;
 
         while let Some(parent) = &current.parent {
-            result.insert_str(0, &current.name);
-            result.insert(0, '/');
-
-            // If the string is too long, abort.
-            if result.len() > uapi::PATH_MAX as usize {
-                return Err(Errno::ENAMETOOLONG);
-            }
+            let len = current.name.len();
+            offset = offset.checked_sub(len + 1).ok_or(Errno::ENAMETOOLONG)?;
+            result[offset + 1..][..len].copy_from_slice(&current.name);
+            result[offset] = b'/';
 
             current = parent;
         }
 
-        Ok(unsafe { PathBuf::from_string_unchecked(String::from(result)) })
+        Ok(unsafe { PathBuf::from_unchecked(result[offset..].to_vec()) })
     }
 }
