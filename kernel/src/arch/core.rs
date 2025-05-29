@@ -6,6 +6,11 @@ pub unsafe fn setup_bsp() {
     unsafe { internal::core::setup_bsp() };
 }
 
+/// Returns the value of the frame pointer register.
+pub fn get_frame_pointer() -> usize {
+    internal::core::get_frame_pointer()
+}
+
 /// Returns the per-CPU data of this CPU.
 pub fn get_per_cpu() -> *mut CpuData {
     internal::core::get_per_cpu()

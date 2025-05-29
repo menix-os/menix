@@ -23,9 +23,10 @@ use core::{
 };
 
 // TODO: This can use RwLocks.
-static SYMBOL_TABLE: Mutex<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>> =
+pub(crate) static SYMBOL_TABLE: Mutex<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>> =
     Mutex::new(BTreeMap::new());
-static MODULE_TABLE: Mutex<BTreeMap<String, ModuleInfo>> = Mutex::new(BTreeMap::new());
+
+pub(crate) static MODULE_TABLE: Mutex<BTreeMap<String, ModuleInfo>> = Mutex::new(BTreeMap::new());
 
 unsafe extern "C" {
     unsafe static LD_DYNSYM_START: u8;
@@ -39,11 +40,11 @@ type ModuleEntryFn = extern "C" fn();
 /// Stores metadata about a module.
 #[derive(Debug)]
 pub struct ModuleInfo {
-    version: String,
-    description: String,
-    author: String,
-    entry: Option<ModuleEntryFn>,
-    mappings: Vec<(PhysAddr, VirtAddr, usize, VmFlags)>,
+    pub version: String,
+    pub description: String,
+    pub author: String,
+    pub entry: Option<ModuleEntryFn>,
+    pub mappings: Vec<(PhysAddr, VirtAddr, usize, VmFlags)>,
 }
 
 /// Sets up the module system.
@@ -82,25 +83,6 @@ pub(crate) fn init() {
             }
         }
         log!("Registered {} kernel symbols", symbol_table.len());
-    }
-
-    // Load all modules provided by the bootloader.
-    for file in boot_info.files {
-        let name = file
-            .name
-            .split_once('.')
-            .map(|(name, _)| name)
-            .unwrap_or(file.name);
-
-        if !boot_info.command_line.get_bool(name).unwrap_or(true) {
-            log!("Skipping \"{}\"", file.name);
-            continue;
-        }
-
-        log!("Loading \"{}\"", file.name);
-        if let Err(x) = load(file.name, file.data) {
-            log!("Failed to load module: {:?}", x);
-        }
     }
 }
 
@@ -429,6 +411,8 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
             (entry_point)();
         }
     }
+
+    MODULE_TABLE.lock().insert(name.to_owned(), info);
 
     return Ok(());
 }
