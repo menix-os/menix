@@ -19,6 +19,7 @@ seq-macro = "0.3.6"
 bytemuck = { version = "1.22.0", features = ["derive", "min_const_generics"] }
 num-traits = { version = "0.2.19", default-features = false }
 limine = { version = "0.4.0", optional = true }
+rustc-demangle = { version = "0.1.24" }
 
 [features]
 default = ["boot_limine"]

@@ -29,6 +29,14 @@ pub(in crate::arch) unsafe fn setup_bsp() {
     }
 }
 
+pub fn get_frame_pointer() -> usize {
+    let mut fp: usize;
+    unsafe {
+        asm!("mov {fp}, rbp", fp = out(reg) fp);
+    }
+    return fp;
+}
+
 pub(in crate::arch) fn get_per_cpu() -> *mut CpuData {
     unsafe {
         let cpu: *mut CpuData;
