@@ -24,7 +24,7 @@ impl ClockSource for TscClock {
         return 255;
     }
 
-    // TODO: This wraps after like 5 seconds. Fix this, then renable tsc as default.
+    // TODO: This wraps after like 5 seconds. Fix this, then reenable tsc as default.
     fn get_elapsed_ns(&self) -> usize {
         return (asm::rdtsc() * 1_000_000_000 / TSC_FREQUENCY.load(Ordering::Relaxed)
             - TSC_BASE.load(Ordering::Relaxed)) as usize;
@@ -42,14 +42,14 @@ pub(crate) fn init() -> Result<(), ClockError> {
     let freq = if clock::has_clock() {
         log!("Calibrating using exisiting clock");
 
-        // Wait for 100ms.
+        // Wait for 10ms.
         let t1 = asm::rdtsc();
-        clock::wait_ns(100_000_000)?;
+        clock::wait_ns(10_000_000)?;
         let t2 = asm::rdtsc();
 
         // We want the frequency in Hz.
         // TODO: This might be imprecise.
-        (t2 - t1) * 10
+        (t2 - t1) * 100
     } else if let Some(c) = cpuid {
         // If we have no timer (yet), the only way we can calibrate the TSC is if CPUID gives us the frequency.
         // On a normal system, this should usually never be called and is a last resort

@@ -3,6 +3,7 @@ use alloc::{sync::Arc, vec::Vec};
 use entry::Entry;
 
 pub mod entry;
+pub mod exec;
 pub mod file;
 pub mod fs;
 pub mod inode;

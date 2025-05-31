@@ -6,7 +6,10 @@
 //! for actually loading the modules and mounting the real root file system from
 //! disk.
 
+use core::ffi::CStr;
+
 use crate::generic::{
+    boot::BootInfo,
     posix::vfs::{entry::Entry, inode::INode, path::PathBuf},
     util,
 };
@@ -71,21 +74,54 @@ pub fn load(data: &[u8], mount: Arc<Entry>) {
             break;
         }
 
-        let mut name = current_file.name;
+        let mut file_name = CStr::from_bytes_until_nul(&current_file.name)
+            .unwrap()
+            .to_str()
+            .unwrap();
         if let Some(n) = name_override {
-            name = n;
+            file_name = n;
             name_override = None;
         }
 
         let file_mode = oct2bin(&current_file.mode);
         let file_size = oct2bin(&current_file.size);
 
-        log!("Read file: {}", unsafe {
-            PathBuf::from_unchecked(name.to_vec())
-        });
+        if BootInfo::get()
+            .command_line
+            .get_bool("initrd_module_autoload")
+            .unwrap_or(false)
+            && file_name.ends_with(".kso")
+        {
+            let name = file_name
+                .rsplit_once('/')
+                .map(|(_, name)| name)
+                .unwrap()
+                .split_once('.')
+                .map(|(name, _)| name)
+                .unwrap();
+
+            if BootInfo::get().command_line.get_bool(name).unwrap_or(true) {
+                log!("Loading \"{}\"", name);
+                if let Err(x) =
+                    crate::generic::module::load(name, &data[(offset + 512)..][..file_size])
+                {
+                    log!("Failed to load module: {:?}", x);
+                }
+            }
+        }
 
         // TODO
         match current_file.typ {
+            REGULAR => (),
+            NORMAL => (),
+            HARD_LINK => (),
+            SYM_LINK => (),
+            CHAR_DEV => (),
+            BLOCK_DEV => (),
+            DIRECTORY => (),
+            FIFO => (),
+            CONTIGOUS => (),
+            GNULONG_PATH => (),
             _ => (),
         }
 

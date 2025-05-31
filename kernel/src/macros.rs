@@ -54,18 +54,20 @@ macro_rules! current_module_name {
 macro_rules! log_inner {
     ($prefix:expr, $suffix:literal, $($arg:tt)*) => ({
         use core::fmt::Write;
-        let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
-        let current_time = $crate::generic::clock::get_elapsed();
-        _ = writer.write_fmt(format_args!(
-            "[{:5}.{:06}] ",
-            current_time / 1_000_000_000,
-            (current_time / 1000) % 1_000_000
-        ));
-        const NAME: &str = $crate::current_module_name!();
-        _ = writer.write_fmt(format_args!("{}: ", NAME));
-        _ = writer.write_fmt(format_args!($prefix));
-        _ = writer.write_fmt(format_args!($($arg)*));
-        _ = writer.write_fmt(format_args!($suffix));
+        {
+            let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
+            let current_time = $crate::generic::clock::get_elapsed();
+            _ = writer.write_fmt(format_args!(
+                "[{:5}.{:06}] ",
+                current_time / 1_000_000_000,
+                (current_time / 1000) % 1_000_000
+            ));
+            const NAME: &str = $crate::current_module_name!();
+            _ = writer.write_fmt(format_args!("{}: ", NAME));
+            _ = writer.write_fmt(format_args!($prefix));
+            _ = writer.write_fmt(format_args!($($arg)*));
+            _ = writer.write_fmt(format_args!($suffix));
+        }
     });
 }
 

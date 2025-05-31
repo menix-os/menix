@@ -339,7 +339,7 @@ pub unsafe fn init() {
         let mut kernel_table = KERNEL_PAGE_TABLE.lock();
         for page in (0..=length).step_by(page_size) {
             // We can't free any memory at this point, so we have to make sure we need every single one.
-            if kernel_table.is_mapped((virt + page).into(), VmLevel::L1) {
+            if kernel_table.is_mapped((virt + page).into()) {
                 continue;
             }
 

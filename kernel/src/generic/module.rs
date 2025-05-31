@@ -1,17 +1,17 @@
 use super::{
-    elf::{ElfHdr, ElfPhdr},
     memory::{PhysAddr, VirtAddr, virt::VmFlags},
+    posix::vfs::exec::elf::{ElfHdr, ElfPhdr},
     util::mutex::Mutex,
 };
 use crate::{
     arch,
     generic::{
         boot::BootInfo,
-        elf::{self, ElfHashTable, ElfRela, ElfSym},
         memory::{
             pmm::{AllocFlags, FreeList, PageAllocator},
             virt::{self, VmLevel},
         },
+        posix::vfs::exec::elf::{self, ElfHashTable, ElfRela, ElfSym},
         util::{align_down, align_up},
     },
 };

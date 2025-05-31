@@ -3,17 +3,14 @@
 
 typedef signed char __i8;
 typedef unsigned char __u8;
-
-typedef signed short __i16;
+typedef short __i16;
 typedef unsigned short __u16;
-
-typedef signed int __i32;
+typedef int __i32;
 typedef unsigned int __u32;
-
-typedef signed long __i64;
+typedef long __i64;
 typedef unsigned long __u64;
-
-typedef __SIZE_TYPE__ __usize;
+typedef long __isize;
+typedef unsigned long __usize;
 
 typedef long off_t;
 typedef long off64_t;

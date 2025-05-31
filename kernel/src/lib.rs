@@ -21,6 +21,7 @@ pub mod macros;
 pub mod arch;
 pub mod generic;
 
+use crate::generic::{posix::vfs::path::PathBuf, sched::process::Process};
 use generic::{boot::BootInfo, memory::virt, percpu::CpuData, sched::task::Task};
 
 unsafe fn run_init_tasks(start: *const fn(), end: *const fn()) {
@@ -35,7 +36,7 @@ unsafe fn run_init_tasks(start: *const fn(), end: *const fn()) {
 
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
-pub(crate) fn main() -> ! {
+pub fn main() -> ! {
     unsafe {
         arch::core::setup_bsp();
         generic::memory::init();
@@ -46,8 +47,8 @@ pub(crate) fn main() -> ! {
         run_init_tasks(
             &raw const virt::LD_EARLY_ARRAY_START as *const fn(),
             &raw const virt::LD_EARLY_ARRAY_END as *const fn(),
-        )
-    };
+        );
+    }
 
     // Say hello to the console.
     log!(
@@ -60,6 +61,7 @@ pub(crate) fn main() -> ! {
 
     log!("Command line: {}", BootInfo::get().command_line.inner());
 
+    generic::module::init();
     generic::posix::vfs::init();
     generic::platform::init();
 
@@ -68,27 +70,26 @@ pub(crate) fn main() -> ! {
         run_init_tasks(
             &raw const virt::LD_INIT_ARRAY_START as *const fn(),
             &raw const virt::LD_INIT_ARRAY_END as *const fn(),
-        )
-    };
-
-    generic::module::init();
+        );
+    }
 
     // Set up scheduler.
-    let init = Task::new(run_init, 0, None, false).expect("Couldn't create kernel task");
+    let init = Task::new(run_init, 0, 0, None, false).expect("Couldn't create kernel task");
     CpuData::get().scheduler.start(init);
 }
 
 /// The high-level kernel entry point. This is invoked by the scheduler once it's running.
-extern "C" fn run_init(_: usize) -> ! {
+extern "C" fn run_init(_: usize, _: usize) {
     // Find init. If no path is given, search a few select directories.
     let path = match BootInfo::get().command_line.get_string("init") {
         Some(x) => x,
         // TODO: Search filesystem for init binaries.
-        None => "/usr/sbin/init",
+        None => "/sbin/init",
     };
 
-    log!("Starting init \"{}\"", path);
+    let path = PathBuf::from_str(path);
 
-    // TODO: Start init.
-    unreachable!();
+    log!("Starting init \"{}\"", path);
+    let init = Process::from_file(&path).unwrap();
+    // TODO: Add to run queue.
 }

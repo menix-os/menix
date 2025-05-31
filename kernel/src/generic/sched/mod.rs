@@ -1,8 +1,11 @@
 pub mod process;
 pub mod task;
 
-use super::util::spin::SpinLock;
-use crate::arch;
+use super::util::mutex::IrqMutex;
+use crate::{
+    arch,
+    generic::{percpu::CpuData, sched::task::TaskState},
+};
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::{
     ptr::null_mut,
@@ -15,10 +18,8 @@ use task::{Task, Tid};
 pub struct Scheduler {
     /// The currently running task on this scheduler instance. Use [`Self::get_current`] instead.
     pub(crate) current: AtomicPtr<Task>,
-    pub(crate) lock: SpinLock,
-    ticks_active: usize,
-    preempt_level: usize,
-    preempt_queued: bool,
+    pub(crate) lock: IrqMutex<()>,
+    pub(crate) preempt_level: usize,
     run_queue: BTreeMap<Tid, Arc<Task>>,
 }
 
@@ -26,10 +27,8 @@ impl Scheduler {
     pub(crate) const fn new() -> Self {
         return Self {
             current: AtomicPtr::new(null_mut()),
-            lock: SpinLock::new(),
-            ticks_active: 0,
+            lock: IrqMutex::new(()),
             preempt_level: 0,
-            preempt_queued: false,
             run_queue: BTreeMap::new(),
         };
     }
@@ -60,19 +59,21 @@ impl Scheduler {
         // We create a dummy thread on the stack which only exists to start the scheduler since
         // the scheduler assumes that there's always a task running. Since this is a dead end,
         // we don't actually add this to the run queue.
-        let dummy = Task::new(dummy_fn, 0, None, false).unwrap();
+        let dummy = Task::new(dummy_fn, 0, 0, None, false).unwrap();
 
         unsafe {
             let to = Arc::into_raw(task);
             self.current.store(to as *mut _, Ordering::Relaxed);
-            self.finish_reschedule(&raw const dummy, to);
+
+            arch::sched::switch(&raw const dummy, to);
         }
+
         unreachable!("Failed to start scheduling!");
     }
 
     fn next(&self) -> Option<Arc<Task>> {
         let current_tid = Self::get_current().get_id();
-        let filter = |&(_, b): &(&Tid, &Arc<Task>)| b.is_ready();
+        let filter = |&(_, b): &(&Tid, &Arc<Task>)| *b.state.lock() == TaskState::Ready;
 
         self.run_queue
             .range((current_tid + 1)..)
@@ -82,28 +83,39 @@ impl Scheduler {
     }
 
     /// Runs the scheduler. `preempt` tells the scheduler if it's supposed to handle preemption or not.
-    /// Returns a tuple of (old task, new task).
-    /// # Safety
-    /// The returned value *must* be used by the caller to finish the task switch with [`Self::finish_reschedule`].
-    pub(crate) unsafe fn start_reschedule(&mut self, preempt: bool) -> (*const Task, *const Task) {
-        let irq_state = unsafe { arch::irq::set_irq_state(false) };
+    pub(crate) fn reschedule(&mut self) {
+        let old = unsafe { arch::irq::set_irq_state(false) };
         let from = self.current.load(Ordering::Relaxed);
-        let to = Arc::into_raw(self.next().unwrap());
+        let to = Arc::into_raw(self.next().expect("No more tasks to run!")) as *mut Task;
 
-        self.current.store(to as *mut Task, Ordering::Relaxed);
-        return (from, to);
-    }
-
-    /// Completes the reschedule with values provided by [`Self::start_reschedule`].
-    /// This is seperate so e.g. an interrupt handler can signal an EOI before the switch.
-    pub(crate) unsafe fn finish_reschedule(&mut self, from: *const Task, to: *const Task) {
         if from == to {
+            unsafe { arch::irq::set_irq_state(old) };
             return;
         }
-        unsafe { arch::sched::switch(from, to) };
+
+        self.current.store(to, Ordering::Relaxed);
+
+        unsafe {
+            arch::sched::switch(from, to);
+            arch::irq::set_irq_state(old);
+        }
     }
 }
 
-extern "C" fn dummy_fn(_: usize) -> ! {
+/// Generic task entry point. This is to be called by an implementing [`crate::arch::sched::init_task`].
+pub extern "C" fn task_entry(entry: extern "C" fn(usize, usize), arg1: usize, arg2: usize) -> ! {
+    (entry)(arg1, arg2);
+
+    // The task function is over, kill the task.
+    {
+        let task = Scheduler::get_current();
+        *task.state.lock() = TaskState::Dead;
+    }
+
+    CpuData::get().scheduler.reschedule();
+    unreachable!();
+}
+
+extern "C" fn dummy_fn(_: usize, _: usize) {
     unreachable!("This is a dummy function, somehow the dummy task ended up in the scheduler");
 }

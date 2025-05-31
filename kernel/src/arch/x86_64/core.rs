@@ -27,9 +27,11 @@ pub(in crate::arch) unsafe fn setup_bsp() {
         super::asm::wrmsr(consts::MSR_GS_BASE, &raw const LD_PERCPU_START as u64);
         super::asm::wrmsr(consts::MSR_FS_BASE, 0);
     }
+
+    CpuData::get().present = true;
 }
 
-pub fn get_frame_pointer() -> usize {
+pub(in crate::arch) fn get_frame_pointer() -> usize {
     let mut fp: usize;
     unsafe {
         asm!("mov {fp}, rbp", fp = out(reg) fp);
@@ -54,7 +56,7 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
     let mut cr0: usize;
     let mut cr4: usize;
 
-    let cpu = ARCH_DATA.get(context);
+    let cpu = ARCH_DATA.get();
 
     // Load a GDT and TSS.
     gdt::init(&mut cpu.gdt, &mut cpu.tss);
@@ -141,11 +143,7 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
     if cpuid1.edx & consts::CPUID_1D_TSC != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
         // TODO: This will break when called more than once.
         // TODO: Make sure to only switch if it's not already the current source.
-        if BootInfo::get()
-            .command_line
-            .get_bool("tsc")
-            .unwrap_or(false)
-        {
+        if BootInfo::get().command_line.get_bool("tsc").unwrap_or(true) {
             if tsc::init().is_ok() {
                 cr4 |= consts::CR4_TSD;
                 _ = clock::switch(Box::new(TscClock));

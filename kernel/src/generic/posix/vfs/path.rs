@@ -1,19 +1,24 @@
-use alloc::{borrow::ToOwned, string::String, vec::Vec};
-use core::fmt::{Display, Formatter, Write};
+use alloc::{string::String, vec::Vec};
+use core::fmt::{Display, Formatter};
 
 /// Represents an owned file system path.
 #[derive(Debug)]
 pub struct PathBuf(Vec<u8>);
 
 impl PathBuf {
-    pub fn new() -> Self {
-        PathBuf(Vec::new())
-    }
-
+    /// Creates a new path pointing to the root.
     pub fn new_root() -> Self {
         PathBuf(vec![b'/'])
     }
 
+    /// Creates a new owned path from a string reference.
+    pub fn from_str(value: &str) -> Self {
+        Self(value.as_bytes().to_vec())
+    }
+
+    /// Creates a new path from a buffer.
+    /// # Safety
+    /// The caller must ensure that the buffer contains a legal path.
     pub unsafe fn from_unchecked(value: Vec<u8>) -> Self {
         PathBuf(value)
     }

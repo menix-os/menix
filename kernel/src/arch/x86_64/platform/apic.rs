@@ -29,7 +29,7 @@ per_cpu! {
 
 impl LocalApic {
     pub fn init(context: &CpuData) {
-        let result = LAPIC.get(context);
+        let result = LAPIC.get();
 
         // Enable the APIC flag.
         let mut apic_msr = unsafe { asm::rdmsr(0x1B) };
@@ -68,7 +68,7 @@ impl LocalApic {
         result.write_register(0x380, u32::MAX);
 
         // Sleep for 10 milliseconds.
-        clock::wait_ns(10 * 1_000_000)
+        clock::wait_ns(1_000_000)
             .expect("Unable to setup LAPIC, the kernel should have a working timer!");
 
         // Read how many ticks have passed in 10 ms.
