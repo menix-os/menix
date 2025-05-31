@@ -1,10 +1,7 @@
 use super::{consts, platform::apic, sched::Context};
 use crate::{
     arch::x86_64::consts::CPL_USER,
-    generic::{
-        memory::virt::{PageFaultCause, PageFaultInfo},
-        percpu::CPU_DATA,
-    },
+    generic::memory::virt::{PageFaultCause, PageFaultInfo},
 };
 use crate::{
     arch::x86_64::platform::gdt::Gdt,
@@ -12,6 +9,7 @@ use crate::{
 };
 use core::{
     arch::{asm, naked_asm},
+    hint::unlikely,
     mem::offset_of,
 };
 use seq_macro::seq;
@@ -62,7 +60,7 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
         0x20 => timer_handler(),
         // Any other ISR is an IRQ with a dynamic handler.
         _ => {
-            let cpu = &super::ARCH_DATA.get(CpuData::get());
+            let cpu = super::ARCH_DATA.get();
             match cpu.irq_handlers[isr] {
                 Some(x) => x(cpu.irq_map[isr], cpu.irq_ctx[isr]),
                 None => panic!("Got an unhandled interrupt {}!", isr),
@@ -73,41 +71,7 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
 
 unsafe fn print_context(context: *const Context) {
     unsafe {
-        error!(
-            "rax {:016x} rbx {:016x} rcx {:016x} rdx {:016x}",
-            (*context).rax,
-            (*context).rbx,
-            (*context).rcx,
-            (*context).rdx
-        );
-        error!(
-            "rbp {:016x} rdi {:016x} rsi {:016x} r8  {:016x}",
-            (*context).rbp,
-            (*context).rdi,
-            (*context).rsi,
-            (*context).r8
-        );
-        error!(
-            "r9  {:016x} r10 {:016x} r11 {:016x} r12 {:016x}",
-            (*context).r9,
-            (*context).r10,
-            (*context).r11,
-            (*context).r12,
-        );
-        error!(
-            "r13 {:016x} r14 {:016x} r15 {:016x} rfl {:016x}",
-            (*context).r13,
-            (*context).r14,
-            (*context).r15,
-            (*context).rflags
-        );
-        error!(
-            "rsp {:016x} rip {:016x} cs  {:016x} ss  {:016x}",
-            (*context).rsp,
-            (*context).rip,
-            (*context).cs,
-            (*context).ss
-        );
+        error!("{:?}", *context);
     }
 }
 
@@ -162,11 +126,14 @@ fn page_fault_handler(frame: *mut Context) {
 }
 
 fn timer_handler() {
-    let cpu = CPU_DATA.get(CpuData::get());
     unsafe {
-        let (from, to) = cpu.scheduler.start_reschedule(true);
-        apic::LAPIC.get(CpuData::get()).eoi().unwrap();
-        cpu.scheduler.finish_reschedule(from, to);
+        crate::arch::sched::preempt_disable();
+
+        apic::LAPIC.get().eoi().unwrap();
+
+        if unlikely(crate::arch::sched::preempt_enable()) {
+            CpuData::get().scheduler.reschedule();
+        }
     }
 }
 
@@ -316,7 +283,6 @@ unsafe extern "C" fn interrupt_stub_internal() {
 #[unsafe(naked)]
 pub unsafe extern "C" fn interrupt_return() {
     naked_asm!(
-        "cli",
         pop_all_regs!(),        // Pop all general purpose registers.
         swapgs_if_necessary!(), // Change GS back if we came from user mode.
         "add rsp, 0x10",        // Skip .error and .isr fields.

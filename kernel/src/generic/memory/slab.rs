@@ -1,7 +1,5 @@
 // Slab allocator
 
-use alloc::alloc::{AllocError, Allocator};
-
 use super::{
     VirtAddr,
     pmm::{AllocFlags, FreeList, PageAllocator},
@@ -15,7 +13,7 @@ use core::{
     alloc::{GlobalAlloc, Layout},
     hint::{likely, unlikely},
     mem::size_of,
-    ptr::{NonNull, null_mut},
+    ptr::null_mut,
 };
 
 #[derive(Debug)]
@@ -123,14 +121,14 @@ pub struct SlabAllocator {
 #[global_allocator]
 pub static ALLOCATOR: SlabAllocator = SlabAllocator {
     slabs: [
-        Slab::new(8),
         Slab::new(16),
-        Slab::new(24),
         Slab::new(32),
         Slab::new(64),
         Slab::new(128),
         Slab::new(256),
         Slab::new(512),
+        Slab::new(1024),
+        Slab::new(2048),
     ],
 };
 

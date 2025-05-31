@@ -1,7 +1,17 @@
 //! Per-CPU data structures.
 
 use super::{memory::VirtAddr, sched::Scheduler};
-use crate::arch;
+use crate::{
+    arch,
+    generic::{
+        memory::{
+            self, PhysAddr,
+            pmm::{AllocFlags, FreeList, PageAllocator},
+            virt::{KERNEL_PAGE_TABLE, VmFlags},
+        },
+        posix::errno::{EResult, Errno},
+    },
+};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// Common processor-local information.
@@ -28,20 +38,6 @@ impl CpuData {
     pub fn get() -> &'static mut CpuData {
         return unsafe { arch::core::get_per_cpu().as_mut().unwrap() };
     }
-
-    /// Gets the data for a specific CPU.
-    /// # Safety
-    /// The caller must make sure that `id` is valid.
-    pub unsafe fn get_for(id: usize) -> &'static mut CpuData {
-        assert!(
-            id < NUM_CPUS.load(Ordering::Relaxed),
-            "Attempted to get a per-CPU block for a nonexistent CPU {}!",
-            id
-        );
-        let size = &raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize;
-        let address = &raw const LD_PERCPU_START as usize + (size * id);
-        return unsafe { (address as *mut CpuData).as_mut().unwrap() };
-    }
 }
 
 /// [`PerCpuData`] uses the following trick: All data is placed into a special section.
@@ -58,7 +54,6 @@ pub struct PerCpuData<T: 'static> {
 }
 
 // We guarantee that this data is only ever accessed by one CPU.
-unsafe impl<T> Send for PerCpuData<T> {}
 unsafe impl<T> Sync for PerCpuData<T> {}
 
 unsafe extern "C" {
@@ -72,19 +67,19 @@ impl<T> PerCpuData<T> {
     }
 
     /// Gets the inner CPU-local instance of this field.
-    pub fn get(&self, context: &CpuData) -> &'static mut T {
-        // Calculate the offset into the per-CPU region.
-        let size = &raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize;
-        let offset = (&raw const self.storage as usize - &raw const LD_PERCPU_START as usize)
-            + (size * context.id);
+    pub fn get(&self) -> &'static mut T {
         unsafe {
-            let address = (context.this as *mut T).byte_add(offset);
-            return address.as_mut().unwrap();
+            let context = CpuData::get();
+
+            let start = &raw const LD_PERCPU_START as usize;
+            let size = &raw const LD_PERCPU_END as usize - start;
+            let offset = (&raw const self.storage as usize - start) + (size * context.id);
+            (context.this as *mut T).byte_add(offset).as_mut().unwrap()
         }
     }
 }
 
-// This variable must come first, so put it in a special section that is guaranteed to be put somewhere before `.percpu`.
+// This variable must come first, so put it in a special section that is guaranteed to be put before `.percpu`.
 #[used]
 #[unsafe(link_section = ".percpu.init")]
 pub static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
@@ -102,10 +97,25 @@ static NUM_CPUS: AtomicUsize = AtomicUsize::new(1);
 
 /// Extends the per-CPU data for a new CPU.
 /// Returns the new CpuData context and the new CPU ID.
-pub(crate) fn allocate_cpu() -> (&'static mut CpuData, usize) {
-    let _id = NUM_CPUS.fetch_add(1, Ordering::Relaxed);
-    let _percpu_size = &raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize;
-    // TODO: Map new memory region, starting at end of the region. Needs page allocator.
-    // TODO: Copy over default values.
-    todo!();
+pub(crate) fn allocate_cpu() -> EResult<(&'static mut CpuData, usize)> {
+    let id = NUM_CPUS.fetch_add(1, Ordering::Relaxed);
+    let percpu_size = &raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize;
+    let percpu_end = &raw const LD_PERCPU_END as usize + (percpu_size * id);
+
+    let phys = memory::pmm::FreeList::alloc_bytes(percpu_size, AllocFlags::Zeroed)
+        .map_err(|_| Errno::ENOMEM)?;
+
+    KERNEL_PAGE_TABLE
+        .lock()
+        .map_range::<FreeList>(
+            VirtAddr::from(percpu_end),
+            PhysAddr::from(phys),
+            VmFlags::Read | VmFlags::Write,
+            memory::virt::VmLevel::L1,
+            percpu_size,
+        )
+        .map_err(|_| Errno::ENOMEM)?;
+
+    let new_context = unsafe { (percpu_end as *mut CpuData).as_mut().unwrap() };
+    return Ok((new_context, id));
 }

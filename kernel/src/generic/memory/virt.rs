@@ -62,6 +62,7 @@ pub enum VmLevel {
 
 /// Represents a virtual address space.
 /// `K` controls whether or not this page table is for the kernel or a user process.
+#[derive(Debug)]
 pub struct PageTable<const K: bool = false> {
     /// Physical address of the root directory.
     head: Mutex<PhysAddr>,
@@ -134,7 +135,7 @@ impl<const K: bool> PageTable<K> {
 
     /// Gets the page table entry pointed to by `virt`.
     /// Allocates new levels if necessary and requested.
-    /// `target_level`: The level to get for the PTE. Use 0 if you're unsure.
+    /// `target_level`: The level to get for the PTE.
     pub fn get_pte<P: PageAllocator>(
         &self,
         virt: VirtAddr,
@@ -313,18 +314,41 @@ impl<const K: bool> PageTable<K> {
 
     /// Un-maps a range from this address space.
     pub fn unmap_range(&mut self, virt: VirtAddr, len: usize) -> Result<(), PageTableError> {
-        todo!();
+        // TODO
+        Ok(())
     }
 
     /// Checks if the address (may be unaligned) is mapped in this address space.
-    pub fn is_mapped(&self, virt: VirtAddr, level: VmLevel) -> bool {
-        let pte = self.get_pte::<FreeList>(virt, false, level);
-        match pte {
-            Ok(x) => x.is_present(),
-            Err(_) => {
-                return false;
+    pub fn is_mapped(&self, virt: VirtAddr) -> bool {
+        let head = self.head.lock();
+        let mut current_head: *mut PageTableEntry = head.as_hhdm();
+        let mut index;
+
+        for level in (0..self.root_level).rev() {
+            let addr_bits = usize::MAX >> (usize::BITS as usize - arch::virt::get_level_bits());
+            let addr_shift = arch::virt::get_page_bits() + (arch::virt::get_level_bits() * level);
+            index = (virt.0 >> addr_shift) & addr_bits;
+
+            unsafe {
+                let pte = current_head.add(index);
+                let pte_flags = VmFlags::Directory | if K { VmFlags::None } else { VmFlags::User };
+
+                if (*pte).is_present() {
+                    // If this PTE is a large page, it already contains the final address. Don't continue.
+                    if !(*pte).is_directory(level) {
+                        return true;
+                    } else {
+                        // If the PTE is not large, go one level deeper.
+                        current_head = (*pte).address().as_hhdm();
+                        *pte = PageTableEntry::new((*pte).address(), pte_flags, level);
+                    }
+                } else {
+                    return false;
+                }
             }
         }
+
+        return false;
     }
 }
 

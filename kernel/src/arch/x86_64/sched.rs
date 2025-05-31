@@ -17,6 +17,7 @@ use crate::{
 };
 use core::{
     arch::{asm, naked_asm},
+    fmt::Write,
     mem::offset_of,
 };
 
@@ -35,7 +36,7 @@ pub struct TaskContext {
 }
 
 #[repr(C)]
-#[derive(Default, Clone, Debug, Copy)]
+#[derive(Default, Clone, Copy)]
 pub struct Context {
     pub r15: u64,
     pub r14: u64,
@@ -64,6 +65,33 @@ pub struct Context {
     pub ss: u64,
 }
 static_assert!(size_of::<Context>() == 22 * size_of::<u64>());
+
+impl core::fmt::Debug for Context {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_char('\n')?;
+        f.write_fmt(format_args!(
+            "rax {:016x} rbx {:016x} rcx {:016x} rdx {:016x}\n",
+            self.rax, self.rbx, self.rcx, self.rdx
+        ))?;
+        f.write_fmt(format_args!(
+            "rbp {:016x} rdi {:016x} rsi {:016x} r8  {:016x}\n",
+            self.rbp, self.rdi, self.rsi, self.r8
+        ))?;
+        f.write_fmt(format_args!(
+            "r9  {:016x} r10 {:016x} r11 {:016x} r12 {:016x}\n",
+            self.r9, self.r10, self.r11, self.r12,
+        ))?;
+        f.write_fmt(format_args!(
+            "r13 {:016x} r14 {:016x} r15 {:016x} rfl {:016x}\n",
+            self.r13, self.r14, self.r15, self.rflags
+        ))?;
+        f.write_fmt(format_args!(
+            "rsp {:016x} rip {:016x} cs  {:016x} ss  {:016x}",
+            self.rsp, self.rip, self.cs, self.ss
+        ))?;
+        Ok(())
+    }
+}
 
 pub fn get_task() -> *mut Task {
     unsafe {
@@ -94,7 +122,7 @@ struct TaskFrame {
 
 pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe {
-        let cpu = ARCH_DATA.get(CpuData::get());
+        let cpu = ARCH_DATA.get();
         cpu.tss.rsp0 = (*to).stack.value() as u64 + KERNEL_STACK_SIZE as u64;
 
         if (*from).is_user() {
@@ -162,17 +190,19 @@ pub unsafe extern "C" fn perform_switch(old_rsp: *mut u64, new_rsp: *mut u64) {
 
 pub(in crate::arch) fn init_task(
     context: &mut TaskContext,
-    entry: extern "C" fn(usize) -> !,
-    arg: usize,
+    entry: extern "C" fn(usize, usize),
+    arg1: usize,
+    arg2: usize,
     stack_start: VirtAddr,
     is_user: bool,
 ) -> EResult<()> {
-    let cpu = ARCH_DATA.get(CpuData::get());
+    let cpu = ARCH_DATA.get();
     // Prepare a dummy stack with an entry point function to return to.
     unsafe {
         let frame = ((stack_start.value() + KERNEL_STACK_SIZE) as *mut TaskFrame).sub(1);
         (*frame).rbx = entry as u64;
-        (*frame).r12 = arg as u64;
+        (*frame).r12 = arg1 as u64;
+        (*frame).r13 = arg2 as u64;
         (*frame).rip = task_entry_thunk as u64;
         context.rsp = frame as u64;
 
@@ -198,14 +228,33 @@ unsafe extern "C" fn task_entry_thunk() -> ! {
     naked_asm!(
         "mov rdi, rbx",
         "mov rsi, r12",
+        "mov rdx, r13",
+        "push 0", // Make sure to zero this so stack tracing stops here.
         "jmp {task_thunk}",
-        task_thunk = sym task_entry,
+        task_thunk = sym crate::generic::sched::task_entry,
     );
 }
 
-/// Sets up some task fields and calls the entry point.
-unsafe extern "C" fn task_entry(entry: extern "C" fn(usize) -> !, arg: usize) -> ! {
-    (entry)(arg);
+#[inline]
+pub(in crate::arch) unsafe fn preempt_disable() {
+    unsafe {
+        asm!("inc qword ptr gs:{offset}", offset = const offset_of!(CpuData, scheduler.preempt_level));
+    }
+}
+
+#[inline]
+pub(in crate::arch) unsafe fn preempt_enable() -> bool {
+    let mut r = false;
+    unsafe {
+        asm!(
+            "dec qword ptr gs:{offset}",
+            "jz {label}",
+            label = label {
+                r = true;
+            },
+            offset = const offset_of!(CpuData, scheduler.preempt_level));
+    }
+    return r;
 }
 
 pub unsafe fn force_reschedule() {

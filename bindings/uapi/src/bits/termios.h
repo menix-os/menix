@@ -1,9 +1,11 @@
 #ifndef __MENIX_UAPI_TERMIOS_H
 #define __MENIX_UAPI_TERMIOS_H
 
-typedef unsigned char cc_t;
-typedef unsigned int speed_t;
-typedef unsigned int tcflag_t;
+#include "types.h"
+
+typedef __u8 cc_t;
+typedef __u32 speed_t;
+typedef __u32 tcflag_t;
 
 #define NCCS 32
 #define VINTR 0
@@ -49,8 +51,6 @@ typedef unsigned int tcflag_t;
 #define OFILL 0000100
 #define OFDEL 0000200
 
-#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE) || defined(_XOPEN_SOURCE)
-
 #define NLDLY 0000400
 #define NL0 0000000
 #define NL1 0000400
@@ -74,8 +74,6 @@ typedef unsigned int tcflag_t;
 #define FFDLY 0100000
 #define FF0 0000000
 #define FF1 0100000
-
-#endif
 
 #define VTDLY 0040000
 #define VT0 0000000
@@ -104,8 +102,6 @@ typedef unsigned int tcflag_t;
 #define TOSTOP 0000400
 #define IEXTEN 0100000
 
-#if defined(_GNU_SOURCE) || defined(_BSD_SOURCE)
-
 #define EXTA 0000016
 #define EXTB 0000017
 #define CBAUD 0010017
@@ -124,8 +120,6 @@ typedef unsigned int tcflag_t;
 
 #define XTABS 0014000
 
-#endif
-
 struct termios {
   tcflag_t c_iflag;
   tcflag_t c_oflag;
@@ -139,12 +133,12 @@ struct termios {
 
 #define NCC 8
 struct termio {
-  unsigned short c_iflag;
-  unsigned short c_oflag;
-  unsigned short c_cflag;
-  unsigned short c_lflag;
-  unsigned char c_line;
-  unsigned char c_cc[NCC];
+  __u16 c_iflag;
+  __u16 c_oflag;
+  __u16 c_cflag;
+  __u16 c_lflag;
+  __u8 c_line;
+  __u8 c_cc[NCC];
 };
 
 #endif

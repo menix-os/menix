@@ -1,7 +1,6 @@
 pub mod boot;
 pub mod clock;
 pub mod cmdline;
-pub mod elf;
 pub mod fbcon;
 pub mod irq;
 pub mod log;
@@ -11,6 +10,7 @@ pub mod panic;
 pub mod percpu;
 pub mod platform;
 pub mod posix;
+pub mod resource;
 pub mod sched;
 pub mod sys;
 pub mod util;
