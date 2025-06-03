@@ -6,7 +6,7 @@ use core::ffi::c_void;
 
 static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
 
-pub(crate) fn early_init() {
+fn early_init() {
     match BootInfo::get().rsdp_addr {
         Some(rsdp) => unsafe { RSDP_ADDRESS.init(rsdp) },
         None => panic!("No RSDP available, unable to initialize the ACPI subsystem!"),
@@ -32,6 +32,8 @@ pub(crate) fn early_init() {
 
     crate::arch::platform::init();
 }
+
+early_init_call_if_cmdline!("acpi", true, early_init);
 
 pub(crate) fn init() {
     let mut uacpi_status = unsafe { uacpi::uacpi_initialize(0) };

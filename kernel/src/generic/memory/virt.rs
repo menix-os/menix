@@ -127,9 +127,8 @@ impl<const K: bool> PageTable<K> {
     ///
     /// All parts of the kernel must still be mapped for this call to be safe.
     pub unsafe fn set_active(&mut self) {
-        let addr = self.head.lock();
         unsafe {
-            arch::virt::set_page_table(*addr);
+            arch::virt::set_page_table(*self.head.lock());
         }
     }
 
