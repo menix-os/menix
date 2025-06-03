@@ -1,15 +1,15 @@
-use core::u32;
-
 use super::asm::{self};
 use crate::{
-    arch::x86_64::consts,
+    arch::{self, x86_64::consts},
     generic::{
-        clock,
-        irq::{IpiTarget, IrqController, IrqError},
+        self, clock,
+        irq::{IpiTarget, IrqController, IrqError, IrqHandler, IrqStatus},
         memory::PhysAddr,
         percpu::CpuData,
     },
 };
+use alloc::boxed::Box;
+use core::{hint::unlikely, u32};
 
 #[derive(Debug)]
 pub struct LocalApic {
@@ -19,17 +19,13 @@ pub struct LocalApic {
     _lapic_addr: PhysAddr,
 }
 
-per_cpu! {
-    pub(crate) static LAPIC: LocalApic = LocalApic {
-        has_x2apic: false,
-        ticks_per_10ms: 0,
-        _lapic_addr: PhysAddr::null(),
-    };
-}
-
 impl LocalApic {
     pub fn init(context: &CpuData) {
-        let result = LAPIC.get();
+        let mut result = LocalApic {
+            has_x2apic: false,
+            ticks_per_10ms: 0,
+            _lapic_addr: PhysAddr::null(),
+        };
 
         // Enable the APIC flag.
         let mut apic_msr = unsafe { asm::rdmsr(0x1B) };
@@ -68,7 +64,7 @@ impl LocalApic {
         result.write_register(0x380, u32::MAX);
 
         // Sleep for 10 milliseconds.
-        clock::wait_ns(1_000_000)
+        clock::wait_ns(10_000_000)
             .expect("Unable to setup LAPIC, the kernel should have a working timer!");
 
         // Read how many ticks have passed in 10 ms.
@@ -80,6 +76,9 @@ impl LocalApic {
         result.write_register(0x380, result.ticks_per_10ms);
 
         log!("Initialized LAPIC for CPU {}", context.id);
+
+        // TODO
+        generic::irq::register_irq(Box::new(result)).unwrap();
     }
 
     const fn reg_to_x2apic(reg: u32) -> u32 {
@@ -116,6 +115,20 @@ impl IrqController for LocalApic {
     fn send_ipi(&self, target: IpiTarget) -> Result<(), IrqError> {
         let _ = target;
         todo!()
+    }
+}
+
+impl IrqHandler for LocalApic {
+    // TODO
+    fn handle(&mut self) -> IrqStatus {
+        unsafe { arch::sched::preempt_disable() };
+        self.eoi().unwrap();
+
+        if unlikely(unsafe { crate::arch::sched::preempt_enable() }) {
+            CpuData::get().scheduler.reschedule();
+        }
+
+        return IrqStatus::Handled;
     }
 }
 

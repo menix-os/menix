@@ -115,7 +115,7 @@ macro_rules! assert_trait_impl {
 /// The order in which hooked functions are called is not guaranteed.
 #[macro_export]
 macro_rules! early_init_call {
-    ($fun:ident) => {
+    ($fun:expr) => {
         const _: () = {
             #[doc(hidden)]
             #[unsafe(link_section = ".early_array")]
@@ -128,7 +128,7 @@ macro_rules! early_init_call {
 /// Hooks a function as an early init call if a command line option equals to true.
 #[macro_export]
 macro_rules! early_init_call_if_cmdline {
-    ($opt:literal, $default:literal, $fun:ident) => {
+    ($opt:literal, $default:literal, $fun:expr) => {
         const _: () = {
             fn __init_call_wrapper() {
                 use $crate::generic::boot::BootInfo;
@@ -150,7 +150,7 @@ macro_rules! early_init_call_if_cmdline {
 /// This gets called after all managers are available.
 #[macro_export]
 macro_rules! init_call {
-    ($fun:ident) => {
+    ($fun:expr) => {
         const _: () = {
             #[doc(hidden)]
             #[unsafe(link_section = ".init_array")]
@@ -163,7 +163,7 @@ macro_rules! init_call {
 /// Hooks a function as an init call if a command line option equals to true.
 #[macro_export]
 macro_rules! init_call_if_cmdline {
-    ($opt:literal, $default:literal, $fun:ident) => {
+    ($opt:literal, $default:literal, $fun:expr) => {
         const _: () = {
             fn __init_call_wrapper() {
                 use $crate::generic::boot::BootInfo;

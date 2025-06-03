@@ -1,15 +1,17 @@
-use super::{consts, platform::apic, sched::Context};
-use crate::{
-    arch::x86_64::consts::CPL_USER,
-    generic::memory::virt::{PageFaultCause, PageFaultInfo},
-};
+use super::{consts, sched::Context};
 use crate::{
     arch::x86_64::platform::gdt::Gdt,
-    generic::{self, irq::IrqController, percpu::CpuData},
+    generic::{self, percpu::CpuData},
+};
+use crate::{
+    arch::x86_64::{ARCH_DATA, consts::CPL_USER},
+    generic::{
+        irq::IrqError,
+        memory::virt::{PageFaultCause, PageFaultInfo},
+    },
 };
 use core::{
     arch::{asm, naked_asm},
-    hint::unlikely,
     mem::offset_of,
 };
 use seq_macro::seq;
@@ -56,14 +58,13 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
             unsafe { print_context(context) };
             panic!();
         }
-        // Timer.
-        0x20 => timer_handler(),
         // Any other ISR is an IRQ with a dynamic handler.
         _ => {
-            let cpu = super::ARCH_DATA.get();
-            match cpu.irq_handlers[isr] {
-                Some(x) => x(cpu.irq_map[isr], cpu.irq_ctx[isr]),
-                None => panic!("Got an unhandled interrupt {}!", isr),
+            match super::ARCH_DATA.get().irq_handlers[isr] {
+                Some(x) => generic::irq::dispatch(x),
+                None => {
+                    panic!("Got an unhandled interrupt {}!", isr);
+                }
             };
         }
     };
@@ -125,18 +126,6 @@ fn page_fault_handler(frame: *mut Context) {
     }
 }
 
-fn timer_handler() {
-    unsafe {
-        crate::arch::sched::preempt_disable();
-
-        apic::LAPIC.get().eoi().unwrap();
-
-        if unlikely(crate::arch::sched::preempt_enable()) {
-            CpuData::get().scheduler.reschedule();
-        }
-    }
-}
-
 pub(in crate::arch) unsafe fn set_irq_state(value: bool) -> bool {
     let old_mask = get_irq_state();
     unsafe {
@@ -161,6 +150,21 @@ pub(in crate::arch) fn wait_for_irq() {
     unsafe {
         asm!("hlt");
     }
+}
+
+pub(in crate::arch) fn register_irq(irq: usize) -> Result<(), IrqError> {
+    let cpu = ARCH_DATA.get();
+    for (idx, isr) in cpu.irq_handlers.iter_mut().enumerate() {
+        // ISR0-31 are reserved for exceptions.
+        if isr.is_some() || idx < 0x20 {
+            continue;
+        }
+
+        *isr = Some(irq);
+        return Ok(());
+    }
+
+    return Err(IrqError::NoIrqsLeft);
 }
 
 /// Pushes all general purpose registers onto the stack.

@@ -14,11 +14,6 @@ use super::{boot::BootInfo, percpu::CpuData};
 pub fn init() {
     let info = BootInfo::get();
 
-    acpi::early_init();
-
-    // Initialize BSP.
-    crate::arch::core::perpare_cpu(CpuData::get());
-
     #[cfg(any(
         target_arch = "x86_64",
         target_arch = "aarch64",
@@ -31,6 +26,8 @@ pub fn init() {
 
     // TODO: OpenFirmware support.
 
+    // Initialize BSP.
+    crate::arch::core::perpare_cpu(CpuData::get());
     // TODO: Initialize other cores.
 
     // Initalize system buses.

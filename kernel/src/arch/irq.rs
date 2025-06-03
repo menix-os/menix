@@ -1,4 +1,5 @@
 use super::internal;
+use crate::generic::irq::IrqError;
 
 /// Sets whether or not IRQs are enabled on this CPU.
 /// Returns the old value.
@@ -18,4 +19,8 @@ pub fn get_irq_state() -> bool {
 /// Hints to stop execution on this CPU until an interrupt happens.
 pub fn wait_for_irq() {
     internal::irq::wait_for_irq();
+}
+
+pub fn register_irq(irq: usize) -> Result<(), IrqError> {
+    internal::irq::register_irq(irq)
 }
