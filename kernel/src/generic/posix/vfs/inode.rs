@@ -1,6 +1,9 @@
 use super::{fs::SuperBlock, path::PathBuf};
-use crate::generic::{posix::errno::EResult, util::mutex::Mutex};
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use crate::generic::{
+    posix::{errno::EResult, vfs::entry::Entry},
+    util::mutex::Mutex,
+};
+use alloc::{boxed::Box, sync::Weak, vec::Vec};
 use core::{fmt::Debug, sync::atomic::AtomicBool};
 
 /// A standalone inode. See [`super::entry::Entry`] for information.
@@ -9,7 +12,7 @@ pub struct INode {
     /// FS-specific callbacks that can be performed on this node.
     pub ops: Box<dyn NodeOps>,
     /// The super block which this node is located in.
-    pub sb: Arc<SuperBlock>,
+    pub sb: Weak<dyn SuperBlock>,
     /// The status of this node.
     pub stat: Mutex<Stat>,
     /// If true, the node has been modified and has to be sync'd.
@@ -34,8 +37,10 @@ impl INode {
 
 /// Operations which work on a node.
 pub trait NodeOps: Debug {
-    /// Looks up an entry in the directory.
-    fn lookup(&self, dir: &INode) -> EResult<()>;
+    /// Attempts to resolve an `entry` in a given `directory`.
+    /// If a node is found, the target node is set on `entry`.
+    /// If it isn't found, the entry is marked negative and [`Errno::ENOENT`] is returned.
+    fn lookup(&self, entry: &Entry, directory: &INode) -> EResult<()>;
 
     /// Synchronizes the node back to the underlying file system.
     fn sync(&self, node: &INode) -> EResult<()>;
