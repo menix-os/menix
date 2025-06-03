@@ -1,7 +1,3 @@
-use crate::generic::{boot::BootInfo, util::once::Once};
-use alloc::{sync::Arc, vec::Vec};
-use entry::Entry;
-
 pub mod entry;
 pub mod exec;
 pub mod file;
@@ -9,14 +5,16 @@ pub mod fs;
 pub mod inode;
 pub mod path;
 
+use crate::generic::util::mutex::Mutex;
+use alloc::{boxed::Box, sync::Arc};
+use entry::Entry;
+
 /// The root of the VFS.
-static ROOT: Once<Arc<Entry>> = Once::new();
+static ROOT: Mutex<Option<Arc<Entry>>> = Mutex::new(None);
 
 pub(crate) fn init() {
-    unsafe { ROOT.init(entry::Entry::new(Vec::new(), None, None)) };
+    fs::register_fs(Box::new(fs::tmpfs::TmpFs));
 
-    // Mount all initial ramdisks on the root.
-    for file in BootInfo::get().files {
-        fs::initrd::load(file.data, ROOT.get().clone());
-    }
+    // Mount the tmpfs as root.
+    // TODO
 }

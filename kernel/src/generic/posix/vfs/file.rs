@@ -13,12 +13,6 @@ pub struct File {
     position: AtomicUsize,
 }
 
-impl File {
-    pub fn read(&self, buffer: &mut [u8]) -> EResult<(usize, isize)> {
-        self.ops.read(self, buffer)
-    }
-}
-
 /// Operations that can be performed on a file.
 pub trait FileOps {
     /// Reads from the file into a buffer.

@@ -24,6 +24,7 @@ pub mod generic;
 use crate::generic::{posix::vfs::path::PathBuf, sched::process::Process};
 use generic::{boot::BootInfo, memory::virt, percpu::CpuData, sched::task::Task};
 
+// TODO: Instead of having global init functions, use an initgraph with distinguishable stages.
 unsafe fn run_init_tasks(start: *const fn(), end: *const fn()) {
     let mut cur = start;
     while cur < end {
@@ -61,8 +62,8 @@ pub fn main() -> ! {
 
     log!("Command line: {}", BootInfo::get().command_line.inner());
 
-    generic::module::init();
     generic::posix::vfs::init();
+    generic::module::init();
     generic::platform::init();
 
     // Run init calls.
