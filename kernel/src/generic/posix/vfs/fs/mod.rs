@@ -2,7 +2,10 @@ pub(super) mod initrd;
 pub(super) mod tmpfs;
 
 use super::{entry::Entry, inode::INode};
-use crate::generic::{posix::errno::EResult, util::mutex::Mutex};
+use crate::generic::{
+    posix::{errno::EResult, vfs::inode::NodeType},
+    util::mutex::Mutex,
+};
 use alloc::{boxed::Box, collections::btree_map::BTreeMap, sync::Arc};
 use core::fmt::Debug;
 
@@ -19,16 +22,20 @@ pub trait FileSystem: Debug {
 /// It provides operations to create, modify and delete inodes.
 pub trait SuperBlock: Debug {
     /// Unmounts this super block.
-    fn unmount(&self) -> EResult<()>;
+    fn unmount(self) -> EResult<()>;
     /// Gets the status of the file system.
-    fn statvfs(&self) -> EResult<uapi::statvfs>;
+    fn statvfs(self: Arc<Self>) -> EResult<uapi::statvfs>;
     /// Synchronizes the entire file system.
-    fn sync(&self) -> EResult<()>;
+    fn sync(self: Arc<Self>) -> EResult<()>;
     /// Allocates a new inode on this super block.
     // TODO: Split into NodeType and Mode
-    fn create_inode(&self, mode: uapi::mode_t) -> EResult<Arc<INode>>;
+    fn create_inode(
+        self: Arc<Self>,
+        node_type: NodeType,
+        mode: uapi::mode_t,
+    ) -> EResult<Arc<INode>>;
     /// Deletes the inode.
-    fn destroy_inode(&self, inode: INode) -> EResult<()>;
+    fn destroy_inode(self: Arc<Self>, inode: INode) -> EResult<()>;
 }
 
 /// Registers a new file system.

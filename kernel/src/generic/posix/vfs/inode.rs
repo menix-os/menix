@@ -20,6 +20,15 @@ pub struct INode {
 }
 
 impl INode {
+    pub fn new(ops: Box<dyn NodeOps>, sb: Weak<dyn SuperBlock>, node_type: NodeType) -> Self {
+        Self {
+            ops,
+            sb,
+            stat: Mutex::new(Stat::from_type(node_type)),
+            dirty: AtomicBool::new(false),
+        }
+    }
+
     pub fn get_stat(&self) -> Stat {
         self.stat.lock().clone()
     }
@@ -60,7 +69,7 @@ impl Stat {
             inner: uapi::stat {
                 st_dev: 0,
                 st_ino: 0,
-                st_mode: uapi::S_IROTH | uapi::S_IRGRP | uapi::S_IRUSR,
+                st_mode: uapi::S_IFREG | uapi::S_IROTH | uapi::S_IRGRP | uapi::S_IRUSR,
                 st_nlink: 1,
                 st_uid: 0,
                 st_gid: 0,
@@ -75,21 +84,36 @@ impl Stat {
         }
     }
 
-    pub fn get_file_type(&self) -> FileType {
+    pub fn from_type(node_type: NodeType) -> Self {
+        let mut result = Self::new();
+        result.inner.st_mode = match node_type {
+            NodeType::Regular => uapi::S_IFREG,
+            NodeType::BlockDevice => uapi::S_IFBLK,
+            NodeType::CharacterDevice => uapi::S_IFCHR,
+            NodeType::FIFO => uapi::S_IFIFO,
+            NodeType::Socket => uapi::S_IFSOCK,
+            NodeType::Directory => uapi::S_IFDIR,
+            NodeType::SymbolicLink => uapi::S_IFLNK,
+        };
+        result.inner.st_mode |= uapi::S_IROTH | uapi::S_IRGRP | uapi::S_IRUSR;
+        return result;
+    }
+
+    pub fn get_file_type(&self) -> NodeType {
         match self.inner.st_mode & uapi::S_IFMT {
-            uapi::S_IFREG => FileType::Regular,
-            uapi::S_IFBLK => FileType::BlockDevice,
-            uapi::S_IFCHR => FileType::CharacterDevice,
-            uapi::S_IFIFO => FileType::FIFO,
-            uapi::S_IFSOCK => FileType::Socket,
-            uapi::S_IFDIR => FileType::Directory,
-            uapi::S_IFLNK => FileType::SymbolicLink,
+            uapi::S_IFREG => NodeType::Regular,
+            uapi::S_IFBLK => NodeType::BlockDevice,
+            uapi::S_IFCHR => NodeType::CharacterDevice,
+            uapi::S_IFIFO => NodeType::FIFO,
+            uapi::S_IFSOCK => NodeType::Socket,
+            uapi::S_IFDIR => NodeType::Directory,
+            uapi::S_IFLNK => NodeType::SymbolicLink,
             _ => panic!("Impossible file type in mode {:#x}", self.inner.st_mode),
         }
     }
 }
 
-pub enum FileType {
+pub enum NodeType {
     Regular,
     Directory,
     SymbolicLink,
