@@ -1,7 +1,10 @@
 #include "bits/types.h"
 
 #include "bits/errno.h"
+#include "bits/fcntl.h"
 #include "bits/limits.h"
+#include "bits/mount.h"
+#include "bits/reboot.h"
 #include "bits/stat.h"
 #include "bits/statvfs.h"
 #include "bits/termios.h"
