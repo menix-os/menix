@@ -1,5 +1,6 @@
 use core::{cell::UnsafeCell, mem::MaybeUninit};
 
+#[derive(Debug)]
 #[repr(transparent)]
 pub struct Once<T> {
     value: UnsafeCell<MaybeUninit<T>>,

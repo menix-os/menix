@@ -1,32 +1,45 @@
 use super::{fs::SuperBlock, path::PathBuf};
 use crate::generic::{
-    posix::{errno::EResult, vfs::entry::Entry},
+    posix::{
+        errno::EResult,
+        vfs::{entry::Entry, file::FileOps},
+    },
     util::mutex::Mutex,
 };
-use alloc::{boxed::Box, sync::Weak, vec::Vec};
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
 use core::{fmt::Debug, sync::atomic::AtomicBool};
 
 /// A standalone inode. See [`super::entry::Entry`] for information.
 #[derive(Debug)]
 pub struct INode {
     /// FS-specific callbacks that can be performed on this node.
-    pub ops: Box<dyn NodeOps>,
+    pub node_ops: Box<dyn NodeOps>,
+    pub file_ops: Box<dyn FileOps>,
+
     /// The super block which this node is located in.
-    pub sb: Weak<dyn SuperBlock>,
+    pub sb: Arc<dyn SuperBlock>,
+
     /// The status of this node.
     pub stat: Mutex<Stat>,
+
     /// If true, the node has been modified and has to be sync'd.
     pub dirty: AtomicBool,
 }
 
 impl INode {
-    pub fn new(ops: Box<dyn NodeOps>, sb: Weak<dyn SuperBlock>, node_type: NodeType) -> Self {
-        Self {
-            ops,
+    pub fn new(
+        node_ops: Box<dyn NodeOps>,
+        file_ops: Box<dyn FileOps>,
+        sb: Arc<dyn SuperBlock>,
+        mode: uapi::mode_t,
+    ) -> EResult<Self> {
+        Ok(Self {
+            node_ops,
+            file_ops,
             sb,
-            stat: Mutex::new(Stat::from_type(node_type)),
+            stat: Mutex::new(Stat::from_mode(mode)?),
             dirty: AtomicBool::new(false),
-        }
+        })
     }
 
     pub fn get_stat(&self) -> Stat {
@@ -37,7 +50,7 @@ impl INode {
         let mut result = Vec::new();
         let mut len = 0;
         while len < uapi::SYMLINK_MAX as usize {
-            len = self.ops.read_symlink(self, &mut result)?;
+            len = self.node_ops.read_symlink(self, &mut result)?;
         }
 
         Ok(unsafe { PathBuf::from_unchecked(result) })
@@ -55,10 +68,21 @@ pub trait NodeOps: Debug {
     fn sync(&self, node: &INode) -> EResult<()>;
 
     /// Reads the path of the symbolic link of the node into a buffer.
-    fn read_symlink(&self, node: &INode, out: &mut Vec<u8>) -> EResult<usize>;
+    fn read_symlink(&self, node: &INode, out: &mut [u8]) -> EResult<usize>;
+}
+
+pub enum NodeType {
+    Regular,
+    Directory,
+    SymbolicLink,
+    FIFO,
+    BlockDevice,
+    CharacterDevice,
+    Socket,
 }
 
 #[derive(Debug, Clone)]
+#[repr(transparent)]
 pub struct Stat {
     inner: uapi::stat,
 }
@@ -84,19 +108,15 @@ impl Stat {
         }
     }
 
-    pub fn from_type(node_type: NodeType) -> Self {
+    /// Sets the bits
+    pub fn set_mode(&mut self, mode: uapi::mode_t) {
+        self.inner.st_mode = mode & !uapi::S_IFMT;
+    }
+
+    pub fn from_mode(mode: uapi::mode_t) -> EResult<Self> {
         let mut result = Self::new();
-        result.inner.st_mode = match node_type {
-            NodeType::Regular => uapi::S_IFREG,
-            NodeType::BlockDevice => uapi::S_IFBLK,
-            NodeType::CharacterDevice => uapi::S_IFCHR,
-            NodeType::FIFO => uapi::S_IFIFO,
-            NodeType::Socket => uapi::S_IFSOCK,
-            NodeType::Directory => uapi::S_IFDIR,
-            NodeType::SymbolicLink => uapi::S_IFLNK,
-        };
-        result.inner.st_mode |= uapi::S_IROTH | uapi::S_IRGRP | uapi::S_IRUSR;
-        return result;
+        result.inner.st_mode = mode;
+        return Ok(result);
     }
 
     pub fn get_file_type(&self) -> NodeType {
@@ -111,14 +131,4 @@ impl Stat {
             _ => panic!("Impossible file type in mode {:#x}", self.inner.st_mode),
         }
     }
-}
-
-pub enum NodeType {
-    Regular,
-    Directory,
-    SymbolicLink,
-    FIFO,
-    BlockDevice,
-    CharacterDevice,
-    Socket,
 }

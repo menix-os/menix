@@ -351,6 +351,10 @@ impl<const K: bool> PageTable<K> {
     }
 }
 
+pub struct AddressSpace {
+    table: PageTable,
+}
+
 /// Abstract information about a page fault.
 pub struct PageFaultInfo {
     /// Fault caused by the user.
