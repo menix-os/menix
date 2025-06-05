@@ -1,10 +1,5 @@
-// Serial I/O
-
 use super::asm::{read8, write8};
-use crate::generic::{
-    boot::BootInfo,
-    log::{self, LoggerSink},
-};
+use crate::generic::log::{self, LoggerSink};
 use alloc::boxed::Box;
 
 /// Serial port
@@ -23,7 +18,10 @@ impl SerialLogger {
 impl LoggerSink for SerialLogger {
     fn write(&mut self, input: &[u8]) {
         for ch in input {
-            while !Self::is_ready() {}
+            while !Self::is_ready() {
+                core::hint::spin_loop();
+            }
+
             unsafe { write8(COM1_BASE + DATA_REG, *ch) };
 
             // Most consoles expect a carriage return after a newline.
@@ -39,16 +37,6 @@ impl LoggerSink for SerialLogger {
 }
 
 fn init() {
-    if !BootInfo::get()
-        .command_line
-        .get_bool("com1")
-        .unwrap_or(true)
-    {
-        return;
-    }
-
-    // TODO: Self test if serial actually exists.
-
     unsafe {
         write8(COM1_BASE + 1, 0x00); // Disable interrupts
         write8(COM1_BASE + 3, 0x80); // Enable DLAB (set baud rate divisor)
@@ -57,8 +45,19 @@ fn init() {
         write8(COM1_BASE + 3, 0x03); // 8 bits, no parity, one stop bit (8n1)
         write8(COM1_BASE + 2, 0xC7); // Enable FIFO, clear them, with 14-byte threshold
         write8(COM1_BASE + 4, 0x0B); // IRQs enabled, RTS/DSR set
+
+        write8(COM1_BASE + 4, 0x1E); // Set to loopback mode.
+        write8(COM1_BASE, 0xAE); // Send a test byte.
+
+        // If we don't get the same value back, this serial port doesn't work.
+        if read8(COM1_BASE) != 0xAE {
+            return;
+        }
+
+        write8(COM1_BASE + 4, 0x0F); // Disable loopback mode.
     };
+
     log::add_sink(Box::new(SerialLogger));
 }
 
-early_init_call!(init);
+early_init_call_if_cmdline!("com1", true, init);
