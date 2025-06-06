@@ -21,8 +21,8 @@ pub mod macros;
 pub mod arch;
 pub mod generic;
 
-use crate::generic::{sched::process::Process, vfs::path::PathBuf};
-use generic::{boot::BootInfo, memory::virt, percpu::CpuData, sched::task::Task};
+use crate::generic::{process::Process, vfs::path::PathBuf};
+use generic::{boot::BootInfo, memory::virt, percpu::CpuData, process::task::Task};
 
 // TODO: Instead of having global init functions, use an initgraph with distinguishable stages.
 unsafe fn run_init_tasks(start: *const fn(), end: *const fn()) {

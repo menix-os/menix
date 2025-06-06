@@ -1,6 +1,4 @@
-use alloc::sync::Arc;
-
-use super::process::{Pid, Process};
+use super::{Pid, Process};
 use crate::{
     arch::{self},
     generic::{
@@ -9,6 +7,7 @@ use crate::{
         util::mutex::Mutex,
     },
 };
+use alloc::sync::Arc;
 use core::{
     alloc::Layout,
     panic,
