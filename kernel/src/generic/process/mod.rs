@@ -1,4 +1,6 @@
-use super::task::Task;
+pub mod sched;
+pub mod task;
+
 use crate::generic::{
     memory::{
         VirtAddr,
@@ -11,7 +13,9 @@ use crate::generic::{
 };
 use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use core::sync::atomic::{AtomicUsize, Ordering};
+use task::Task;
 
+/// A unique process ID.
 pub type Pid = usize;
 
 /// Represents a process and address space.

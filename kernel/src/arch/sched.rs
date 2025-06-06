@@ -1,7 +1,7 @@
 use super::internal;
 use crate::generic::memory::VirtAddr;
 use crate::generic::posix::errno::EResult;
-use crate::generic::sched::task::Task;
+use crate::generic::process::task::Task;
 
 pub use internal::sched::Context;
 assert_trait_impl!(Context, Default);

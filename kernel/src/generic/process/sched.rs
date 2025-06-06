@@ -1,17 +1,13 @@
-pub mod process;
-pub mod task;
-
-use super::util::mutex::IrqMutex;
+use super::task::{Task, Tid};
 use crate::{
     arch,
-    generic::{percpu::CpuData, sched::task::TaskState},
+    generic::{percpu::CpuData, process::task::TaskState, util::mutex::IrqMutex},
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::{
     ptr::null_mut,
     sync::atomic::{AtomicPtr, Ordering},
 };
-use task::{Task, Tid};
 
 /// An instance of a scheduler. Each CPU has one instance running to coordinate thread management.
 #[derive(Debug)]

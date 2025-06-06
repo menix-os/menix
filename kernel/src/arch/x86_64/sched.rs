@@ -12,7 +12,7 @@ use crate::{
         },
         percpu::CpuData,
         posix::errno::{EResult, Errno},
-        sched::task::Task,
+        process::task::Task,
     },
 };
 use core::{
@@ -231,7 +231,7 @@ unsafe extern "C" fn task_entry_thunk() -> ! {
         "mov rdx, r13",
         "push 0", // Make sure to zero this so stack tracing stops here.
         "jmp {task_thunk}",
-        task_thunk = sym crate::generic::sched::task_entry,
+        task_thunk = sym crate::generic::process::sched::task_entry,
     );
 }
 

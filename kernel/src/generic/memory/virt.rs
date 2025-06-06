@@ -5,7 +5,7 @@ use super::{
 use crate::{
     arch::{self, virt::PageTableEntry},
     generic::{
-        sched::task::Task,
+        process::task::Task,
         util::{align_up, mutex::Mutex},
     },
 };
