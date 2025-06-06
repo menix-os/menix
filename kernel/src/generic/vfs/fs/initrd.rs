@@ -8,11 +8,7 @@
 
 use core::ffi::CStr;
 
-use crate::generic::{
-    boot::BootInfo,
-    posix::vfs::{entry::Entry, inode::INode, path::PathBuf},
-    util,
-};
+use crate::generic::{boot::BootInfo, util, vfs::entry::Entry};
 use alloc::sync::Arc;
 use bytemuck::AnyBitPattern;
 

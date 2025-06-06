@@ -21,7 +21,7 @@ pub mod macros;
 pub mod arch;
 pub mod generic;
 
-use crate::generic::{posix::vfs::path::PathBuf, sched::process::Process};
+use crate::generic::{sched::process::Process, vfs::path::PathBuf};
 use generic::{boot::BootInfo, memory::virt, percpu::CpuData, sched::task::Task};
 
 // TODO: Instead of having global init functions, use an initgraph with distinguishable stages.
@@ -62,7 +62,7 @@ pub fn main() -> ! {
 
     log!("Command line: {}", BootInfo::get().command_line.inner());
 
-    generic::posix::vfs::init();
+    generic::vfs::init();
     generic::module::init();
     generic::platform::init();
 

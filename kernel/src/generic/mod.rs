@@ -14,3 +14,4 @@ pub mod resource;
 pub mod sched;
 pub mod sys;
 pub mod util;
+pub mod vfs;

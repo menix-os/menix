@@ -1,11 +1,9 @@
 use super::inode::INode;
 use crate::generic::{
     memory::{VirtAddr, virt::AddressSpace},
-    posix::{
-        errno::{EResult, Errno},
-        vfs::entry::Entry,
-    },
+    posix::errno::{EResult, Errno},
     util::mutex::Mutex,
+    vfs::entry::Entry,
 };
 use alloc::sync::Arc;
 use core::{fmt::Debug, sync::atomic::AtomicUsize};
