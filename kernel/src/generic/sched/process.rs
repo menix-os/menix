@@ -5,19 +5,11 @@ use crate::generic::{
         pmm::FreeList,
         virt::{KERNEL_PAGE_TABLE, PageTable},
     },
-    posix::{
-        self,
-        errno::{EResult, Errno},
-        vfs::{exec::ExecutableInfo, path::PathBuf},
-    },
+    posix::errno::{EResult, Errno},
     resource::Resource,
+    vfs::{exec::ExecutableInfo, path::PathBuf},
 };
-use alloc::{
-    boxed::Box,
-    string::{String, ToString},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 pub type Pid = usize;

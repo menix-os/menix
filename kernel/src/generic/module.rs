@@ -1,7 +1,7 @@
 use super::{
     memory::{PhysAddr, VirtAddr, virt::VmFlags},
-    posix::vfs::exec::elf::{ElfHdr, ElfPhdr},
     util::mutex::Mutex,
+    vfs::exec::elf::{self, ElfHashTable, ElfHdr, ElfPhdr, ElfRela, ElfSym},
 };
 use crate::{
     arch,
@@ -11,7 +11,6 @@ use crate::{
             pmm::{AllocFlags, FreeList, PageAllocator},
             virt::{self, VmLevel},
         },
-        posix::vfs::exec::elf::{self, ElfHashTable, ElfRela, ElfSym},
         util::{align_down, align_up},
     },
 };

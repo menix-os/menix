@@ -1,11 +1,8 @@
 pub(super) mod initrd;
-pub(super) mod tmpfs;
+// TODO: pub(super) mod tmpfs;
 
 use super::inode::INode;
-use crate::generic::{
-    posix::{errno::EResult, vfs::path::PathBuf},
-    util::mutex::Mutex,
-};
+use crate::generic::{posix::errno::EResult, util::mutex::Mutex, vfs::path::PathBuf};
 use alloc::{boxed::Box, collections::btree_map::BTreeMap, sync::Arc};
 use core::fmt::Debug;
 

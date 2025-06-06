@@ -4,7 +4,7 @@
 use super::log::GLOBAL_LOGGERS;
 use crate::{
     arch,
-    generic::{memory::VirtAddr, posix::vfs::exec::elf::ElfAddr},
+    generic::{memory::VirtAddr, vfs::exec::elf::ElfAddr},
 };
 use core::panic::PanicInfo;
 
