@@ -29,6 +29,20 @@ pub struct Process {
     is_user: bool,
 }
 
+#[derive(Debug)]
+pub struct Identity {
+    pub user_id: uapi::uid_t,
+    pub group_id: uapi::gid_t,
+
+    pub effective_user_id: uapi::uid_t,
+    pub effective_group_id: uapi::gid_t,
+
+    pub set_user_id: uapi::uid_t,
+    pub set_group_id: uapi::gid_t,
+
+    pub groups: Vec<uapi::gid_t>,
+}
+
 static PID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 impl Process {

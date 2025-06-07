@@ -22,13 +22,3 @@ pub(crate) fn init() {
     // Mount the tmpfs as root.
     // TODO
 }
-
-/// Opens a file identified by a path.
-pub fn open(
-    relative_to: &File,
-    path: PathBuf, // TODO: This doesn't have to be an owned value.
-    flags: OpenFlags,
-    mode: uapi::mode_t,
-) -> EResult<Arc<File>> {
-    todo!()
-}
