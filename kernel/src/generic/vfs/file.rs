@@ -3,7 +3,7 @@ use crate::generic::{
     memory::{VirtAddr, virt::AddressSpace},
     posix::errno::{EResult, Errno},
     util::mutex::Mutex,
-    vfs::entry::Entry,
+    vfs::{entry::Entry, path::PathBuf},
 };
 use alloc::sync::Arc;
 use core::{fmt::Debug, sync::atomic::AtomicUsize};
@@ -43,19 +43,6 @@ pub struct File {
     pub flags: Mutex<OpenFlags>,
 }
 
-impl File {
-    /// Opens a VFS entry.
-    pub fn open(entry: Arc<Entry>) -> EResult<Arc<Self>> {
-        let inode = entry.get_inode().ok_or(Errno::ENOENT)?;
-        let file = Self {
-            inode,
-            position: AtomicUsize::new(0),
-            flags: Mutex::new(OpenFlags::empty()),
-        };
-        return Ok(Arc::new(file));
-    }
-}
-
 /// Operations that can be performed on a file.
 pub trait FileOps: Debug {
     /// Reads from the file into a buffer.
@@ -74,16 +61,45 @@ pub trait FileOps: Debug {
     /// Returns a status code.
     fn ioctl(&self, file: &File, request: usize, arg: usize) -> EResult<usize>;
 
-    fn poll(&self, file: &File, mask: u32) -> EResult<usize>;
-
-    /// Maps a file into the given address space.
+    /// Maps a file from an `offset` into the given address space.
     fn mmap(
         &self,
         file: &File,
         space: &AddressSpace,
         offset: u64,
-        hint: usize,
+        hint: VirtAddr,
         size: usize,
     ) -> EResult<VirtAddr>;
-    // TODO: Add the rest of the operations.
+}
+
+impl File {
+    /// Opens a file identified by a path.
+    pub fn open(
+        relative_to: &Self,
+        path: PathBuf, // TODO: This doesn't have to be an owned value.
+        flags: OpenFlags,
+        mode: uapi::mode_t,
+    ) -> EResult<Arc<Self>> {
+        todo!()
+    }
+
+    /// Reads into a buffer from a file. Returns actual bytes read.
+    pub fn read(&self, buf: &mut [u8]) -> EResult<usize> {
+        todo!()
+    }
+
+    /// Reads into a buffer from a file at a specified offset. Returns actual bytes read.
+    pub fn pread(&self, buf: &mut [u8], offset: u64) -> EResult<usize> {
+        todo!()
+    }
+
+    /// Writes a buffer to a file. Returns actual bytes written.
+    pub fn write(&self, buf: &[u8]) -> EResult<usize> {
+        todo!()
+    }
+
+    /// Writes a buffer to a file at a specified offset. Returns actual bytes written.
+    pub fn pwrite(&self, buf: &[u8], offset: u64) -> EResult<usize> {
+        todo!()
+    }
 }
