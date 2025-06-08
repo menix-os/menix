@@ -48,7 +48,6 @@ pub struct ModuleInfo {
 
 /// Sets up the module system.
 pub(crate) fn init() {
-    let boot_info = BootInfo::get();
     let dynsym_start = &raw const LD_DYNSYM_START;
     let dynsym_end = &raw const LD_DYNSYM_END;
     let dynstr_start = &raw const LD_DYNSTR_START;
