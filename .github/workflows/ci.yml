@@ -15,11 +15,13 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: 'recursive'
-    - name: Run format check
-      uses: dtolnay/rust-toolchain@nightly
+    - uses: dtolnay/rust-toolchain@nightly
       with:
         components: clippy rust-src rustfmt
+    - name: Run format check
       run: cargo fmt --check
+    - name: Run clippy
+      run: cargo clippy
   compile-check:
     strategy:
       matrix:
