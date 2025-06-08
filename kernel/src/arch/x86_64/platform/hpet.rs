@@ -12,11 +12,11 @@ pub struct Hpet {
 }
 
 mod regs {
-    use crate::generic::memory::mmio::Field;
+    use crate::generic::memory::mmio::Register;
 
-    pub const CAPABILITIES: Field<u64> = Field::new(0);
-    pub const CONFIGURATION: Field<u64> = Field::new(0x10);
-    pub const MAIN_COUNTER: Field<u64> = Field::new(0xF0);
+    pub const CAPABILITIES: Register<u64> = Register::new(0);
+    pub const CONFIGURATION: Register<u64> = Register::new(0x10);
+    pub const MAIN_COUNTER: Register<u64> = Register::new(0xF0);
 }
 
 impl ClockSource for Hpet {
