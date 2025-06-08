@@ -56,9 +56,6 @@ impl Hpet {
         mmio.write(regs::CONFIGURATION, mmio.read(regs::CONFIGURATION) | 1);
         let period = (mmio.read(regs::CAPABILITIES) >> 32) as u32;
 
-        return Ok(Hpet {
-            regs: mmio,
-            period: period,
-        });
+        return Ok(Hpet { regs: mmio, period });
     }
 }

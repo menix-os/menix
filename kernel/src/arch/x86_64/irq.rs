@@ -130,9 +130,9 @@ pub(in crate::arch) unsafe fn set_irq_state(value: bool) -> bool {
     let old_mask = get_irq_state();
     unsafe {
         if value {
-            asm!("sti");
+            asm!("sti", options(nostack));
         } else {
-            asm!("cli");
+            asm!("cli", options(nostack));
         }
     }
     return old_mask;
@@ -148,7 +148,7 @@ pub(in crate::arch) fn get_irq_state() -> bool {
 
 pub(in crate::arch) fn wait_for_irq() {
     unsafe {
-        asm!("hlt");
+        asm!("hlt", options(nostack));
     }
 }
 

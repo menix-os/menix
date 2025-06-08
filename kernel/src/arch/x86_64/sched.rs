@@ -152,8 +152,8 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
             wrmsr(consts::MSR_KERNEL_GS_BASE, to_context.gsbase);
         }
 
-        let old_rsp = &raw mut (*from).task_context.inner().rsp;
-        let new_rsp = &raw mut (*to).task_context.inner().rsp;
+        let old_rsp = &raw mut (*(*from).task_context.raw_inner()).rsp;
+        let new_rsp = &raw mut (*(*to).task_context.raw_inner()).rsp;
 
         perform_switch(old_rsp, new_rsp);
     }
@@ -238,7 +238,7 @@ unsafe extern "C" fn task_entry_thunk() -> ! {
 #[inline]
 pub(in crate::arch) unsafe fn preempt_disable() {
     unsafe {
-        asm!("inc qword ptr gs:{offset}", offset = const offset_of!(CpuData, scheduler.preempt_level));
+        asm!("inc qword ptr gs:{offset}", offset = const offset_of!(CpuData, scheduler.preempt_level), options(nostack));
     }
 }
 
@@ -252,7 +252,8 @@ pub(in crate::arch) unsafe fn preempt_enable() -> bool {
             label = label {
                 r = true;
             },
-            offset = const offset_of!(CpuData, scheduler.preempt_level));
+            offset = const offset_of!(CpuData, scheduler.preempt_level),
+            options(nostack));
     }
     return r;
 }
