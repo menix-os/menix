@@ -1,9 +1,9 @@
 use super::inode::INode;
 use crate::generic::{
     memory::{VirtAddr, virt::AddressSpace},
-    posix::errno::{EResult, Errno},
+    posix::errno::EResult,
     util::mutex::Mutex,
-    vfs::{entry::Entry, path::PathBuf},
+    vfs::path::PathBuf,
 };
 use alloc::sync::Arc;
 use core::{fmt::Debug, sync::atomic::AtomicUsize};
@@ -33,6 +33,15 @@ bitflags::bitflags! {
     }
 }
 
+pub enum SeekAnchor {
+    /// Seek relative to the start of the file.
+    Start,
+    /// Seek relative to the current cursor position.
+    Current,
+    /// Seek relative to the end of the file.
+    End,
+}
+
 /// The kernel representation of an open file.
 pub struct File {
     /// The underlying inode that this file is pointing to.
@@ -55,7 +64,7 @@ pub trait FileOps: Debug {
 
     /// Seeks inside the file.
     /// Returns the new absolute offset.
-    fn seek(&self, file: &File, offset: isize, whence: isize) -> EResult<usize>;
+    fn seek(&self, file: &File, offset: i64, whence: SeekAnchor) -> EResult<usize>;
 
     /// Performs a generic ioctl operation on the file.
     /// Returns a status code.
@@ -83,23 +92,32 @@ impl File {
         todo!()
     }
 
+    /// Reads directory entries into a buffer. Returns actual bytes read.
+    pub fn read_dir(&self, buf: &mut [u8]) -> EResult<u64> {
+        todo!()
+    }
+
     /// Reads into a buffer from a file. Returns actual bytes read.
-    pub fn read(&self, buf: &mut [u8]) -> EResult<usize> {
+    pub fn read(&self, buf: &mut [u8]) -> EResult<u64> {
         todo!()
     }
 
     /// Reads into a buffer from a file at a specified offset. Returns actual bytes read.
-    pub fn pread(&self, buf: &mut [u8], offset: u64) -> EResult<usize> {
+    pub fn pread(&self, buf: &mut [u8], offset: u64) -> EResult<u64> {
         todo!()
     }
 
     /// Writes a buffer to a file. Returns actual bytes written.
-    pub fn write(&self, buf: &[u8]) -> EResult<usize> {
+    pub fn write(&self, buf: &[u8]) -> EResult<u64> {
         todo!()
     }
 
     /// Writes a buffer to a file at a specified offset. Returns actual bytes written.
-    pub fn pwrite(&self, buf: &[u8], offset: u64) -> EResult<usize> {
+    pub fn pwrite(&self, buf: &[u8], offset: u64) -> EResult<u64> {
+        todo!()
+    }
+
+    pub fn seek(&self, offset: i64, whence: SeekAnchor) -> EResult<u64> {
         todo!()
     }
 }
