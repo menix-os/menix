@@ -55,7 +55,7 @@ impl Mmio {
     }
 
     /// Reads data from a single field.
-    pub fn read<T: PrimInt>(&self, field: Field<T>) -> T {
+    pub fn read<T: PrimInt>(&self, field: Register<T>) -> T {
         let value = unsafe { (self.base as *mut T).byte_add(field.offset).read_volatile() };
         return match field.native_endian {
             true => value,
@@ -64,7 +64,7 @@ impl Mmio {
     }
 
     /// Writes data to a single field.
-    pub fn write<T: PrimInt>(&mut self, field: Field<T>, value: T) {
+    pub fn write<T: PrimInt>(&mut self, field: Register<T>, value: T) {
         unsafe {
             (self.base as *mut T).byte_add(field.offset).write_volatile(
                 match field.native_endian {
@@ -130,16 +130,17 @@ impl Drop for Mmio {
     }
 }
 
-/// Single member of a structure.
+/// A hardware register mapped in the current address space.
+/// All reads and writes must be properly aligned.
 #[derive(Debug, Clone, Copy)]
-pub struct Field<T: PrimInt> {
-    _p: PhantomData<T>,
+pub struct Register<T: PrimInt> {
     offset: usize,
     native_endian: bool,
+    _p: PhantomData<T>,
 }
 
-impl<T: PrimInt> Field<T> {
-    /// Creates a new field with native endianness.
+impl<T: PrimInt> Register<T> {
+    /// Creates a new register with native endianness.
     /// `offset` is in units of bytes.
     pub const fn new(offset: usize) -> Self {
         assert!(offset % size_of::<T>() == 0);
