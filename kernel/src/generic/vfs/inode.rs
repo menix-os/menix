@@ -1,10 +1,10 @@
-use super::{fs::SuperBlock, path::PathBuf};
+use super::fs::SuperBlock;
 use crate::generic::{
     posix::errno::EResult,
     util::mutex::Mutex,
     vfs::{entry::Entry, file::FileOps},
 };
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, sync::Arc};
 use core::{fmt::Debug, sync::atomic::AtomicBool};
 
 /// A standalone inode. See [`super::entry::Entry`] for information.

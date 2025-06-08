@@ -1,6 +1,6 @@
 use super::{
     PhysAddr, VirtAddr,
-    pmm::{AllocFlags, FreeList, PageAllocator},
+    pmm::{AllocFlags, PageAllocator},
 };
 use crate::{
     arch::{self, virt::PageTableEntry},
@@ -140,7 +140,7 @@ impl<const K: bool> PageTable<K> {
         virt: VirtAddr,
         allocate: bool,
         target_level: VmLevel,
-    ) -> Result<&mut PageTableEntry, PageTableError> {
+    ) -> Result<*mut PageTableEntry, PageTableError> {
         let head = self.head.lock();
         let mut current_head: *mut PageTableEntry = head.as_hhdm();
         let mut index = 0;
@@ -207,10 +207,7 @@ impl<const K: bool> PageTable<K> {
         }
 
         unsafe {
-            return current_head
-                .add(index)
-                .as_mut()
-                .ok_or(PageTableError::PageTableEntryMissing);
+            return Ok(current_head.add(index));
         }
     }
 
@@ -225,16 +222,18 @@ impl<const K: bool> PageTable<K> {
     ) -> Result<(), PageTableError> {
         let pte = self.get_pte::<P>(virt, true, level)?;
 
-        *pte = PageTableEntry::new(
-            phys,
-            flags
-                | if level != VmLevel::L1 {
-                    VmFlags::Large
-                } else {
-                    VmFlags::None
-                },
-            level as usize,
-        );
+        unsafe {
+            *pte = PageTableEntry::new(
+                phys,
+                flags
+                    | if level != VmLevel::L1 {
+                        VmFlags::Large
+                    } else {
+                        VmFlags::None
+                    },
+                level as usize,
+            );
+        }
 
         return Ok(());
     }
@@ -248,17 +247,20 @@ impl<const K: bool> PageTable<K> {
     ) -> Result<(), PageTableError> {
         let pte = self.get_pte::<P>(virt, false, level)?;
 
-        *pte = PageTableEntry::new(
-            pte.address(),
-            flags
-                | if level != VmLevel::L1 {
-                    VmFlags::Large
-                } else {
-                    VmFlags::None
-                },
-            level as usize,
-        );
+        unsafe {
+            *pte = PageTableEntry::new(
+                (*pte).address(),
+                flags
+                    | if level != VmLevel::L1 {
+                        VmFlags::Large
+                    } else {
+                        VmFlags::None
+                    },
+                level as usize,
+            );
+        }
         crate::arch::virt::flush_tlb(virt);
+
         return Ok(());
     }
 
@@ -383,7 +385,7 @@ bitflags! {
 }
 
 /// Generic page fault handler. May reschedule and return a different task to run.
-pub fn page_fault_handler<'a>(info: &PageFaultInfo) -> *mut Task {
+pub fn page_fault_handler(info: &PageFaultInfo) -> *mut Task {
     if info.caused_by_user {
         // TODO: Send SIGSEGV and reschedule.
         // Kill process.

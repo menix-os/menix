@@ -2,6 +2,9 @@ use super::internal;
 use crate::generic::percpu::CpuData;
 
 /// Sets up the Bootstrap Processor.
+///
+/// # Safety
+/// This must only be called once.
 pub unsafe fn setup_bsp() {
     unsafe { internal::core::setup_bsp() };
 }

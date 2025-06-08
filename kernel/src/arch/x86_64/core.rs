@@ -34,7 +34,7 @@ pub(in crate::arch) unsafe fn setup_bsp() {
 pub(in crate::arch) fn get_frame_pointer() -> usize {
     let mut fp: usize;
     unsafe {
-        asm!("mov {fp}, rbp", fp = out(reg) fp);
+        asm!("mov {fp}, rbp", fp = out(reg) fp, options(nostack));
     }
     return fp;
 }
@@ -82,8 +82,8 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
             (consts::RFLAGS_AC | consts::RFLAGS_DF | consts::RFLAGS_IF) as u64,
         );
 
-        asm!("mov {cr0}, cr0", cr0 = out(reg) cr0);
-        asm!("mov {cr4}, cr4", cr4 = out(reg) cr4);
+        asm!("mov {cr0}, cr0", cr0 = out(reg) cr0, options(nostack));
+        asm!("mov {cr4}, cr4", cr4 = out(reg) cr4, options(nostack));
     }
 
     // Collect all relevant CPUIDs.
@@ -102,7 +102,7 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
     // XSAVE
     if cpuid1.ecx & consts::CPUID_1C_XSAVE != 0 {
         cr4 |= consts::CR4_OSXSAVE | consts::CR4_OSFXSR | consts::CR4_OSXMMEXCPT;
-        unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
+        unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4, options(nostack)) };
         let mut xcr0 = 0u64;
         xcr0 |= 3;
 
@@ -157,8 +157,8 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
 
     unsafe {
         // Write back the modified control register values.
-        asm!("mov cr0, {cr0}", cr0 = in(reg) cr0);
-        asm!("mov cr4, {cr4}", cr4 = in(reg) cr4);
+        asm!("mov cr0, {cr0}", cr0 = in(reg) cr0, options(nostack));
+        asm!("mov cr4, {cr4}", cr4 = in(reg) cr4, options(nostack));
 
         // Set FSGSBASE contents.
         // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.

@@ -64,7 +64,7 @@ impl<T: ?Sized, const I: bool> Mutex<T, I> {
     /// Forcefully unlocks this [`Mutex`].
     /// `irq` controls if IRQs should be reactivated after unlocking.
     /// # Safety
-    /// The caller must make sure that enabling IRQs at this point is safe.
+    /// The caller must ensure that enabling IRQs at this point is safe.
     pub unsafe fn force_unlock(&self, irq: bool) {
         let inner = unsafe { &mut (*self.inner.get()) };
         inner.spin.unlock();
@@ -77,7 +77,11 @@ impl<T: ?Sized, const I: bool> Mutex<T, I> {
 }
 
 impl<T, const I: bool> Mutex<T, I> {
-    pub unsafe fn inner(&self) -> &mut T {
+    /// Returns a pointer to the contained value.
+    ///
+    /// # Safety
+    /// The caller must ensure that the contained data isn't accessed by a different caller.
+    pub unsafe fn raw_inner(&self) -> *mut T {
         let inner = unsafe { &mut *self.inner.get() };
         &mut inner.data
     }
