@@ -3,7 +3,6 @@
 #![feature(allocator_api)]
 #![feature(str_from_raw_parts)]
 #![feature(new_zeroed_alloc)]
-#![feature(cfg_match)]
 #![feature(likely_unlikely)]
 #![no_builtins]
 // Clippy lints

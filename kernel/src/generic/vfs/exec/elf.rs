@@ -147,22 +147,27 @@ pub const R_RISCV_RELATIVE: u32 = 3;
 pub const R_RISCV_COPY: u32 = 4;
 pub const R_RISCV_JUMP_SLOT: u32 = 5;
 
-cfg_match! {
-    target_arch = "x86_64" => {
-        pub const R_COMMON_NONE: u32 = R_X86_64_NONE;
-        pub const R_COMMON_64: u32 = R_X86_64_64;
-        pub const R_COMMON_GLOB_DAT: u32 = R_X86_64_GLOB_DAT;
-        pub const R_COMMON_JUMP_SLOT: u32 = R_X86_64_JUMP_SLOT;
-        pub const R_COMMON_RELATIVE: u32 = R_X86_64_RELATIVE;
-    }
-    target_arch = "riscv64" => {
-        pub const R_COMMON_NONE: u32 = R_RISCV_NONE;
-        pub const R_COMMON_64: u32 = R_RISCV_64;
-        pub const R_COMMON_GLOB_DAT: u32 = R_RISCV_64;
-        pub const R_COMMON_JUMP_SLOT: u32 = R_RISCV_JUMP_SLOT;
-        pub const R_COMMON_RELATIVE: u32 = R_RISCV_RELATIVE;
-    }
-}
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_NONE: u32 = R_X86_64_NONE;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_64: u32 = R_X86_64_64;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_GLOB_DAT: u32 = R_X86_64_GLOB_DAT;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_JUMP_SLOT: u32 = R_X86_64_JUMP_SLOT;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_RELATIVE: u32 = R_X86_64_RELATIVE;
+
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_NONE: u32 = R_RISCV_NONE;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_64: u32 = R_RISCV_64;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_GLOB_DAT: u32 = R_RISCV_64;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_JUMP_SLOT: u32 = R_RISCV_JUMP_SLOT;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_RELATIVE: u32 = R_RISCV_RELATIVE;
 
 #[cfg(target_pointer_width = "64")]
 pub type ElfAddr = u64;
