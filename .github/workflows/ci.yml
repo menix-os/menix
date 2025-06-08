@@ -7,7 +7,6 @@ on:
   pull_request:
   merge_group:
 
-
 jobs:
   format-check:
     name: Check formatting and run linter

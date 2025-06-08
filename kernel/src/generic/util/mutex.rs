@@ -41,7 +41,7 @@ impl<T: Default, const I: bool> Default for Mutex<T, I> {
 }
 
 impl<T: ?Sized, const I: bool> Mutex<T, I> {
-    pub fn lock(&self) -> MutexGuard<T, I> {
+    pub fn lock(&self) -> MutexGuard<'_, T, I> {
         // Get the previous IRQ state.
         let irq = if I {
             // If we care about IRQ safety, disable IRQs at this point.
