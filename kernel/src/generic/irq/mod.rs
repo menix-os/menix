@@ -1,5 +1,5 @@
-use super::util::mutex::Mutex;
-use alloc::{boxed::Box, collections::btree_map::BTreeMap};
+use crate::generic::process::task::Task;
+use alloc::{boxed::Box, string::String, sync::Arc};
 use core::{fmt::Debug, sync::atomic::AtomicUsize};
 
 pub enum IrqStatus {
@@ -8,23 +8,42 @@ pub enum IrqStatus {
     /// Handler completed the IRQ work.
     Handled,
     /// Handler wants to wake up the handler thread.
-    Wake,
+    Defer,
 }
 
 pub trait IrqHandler: Debug {
-    /// Handles an interrupt.
-    fn handle(&mut self) -> IrqStatus;
+    /// Handles an interrupt when it first happens.
+    /// If it returns [`IrqStatus::Defer`], then [`IrqHandler::handle_threaded`] is called later.
+    fn handle_immediate(&mut self) -> IrqStatus;
+
+    /// Called to complete heavy interrupt work which isn't required to be done immediately.
+    fn handle_threaded(&mut self) -> IrqStatus {
+        IrqStatus::Handled
+    }
 }
 
-// TODO
-// pub struct IrqAction {
-//     pub irq: usize,                   // The IRQ number.
-//     pub handler: Box<dyn IrqHandler>, // Called directly to handle the IRQ.
-//     pub worker: IrqHandlerFn, // Function to call in a worker thread, if woken up by the handler.
-//     pub thread: Arc<Mutex<Task>>, // The thread to execute the worker function on.
-//     pub name: String,         // Name of the IRQ.
-//     pub context: *mut (),     // A generic context to pass to the handler.
-// }
+pub type Irq = usize;
+
+pub struct IrqAction {
+    /// The IRQ ID.
+    pub irq: Irq,
+    /// Callback to invoke.
+    pub handler: Box<dyn IrqHandler>,
+    /// The thread to execute the worker function on.
+    pub thread: Arc<Task>,
+    /// Name of the IRQ.
+    pub name: String,
+}
+
+/// Common functionality for an interrupt controller.
+pub trait IrqController {
+    fn register(
+        &mut self,
+        irq: u32,
+        name: &str,
+        handler: Box<dyn IrqHandler>,
+    ) -> Result<Irq, IrqError>;
+}
 
 pub enum IpiTarget {
     /// Send an interrupt to the calling CPU.
@@ -45,41 +64,4 @@ pub enum IrqError {
     NoIrqsLeft,
 }
 
-/// Common functionality for an interrupt controller.
-pub trait IrqController {
-    /// Gets the ID of this controller.
-    fn id(&self) -> usize;
-    /// Signals the end of an interrupt to the controller.
-    fn eoi(&mut self) -> Result<(), IrqError>;
-    /// Sends an inter-processor interrupt to a given `target`.
-    fn send_ipi(&self, target: IpiTarget) -> Result<(), IrqError>;
-}
-
-static IRQ_COUNTER: AtomicUsize = AtomicUsize::new(0);
-static IRQ_HANDLERS: Mutex<BTreeMap<usize, Mutex<Box<dyn IrqHandler>>>> =
-    Mutex::new(BTreeMap::new());
-
-// TODO
-pub fn register_irq(action: Box<dyn IrqHandler>) -> Result<usize, IrqError> {
-    let mut handlers = IRQ_HANDLERS.lock();
-
-    let irq = IRQ_COUNTER.fetch_add(1, core::sync::atomic::Ordering::Acquire);
-    handlers.insert(irq, Mutex::new(action));
-
-    crate::arch::irq::register_irq(irq)?;
-
-    return Ok(irq);
-}
-
-// TODO
-/// Dispatches the handler for a given IRQ.
-pub fn dispatch(irq: usize) {
-    let handlers = IRQ_HANDLERS.lock();
-
-    match handlers.get(&irq) {
-        Some(x) => {
-            x.lock().handle();
-        }
-        None => (),
-    }
-}
+pub static IRQ_COUNTER: AtomicUsize = AtomicUsize::new(0);

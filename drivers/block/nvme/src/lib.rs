@@ -1,6 +1,6 @@
 #![no_std]
 
-use menix::generic::platform::pci::{
+use menix::system::pci::{
     PciError,
     device::PciDevice,
     driver::{PciDriver, PciVariant},

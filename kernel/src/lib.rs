@@ -19,6 +19,7 @@ pub extern crate core;
 pub mod macros;
 pub mod arch;
 pub mod generic;
+pub mod system;
 
 use crate::generic::{process::Process, vfs::path::PathBuf};
 use generic::{boot::BootInfo, memory::virt, percpu::CpuData, process::task::Task};
@@ -63,7 +64,7 @@ pub fn main() -> ! {
 
     generic::vfs::init();
     generic::module::init();
-    generic::platform::init();
+    system::init();
 
     // Run init calls.
     unsafe {

@@ -78,7 +78,7 @@ impl LocalApic {
         log!("Initialized LAPIC for CPU {}", context.id);
 
         // TODO
-        generic::irq::register_irq(Box::new(result)).unwrap();
+        // generic::irq::register_irq(Box::new(result)).unwrap();
     }
 
     const fn reg_to_x2apic(reg: u32) -> u32 {
@@ -100,19 +100,17 @@ impl LocalApic {
             todo!();
         }
     }
-}
 
-impl IrqController for LocalApic {
-    fn id(&self) -> usize {
+    pub fn id(&self) -> usize {
         return self.read_register(0x20) as usize;
     }
 
-    fn eoi(&mut self) -> Result<(), IrqError> {
+    pub fn eoi(&mut self) -> Result<(), IrqError> {
         self.write_register(0xB0, 0);
         return Ok(());
     }
 
-    fn send_ipi(&self, target: IpiTarget) -> Result<(), IrqError> {
+    pub fn send_ipi(&self, target: IpiTarget) -> Result<(), IrqError> {
         let _ = target;
         todo!()
     }
@@ -120,7 +118,7 @@ impl IrqController for LocalApic {
 
 impl IrqHandler for LocalApic {
     // TODO
-    fn handle(&mut self) -> IrqStatus {
+    fn handle_immediate(&mut self) -> IrqStatus {
         unsafe { arch::sched::preempt_disable() };
         self.eoi().unwrap();
 
