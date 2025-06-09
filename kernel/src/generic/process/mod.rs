@@ -8,10 +8,17 @@ use crate::generic::{
         virt::{KERNEL_PAGE_TABLE, PageTable},
     },
     posix::errno::{EResult, Errno},
-    resource::Resource,
-    vfs::{exec::ExecutableInfo, path::PathBuf},
+    process::task::Tid,
+    util::mutex::Mutex,
+    vfs::{
+        self,
+        entry::Entry,
+        exec::ExecutableInfo,
+        file::{File, OpenFlags},
+        path::PathBuf,
+    },
 };
-use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
+use alloc::{string::String, sync::Arc, vec::Vec};
 use core::sync::atomic::{AtomicUsize, Ordering};
 use task::Task;
 
@@ -25,8 +32,12 @@ pub struct Process {
     id: Pid,
     name: String,
     pub page_table: PageTable,
-    threads: Vec<Task>,
-    is_user: bool,
+    /// A list of associated tasks.
+    threads: Mutex<Vec<Tid>>,
+    /// The root directory for this process.
+    root_dir: Mutex<Arc<Entry>>,
+    /// Current working directory.
+    working_dir: Mutex<Arc<Entry>>,
 }
 
 #[derive(Debug)]
@@ -43,6 +54,17 @@ pub struct Identity {
     pub groups: Vec<uapi::gid_t>,
 }
 
+/// An indentity for accesses to be made by the kernel.
+pub static KERNEL_IDENTITY: Identity = Identity {
+    user_id: 0,
+    group_id: 0,
+    effective_user_id: 0,
+    effective_group_id: 0,
+    set_user_id: 0,
+    set_group_id: 0,
+    groups: vec![],
+};
+
 static PID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 impl Process {
@@ -52,51 +74,54 @@ impl Process {
         self.id
     }
 
-    /// Returns true if this is a user process.
-    #[inline]
-    pub const fn is_user(&self) -> bool {
-        self.is_user
-    }
+    pub fn new(name: String, parent: Option<Arc<Self>>) -> EResult<Self> {
+        let root = match &parent {
+            Some(x) => x.root_dir.lock().clone(),
+            None => vfs::get_root()?,
+        };
 
-    pub fn new(name: String, is_user: bool) -> Self {
-        Self {
+        let cwd = match &parent {
+            Some(x) => x.working_dir.lock().clone(),
+            None => vfs::get_root()?,
+        };
+
+        Ok(Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             name,
             page_table: PageTable::new_user::<FreeList>(KERNEL_PAGE_TABLE.lock().root_level()),
-            threads: Vec::new(),
-            is_user,
-        }
+            threads: Mutex::new(Vec::new()),
+            root_dir: Mutex::new(root),
+            working_dir: Mutex::new(cwd),
+        })
     }
 
-    /// Creates a new user process from a resource. It determines the execution format by reading the first few bytes.
-    pub fn from_file(path: &PathBuf) -> EResult<Self> {
-        let res: Box<dyn Resource> = todo!();
+    /// Creates a new user process from a file path. It determines the execution format by reading the first few bytes.
+    pub fn from_file(path: &PathBuf) -> EResult<Arc<Self>> {
+        let file = File::open(
+            path,
+            None,
+            OpenFlags::ReadOnly | OpenFlags::Executeable,
+            &KERNEL_IDENTITY,
+        )?;
 
-        // Peek into the resource and read the magic. 4 bytes are enough to fit the longest magic.
-        let mut magic = [0u8; 4];
-        res.read(0, &mut magic).unwrap();
-
-        let info = ExecutableInfo {
-            executable: res,
+        let mut info = ExecutableInfo {
+            executable: file.clone(),
             interpreter: None,
         };
 
-        match &magic[0..] {
-            // This is an ELF executable.
-            b"\x7fELF" => {
-                log!("It's an elf!")
-            }
-            // This is a script.
-            b"#!" => {}
-            // No idea what this format is.
-            _ => {
-                error!("Unknown binary format in file \"{}\"", path);
-                return Err(Errno::ENOEXEC);
-            }
-        }
-        let mut result = Self::new(todo!(), true);
+        let format = vfs::exec::identify(&file).ok_or(Errno::ENOEXEC)?;
+        format.parse(&mut info)?;
 
-        let main_thread = Task::new(to_user, todo!(), todo!(), Some(Arc::new(result)), true);
+        // TODO: Give this a name.
+        let result = Arc::new(Self::new(String::new(), None)?);
+
+        // TODO: Set up stack.
+
+        let ip = 0;
+        let sp = 0;
+
+        let main_thread = Task::new(to_user, ip, sp, Some(result.clone()), true)?;
+        result.threads.lock().push(main_thread.get_id());
 
         return Ok(result);
     }

@@ -17,15 +17,12 @@ enum EntryKind {
 pub struct Entry {
     /// The name of this entry.
     pub name: Vec<u8>,
-
     /// The underlying [`INode`] this entry is pointing to.
     /// A [`None`] value indicates that this entry is negative.
     node: EntryKind,
-
     /// The parent of this entry.
     /// A [`None`] value indicates that this entry is the root.
     parent: Option<Arc<Entry>>,
-
     /// A list of this node's children which have been accessed and cached so far.
     // TODO: Replace with HashSet for (probably) better performance.
     children: BTreeSet<Arc<Entry>>,
@@ -47,7 +44,7 @@ impl Entry {
     }
 
     /// Attempts to get an inode. If the inode doesn't exist, returns [`None`].
-    /// If it wasn't cached yet, it will get cached.
+    /// If it wasn't cached yet, this function will do so.
     pub fn get_inode(&self) -> Option<Arc<INode>> {
         match &self.node {
             EntryKind::Positive(inode) => Some(inode.clone()),

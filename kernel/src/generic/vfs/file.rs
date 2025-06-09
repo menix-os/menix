@@ -1,10 +1,13 @@
 use super::inode::INode;
 use crate::generic::{
     memory::{VirtAddr, virt::AddressSpace},
-    posix::errno::EResult,
+    posix::errno::{EResult, Errno},
     process::Identity,
-    util::mutex::Mutex,
-    vfs::path::PathBuf,
+    vfs::{
+        entry::Entry,
+        inode::{Mode, NodeType},
+        path::PathBuf,
+    },
 };
 use alloc::sync::Arc;
 use core::fmt::Debug;
@@ -31,12 +34,16 @@ bitflags::bitflags! {
         /// Don't update the access time.
         const NoAccessTime = uapi::O_NOATIME as u32;
         const Temporary = uapi::O_TMPFILE as u32;
+        const ReadOnly = uapi::O_RDONLY as u32;
+        const WriteOnly = uapi::O_WRONLY as u32;
+        const ReadWrite = uapi::O_RDWR as u32;
+        const Executeable = uapi::O_EXEC as u32;
     }
 }
 
 pub enum SeekAnchor {
     /// Seek relative to the start of the file.
-    Start(u64),
+    Start(i64),
     /// Seek relative to the current cursor position.
     Current(i64),
     /// Seek relative to the end of the file.
@@ -47,9 +54,9 @@ pub enum SeekAnchor {
 pub struct File {
     /// The underlying inode that this file is pointing to.
     pub inode: Arc<INode>,
-    pub ops: Arc<dyn FileOps>,
+    ops: Arc<dyn FileOps>,
     /// File open flags.
-    pub flags: Mutex<OpenFlags>,
+    flags: OpenFlags,
 }
 
 /// Operations that can be performed on a file.
@@ -88,11 +95,10 @@ pub trait FileOps: Debug {
 impl File {
     /// Opens a file referenced by a path for a given `identity`.
     pub fn open(
-        path: PathBuf, // TODO: This doesn't have to be an owned value.
-        relative_to: &Self,
+        path: &PathBuf,
+        at: Option<&Self>,
         flags: OpenFlags,
-        mode: uapi::mode_t,
-        identity: Identity,
+        identity: &Identity,
     ) -> EResult<Arc<Self>> {
         todo!()
     }
@@ -111,7 +117,7 @@ impl File {
 
     /// Reads into a buffer from a file at a specified offset.
     /// Returns actual bytes read.
-    pub fn pread(&self, buf: &mut [u8], offset: u64) -> EResult<u64> {
+    pub fn pread(&self, buf: &mut [u8], offset: i64) -> EResult<u64> {
         self.ops.read(self, buf, SeekAnchor::Start(offset))
     }
 
@@ -123,7 +129,7 @@ impl File {
 
     /// Writes a buffer to a file at a specified offset.
     /// Returns actual bytes written.
-    pub fn pwrite(&self, buf: &[u8], offset: u64) -> EResult<u64> {
+    pub fn pwrite(&self, buf: &[u8], offset: i64) -> EResult<u64> {
         self.ops.write(self, buf, SeekAnchor::Start(offset))
     }
 
@@ -133,5 +139,41 @@ impl File {
 
     pub fn ioctl(&self, request: usize, arg: usize) -> EResult<usize> {
         self.ops.ioctl(self, request, arg)
+    }
+
+    pub fn mmap(
+        &self,
+        space: &AddressSpace,
+        offset: u64,
+        hint: VirtAddr,
+        size: usize,
+    ) -> EResult<VirtAddr> {
+        self.ops.mmap(self, space, offset, hint, size)
+    }
+
+    fn open_entry(
+        &self,
+        entry: &Entry,
+        inode: Arc<INode>,
+        flags: OpenFlags,
+        identity: &Identity,
+    ) -> EResult<Arc<Self>> {
+        if flags.contains(OpenFlags::Directory) {
+            if inode.node_type != NodeType::Directory {
+                return Err(Errno::ENOTDIR);
+            }
+        }
+
+        match inode.node_type {
+            NodeType::Regular => {}
+            NodeType::Directory => todo!(),
+            NodeType::SymbolicLink => todo!(),
+            NodeType::FIFO => todo!(),
+            NodeType::BlockDevice => todo!(),
+            NodeType::CharacterDevice => todo!(),
+            NodeType::Socket => todo!(),
+        }
+
+        todo!()
     }
 }
