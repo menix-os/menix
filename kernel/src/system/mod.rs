@@ -8,7 +8,7 @@ pub mod acpi;
 pub mod openfw;
 pub mod pci;
 
-use super::{boot::BootInfo, percpu::CpuData};
+use crate::generic::{boot::BootInfo, percpu::CpuData};
 
 #[deny(dead_code)]
 pub fn init() {

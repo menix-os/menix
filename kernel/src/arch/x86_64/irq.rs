@@ -60,8 +60,8 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
         }
         // Any other ISR is an IRQ with a dynamic handler.
         _ => {
-            match super::ARCH_DATA.get().irq_handlers[isr] {
-                Some(x) => generic::irq::dispatch(x),
+            match &mut super::ARCH_DATA.get().irq_handlers[isr] {
+                Some(x) => x.handle_immediate(),
                 None => {
                     panic!("Got an unhandled interrupt {}!", isr);
                 }
@@ -150,21 +150,6 @@ pub(in crate::arch) fn wait_for_irq() {
     unsafe {
         asm!("hlt", options(nostack));
     }
-}
-
-pub(in crate::arch) fn register_irq(irq: usize) -> Result<(), IrqError> {
-    let cpu = ARCH_DATA.get();
-    for (idx, isr) in cpu.irq_handlers.iter_mut().enumerate() {
-        // ISR0-31 are reserved for exceptions.
-        if isr.is_some() || idx < 0x20 {
-            continue;
-        }
-
-        *isr = Some(irq);
-        return Ok(());
-    }
-
-    return Err(IrqError::NoIrqsLeft);
 }
 
 /// Pushes all general purpose registers onto the stack.

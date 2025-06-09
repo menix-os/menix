@@ -8,7 +8,6 @@ pub mod memory;
 pub mod module;
 pub mod panic;
 pub mod percpu;
-pub mod platform;
 pub mod posix;
 pub mod process;
 pub mod resource;

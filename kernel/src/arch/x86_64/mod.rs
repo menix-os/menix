@@ -6,6 +6,8 @@ pub mod platform;
 pub mod sched;
 pub mod virt;
 
+use crate::generic::irq::IrqHandler;
+use alloc::boxed::Box;
 use platform::gdt::{Gdt, TaskStateSegment};
 
 #[derive(Debug)]
@@ -15,9 +17,8 @@ pub struct ArchPerCpu {
     /// The GDT refers to a different TSS every time, so unlike the IDT it has to exist for each processor.
     pub gdt: Gdt,
     pub tss: TaskStateSegment,
-    // TODO
     /// IRQ mappings.
-    pub irq_handlers: [Option<usize>; 256],
+    pub irq_handlers: [Option<Box<dyn IrqHandler>>; 256],
     /// A map of ISRs to IRQs.
     pub irq_map: [usize; 256],
     /// The Local APIC ID.
@@ -36,7 +37,7 @@ per_cpu!(
     pub(crate) static ARCH_DATA: ArchPerCpu = ArchPerCpu {
         gdt: Gdt::new(),
         tss: TaskStateSegment::new(),
-        irq_handlers: [None; 256],
+        irq_handlers: [const { None }; 256],
         irq_map: [0; 256],
         lapic_id: 0,
         fpu_size: 512,
