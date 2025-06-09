@@ -43,9 +43,10 @@ impl Entry {
         })
     }
 
-    /// Attempts to get an inode. If the inode doesn't exist, returns [`None`].
+    /// Attempts to get an inode.
+    /// If the inode doesn't exist, returns [`None`].
     /// If it wasn't cached yet, this function will do so.
-    pub fn get_inode(&self) -> Option<Arc<INode>> {
+    pub fn lookup(&self) -> Option<Arc<INode>> {
         match &self.node {
             EntryKind::Positive(inode) => Some(inode.clone()),
             EntryKind::Negative => None,
