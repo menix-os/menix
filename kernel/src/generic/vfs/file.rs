@@ -2,11 +2,12 @@ use super::inode::INode;
 use crate::generic::{
     memory::{VirtAddr, virt::AddressSpace},
     posix::errno::EResult,
+    process::Identity,
     util::mutex::Mutex,
     vfs::path::PathBuf,
 };
 use alloc::sync::Arc;
-use core::{fmt::Debug, sync::atomic::AtomicUsize};
+use core::fmt::Debug;
 
 bitflags::bitflags! {
     pub struct OpenFlags: u32 {
@@ -35,36 +36,39 @@ bitflags::bitflags! {
 
 pub enum SeekAnchor {
     /// Seek relative to the start of the file.
-    Start,
+    Start(u64),
     /// Seek relative to the current cursor position.
-    Current,
+    Current(i64),
     /// Seek relative to the end of the file.
-    End,
+    End(i64),
 }
 
 /// The kernel representation of an open file.
 pub struct File {
     /// The underlying inode that this file is pointing to.
     pub inode: Arc<INode>,
-    /// The current position of the cursor in this file.
-    pub position: AtomicUsize,
+    pub ops: Arc<dyn FileOps>,
     /// File open flags.
     pub flags: Mutex<OpenFlags>,
 }
 
 /// Operations that can be performed on a file.
 pub trait FileOps: Debug {
+    /// Reads directory entries into a buffer.
+    /// Returns actual bytes read.
+    fn read_dir(&self, file: &File, buffer: &mut [u8]) -> EResult<u64>;
+
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
-    fn read(&self, file: &File, buffer: &mut [u8]) -> EResult<usize>;
+    fn read(&self, file: &File, buffer: &mut [u8], offset: SeekAnchor) -> EResult<u64>;
 
     /// Writes a buffer to the file.
     /// Returns actual bytes written.
-    fn write(&self, file: &File, buffer: &[u8]) -> EResult<usize>;
+    fn write(&self, file: &File, buffer: &[u8], offset: SeekAnchor) -> EResult<u64>;
 
     /// Seeks inside the file.
     /// Returns the new absolute offset.
-    fn seek(&self, file: &File, offset: i64, whence: SeekAnchor) -> EResult<usize>;
+    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64>;
 
     /// Performs a generic ioctl operation on the file.
     /// Returns a status code.
@@ -82,42 +86,52 @@ pub trait FileOps: Debug {
 }
 
 impl File {
-    /// Opens a file identified by a path.
+    /// Opens a file referenced by a path for a given `identity`.
     pub fn open(
-        relative_to: &Self,
         path: PathBuf, // TODO: This doesn't have to be an owned value.
+        relative_to: &Self,
         flags: OpenFlags,
         mode: uapi::mode_t,
+        identity: Identity,
     ) -> EResult<Arc<Self>> {
         todo!()
     }
 
-    /// Reads directory entries into a buffer. Returns actual bytes read.
+    /// Reads directory entries into a buffer.
+    /// Returns actual bytes read.
     pub fn read_dir(&self, buf: &mut [u8]) -> EResult<u64> {
-        todo!()
+        self.ops.read_dir(self, buf)
     }
 
-    /// Reads into a buffer from a file. Returns actual bytes read.
+    /// Reads into a buffer from a file.
+    /// Returns actual bytes read.
     pub fn read(&self, buf: &mut [u8]) -> EResult<u64> {
-        todo!()
+        self.ops.read(self, buf, SeekAnchor::Current(0))
     }
 
-    /// Reads into a buffer from a file at a specified offset. Returns actual bytes read.
+    /// Reads into a buffer from a file at a specified offset.
+    /// Returns actual bytes read.
     pub fn pread(&self, buf: &mut [u8], offset: u64) -> EResult<u64> {
-        todo!()
+        self.ops.read(self, buf, SeekAnchor::Start(offset))
     }
 
-    /// Writes a buffer to a file. Returns actual bytes written.
+    /// Writes a buffer to a file.
+    /// Returns actual bytes written.
     pub fn write(&self, buf: &[u8]) -> EResult<u64> {
-        todo!()
+        self.ops.write(self, buf, SeekAnchor::Current(0))
     }
 
-    /// Writes a buffer to a file at a specified offset. Returns actual bytes written.
+    /// Writes a buffer to a file at a specified offset.
+    /// Returns actual bytes written.
     pub fn pwrite(&self, buf: &[u8], offset: u64) -> EResult<u64> {
-        todo!()
+        self.ops.write(self, buf, SeekAnchor::Start(offset))
     }
 
-    pub fn seek(&self, offset: i64, whence: SeekAnchor) -> EResult<u64> {
-        todo!()
+    pub fn seek(&self, offset: SeekAnchor) -> EResult<u64> {
+        self.ops.seek(self, offset)
+    }
+
+    pub fn ioctl(&self, request: usize, arg: usize) -> EResult<usize> {
+        self.ops.ioctl(self, request, arg)
     }
 }

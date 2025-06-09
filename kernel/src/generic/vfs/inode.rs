@@ -12,9 +12,11 @@ use core::{fmt::Debug, sync::atomic::AtomicBool};
 pub struct INode {
     pub id: u64,
 
-    /// FS-specific callbacks that can be performed on this node.
+    /// Operations that can be performed on this node.
     pub node_ops: Box<dyn NodeOps>,
-    pub file_ops: Box<dyn FileOps>,
+
+    /// Operations that can be performed on an open file pointing to this node.
+    pub file_ops: Arc<dyn FileOps>,
 
     /// The super block which this node is located in.
     pub sb: Arc<dyn SuperBlock>,
