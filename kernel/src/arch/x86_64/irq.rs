@@ -1,14 +1,11 @@
 use super::{consts, sched::Context};
 use crate::{
-    arch::x86_64::platform::gdt::Gdt,
-    generic::{self, percpu::CpuData},
+    arch::x86_64::consts::CPL_USER,
+    generic::memory::virt::{PageFaultCause, PageFaultInfo},
 };
 use crate::{
-    arch::x86_64::{ARCH_DATA, consts::CPL_USER},
-    generic::{
-        irq::IrqError,
-        memory::virt::{PageFaultCause, PageFaultInfo},
-    },
+    arch::x86_64::platform::gdt::Gdt,
+    generic::{self, percpu::CpuData},
 };
 use core::{
     arch::{asm, naked_asm},
@@ -81,7 +78,7 @@ extern "C" fn syscall_handler(frame: *mut Context) {
     unsafe {
         // Arguments use the SYSV C ABI.
         // Except for a3, since RCX is needed for sysret, we need a different register.
-        let result = generic::sys::dispatch(
+        let result = generic::syscall::dispatch(
             (*frame).rax as usize,
             (*frame).rdi as usize,
             (*frame).rsi as usize,

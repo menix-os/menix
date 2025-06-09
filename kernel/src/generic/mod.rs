@@ -11,6 +11,6 @@ pub mod percpu;
 pub mod posix;
 pub mod process;
 pub mod resource;
-pub mod sys;
+pub mod syscall;
 pub mod util;
 pub mod vfs;
