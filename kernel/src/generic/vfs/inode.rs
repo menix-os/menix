@@ -1,8 +1,12 @@
 use super::fs::SuperBlock;
 use crate::generic::{
-    posix::errno::EResult,
+    posix::errno::{EResult, Errno},
+    process::Identity,
     util::mutex::Mutex,
-    vfs::{entry::Entry, file::FileOps},
+    vfs::{
+        entry::Entry,
+        file::{FileOps, OpenFlags},
+    },
 };
 use alloc::{boxed::Box, sync::Arc};
 use core::{fmt::Debug, sync::atomic::AtomicBool};
@@ -11,25 +15,46 @@ use core::{fmt::Debug, sync::atomic::AtomicBool};
 #[derive(Debug)]
 pub struct INode {
     pub id: u64,
-
     /// Operations that can be performed on this node.
     pub node_ops: Box<dyn NodeOps>,
-
     /// Operations that can be performed on an open file pointing to this node.
     pub file_ops: Arc<dyn FileOps>,
-
     /// The super block which this node is located in.
     pub sb: Arc<dyn SuperBlock>,
-
     /// If true, the node has been modified and has to be sync'd.
     pub dirty: AtomicBool,
+    /// The type of this node.
+    pub node_type: NodeType,
 
     pub stat: Mutex<Stat>,
 }
 
+impl INode {
+    /// Checks if the node can be accessed with the given identity.
+    /// Returns [`Errno::EACCES`] if an access is not allowed.
+    pub fn try_access(&self, ident: &Identity, flags: OpenFlags) -> EResult<()> {
+        if ident.effective_user_id == 0 {
+            // If this file is not able to be executed, always fail.
+            if flags.contains(OpenFlags::Executeable)
+                && !self
+                    .stat
+                    .lock()
+                    .mode
+                    .contains(Mode::UserExec | Mode::GroupExec | Mode::OtherExec)
+            {
+                return Err(Errno::EACCES);
+            }
+            return Ok(());
+        }
+
+        todo!()
+    }
+}
+
 /// Operations which work on a node.
 pub trait NodeOps: Debug {
-    /// Updates the node with given timestamps. If one of the arguments is [`None`], it is not updated.
+    /// Updates the node with given timestamps.
+    /// If an argument is [`None`], the respective value is not updated.
     fn update_time(
         &self,
         node: &INode,
@@ -38,19 +63,24 @@ pub trait NodeOps: Debug {
         ctime: Option<uapi::timespec>,
     ) -> EResult<()>;
 
+    /// Synchronizes the node back to the underlying file system.
+    fn sync(&self, node: &INode) -> EResult<()>;
+
     /// Attempts to resolve an `entry` in a given `node` directory.
     /// If a node is found, the target node is set on `entry`.
     /// If it isn't found, the entry is marked negative and [`Errno::ENOENT`] is returned.
     fn lookup(&self, node: &INode, entry: &Entry) -> EResult<()>;
 
-    /// Synchronizes the node back to the underlying file system.
-    fn sync(&self, node: &INode) -> EResult<()>;
-
     /// Reads the path of the symbolic link of the node into a buffer.
-    fn readlink(&self, node: &INode, out: &mut [u8]) -> EResult<usize>;
+    /// This function is only valid for [`NodeType::SymbolicLink`].
+    fn read_link(&self, node: &INode, out: &mut [u8]) -> EResult<usize>;
+
+    /// Truncates the node to a given length in bytes.
+    /// This function is only valid for [`NodeType::Regular`].
+    fn truncate(&self, node: &INode, length: u64) -> EResult<()>;
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, PartialEq)]
 pub enum NodeType {
     #[default]
     Regular,
@@ -62,11 +92,30 @@ pub enum NodeType {
     Socket,
 }
 
+bitflags::bitflags! {
+    #[derive(Debug, Default)]
+    pub struct Mode: u32 {
+        const UserRead = uapi::S_IRUSR;
+        const UserWrite = uapi::S_IWUSR;
+        const UserExec = uapi::S_IXUSR;
+
+        const GroupRead = uapi::S_IRGRP;
+        const GroupWrite = uapi::S_IWGRP;
+        const GroupExec = uapi::S_IXGRP;
+
+        const OtherRead = uapi::S_IROTH;
+        const OtherWrite = uapi::S_IWOTH;
+        const OtherExec = uapi::S_IXOTH;
+
+        const SetUserId = uapi::S_ISUID;
+        const SetGroupId = uapi::S_ISGID;
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct Stat {
     pub links: u64,
     pub size: u64,
     pub blocks: u64,
-    pub node_type: NodeType,
-    pub mode: u32,
+    pub mode: Mode,
 }

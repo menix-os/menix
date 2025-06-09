@@ -183,5 +183,5 @@ extern "C" fn _start() -> ! {
     info.register();
 
     // Call the kernel common entry point.
-    crate::main();
+    crate::init();
 }

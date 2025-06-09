@@ -37,7 +37,7 @@ unsafe fn run_init_tasks(start: *const fn(), end: *const fn()) {
 
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
-pub fn main() -> ! {
+pub fn init() -> ! {
     unsafe {
         arch::core::setup_bsp();
         generic::memory::init();
@@ -62,6 +62,13 @@ pub fn main() -> ! {
 
     log!("Command line: {}", BootInfo::get().command_line.inner());
 
+    // Set up scheduler.
+    let init = Task::new(main, 0, 0, None, false).expect("Couldn't create kernel task");
+    CpuData::get().scheduler.start(init);
+}
+
+/// The high-level kernel entry point. This is invoked by the scheduler once it's running.
+pub extern "C" fn main(_: usize, _: usize) {
     generic::vfs::init();
     generic::module::init();
     system::init();
@@ -74,13 +81,6 @@ pub fn main() -> ! {
         );
     }
 
-    // Set up scheduler.
-    let init = Task::new(run_init, 0, 0, None, false).expect("Couldn't create kernel task");
-    CpuData::get().scheduler.start(init);
-}
-
-/// The high-level kernel entry point. This is invoked by the scheduler once it's running.
-extern "C" fn run_init(_: usize, _: usize) {
     // Find init. If no path is given, search a few select directories.
     let path = match BootInfo::get().command_line.get_string("init") {
         Some(x) => x,
