@@ -5,7 +5,8 @@ use super::util::mutex::Mutex;
 use alloc::boxed::Box;
 
 init_stage! {
-    pub CLOCK_STAGE : "generic.clock" => || {};
+    #[entails(super::GENERIC_STAGE)]
+    pub CLOCK_STAGE: "generic.clock" => || {};
 }
 
 pub trait ClockSource: Send {
@@ -73,7 +74,7 @@ pub fn has_clock() -> bool {
 }
 
 /// Blocking wait for a given amount of nanoseconds.
-pub fn wait_ns(time: usize) -> Result<(), ClockError> {
+pub fn block_ns(time: usize) -> Result<(), ClockError> {
     if CLOCK.lock().current.is_none() {
         error!(
             "Unable to sleep for {} nanoseconds. No clock source available, this would block forever!",

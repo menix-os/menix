@@ -5,7 +5,7 @@ use crate::generic::{
     process::Identity,
     vfs::{
         entry::Entry,
-        inode::{Mode, NodeType},
+        inode::{Mode, NodeOps},
         path::PathBuf,
     },
 };
@@ -53,7 +53,8 @@ pub enum SeekAnchor {
 /// The kernel representation of an open file.
 pub struct File {
     /// The underlying inode that this file is pointing to.
-    pub inode: Arc<INode>,
+    inode: Arc<INode>,
+    /// Operations that can be performed on this file.
     ops: Arc<dyn FileOps>,
     /// File open flags.
     flags: OpenFlags,
@@ -159,19 +160,27 @@ impl File {
         identity: &Identity,
     ) -> EResult<Arc<Self>> {
         if flags.contains(OpenFlags::Directory) {
-            if inode.node_type != NodeType::Directory {
+            if let NodeOps::Directory(x) = &inode.node_ops {
                 return Err(Errno::ENOTDIR);
             }
         }
 
-        match inode.node_type {
-            NodeType::Regular => {}
-            NodeType::Directory => todo!(),
-            NodeType::SymbolicLink => todo!(),
-            NodeType::FIFO => todo!(),
-            NodeType::BlockDevice => todo!(),
-            NodeType::CharacterDevice => todo!(),
-            NodeType::Socket => todo!(),
+        // Check if we are allowed to access this node.
+        inode.try_access(identity, flags)?;
+
+        match &inode.node_ops {
+            NodeOps::Regular(reg) => {
+                todo!();
+            }
+            NodeOps::Directory(dir) => {
+                todo!();
+            }
+            // Symbolic links can't be opened.
+            NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
+            NodeOps::FIFO => todo!(),
+            NodeOps::BlockDevice => todo!(),
+            NodeOps::CharacterDevice => todo!(),
+            NodeOps::Socket => todo!(),
         }
 
         todo!()

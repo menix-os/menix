@@ -86,7 +86,7 @@ macro_rules! warn {
 }
 
 #[macro_export]
-macro_rules! info {
+macro_rules! status {
     ($($arg:tt)*) => ({
         $crate::log_inner!("\x1b[1;32m", "\x1b[0m\n", $($arg)*);
     });

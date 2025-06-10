@@ -42,7 +42,7 @@ impl Node {
         assert_eq!(self.unsatisfied_deps.load(Ordering::Relaxed), 0);
         (self.action)();
         self.done.store(true, Ordering::Relaxed);
-        info!("Reached stage {:?}", self.display_name);
+        status!("Reached stage {:?}", self.display_name);
     }
 }
 
@@ -72,6 +72,7 @@ impl Edge {
     }
 }
 
+/// Runs the global initialization sequence.
 pub fn run() {
     let mut ctors_start = &raw const LD_INIT_CTORS_START as *const fn();
     let ctors_end = &raw const LD_INIT_CTORS_END as *const fn();
@@ -112,7 +113,7 @@ pub fn run() {
         );
     }
 
-    info!("All stages are complete!");
+    status!("All stages are complete!");
 
     if BootInfo::get()
         .command_line
@@ -120,14 +121,15 @@ pub fn run() {
         .unwrap_or(false)
     {
         let mut graph = String::new();
-        graph += "subgraph{";
+        graph += "digraph initgraph {\n";
+        graph += "\tsubgraph {\n";
         for node in nodes {
-            graph += &format!("n{:p} [label={:?}];", node, node.display_name);
+            graph += &format!("\t\tn{:p} [label={:?}];\n", node, node.display_name);
             for edge in node.in_edges.lock().iter() {
-                graph += &format!("n{:p} -> n{:p};", edge.from, edge.to);
+                graph += &format!("\t\t\tn{:p} -> n{:p};\n", edge.from, edge.to);
             }
         }
-        graph += "}";
+        graph += "\t}\n}";
 
         log!("{}", graph);
     }

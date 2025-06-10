@@ -15,16 +15,16 @@ use core::{fmt::Debug, sync::atomic::AtomicBool};
 #[derive(Debug)]
 pub struct INode {
     pub id: u64,
-    /// Operations that can be performed on this node.
-    pub node_ops: Box<dyn NodeOps>,
+    /// Operations that work on every type of node.
+    pub common: Box<dyn CommonOps>,
+    /// Operations that only work on a certain type of node.
+    pub node_ops: NodeOps,
     /// Operations that can be performed on an open file pointing to this node.
     pub file_ops: Arc<dyn FileOps>,
     /// The super block which this node is located in.
     pub sb: Arc<dyn SuperBlock>,
     /// If true, the node has been modified and has to be sync'd.
     pub dirty: AtomicBool,
-    /// The type of this node.
-    pub node_type: NodeType,
 
     pub stat: Mutex<Stat>,
 }
@@ -52,7 +52,7 @@ impl INode {
 }
 
 /// Operations which work on a node.
-pub trait NodeOps: Debug {
+pub trait CommonOps: Debug {
     /// Updates the node with given timestamps.
     /// If an argument is [`None`], the respective value is not updated.
     fn update_time(
@@ -63,33 +63,48 @@ pub trait NodeOps: Debug {
         ctime: Option<uapi::timespec>,
     ) -> EResult<()>;
 
+    /// Changes permissions on this `node`.
+    fn chmod(&self, node: &INode, mode: Mode) -> EResult<()>;
+
+    /// Changes ownership on this `node`.
+    fn chown(&self, node: &INode, uid: uapi::uid_t, gid: uapi::gid_t) -> EResult<()>;
+
     /// Synchronizes the node back to the underlying file system.
     fn sync(&self, node: &INode) -> EResult<()>;
-
-    /// Attempts to resolve an `entry` in a given `node` directory.
-    /// If a node is found, the target node is set on `entry`.
-    /// If it isn't found, the entry is marked negative and [`Errno::ENOENT`] is returned.
-    fn lookup(&self, node: &INode, entry: &Entry) -> EResult<()>;
-
-    /// Reads the path of the symbolic link of the node into a buffer.
-    /// This function is only valid for [`NodeType::SymbolicLink`].
-    fn read_link(&self, node: &INode, out: &mut [u8]) -> EResult<usize>;
-
-    /// Truncates the node to a given length in bytes.
-    /// This function is only valid for [`NodeType::Regular`].
-    fn truncate(&self, node: &INode, length: u64) -> EResult<()>;
 }
 
-#[derive(Debug, Clone, Default, PartialEq)]
-pub enum NodeType {
-    #[default]
-    Regular,
-    Directory,
-    SymbolicLink,
+#[derive(Debug)]
+pub enum NodeOps {
+    Regular(Box<dyn RegularOps>),
+    Directory(Box<dyn DirectoryOps>),
+    SymbolicLink(Box<dyn SymlinkOps>),
     FIFO,
     BlockDevice,
     CharacterDevice,
     Socket,
+}
+
+/// Operations for directory nodes.
+pub trait DirectoryOps: Debug {
+    /// Attempts to resolve an `entry` in a given `node` directory.
+    /// If a node is found, the target node is set on `entry`.
+    /// If it isn't found, the entry is marked negative and [`Errno::ENOENT`] is returned.
+    fn lookup(&self, node: &INode, entry: &Entry) -> EResult<()>;
+}
+
+/// Operations for regular file nodes.
+pub trait RegularOps: Debug {
+    fn open(&self, node: &INode, entry: &Entry);
+
+    /// Truncates the node to a given length in bytes.
+    /// `length` must be equal or less than the current node size.
+    fn truncate(&self, node: &INode, length: u64) -> EResult<()>;
+}
+
+/// Operations for symbolic link nodes.
+pub trait SymlinkOps: Debug {
+    /// Reads the path of the symbolic link of the node.
+    fn read_link(&self, node: &INode) -> EResult<usize>;
 }
 
 bitflags::bitflags! {

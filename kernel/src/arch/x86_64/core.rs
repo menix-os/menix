@@ -87,11 +87,10 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
     }
 
     // Collect all relevant CPUIDs.
-    let (cpuid1, cpuid7, cpuid13, cpuid8000_0007) = (
+    let (cpuid1, cpuid7, cpuid13) = (
         super::asm::cpuid(1, 0),
         super::asm::cpuid(7, 0),
         super::asm::cpuid(13, 0),
-        super::asm::cpuid(0x8000_0007, 0),
     );
 
     // Enable SSE.
@@ -137,18 +136,6 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
     if cpuid7.ebx & consts::CPUID_7B_SMAP != 0 {
         cr4 |= consts::CR4_SMAP;
         cpu.can_smap = true;
-    }
-
-    // Check if the TSC exists and is also invariant.
-    if cpuid1.edx & consts::CPUID_1D_TSC != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
-        // TODO: This will break when called more than once.
-        // TODO: Make sure to only switch if it's not already the current source.
-        if BootInfo::get().command_line.get_bool("tsc").unwrap_or(true) {
-            if tsc::init().is_ok() {
-                cr4 |= consts::CR4_TSD;
-                _ = clock::switch(Box::new(TscClock));
-            }
-        }
     }
 
     if cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0 {
