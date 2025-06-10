@@ -16,7 +16,8 @@ pub mod virt;
 
 init_stage! {
     #[entails(ARCH_STAGE)]
-    pub BSP_STAGE: "arch.setup-bsp" => || unsafe { core::setup_bsp() };
+    pub EARLY_STAGE: "arch.early" => || unsafe { core::setup_bsp() };
 
+    #[depends(crate::generic::memory::MEMORY_STAGE)]
     pub ARCH_STAGE: "arch" => || {};
 }
