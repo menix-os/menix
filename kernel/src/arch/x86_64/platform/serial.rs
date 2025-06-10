@@ -61,6 +61,6 @@ fn init() {
 }
 
 init_stage! {
-    #[entails(crate::arch::BSP_STAGE)]
-    SERIAL_STAGE : "x86_64.serial" => init;
+    #[entails(crate::arch::BSP_STAGE, crate::generic::log::LOG_STAGE)]
+    SERIAL_STAGE: "arch.x86_64.serial" => init;
 }

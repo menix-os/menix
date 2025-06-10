@@ -157,7 +157,7 @@ extern "C" fn uacpi_kernel_get_nanoseconds_since_boot() -> uacpi_u64 {
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_stall(usec: uacpi_u8) {
-    clock::wait_ns(usec as usize);
+    clock::block_ns(usec as usize);
 }
 
 #[unsafe(no_mangle)]

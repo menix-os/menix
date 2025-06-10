@@ -10,7 +10,7 @@ pub enum PciError {
 }
 
 init_stage! {
-    pub PCI_STAGE : "system.pci" => init;
+    pub PCI_STAGE: "system.pci" => init;
 }
 
 /// Initializes the PCI subsystem.

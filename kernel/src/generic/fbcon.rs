@@ -84,7 +84,8 @@ impl LoggerSink for FbCon {
 
 init_stage! {
     #[depends(super::memory::MEMORY_STAGE)]
-    FBCON_STAGE : "generic.fbcon" => init;
+    #[entails(super::GENERIC_STAGE)]
+    FBCON_STAGE: "generic.fbcon" => init;
 }
 
 pub fn init() {

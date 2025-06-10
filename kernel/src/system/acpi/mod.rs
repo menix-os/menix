@@ -8,11 +8,11 @@ static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
 
 init_stage! {
     #[depends(crate::arch::ARCH_STAGE, crate::generic::memory::MEMORY_STAGE)]
-    pub TABLES_STAGE : "system.acpi.tables" => early_init;
+    pub TABLES_STAGE: "system.acpi.tables" => early_init;
 
     #[depends(TABLES_STAGE, crate::arch::ARCH_STAGE, crate::generic::clock::CLOCK_STAGE, crate::generic::memory::MEMORY_STAGE)]
     #[entails(super::pci::PCI_STAGE)]
-    pub INIT_STAGE : "system.acpi" => init;
+    pub INIT_STAGE: "system.acpi" => init;
 }
 
 fn early_init() {

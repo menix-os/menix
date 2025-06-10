@@ -109,3 +109,8 @@ pub fn get_kernel_log(target: &mut [u8]) {
 
 // TODO: Broken
 //early_init_call!(init);
+
+init_stage! {
+    #[entails(super::GENERIC_STAGE)]
+    pub LOG_STAGE: "generic.log" => || {};
+}

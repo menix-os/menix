@@ -2,7 +2,6 @@
 
 use super::{BootFile, BootInfo, PhysMemory};
 use crate::generic::{
-    self,
     cmdline::CmdLine,
     fbcon::{FbColorBits, FrameBuffer},
     util::mutex::Mutex,

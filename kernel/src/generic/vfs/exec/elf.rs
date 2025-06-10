@@ -348,6 +348,8 @@ impl ExecFormat for ElfFormat {
     }
 }
 
-fn init() {
-    super::register("elf", Arc::new(ElfFormat));
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE)]
+    #[entails(crate::generic::vfs::VFS_STAGE)]
+    ELF_STAGE: "generic.vfs.exec.elf" => || super::register("elf", Arc::new(ElfFormat));
 }

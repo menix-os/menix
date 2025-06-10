@@ -18,5 +18,5 @@ init_stage! {
     #[entails(ARCH_STAGE)]
     pub BSP_STAGE: "arch.setup-bsp" => || unsafe { core::setup_bsp() };
 
-    pub ARCH_STAGE : "arch.init" => || {};
+    pub ARCH_STAGE: "arch" => || {};
 }

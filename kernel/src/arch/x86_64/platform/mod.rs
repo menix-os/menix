@@ -11,10 +11,6 @@ use uacpi_sys::{
     uacpi_u32,
 };
 
-init_stage! {
-    pub PLATFORM_STAGE : "x86_64.platform" => || {};
-}
-
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_io_read8(
     arg1: uacpi_handle,

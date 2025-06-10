@@ -25,7 +25,7 @@ pub fn get_root() -> EResult<Arc<Entry>> {
 
 init_stage! {
     #[depends(crate::generic::memory::MEMORY_STAGE)]
-    pub VFS_STAGE : "generic.vfs" => init;
+    pub VFS_STAGE: "generic.vfs" => init;
 }
 
 fn init() {

@@ -63,7 +63,7 @@ impl LocalApic {
         result.write_register(0x380, u32::MAX);
 
         // Sleep for 10 milliseconds.
-        clock::wait_ns(10_000_000)
+        clock::block_ns(10_000_000)
             .expect("Unable to setup LAPIC, the kernel should have a working timer!");
 
         // Read how many ticks have passed in 10 ms.
