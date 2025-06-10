@@ -173,7 +173,7 @@ pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
 }
 
 init_stage! {
-    #[depends(crate::arch::ARCH_STAGE)]
+    #[depends(crate::arch::EARLY_STAGE)]
     pub MEMORY_STAGE: "generic.memory" => init;
 }
 
