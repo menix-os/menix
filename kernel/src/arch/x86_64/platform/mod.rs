@@ -6,17 +6,13 @@ pub mod serial;
 pub mod tsc;
 
 use super::asm;
-use crate::generic::clock::{self};
-use alloc::boxed::Box;
 use uacpi_sys::{
     UACPI_STATUS_OK, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_u8, uacpi_u16,
     uacpi_u32,
 };
 
-pub fn init() {
-    if let Ok(x) = hpet::Hpet::new() {
-        _ = clock::switch(Box::new(x));
-    }
+init_stage! {
+    pub PLATFORM_STAGE : "x86_64.platform" => || {};
 }
 
 #[unsafe(no_mangle)]

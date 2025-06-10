@@ -60,4 +60,7 @@ fn init() {
     log::add_sink(Box::new(SerialLogger));
 }
 
-early_init_call_if_cmdline!("com1", true, init);
+init_stage! {
+    #[entails(crate::arch::BSP_STAGE)]
+    SERIAL_STAGE : "x86_64.serial" => init;
+}

@@ -351,5 +351,3 @@ impl ExecFormat for ElfFormat {
 fn init() {
     super::register("elf", Arc::new(ElfFormat));
 }
-
-init_call!(init);

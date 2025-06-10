@@ -22,34 +22,12 @@ pub mod generic;
 pub mod system;
 
 use crate::generic::{process::Process, vfs::path::PathBuf};
-use generic::{boot::BootInfo, memory::virt, percpu::CpuData, process::task::Task};
-
-// TODO: Instead of having global init functions, use an initgraph with distinguishable stages.
-unsafe fn run_init_tasks(start: *const fn(), end: *const fn()) {
-    let mut cur = start;
-    while cur < end {
-        unsafe {
-            (*cur)();
-            cur = cur.add(1);
-        }
-    }
-}
+use generic::{boot::BootInfo, percpu::CpuData, process::task::Task};
 
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
 pub fn init() -> ! {
-    unsafe {
-        arch::core::setup_bsp();
-        generic::memory::init();
-    }
-
-    // Run early init calls.
-    unsafe {
-        run_init_tasks(
-            &raw const virt::LD_EARLY_ARRAY_START as *const fn(),
-            &raw const virt::LD_EARLY_ARRAY_END as *const fn(),
-        );
-    }
+    crate::generic::init::run();
 
     // Say hello to the console.
     log!(
@@ -69,18 +47,6 @@ pub fn init() -> ! {
 
 /// The high-level kernel entry point. This is invoked by the scheduler once it's running.
 pub extern "C" fn main(_: usize, _: usize) {
-    generic::vfs::init();
-    generic::module::init();
-    system::init();
-
-    // Run init calls.
-    unsafe {
-        run_init_tasks(
-            &raw const virt::LD_INIT_ARRAY_START as *const fn(),
-            &raw const virt::LD_INIT_ARRAY_END as *const fn(),
-        );
-    }
-
     // Find init. If no path is given, search a few select directories.
     let path = match BootInfo::get().command_line.get_string("init") {
         Some(x) => x,

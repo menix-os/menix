@@ -82,7 +82,11 @@ impl LoggerSink for FbCon {
     }
 }
 
-early_init_call_if_cmdline!("fbcon", true, init);
+init_stage! {
+    #[depends(super::memory::MEMORY_STAGE)]
+    FBCON_STAGE : "generic.fbcon" => init;
+}
+
 pub fn init() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;

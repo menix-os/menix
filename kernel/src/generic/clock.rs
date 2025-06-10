@@ -4,6 +4,10 @@
 use super::util::mutex::Mutex;
 use alloc::boxed::Box;
 
+init_stage! {
+    pub CLOCK_STAGE : "generic.clock" => || {};
+}
+
 pub trait ClockSource: Send {
     fn name(&self) -> &'static str;
 

@@ -78,11 +78,17 @@ macro_rules! log {
     });
 }
 
-/// Logs a warning.
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)*) => ({
         $crate::log_inner!("\x1b[1;33m", "\x1b[0m\n", $($arg)*);
+    });
+}
+
+#[macro_export]
+macro_rules! info {
+    ($($arg:tt)*) => ({
+        $crate::log_inner!("\x1b[1;32m", "\x1b[0m\n", $($arg)*);
     });
 }
 
@@ -111,72 +117,49 @@ macro_rules! assert_trait_impl {
     };
 }
 
-/// Hooks a function as an early init call.
-/// The order in which hooked functions are called is not guaranteed.
+/// Hooks a function or closure into the init system.
 #[macro_export]
-macro_rules! early_init_call {
-    ($fun:expr) => {
-        const _: () = {
-            #[doc(hidden)]
-            #[unsafe(link_section = ".early_array")]
+macro_rules! init_stage {
+    ($(
+        $(#[depends($($dep:path),* $(,)?)])?
+        $(#[entails($($rdep:path),* $(,)?)])?
+        $vis:vis $name:ident : $display_name:expr => $func:expr;
+    )*) => {
+        $(
             #[used]
-            static __EARLY_INIT_CALL: unsafe fn() = $fun;
-        };
-    };
-}
-
-/// Hooks a function as an early init call if a command line option equals to true.
-#[macro_export]
-macro_rules! early_init_call_if_cmdline {
-    ($opt:literal, $default:literal, $fun:expr) => {
-        const _: () = {
-            fn __init_call_wrapper() {
-                use $crate::generic::boot::BootInfo;
-                if BootInfo::get()
-                    .command_line
-                    .get_bool($opt)
-                    .unwrap_or($default)
-                {
-                    $fun()
-                }
-            }
-
-            $crate::early_init_call!(__init_call_wrapper);
-        };
-    };
-}
-
-/// Hooks a function as an init call.
-/// This gets called after all managers are available.
-#[macro_export]
-macro_rules! init_call {
-    ($fun:expr) => {
-        const _: () = {
             #[doc(hidden)]
-            #[unsafe(link_section = ".init_array")]
-            #[used]
-            static __INIT_CALL: fn() = $fun;
-        };
-    };
-}
+            #[unsafe(link_section = ".init")]
+            $vis static $name: $crate::generic::init::Node =
+                $crate::generic::init::Node::new($display_name, $func);
 
-/// Hooks a function as an init call if a command line option equals to true.
-#[macro_export]
-macro_rules! init_call_if_cmdline {
-    ($opt:literal, $default:literal, $fun:expr) => {
-        const _: () = {
-            fn __init_call_wrapper() {
-                use $crate::generic::boot::BootInfo;
-                if BootInfo::get()
-                    .command_line
-                    .get_bool($opt)
-                    .unwrap_or($default)
-                {
-                    $fun()
-                }
-            }
+            $($(
+                const _: () = {
+                    #[used]
+                    #[doc(hidden)]
+                    static __DEPENDS_EDGE: $crate::generic::init::Edge =
+                        $crate::generic::init::Edge::new(&$dep, &$name);
 
-            $crate::init_call!(__init_call_wrapper);
-        };
-    };
+                    #[used]
+                    #[doc(hidden)]
+                    #[unsafe(link_section = ".init.ctors")]
+                    static __DEPENDS_EDGE_CTOR: fn() = || __DEPENDS_EDGE.register();
+                };
+            )*)?
+
+            $($(
+                const _: () = {
+                    #[used]
+                    #[doc(hidden)]
+                    static __ENTAILS_EDGE: $crate::generic::init::Edge =
+                        $crate::generic::init::Edge::new(&$name, &$rdep);
+
+                    #[used]
+                    #[doc(hidden)]
+                    #[unsafe(link_section = ".init.ctors")]
+                    static __ENTAILS_EDGE_CTOR: fn() = || __ENTAILS_EDGE.register();
+                };
+            )*)?
+
+        )*
+    }
 }

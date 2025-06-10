@@ -2,13 +2,12 @@ use super::asm::{self};
 use crate::{
     arch::{self, x86_64::consts},
     generic::{
-        self, clock,
-        irq::{IpiTarget, IrqController, IrqError, IrqHandler, IrqStatus},
+        clock,
+        irq::{IpiTarget, IrqError, IrqHandler, IrqStatus},
         memory::PhysAddr,
         percpu::CpuData,
     },
 };
-use alloc::boxed::Box;
 use core::{hint::unlikely, u32};
 
 #[derive(Debug)]

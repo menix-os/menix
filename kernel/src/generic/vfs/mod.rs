@@ -23,7 +23,12 @@ pub fn get_root() -> EResult<Arc<Entry>> {
     }
 }
 
-pub(crate) fn init() {
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE)]
+    pub VFS_STAGE : "generic.vfs" => init;
+}
+
+fn init() {
     // fs::register_fs(Box::new(fs::tmpfs::TmpFs));
 
     // Mount the tmpfs as root.
