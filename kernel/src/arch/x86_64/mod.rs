@@ -2,13 +2,13 @@ mod asm;
 mod consts;
 pub mod core;
 pub mod irq;
-pub mod platform;
 pub mod sched;
+pub mod system;
 pub mod virt;
 
 use crate::generic::irq::IrqHandler;
 use alloc::boxed::Box;
-use platform::gdt::{Gdt, TaskStateSegment};
+use system::gdt::{Gdt, TaskStateSegment};
 
 #[derive(Debug)]
 #[repr(C)]

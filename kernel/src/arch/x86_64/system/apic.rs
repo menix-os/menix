@@ -1,6 +1,8 @@
-use super::asm::{self};
 use crate::{
-    arch::{self, x86_64::consts},
+    arch::{
+        self,
+        x86_64::{asm, consts},
+    },
     generic::{
         clock,
         irq::{IpiTarget, IrqError, IrqHandler, IrqStatus},

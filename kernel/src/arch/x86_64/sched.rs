@@ -1,4 +1,4 @@
-use super::{ARCH_DATA, core::get_per_cpu, platform::gdt::Gdt};
+use super::{ARCH_DATA, core::get_per_cpu, system::gdt::Gdt};
 use crate::{
     arch::{
         self,
