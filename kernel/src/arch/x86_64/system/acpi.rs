@@ -1,11 +1,4 @@
-pub mod apic;
-pub mod gdt;
-mod hpet;
-pub mod idt;
-pub mod serial;
-pub mod tsc;
-
-use super::asm;
+use super::super::asm;
 use uacpi_sys::{
     UACPI_STATUS_OK, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_u8, uacpi_u16,
     uacpi_u32,

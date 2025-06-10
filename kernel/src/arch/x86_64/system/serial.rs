@@ -1,5 +1,7 @@
-use super::asm::{read8, write8};
-use crate::generic::log::{self, LoggerSink};
+use crate::{
+    arch::x86_64::asm::{read8, write8},
+    generic::log::{self, LoggerSink},
+};
 use alloc::boxed::Box;
 
 /// Serial port

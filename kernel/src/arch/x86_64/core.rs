@@ -1,19 +1,13 @@
 use crate::{
     arch::x86_64::{
         ARCH_DATA, consts, irq,
-        platform::{
+        system::{
             apic::{self, LocalApic},
             gdt, idt,
-            tsc::{self, TscClock},
         },
     },
-    generic::{
-        boot::BootInfo,
-        clock,
-        percpu::{CpuData, LD_PERCPU_START},
-    },
+    generic::percpu::{CpuData, LD_PERCPU_START},
 };
-use alloc::boxed::Box;
 use core::{arch::asm, mem::offset_of};
 
 pub(in crate::arch) unsafe fn setup_bsp() {

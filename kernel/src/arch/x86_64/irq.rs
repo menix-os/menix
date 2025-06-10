@@ -4,7 +4,7 @@ use crate::{
     generic::memory::virt::{PageFaultCause, PageFaultInfo},
 };
 use crate::{
-    arch::x86_64::platform::gdt::Gdt,
+    arch::x86_64::system::gdt::Gdt,
     generic::{self, percpu::CpuData},
 };
 use core::{

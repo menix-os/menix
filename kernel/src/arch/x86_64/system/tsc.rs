@@ -1,14 +1,13 @@
-use super::asm;
 use crate::{
-    arch::x86_64::consts,
-    generic::clock::{self, ClockError, ClockSource},
+    arch::x86_64::{asm, consts},
+    generic::clock::{self, ClockSource},
 };
 use core::sync::atomic::{AtomicU64, Ordering};
 
 static TSC_FREQUENCY: AtomicU64 = AtomicU64::new(0);
 static TSC_BASE: AtomicU64 = AtomicU64::new(0);
 
-pub struct TscClock;
+struct TscClock;
 impl ClockSource for TscClock {
     fn name(&self) -> &'static str {
         "tsc"
