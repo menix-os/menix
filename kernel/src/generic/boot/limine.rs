@@ -2,6 +2,7 @@
 
 use super::{BootFile, BootInfo, PhysMemory};
 use crate::generic::{
+    self,
     cmdline::CmdLine,
     fbcon::{FbColorBits, FrameBuffer},
     util::mutex::Mutex,
@@ -182,6 +183,5 @@ extern "C" fn _start() -> ! {
     // Finally, save the boot information.
     info.register();
 
-    // Call the kernel common entry point.
     crate::init();
 }

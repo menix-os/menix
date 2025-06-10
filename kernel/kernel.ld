@@ -28,7 +28,6 @@ SECTIONS
 
     /* Code */
     .text : {
-        *(.init)
         *(.text .text.*)
         *(.fini)
         *(.plt .plt.*)
@@ -41,6 +40,11 @@ SECTIONS
     /* Read-only data */
     .rodata : {
         LD_RODATA_START = .;
+
+        LD_INIT_CTORS_START = .;
+        *(.init.ctors)
+        LD_INIT_CTORS_END = .;
+
         *(.rodata .rodata.*)
         *(.got .got.*)
         LD_RODATA_END = .;
@@ -52,13 +56,9 @@ SECTIONS
     .data : {
         LD_DATA_START = .;
 
-        LD_EARLY_ARRAY_START = .;
-        *(.early_array)
-        LD_EARLY_ARRAY_END = .;
-
-        LD_INIT_ARRAY_START = .;
-        *(.init_array)
-        LD_INIT_ARRAY_END = .;
+        LD_INIT_START = .;
+        *(.init)
+        LD_INIT_END = .;
 
         *(.data .data.*)
     } :data

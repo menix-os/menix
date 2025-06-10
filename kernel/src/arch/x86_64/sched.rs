@@ -222,7 +222,7 @@ pub(in crate::arch) fn init_task(
     Ok(())
 }
 
-/// This function only calls [`task_entry`] by moving values from callee saved regs to use the C ABI.
+/// This function only calls [`crate::generic::process::sched::task_entry`] by moving values from callee saved regs to use the C ABI.
 #[unsafe(naked)]
 unsafe extern "C" fn task_entry_thunk() -> ! {
     naked_asm!(

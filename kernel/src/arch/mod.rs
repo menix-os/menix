@@ -11,6 +11,12 @@ mod internal {
 
 pub mod core;
 pub mod irq;
-pub mod platform;
 pub mod sched;
 pub mod virt;
+
+init_stage! {
+    #[entails(ARCH_STAGE)]
+    pub BSP_STAGE: "arch.setup-bsp" => || unsafe { core::setup_bsp() };
+
+    pub ARCH_STAGE : "arch.init" => || {};
+}

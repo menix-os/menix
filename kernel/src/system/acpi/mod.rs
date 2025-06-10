@@ -6,6 +6,15 @@ use core::ffi::c_void;
 
 static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
 
+init_stage! {
+    #[depends(crate::arch::ARCH_STAGE, crate::generic::memory::MEMORY_STAGE)]
+    pub TABLES_STAGE : "system.acpi.tables" => early_init;
+
+    #[depends(TABLES_STAGE, crate::arch::ARCH_STAGE, crate::generic::clock::CLOCK_STAGE, crate::generic::memory::MEMORY_STAGE)]
+    #[entails(super::pci::PCI_STAGE)]
+    pub INIT_STAGE : "system.acpi" => init;
+}
+
 fn early_init() {
     match BootInfo::get().rsdp_addr {
         Some(rsdp) => unsafe { RSDP_ADDRESS.init(rsdp) },
@@ -29,13 +38,9 @@ fn early_init() {
         );
         return;
     }
-
-    crate::arch::platform::init();
 }
 
-early_init_call_if_cmdline!("acpi", true, early_init);
-
-pub(crate) fn init() {
+fn init() {
     let mut uacpi_status = unsafe { uacpi::uacpi_initialize(0) };
     if uacpi_status != uacpi::UACPI_STATUS_OK {
         error!(

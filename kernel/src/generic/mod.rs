@@ -2,6 +2,7 @@ pub mod boot;
 pub mod clock;
 pub mod cmdline;
 pub mod fbcon;
+pub mod init;
 pub mod irq;
 pub mod log;
 pub mod memory;

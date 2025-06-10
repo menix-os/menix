@@ -399,10 +399,6 @@ pub fn page_fault_handler(info: &PageFaultInfo) -> *mut Task {
 }
 
 unsafe extern "C" {
-    pub unsafe static LD_EARLY_ARRAY_START: u8;
-    pub unsafe static LD_EARLY_ARRAY_END: u8;
-    pub unsafe static LD_INIT_ARRAY_START: u8;
-    pub unsafe static LD_INIT_ARRAY_END: u8;
     pub unsafe static LD_KERNEL_START: u8;
     pub unsafe static LD_TEXT_START: u8;
     pub unsafe static LD_TEXT_END: u8;
