@@ -53,7 +53,7 @@ pub enum IpiTarget {
     /// Send an interrupt to all CPUs except the calling CPU.
     AllButThisCpu,
     /// Send an interrupt to a specific CPU. The value is the ID of the target [`IrqController`].
-    Specific(usize),
+    Specific(u32),
 }
 
 #[derive(Debug)]

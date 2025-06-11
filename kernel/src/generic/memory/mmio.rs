@@ -9,6 +9,7 @@ use core::marker::PhantomData;
 use num_traits::PrimInt;
 
 /// Represents a region of memory mapped IO.
+#[derive(Debug)]
 pub struct Mmio {
     /// A pointer to the start of this region in virtual memory.
     base: *mut (),
@@ -64,7 +65,7 @@ impl Mmio {
     }
 
     /// Writes data to a single field.
-    pub fn write<T: PrimInt>(&mut self, field: Register<T>, value: T) {
+    pub fn write<T: PrimInt>(&self, field: Register<T>, value: T) {
         unsafe {
             (self.base as *mut T).byte_add(field.offset).write_volatile(
                 match field.native_endian {
@@ -84,7 +85,7 @@ impl Mmio {
     }
 
     /// Writes multiple array elements from a buffer.
-    pub fn write_array<T: PrimInt>(&mut self, vector: Array<T>, offset: usize, value: &[T]) {
+    pub fn write_array<T: PrimInt>(&self, vector: Array<T>, offset: usize, value: &[T]) {
         assert!(value.len() == vector.count);
         for (idx, elem) in value.iter().enumerate() {
             self.write_at(vector, offset + idx, *elem);
@@ -106,7 +107,7 @@ impl Mmio {
     }
 
     /// Writes a single element to a vector.
-    pub fn write_at<T: PrimInt>(&mut self, vector: Array<T>, index: usize, value: T) {
+    pub fn write_at<T: PrimInt>(&self, vector: Array<T>, index: usize, value: T) {
         assert!(index < vector.count);
         unsafe {
             (self.base as *mut T)
@@ -132,7 +133,7 @@ impl Drop for Mmio {
 
 /// A hardware register mapped in the current address space.
 /// All reads and writes must be properly aligned.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Register<T: PrimInt> {
     offset: usize,
     native_endian: bool,
@@ -161,6 +162,10 @@ impl<T: PrimInt> Register<T> {
     pub const fn with_be(mut self) -> Self {
         self.native_endian = !is_little_endian();
         self
+    }
+
+    pub const fn offset(&self) -> usize {
+        self.offset
     }
 }
 

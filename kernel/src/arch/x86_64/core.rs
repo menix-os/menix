@@ -46,12 +46,11 @@ pub(in crate::arch) fn get_per_cpu() -> *mut CpuData {
     }
 }
 
-pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
+pub(in crate::arch) fn prepare_cpu(context: &mut CpuData) {
     let mut cr0: usize;
     let mut cr4: usize;
 
     let cpu = ARCH_DATA.get();
-
     // Load a GDT and TSS.
     gdt::init(&mut cpu.gdt, &mut cpu.tss);
 
