@@ -10,7 +10,7 @@ use crate::{
 };
 use core::{arch::asm, mem::offset_of};
 
-pub(in crate::arch) unsafe fn setup_bsp() {
+pub(in crate::arch) unsafe fn prepare_bsp() {
     apic::disable_legacy_pic();
     idt::init();
     idt::set_idt();
@@ -46,7 +46,7 @@ pub(in crate::arch) fn get_per_cpu() -> *mut CpuData {
     }
 }
 
-pub(in crate::arch) fn prepare_cpu(context: &mut CpuData) {
+pub(in crate::arch) fn setup_ap(context: &mut CpuData) {
     let mut cr0: usize;
     let mut cr4: usize;
 

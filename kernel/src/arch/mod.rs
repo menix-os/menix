@@ -15,17 +15,15 @@ pub mod sched;
 pub mod virt;
 
 init_stage! {
-    #[entails(ARCH_STAGE)]
-    pub EARLY_STAGE: "arch.early" => || unsafe { core::setup_bsp() };
+    pub BSP_EARLY_INIT_STAGE: "arch.bsp.early-init" => || unsafe { core::prepare_bsp() };
 
-    #[depends(EARLY_STAGE, crate::generic::memory::MEMORY_STAGE)]
-    #[entails(AP_INIT_STAGE)]
-    pub APS_DISCOVERED_STAGE: "arch.aps-discovered" => || {};
+    #[depends(BSP_EARLY_INIT_STAGE)]
+    pub AP_DISCOVER_STAGE: "arch.ap.discover" => || {};
 
-    #[depends(APS_DISCOVERED_STAGE)]
-    #[entails(ARCH_STAGE)]
-    pub AP_INIT_STAGE: "arch.aps-initialized" => || {};
+    #[depends(AP_DISCOVER_STAGE)]
+    #[entails(ARCH_INIT_STAGE)]
+    pub AP_INIT_STAGE: "arch.ap.init" => || {};
 
-    #[depends(crate::generic::memory::MEMORY_STAGE)]
-    pub ARCH_STAGE: "arch" => || {};
+    #[depends(BSP_EARLY_INIT_STAGE)]
+    pub ARCH_INIT_STAGE: "arch.init" => || {};
 }
