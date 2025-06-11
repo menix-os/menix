@@ -211,7 +211,7 @@ struct InfoData {
 fn start_ap(id: u32) {
     log!("Starting AP {id}");
 
-    crate::arch::core::prepare_cpu(CpuData::get());
+    crate::arch::core::setup_ap(CpuData::get());
 
     let start = &raw const SMP_TRAMPOLINE_START; // Start of the trampoline.
     let data = &raw const SMP_TRAMPOLINE_DATA; // Start of the data passed to the trampoline.
@@ -329,10 +329,10 @@ fn start_ap(id: u32) {
 
 init_stage! {
     #[depends(crate::generic::memory::MEMORY_STAGE, crate::system::acpi::TABLES_STAGE, crate::generic::clock::CLOCK_STAGE)]
-    #[entails(crate::arch::APS_DISCOVERED_STAGE)]
+    #[entails(crate::arch::AP_DISCOVER_STAGE)]
     DISCOVER_STAGE: "arch.x86_64.discover-aps" => discover_aps;
 
-    #[depends(crate::arch::APS_DISCOVERED_STAGE, crate::generic::clock::CLOCK_STAGE)]
+    #[depends(crate::arch::AP_DISCOVER_STAGE, crate::generic::clock::CLOCK_STAGE)]
     #[entails(crate::arch::AP_INIT_STAGE)]
     INIT_STAGE: "arch.x86_64.init-aps" => init_aps;
 }

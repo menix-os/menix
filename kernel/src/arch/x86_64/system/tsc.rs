@@ -2,6 +2,7 @@ use crate::{
     arch::x86_64::{asm, consts},
     generic::clock::{self, ClockSource},
 };
+use alloc::boxed::Box;
 use core::sync::atomic::{AtomicU64, Ordering};
 
 static TSC_FREQUENCY: AtomicU64 = AtomicU64::new(0);
@@ -43,6 +44,7 @@ fn init() {
     if asm::cpuid(1, 0).edx & consts::CPUID_1D_TSC == 0
         || asm::cpuid(0x8000_0007, 0).edx & (1 << 8) == 0
     {
+        log!("No invariant TSC detected");
         return;
     }
 
@@ -68,8 +70,8 @@ fn init() {
         // If we have no timer (yet), the only way we can calibrate the TSC is if CPUID gives us the frequency.
         // On a normal system, this should usually never be called and is a last resort
         // since at this point we have at least the HPET timer.
-        log!("Calibrating using CPUID 0x15");
         if c.ecx != 0 && c.ebx != 0 && c.eax != 0 {
+            log!("Calibrating using CPUID 0x15");
             c.ecx as u64 * c.ebx as u64 / c.eax as u64
         } else {
             return;
@@ -82,4 +84,6 @@ fn init() {
 
     log!("Timer frequency is {} MHz ({} Hz)", freq / 1_000_000, freq);
     TSC_FREQUENCY.store(freq, Ordering::Relaxed);
+
+    clock::switch(Box::new(TscClock)).unwrap();
 }
