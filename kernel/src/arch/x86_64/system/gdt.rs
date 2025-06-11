@@ -251,7 +251,7 @@ impl TaskStateSegment {
 pub static GDT: Gdt = Gdt {
     null: GdtDesc::new(0, 0, GdtAccess::None, GdtFlags::None),
     kernel32_code: GdtDesc::new(
-        0xFFFF,
+        0xFFFFF,
         0,
         GdtAccess::ReadWrite
             .union(GdtAccess::Executable)
@@ -260,7 +260,7 @@ pub static GDT: Gdt = Gdt {
         GdtFlags::Granularity.union(GdtFlags::ProtMode),
     ),
     kernel32_data: GdtDesc::new(
-        0xFFFF,
+        0xFFFFF,
         0,
         GdtAccess::Accessed
             .union(GdtAccess::ReadWrite)
