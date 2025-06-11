@@ -66,7 +66,7 @@ pub(in crate::arch) fn prepare_cpu(context: &mut CpuData) {
         super::asm::wrmsr(
             consts::MSR_STAR,
             ((offset_of!(gdt::Gdt, user_code) | consts::CPL_USER as usize) as u64) << 48
-                | (offset_of!(gdt::Gdt, kernel_code) as u64) << 32,
+                | (offset_of!(gdt::Gdt, kernel64_code) as u64) << 32,
         );
         // Set syscall entry point.
         super::asm::wrmsr(consts::MSR_LSTAR, irq::amd64_syscall_stub as u64);

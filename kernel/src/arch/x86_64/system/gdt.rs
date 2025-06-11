@@ -10,14 +10,18 @@ use core::{arch::asm, mem::offset_of};
 /// Global Descriptor Table.
 /// These entries are ordered exactly like this because the SYSRET instruction expects it.
 #[repr(C, packed)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone, Pod, Zeroable)]
 pub struct Gdt {
     /// Unused
     pub null: GdtDesc,
-    /// Kernel CS
-    pub kernel_code: GdtDesc,
-    /// Kernel DS
-    pub kernel_data: GdtDesc,
+    /// 32-bit kernel CS (used for AP bring-up)
+    pub kernel32_code: GdtDesc,
+    /// 32-bit kernel DS (used for AP bring-up)
+    pub kernel32_data: GdtDesc,
+    /// 64-bit kernel CS
+    pub kernel64_code: GdtDesc,
+    /// 64-bit kernel DS
+    pub kernel64_data: GdtDesc,
     /// 32-bit compatibility mode user CS (unused)
     pub user_code: GdtDesc,
     /// User DS
@@ -38,8 +42,10 @@ impl Gdt {
     pub const fn new() -> Self {
         Self {
             null: GdtDesc::empty(),
-            kernel_code: GdtDesc::empty(),
-            kernel_data: GdtDesc::empty(),
+            kernel32_code: GdtDesc::empty(),
+            kernel32_data: GdtDesc::empty(),
+            kernel64_code: GdtDesc::empty(),
+            kernel64_data: GdtDesc::empty(),
             user_code: GdtDesc::empty(),
             user_data: GdtDesc::empty(),
             user_code64: GdtDesc::empty(),
@@ -112,7 +118,7 @@ impl GdtDesc {
 }
 
 /// GDT segment descriptor
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Pod, Zeroable)]
 #[repr(C, packed)]
 pub struct GdtLongDesc {
     /// Limit[0..15]
@@ -244,7 +250,25 @@ impl TaskStateSegment {
 
 pub static GDT: Gdt = Gdt {
     null: GdtDesc::new(0, 0, GdtAccess::None, GdtFlags::None),
-    kernel_code: GdtDesc::new(
+    kernel32_code: GdtDesc::new(
+        0xFFFF,
+        0,
+        GdtAccess::ReadWrite
+            .union(GdtAccess::Executable)
+            .union(GdtAccess::Segment)
+            .union(GdtAccess::Present),
+        GdtFlags::Granularity.union(GdtFlags::ProtMode),
+    ),
+    kernel32_data: GdtDesc::new(
+        0xFFFF,
+        0,
+        GdtAccess::Accessed
+            .union(GdtAccess::ReadWrite)
+            .union(GdtAccess::Segment)
+            .union(GdtAccess::Present),
+        GdtFlags::Granularity.union(GdtFlags::ProtMode),
+    ),
+    kernel64_code: GdtDesc::new(
         0xFFFFF,
         0,
         GdtAccess::Present
@@ -255,7 +279,7 @@ pub static GDT: Gdt = Gdt {
             .union(GdtAccess::Accessed),
         GdtFlags::Granularity.union(GdtFlags::LongMode),
     ),
-    kernel_data: GdtDesc::new(
+    kernel64_data: GdtDesc::new(
         0xFFFFF,
         0,
         GdtAccess::Present
@@ -334,8 +358,8 @@ pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
             "mov fs, ax",
             "mov gs, ax",
             "mov ss, ax",
-            code_seg = const offset_of!(Gdt, kernel_code),
-            data_seg = const offset_of!(Gdt, kernel_data),
+            code_seg = const offset_of!(Gdt, kernel64_code),
+            data_seg = const offset_of!(Gdt, kernel64_data),
             lateout("rax") _ // (R)AX was modified.
         );
 
