@@ -102,7 +102,7 @@ impl IdtEntry {
         Self {
             base0: base.value() as u16,
             // Only allow handlers to be part of the kernel.
-            selector: offset_of!(Gdt, kernel_code) as u16,
+            selector: offset_of!(Gdt, kernel64_code) as u16,
             ist: interrupt_stack,
             attributes: 1 << 7 // = Present
                 | gate as u8,

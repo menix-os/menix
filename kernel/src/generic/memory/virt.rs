@@ -117,6 +117,10 @@ impl PageTable<true> {
 }
 
 impl<const K: bool> PageTable<K> {
+    pub fn get_phys_addr(&self) -> PhysAddr {
+        *self.head.lock()
+    }
+
     pub const fn root_level(&self) -> usize {
         self.root_level
     }
@@ -310,7 +314,9 @@ impl<const K: bool> PageTable<K> {
     /// Un-maps a page from this address space.
     pub fn unmap_single(&mut self, virt: VirtAddr) -> Result<(), PageTableError> {
         crate::arch::virt::flush_tlb(virt);
-        todo!();
+
+        // TODO
+        Ok(())
     }
 
     /// Un-maps a range from this address space.
