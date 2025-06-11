@@ -199,32 +199,15 @@ fn init() {
 
     // Print the memory map.
     memory_map.iter().for_each(|x| {
+        if x.length == 0 {
+            return;
+        }
         log!(
             "[{:#018x} - {:#018x}]",
             x.address.0,
             x.address.0 + x.length - 1
         )
     });
-
-    // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
-    for entry in memory_map.iter_mut() {
-        if entry.address.value() >= 1 << 16 {
-            continue;
-        }
-
-        warn!(
-            "Dropping 16-bit memory starting at {:#018x}",
-            entry.address.value()
-        );
-
-        // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
-        if entry.address + entry.length >= PhysAddr(1 << 16) {
-            entry.length -= (1 << 16) - entry.address.value();
-            entry.address = PhysAddr(1 << 16);
-        } else {
-            entry.length = 0;
-        }
-    }
 
     let highest_addr = memory_map
         .iter()

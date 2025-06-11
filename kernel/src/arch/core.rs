@@ -20,8 +20,8 @@ pub fn get_per_cpu() -> *mut CpuData {
 }
 
 /// Tests and enables all supported features on the current CPU.
-pub fn perpare_cpu(context: &mut CpuData) {
-    internal::core::perpare_cpu(context);
+pub fn prepare_cpu(context: &mut CpuData) {
+    internal::core::prepare_cpu(context);
 }
 
 /// Stop execution on this CPU.

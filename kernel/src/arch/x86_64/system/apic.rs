@@ -5,8 +5,11 @@ use crate::{
     },
     generic::{
         clock,
-        irq::{IpiTarget, IrqError, IrqHandler, IrqStatus},
-        memory::PhysAddr,
+        irq::{IpiTarget, IrqHandler, IrqStatus},
+        memory::{
+            PhysAddr,
+            mmio::{Mmio, Register},
+        },
         percpu::CpuData,
     },
 };
@@ -14,67 +17,121 @@ use core::{hint::unlikely, u32};
 
 #[derive(Debug)]
 pub struct LocalApic {
-    has_x2apic: bool,
-    // How many ticks pass in 10 milliseconds.
+    /// How many ticks pass in 10 milliseconds.
     ticks_per_10ms: u32,
-    _lapic_addr: PhysAddr,
+    /// If [`Some`], points to the xAPIC MMIO space.
+    /// Otherwise, it's an x2APIC.
+    xapic_regs: Option<Mmio>,
+}
+
+per_cpu! {
+    pub static LAPIC: LocalApic = LocalApic { ticks_per_10ms: 0, xapic_regs: None };
+}
+
+mod regs {
+    use crate::generic::memory::mmio::Register;
+
+    pub const ID: Register<u32> = Register::new(0x20);
+    pub const TPR: Register<u32> = Register::new(0x80);
+    pub const EOI: Register<u32> = Register::new(0xB0);
+    pub const LDR: Register<u32> = Register::new(0xD0);
+    pub const DFR: Register<u32> = Register::new(0xE0);
+    pub const SIVR: Register<u32> = Register::new(0xF0);
+    pub const ESR: Register<u32> = Register::new(0x280);
+    pub const ICR: Register<u32> = Register::new(0x300);
+    pub const ICR_HI: Register<u32> = Register::new(0x310);
+    pub const LVT_TR: Register<u32> = Register::new(0x320);
+    pub const ICR_TIMER: Register<u32> = Register::new(0x380);
+    pub const CCR: Register<u32> = Register::new(0x390);
+    pub const DCR: Register<u32> = Register::new(0x3E0);
+}
+
+#[repr(u8)]
+pub enum DeliveryMode {
+    Fixed = 0b000,
+    LowestPrio = 0b001,
+    SMI = 0b010,
+    NMI = 0b100,
+    INIT = 0b101,
+    StartUp = 0b110,
+}
+
+#[repr(u8)]
+pub enum DestinationMode {
+    Physical = 0,
+    Logical = 1,
+}
+
+#[repr(u8)]
+pub enum DeliveryStatus {
+    Idle = 0,
+    Pending = 1,
+}
+
+#[repr(u8)]
+pub enum Level {
+    Deassert = 0,
+    Assert = 1,
+}
+
+#[repr(u8)]
+pub enum TriggerMode {
+    Edge = 0,
+    Level = 1,
 }
 
 impl LocalApic {
     pub fn init(context: &CpuData) {
-        let mut result = LocalApic {
-            has_x2apic: false,
-            ticks_per_10ms: 0,
-            _lapic_addr: PhysAddr::null(),
-        };
+        let lapic = LAPIC.get();
 
         // Enable the APIC flag.
         let mut apic_msr = unsafe { asm::rdmsr(0x1B) };
         apic_msr |= 1 << 11;
 
         // Enable the x2APIC if we have it.
-        result.has_x2apic = {
+        lapic.xapic_regs = {
             let cpuid = asm::cpuid(1, 0);
             if cpuid.ecx & consts::CPUID_1C_X2APIC != 0 {
                 apic_msr |= 1 << 10;
-                true
+                None
             } else {
-                todo!("No x2APIC available!");
-                // TODO: Parse MADT for LAPIC base address.
+                Some(unsafe { Mmio::new_mmio(PhysAddr::from(apic_msr & 0xFFFFF000), 0x1000) })
             }
         };
 
         unsafe { asm::wrmsr(0x1B, apic_msr) };
 
-        // Reset the TPR.
-        result.write_register(0x80, 0);
-        // Enable APIC bit in the SIVR.
-        result.write_register(0xF0, result.read_register(0xF0) | 0x100);
+        return;
 
-        if !result.has_x2apic {
-            result.write_register(0xE0, 0xF000_0000);
+        // Reset the TPR.
+        lapic.write_reg(regs::TPR, 0);
+        // Enable APIC bit in the SIVR.
+        lapic.write_reg(regs::SIVR, lapic.read_reg(regs::SIVR) | 0x100);
+
+        if lapic.xapic_regs.is_some() {
+            lapic.write_reg(regs::DFR, 0xF000_0000);
             // Logical destination = LAPIC ID.
-            result.write_register(0xD0, result.read_register(0x20));
+            lapic.write_reg(regs::LDR, lapic.read_reg(regs::ID));
         }
 
         // TODO: Parse MADT and setup NMIs.
 
         // Tell the APIC timer to divide by 16.
-        result.write_register(0x3E0, 3);
+        lapic.write_reg(regs::DCR, 3);
         // Set the timer counter to the highest possible value.
-        result.write_register(0x380, u32::MAX);
+        lapic.write_reg(regs::ICR_TIMER, u32::MAX as u64);
 
         // Sleep for 10 milliseconds.
         clock::block_ns(10_000_000)
             .expect("Unable to setup LAPIC, the kernel should have a working timer!");
 
         // Read how many ticks have passed in 10 ms.
-        result.ticks_per_10ms = u32::MAX - result.read_register(0x390);
+        lapic.ticks_per_10ms = u32::MAX - lapic.read_reg(regs::CCR) as u32;
 
         // Finally, run the periodic timer interrupt on irq0.
-        result.write_register(0x320, 0x20 | 0x20000);
-        result.write_register(0x3E0, 3);
-        result.write_register(0x380, result.ticks_per_10ms);
+        // lapic.write_reg(regs::LVT_TR, 0x20 | 0x20000);
+        // lapic.write_reg(regs::DCR, 3);
+        // lapic.write_reg(regs::ICR_TIMER, lapic.ticks_per_10ms as u64);
 
         log!("Initialized LAPIC for CPU {}", context.id);
 
@@ -82,38 +139,73 @@ impl LocalApic {
         // generic::irq::register_irq(Box::new(result)).unwrap();
     }
 
-    const fn reg_to_x2apic(reg: u32) -> u32 {
-        return (if reg == 0x310 { 0x30 } else { reg >> 4 }) + 0x800;
-    }
-
-    fn read_register(&self, reg: u32) -> u32 {
-        if self.has_x2apic {
-            return unsafe { asm::rdmsr(Self::reg_to_x2apic(reg)) } as u32;
-        } else {
-            todo!();
+    fn read_reg(&self, reg: Register<u32>) -> u64 {
+        match &self.xapic_regs {
+            Some(x) => {
+                if reg == regs::ICR {
+                    x.read(regs::ICR) as u64 | (x.read(regs::ICR_HI) as u64) << 32
+                } else {
+                    x.read(reg).into()
+                }
+            }
+            None => unsafe { asm::rdmsr(0x800 + (reg.offset() as u32 >> 4)) },
         }
     }
 
-    fn write_register(&mut self, reg: u32, value: u32) {
-        if self.has_x2apic {
-            unsafe { asm::wrmsr(Self::reg_to_x2apic(reg), value as u64) };
-        } else {
-            todo!();
+    fn write_reg(&self, reg: Register<u32>, value: u64) {
+        match &self.xapic_regs {
+            Some(x) => {
+                if reg == regs::ICR {
+                    x.write(regs::ICR_HI, (value >> 32) as u32);
+                    x.write(regs::ICR, value as u32);
+                } else {
+                    x.write(reg, value as u32)
+                }
+            }
+            None => unsafe { asm::wrmsr(0x800 + (reg.offset() as u32 >> 4), value) },
         }
     }
 
     pub fn id(&self) -> usize {
-        return self.read_register(0x20) as usize;
+        return self.read_reg(regs::ID) as usize;
     }
 
-    pub fn eoi(&mut self) -> Result<(), IrqError> {
-        self.write_register(0xB0, 0);
-        return Ok(());
+    pub fn eoi(&self) {
+        self.write_reg(regs::EOI, 0);
     }
 
-    pub fn send_ipi(&self, target: IpiTarget) -> Result<(), IrqError> {
-        let _ = target;
-        todo!()
+    pub fn send_ipi(
+        &self,
+        target: IpiTarget,
+        vector: u8,
+        delivery_mode: DeliveryMode,
+        destination_mode: DestinationMode,
+        delivery_status: DeliveryStatus,
+        level: Level,
+        trigger_mode: TriggerMode,
+    ) {
+        let mut icr = vector as u64;
+        icr |= (delivery_mode as u64) << 8;
+        icr |= (destination_mode as u64) << 10;
+        icr |= (delivery_status as u64) << 11;
+        icr |= (level as u64) << 14;
+        icr |= (trigger_mode as u64) << 15;
+        icr |= (match target {
+            IpiTarget::ThisCpu => 0b01,
+            IpiTarget::All => 0b10,
+            IpiTarget::AllButThisCpu => 0b11,
+            IpiTarget::Specific(x) => {
+                if self.xapic_regs.is_some() {
+                    icr |= (x as u8 as u64) << 56;
+                } else {
+                    icr |= (x as u64) << 32;
+                }
+                0b00
+            }
+        } as u64)
+            << 18;
+
+        self.write_reg(regs::ICR, icr);
     }
 }
 
@@ -121,7 +213,7 @@ impl IrqHandler for LocalApic {
     // TODO
     fn handle_immediate(&mut self) -> IrqStatus {
         unsafe { arch::sched::preempt_disable() };
-        self.eoi().unwrap();
+        self.eoi();
 
         if unlikely(unsafe { crate::arch::sched::preempt_enable() }) {
             CpuData::get().scheduler.reschedule();

@@ -49,7 +49,7 @@ impl Hpet {
             return Err(ClockError::Unavailable);
         }
 
-        let hpet: *mut acpi_hpet = unsafe { table.__bindgen_anon_1.ptr } as *mut acpi_hpet;
+        let hpet = unsafe { table.__bindgen_anon_1.ptr } as *const acpi_hpet;
         let mut mmio = unsafe { Mmio::new_mmio(((*hpet).address.address as usize).into(), 0x1000) };
         unsafe { uacpi_table_unref(&raw mut table) };
 

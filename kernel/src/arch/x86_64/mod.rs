@@ -22,7 +22,7 @@ pub struct ArchPerCpu {
     /// A map of ISRs to IRQs.
     pub irq_map: [usize; 256],
     /// The Local APIC ID.
-    pub lapic_id: u64,
+    pub lapic_id: u32,
     /// Size of the FPU.
     pub fpu_size: usize,
     /// Function called to save the FPU context.
