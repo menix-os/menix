@@ -3,7 +3,7 @@ use crate::{
         ARCH_DATA,
         system::{
             apic::{DeliveryMode, DeliveryStatus, DestinationMode, LAPIC, Level, TriggerMode},
-            gdt::{GDT, Gdt, GdtLongDesc, GdtRegister},
+            gdt::{GDT, Gdt, GdtAccess, GdtDesc, GdtFlags, GdtLongDesc, GdtRegister},
         },
     },
     generic::{
@@ -22,48 +22,51 @@ use uacpi_sys::{UACPI_STATUS_OK, acpi_entry_hdr, acpi_madt_lapic, uacpi_table};
 
 unsafe extern "C" {
     pub unsafe static SMP_TRAMPOLINE_START: u8;
-    pub unsafe static SMP_TRAMPOLINE_ENTRY: u8;
+    pub unsafe static SMP_TRAMPOLINE_DATA: u8;
     pub unsafe static SMP_TRAMPOLINE_END: u8;
 }
 
 // The AP trampoline.
 global_asm!("
-.section .rodata
 .global SMP_TRAMPOLINE_START
 .global SMP_TRAMPOLINE_ENTRY
 .global SMP_TRAMPOLINE_END
 
+.section .rodata
+.code16
+
 SMP_TRAMPOLINE_START:
-    .skip {info_size}
-SMP_TRAMPOLINE_ENTRY:
-    .code16
     cli
     cld
+    jmp 1f
 
+SMP_TRAMPOLINE_DATA:
+    .skip {info_size}
+
+.set data_offset, (SMP_TRAMPOLINE_DATA - SMP_TRAMPOLINE_START)
+
+1:
     mov bx, cs
     shl ebx, 4
 
-spin:
-    cli
-    hlt
-    jmp spin
-
-.set idt_offset, (invalid_idt - SMP_TRAMPOLINE_START)
-    lidt dword ptr cs:idt_offset
-    lgdt dword ptr cs:{gdtr_offset}
+.set idtr_offset, (invalid_idtr - SMP_TRAMPOLINE_START)
+    lidtd cs:idtr_offset
+.set gdtr_offset, (data_offset + {gdtr_offset})
+    lgdtd cs:gdtr_offset
 
 .set mode32_offset, (mode32 - SMP_TRAMPOLINE_START)
     lea eax, [ebx + mode32_offset]
-.set farjmp_offset, (farjmp - SMP_TRAMPOLINE_START)
+
+.set farjmp_offset, (data_offset + {farjmp_offset})
+    mov dword ptr cs:farjmp_offset, eax
 
     mov eax, 0x00000011
     mov cr0, eax
+    jmp fword ptr cs:farjmp_offset
 
-farjmp:
-
-    .code32
+.code32
 mode32:
-    mov ax, 0x20
+    mov ax, 0x10
     mov ds, ax
     mov es, ax
     mov fs, ax
@@ -71,28 +74,36 @@ mode32:
     mov ss, ax
 
     xor eax, eax
-    lldt ax
 
     xor eax, eax
     mov cr4, eax
 
+3:
+    hlt
+    jmp 3b
 
-invalid_idt:
-    .quad 0
+invalid_idtr:
+    .word 0
     .quad 0
 
 SMP_TRAMPOLINE_END:",
     info_size = const INFO_SIZE,
     gdtr_offset = const GDTR_OFFSET,
+    farjmp_offset = const FARJMP_OFFSET,
 );
 
 const INFO_SIZE: usize = size_of::<InfoData>();
-const GDTR_OFFSET: usize = offset_of!(InfoData, gdtr);
+const GDTR_OFFSET: usize = offset_of!(InfoData, gdtr_limit);
+const FARJMP_OFFSET: usize = offset_of!(InfoData, farjmp_offset);
 
 #[repr(C, packed)]
 #[derive(Pod, Zeroable, Clone, Copy)]
 struct InfoData {
-    gdtr: GdtRegister,
+    gdtr_limit: u16,
+    gdtr_base: u32,
+    gdt: [GdtDesc; 3],
+    farjmp_offset: u32,
+    farjmp_segment: u32,
     lapic_id: u32,
 }
 
@@ -101,7 +112,7 @@ fn start_ap(id: u32) {
     crate::arch::core::prepare_cpu(CpuData::get());
 
     let start = &raw const SMP_TRAMPOLINE_START; // Start of the trampoline.
-    let entry = &raw const SMP_TRAMPOLINE_ENTRY; // Entry point of the trampoline.
+    let data = &raw const SMP_TRAMPOLINE_DATA; // Start of the data passed to the trampoline.
     let end = &raw const SMP_TRAMPOLINE_END; // End of the trampoline.
 
     let tp_code =
@@ -115,18 +126,42 @@ fn start_ap(id: u32) {
     // Prepare the AP trampoline.
     let buffer: &mut [u8] =
         unsafe { core::slice::from_raw_parts_mut(mem.as_hhdm(), tp_code.len()) };
+
     buffer.copy_from_slice(tp_code);
 
-    // Save our metadata to the trampoline.
+    let data_offset = unsafe { data.offset_from_unsigned(start) };
 
+    // Save our metadata to the trampoline.
     let info = InfoData {
         lapic_id: id,
-        gdtr: GdtRegister {
-            limit: (size_of::<Gdt>() - size_of::<GdtLongDesc>() - 1) as u16,
-            base: &raw const GDT as u64,
-        },
+        gdtr_limit: ((size_of::<GdtDesc>() * 3) - 1) as u16,
+        gdtr_base: mem.value() as u32 + data_offset as u32 + offset_of!(InfoData, gdt) as u32,
+        gdt: [
+            GdtDesc::empty(),
+            GdtDesc::new(
+                0xFFFF,
+                0,
+                GdtAccess::ReadWrite
+                    | GdtAccess::Executable
+                    | GdtAccess::Segment
+                    | GdtAccess::Present,
+                GdtFlags::ProtMode | GdtFlags::Granularity,
+            ),
+            GdtDesc::new(
+                0xFFFF,
+                0,
+                GdtAccess::Accessed
+                    | GdtAccess::ReadWrite
+                    | GdtAccess::Segment
+                    | GdtAccess::Present,
+                GdtFlags::ProtMode | GdtFlags::Granularity,
+            ),
+        ],
+        farjmp_offset: 0,
+        farjmp_segment: 8,
     };
-    buffer[0..size_of::<InfoData>()].copy_from_slice(bytemuck::bytes_of(&info));
+
+    buffer[data_offset..][0..size_of::<InfoData>()].copy_from_slice(bytemuck::bytes_of(&info));
 
     dbg!(buffer);
 
@@ -143,11 +178,9 @@ fn start_ap(id: u32) {
     );
     clock::block_ns(1000_0000).unwrap();
 
-    let entry = unsafe { entry.byte_offset_from_unsigned(start) };
-    let entry_offset = (mem.value() + entry) >> 12;
     lapic.send_ipi(
         IpiTarget::Specific(id),
-        entry_offset as u8,
+        (mem.value() >> 12) as u8,
         DeliveryMode::StartUp,
         DestinationMode::Physical,
         DeliveryStatus::Idle,

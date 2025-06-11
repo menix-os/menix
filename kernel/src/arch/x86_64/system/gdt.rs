@@ -69,7 +69,7 @@ bitflags! {
 }
 
 /// GDT segment descriptor
-#[derive(Copy, Clone, Debug)]
+#[derive(Pod, Zeroable, Copy, Clone, Debug)]
 #[repr(C, packed)]
 pub struct GdtDesc {
     /// Limit[0..15]
