@@ -4,7 +4,7 @@ pub mod task;
 use crate::generic::{
     memory::{
         VirtAddr,
-        pmm::FreeList,
+        pmm::{AllocFlags, KernelAlloc},
         virt::{KERNEL_PAGE_TABLE, PageTable},
     },
     posix::errno::{EResult, Errno},
@@ -88,7 +88,10 @@ impl Process {
         Ok(Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             name,
-            page_table: PageTable::new_user::<FreeList>(KERNEL_PAGE_TABLE.lock().root_level()),
+            page_table: PageTable::new_user::<KernelAlloc>(
+                KERNEL_PAGE_TABLE.lock().root_level(),
+                AllocFlags::empty(),
+            ),
             threads: Mutex::new(Vec::new()),
             root_dir: Mutex::new(root),
             working_dir: Mutex::new(cwd),

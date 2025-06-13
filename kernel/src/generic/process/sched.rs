@@ -1,7 +1,11 @@
 use super::task::{Task, Tid};
 use crate::{
     arch,
-    generic::{percpu::CpuData, process::task::TaskState, util::mutex::IrqMutex},
+    generic::{
+        percpu::CpuData,
+        process::task::TaskState,
+        util::mutex::{IrqMutex, Mutex},
+    },
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::{
@@ -16,7 +20,7 @@ pub struct Scheduler {
     pub(crate) current: AtomicPtr<Task>,
     pub(crate) lock: IrqMutex<()>,
     pub(crate) preempt_level: usize,
-    run_queue: BTreeMap<Tid, Arc<Task>>,
+    run_queue: Mutex<BTreeMap<Tid, Arc<Task>>>,
 }
 
 impl Scheduler {
@@ -25,13 +29,13 @@ impl Scheduler {
             current: AtomicPtr::new(null_mut()),
             lock: IrqMutex::new(()),
             preempt_level: 0,
-            run_queue: BTreeMap::new(),
+            run_queue: Mutex::new(BTreeMap::new()),
         };
     }
 
     pub fn add_task(&mut self, task: Task) {
         log!("New task {} added to run queue", task.get_id());
-        self.run_queue.insert(task.get_id(), Arc::new(task));
+        self.run_queue.lock().insert(task.get_id(), Arc::new(task));
     }
 
     /// Returns the task currently running on this CPU.
@@ -43,14 +47,14 @@ impl Scheduler {
     }
 
     pub fn get_by_tid(&self, tid: Tid) -> Option<Arc<Task>> {
-        self.run_queue.get(&tid).map(|x| x.clone())
+        self.run_queue.lock().get(&tid).map(|x| x.clone())
     }
 
     /// Starts running this scheduler.
-    pub(crate) fn start(&mut self, initial: Task) -> ! {
+    pub(crate) fn start(&self, initial: Task) -> ! {
         let task = Arc::new(initial);
 
-        self.run_queue.insert(task.get_id(), task.clone());
+        self.run_queue.lock().insert(task.get_id(), task.clone());
 
         // We create a dummy thread on the stack which only exists to start the scheduler since
         // the scheduler assumes that there's always a task running. Since this is a dead end,
@@ -71,15 +75,16 @@ impl Scheduler {
         let current_tid = Self::get_current().get_id();
         let filter = |&(_, b): &(&Tid, &Arc<Task>)| *b.state.lock() == TaskState::Ready;
 
-        self.run_queue
-            .range((current_tid + 1)..)
+        let rq = self.run_queue.lock();
+
+        rq.range((current_tid + 1)..)
             .find(filter)
-            .or_else(|| self.run_queue.range(..=current_tid).find(filter))
+            .or_else(|| rq.range(..=current_tid).find(filter))
             .map(|(_, task)| task.clone())
     }
 
     /// Runs the scheduler. `preempt` tells the scheduler if it's supposed to handle preemption or not.
-    pub(crate) fn reschedule(&mut self) {
+    pub(crate) fn reschedule(&self) {
         let old = unsafe { arch::irq::set_irq_state(false) };
         let from = self.current.load(Ordering::Relaxed);
         let to = Arc::into_raw(self.next().expect("No more tasks to run!")) as *mut Task;

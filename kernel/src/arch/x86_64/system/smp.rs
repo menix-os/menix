@@ -1,10 +1,12 @@
 use crate::{
-    arch::x86_64::{
-        ARCH_DATA,
-        consts::{CR0_ET, CR0_PE, CR0_PG, CR4_PAE, MSR_EFER, MSR_EFER_LME, MSR_EFER_NXE},
-        system::{
-            apic::{DeliveryMode, DeliveryStatus, DestinationMode, LAPIC, Level, TriggerMode},
-            gdt::{GDT, Gdt},
+    arch::{
+        virt::{PageTableEntry, get_page_size},
+        x86_64::{
+            consts::{CR0_ET, CR0_PE, CR0_PG, CR4_PAE, MSR_EFER, MSR_EFER_LME, MSR_EFER_NXE},
+            system::{
+                apic::{DeliveryMode, DeliveryStatus, DestinationMode, LAPIC, Level, TriggerMode},
+                gdt::{GDT, Gdt},
+            },
         },
     },
     generic::{
@@ -12,18 +14,18 @@ use crate::{
         irq::IpiTarget,
         memory::{
             PhysAddr, VirtAddr,
-            pmm::{AllocFlags, FreeList, PageAllocator},
-            virt::{KERNEL_PAGE_TABLE, KERNEL_STACK_SIZE, VmFlags, VmLevel},
+            pmm::{AllocFlags, KernelAlloc, PageAllocator},
+            virt::{KERNEL_PAGE_TABLE, KERNEL_STACK_SIZE, PageTable, VmFlags, VmLevel},
         },
-        percpu::CpuData,
+        percpu::{self, CpuData},
         util::mutex::Mutex,
     },
 };
 use alloc::vec::Vec;
 use bytemuck::{Pod, Zeroable};
-use core::arch::global_asm;
-use core::mem::offset_of;
-use uacpi_sys::{UACPI_STATUS_OK, acpi_entry_hdr, acpi_madt_lapic, uacpi_table};
+use core::{arch::global_asm, sync::atomic::Ordering};
+use core::{arch::naked_asm, mem::offset_of};
+use uacpi_sys::{UACPI_STATUS_OK, acpi_entry_hdr, acpi_madt_lapic, acpi_madt_x2apic, uacpi_table};
 
 unsafe extern "C" {
     pub unsafe static SMP_TRAMPOLINE_START: u8;
@@ -52,7 +54,7 @@ SMP_TRAMPOLINE_DATA:
 .set gdtr_offset, (data_offset + {gdtr_offset})
 .set farjmp_offset, (data_offset + {farjmp_offset})
 .set temp_stack_offset, (data_offset + {temp_stack_offset})
-.set kernel_cr3_offset, (data_offset + {kernel_cr3_offset})
+.set temp_cr3_offset, (data_offset + {temp_cr3_offset})
 .set entry_offset, (data_offset + {entry_offset})
 
 1:
@@ -96,7 +98,7 @@ mode32:
     xor edx, edx
     wrmsr
 
-    mov eax, dword ptr [ebx + kernel_cr3_offset]
+    mov eax, dword ptr [ebx + temp_cr3_offset]
     mov cr3, eax
 
     mov eax, cr0
@@ -139,7 +141,7 @@ SMP_TRAMPOLINE_END:",
     gdtr_offset = const GDTR_OFFSET,
     farjmp_offset = const FARJMP_OFFSET,
     temp_stack_offset = const TEMP_STACK_OFFSET,
-    kernel_cr3_offset = const KERNEL_CR3_OFFSET,
+    temp_cr3_offset = const TEMP_CR3_OFFSET,
     entry_offset = const ENTRY_OFFSET,
 
     kernel32_ds = const KERNEL32_DS,
@@ -160,31 +162,62 @@ const INFO_SIZE: usize = size_of::<InfoData>();
 const GDTR_OFFSET: usize = offset_of!(InfoData, gdtr_limit);
 const FARJMP_OFFSET: usize = offset_of!(InfoData, farjmp_offset);
 const TEMP_STACK_OFFSET: usize = offset_of!(InfoData, temp_stack);
-const KERNEL_CR3_OFFSET: usize = offset_of!(InfoData, kernel_cr3);
+const TEMP_CR3_OFFSET: usize = offset_of!(InfoData, temp_cr3);
 const ENTRY_OFFSET: usize = offset_of!(InfoData, entry);
 
 const KERNEL32_DS: usize = offset_of!(Gdt, kernel32_data);
 const KERNEL64_CS: usize = offset_of!(Gdt, kernel64_code);
 const KERNEL64_DS: usize = offset_of!(Gdt, kernel64_data);
 
-extern "C" fn ap_entry(info: *const InfoData) -> ! {
-    let info_data = unsafe { info.read() };
-    let lapic_id = unsafe { (&raw const info_data.lapic_id).read_unaligned() };
+/// Information which is passed to a booted up AP via the trampoline.
+#[repr(C, packed)]
+#[derive(Debug, Pod, Zeroable, Clone, Copy)]
+struct InfoData {
+    gdt: Gdt,
+    gdtr_limit: u16,
+    gdtr_base: u64,
+    farjmp_offset: u32,
+    farjmp_segment: u32,
+    temp_stack: u32,
+    hhdm_offset: u64,
+    temp_cr3: u32,
+    entry: u64,
+    lapic_id: u32,
+    booted: u8,
+}
 
+/// Swaps the stack for one in the higher half.
+#[unsafe(naked)]
+extern "C" fn ap_entry_stub(info: PhysAddr) {
     unsafe {
-        let mut stack: usize;
-        core::arch::asm!("mov {stack}, rsp", stack = out(reg) stack);
+        naked_asm!(
+            "add rsp, [rdi + {hhdm_offset}]",
+            "jmp {ap_entry}",
+            hhdm_offset = const offset_of!(InfoData, hhdm_offset),
+            ap_entry = sym ap_entry,
+        );
+    }
+}
 
-        let stack_virt = PhysAddr::new(stack).as_hhdm::<u8>() as usize;
-        core::arch::asm!("mov rsp, {stack}", stack = in(reg) stack_virt);
+extern "C" fn ap_entry(info: PhysAddr) -> ! {
+    unsafe {
+        KERNEL_PAGE_TABLE.lock().set_active();
 
-        let booted = info.byte_offset(offset_of!(InfoData, booted) as isize) as *mut u8;
-        booted.write(1);
+        // Let the BSP know that we're alive.
+        let booted = (info.as_hhdm() as *mut u8).byte_add(offset_of!(InfoData, booted));
+        booted.write_volatile(1);
     }
 
-    // XXX: Not safe to access `info` here anymore.
+    let cpu_ctx = percpu::allocate_cpu().expect("Unable to allocate per-CPU context");
+    super::super::core::setup_core(cpu_ctx);
 
-    log!("Hello from AP {lapic_id}");
+    assert!(
+        cpu_ctx.present.load(Ordering::Acquire),
+        "CPU is not present?"
+    );
+    assert!(cpu_ctx.online.load(Ordering::Acquire), "CPU is not online?");
+
+    status!("Hello from CPU {}", CpuData::get().id);
 
     loop {
         unsafe {
@@ -193,26 +226,8 @@ extern "C" fn ap_entry(info: *const InfoData) -> ! {
     }
 }
 
-#[repr(C, packed)]
-#[derive(Pod, Zeroable, Clone, Copy)]
-struct InfoData {
-    gdt: Gdt,
-    gdtr_limit: u16,
-    gdtr_base: u64,
-    farjmp_offset: u32,
-    farjmp_segment: u32,
-    temp_stack: u32,
-    kernel_cr3: u64,
-    entry: u64,
-    lapic_id: u32,
-    booted: u8,
-}
-
-fn start_ap(id: u32) {
+fn start_ap(temp_cr3: u32, id: u32) {
     log!("Starting AP {id}");
-
-    crate::arch::core::setup_ap(CpuData::get());
-
     let start = &raw const SMP_TRAMPOLINE_START; // Start of the trampoline.
     let data = &raw const SMP_TRAMPOLINE_DATA; // Start of the data passed to the trampoline.
     let end = &raw const SMP_TRAMPOLINE_END; // End of the trampoline.
@@ -222,12 +237,12 @@ fn start_ap(id: u32) {
 
     assert!(tp_code.len() <= 0x1000);
 
-    let Ok(mem) = FreeList::alloc_bytes(tp_code.len(), AllocFlags::Kernel20) else {
+    let Ok(mem) = KernelAlloc::alloc_bytes(tp_code.len(), AllocFlags::Kernel20) else {
         error!("Failed to allocate 20-bit memory for the AP trampoline!");
         return;
     };
 
-    let Ok(stack_mem) = FreeList::alloc_bytes(KERNEL_STACK_SIZE, AllocFlags::Kernel32) else {
+    let Ok(stack_mem) = KernelAlloc::alloc_bytes(KERNEL_STACK_SIZE, AllocFlags::Kernel32) else {
         error!("Failed to allocate a stack for the AP trampoline!");
         return;
     };
@@ -246,12 +261,13 @@ fn start_ap(id: u32) {
     let info = InfoData {
         gdt: GDT,
         gdtr_limit: (size_of::<Gdt>() - 1) as u16,
-        gdtr_base: (mem.value() + data_offset + offset_of!(InfoData, gdt)) as u64,
+        gdtr_base: (mem.value() + data_offset + offset_of!(InfoData, gdt)) as _,
         farjmp_offset: 0,
-        farjmp_segment: offset_of!(Gdt, kernel32_code) as u32,
+        farjmp_segment: offset_of!(Gdt, kernel32_code) as _,
         temp_stack: temp_stack as u32,
-        kernel_cr3: KERNEL_PAGE_TABLE.lock().get_phys_addr().value() as u64,
-        entry: ap_entry as *const fn() as u64,
+        hhdm_offset: PhysAddr::null().as_hhdm() as *mut u8 as _,
+        temp_cr3,
+        entry: ap_entry_stub as *const fn() as _,
         lapic_id: id,
         booted: 0,
     };
@@ -260,27 +276,6 @@ fn start_ap(id: u32) {
         .copy_from_slice(bytemuck::bytes_of(&info));
 
     let lapic = LAPIC.get();
-
-    KERNEL_PAGE_TABLE
-        .lock()
-        .map_range::<FreeList>(
-            VirtAddr::new(stack_mem.value()),
-            stack_mem,
-            VmFlags::Read | VmFlags::Exec,
-            VmLevel::L1,
-            KERNEL_STACK_SIZE,
-        )
-        .unwrap();
-
-    KERNEL_PAGE_TABLE
-        .lock()
-        .map_single::<FreeList>(
-            VirtAddr::new(mem.value()),
-            mem,
-            VmFlags::Read | VmFlags::Exec,
-            VmLevel::L1,
-        )
-        .unwrap();
 
     lapic.send_ipi(
         IpiTarget::Specific(id),
@@ -314,32 +309,28 @@ fn start_ap(id: u32) {
         clock::block_ns(1_000_000).unwrap();
     }
 
-    KERNEL_PAGE_TABLE
-        .lock()
-        .unmap_range(VirtAddr::new(stack_mem.value()), KERNEL_STACK_SIZE)
-        .unwrap();
-
-    KERNEL_PAGE_TABLE
-        .lock()
-        .unmap_single(VirtAddr::new(mem.value()))
-        .unwrap();
-
-    unsafe { FreeList::dealloc(mem, 1) };
+    unsafe { KernelAlloc::dealloc(mem, 1) };
 }
 
 init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE, crate::system::acpi::TABLES_STAGE, crate::generic::clock::CLOCK_STAGE)]
-    #[entails(crate::arch::AP_DISCOVER_STAGE)]
+    #[depends(crate::generic::memory::MEMORY_STAGE, crate::system::acpi::TABLES_STAGE)]
+    #[entails(crate::arch::INIT_STAGE)]
     DISCOVER_STAGE: "arch.x86_64.discover-aps" => discover_aps;
 
-    #[depends(crate::arch::AP_DISCOVER_STAGE, crate::generic::clock::CLOCK_STAGE)]
-    #[entails(crate::arch::AP_INIT_STAGE)]
+    #[depends(DISCOVER_STAGE, crate::generic::clock::CLOCK_STAGE)]
+    #[entails(crate::arch::INIT_STAGE)]
     INIT_STAGE: "arch.x86_64.init-aps" => init_aps;
 }
 
 static FOUND_APS: Mutex<Vec<u32>> = Mutex::new(Vec::new());
 
 fn discover_aps() {
+    // Setup BSP.
+    super::super::core::setup_core(CpuData::get());
+
+    let mut xapic = false;
+    let mut x2apic = false;
+
     // Parse the MADT to discover LAPICs.
     unsafe {
         let mut table = uacpi_table::default();
@@ -358,12 +349,24 @@ fn discover_aps() {
 
             match entry.type_ as u32 {
                 uacpi_sys::ACPI_MADT_ENTRY_TYPE_LAPIC => {
+                    assert_eq!(x2apic, false);
                     let lapic = (ptr as *const acpi_madt_lapic).read_unaligned();
 
                     // If this LAPIC is enabled and not the BSP, start it.
-                    if lapic.flags & 1 != 0 && lapic.id as u32 != ARCH_DATA.get().lapic_id {
+                    if lapic.flags & 1 != 0 && lapic.id as u32 != LAPIC.get().id() {
                         FOUND_APS.lock().push(lapic.id as u32)
                     }
+                    xapic = true;
+                }
+                uacpi_sys::ACPI_MADT_ENTRY_TYPE_LOCAL_X2APIC => {
+                    assert_eq!(xapic, false);
+                    let lapic = (ptr as *const acpi_madt_x2apic).read_unaligned();
+
+                    // If this LAPIC is enabled and not the BSP, start it.
+                    if lapic.flags & 1 != 0 && lapic.id != LAPIC.get().id() {
+                        FOUND_APS.lock().push(lapic.id)
+                    }
+                    x2apic = true;
                 }
                 _ => {}
             }
@@ -375,7 +378,51 @@ fn discover_aps() {
 }
 
 fn init_aps() {
+    // Prepare an identity mapped page table, with the root highter half tables mapped as well.
+    let temp_table = KernelAlloc::alloc(1, AllocFlags::Kernel32 | AllocFlags::Zeroed)
+        .expect("Unable to allocate a page table in 32-bit physical memory");
+    let temp_l3 = KernelAlloc::alloc(1, AllocFlags::Kernel32 | AllocFlags::Zeroed)
+        .expect("Unable to allocate a page level in 32-bit physical memory");
+
+    unsafe {
+        let temp_buffer = temp_table.as_hhdm() as *mut u64;
+        let temp_l3_buffer = temp_l3.as_hhdm() as *mut u64;
+
+        // Identity map the lower half.
+        for i in 0..256 {
+            temp_l3_buffer.offset(i as isize).write(
+                PageTableEntry::new(
+                    PhysAddr::new(i * get_page_size(VmLevel::L3)),
+                    VmFlags::Read | VmFlags::Write | VmFlags::Exec | VmFlags::Large,
+                    3,
+                )
+                .inner() as u64,
+            );
+        }
+
+        temp_buffer.write(
+            PageTableEntry::new(temp_l3, VmFlags::Read | VmFlags::Write | VmFlags::Exec, 3).inner()
+                as u64,
+        );
+
+        // Copy over the higher half maps from the root table.
+        let kernel_page = KERNEL_PAGE_TABLE.lock().get_head_addr().as_hhdm() as *const u64;
+        for i in 256..512 {
+            temp_buffer.offset(i).write(kernel_page.offset(i).read());
+        }
+    }
+
+    assert!(
+        temp_table.value() < u32::MAX as usize,
+        "Temporary page table *must* fit inside a 32-bit value"
+    );
+
     for ap in FOUND_APS.lock().iter() {
-        start_ap(*ap);
+        start_ap(temp_table.value() as u32, *ap);
+    }
+
+    unsafe {
+        KernelAlloc::dealloc(temp_table, 1);
+        KernelAlloc::dealloc(temp_l3, 1);
     }
 }

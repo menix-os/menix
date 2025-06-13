@@ -96,6 +96,7 @@ pub fn run() {
     }
 
     while let Some(node) = pending.pop_front() {
+        log!("Running stage {:?}", node.display_name);
         node.run();
 
         for edge in node.out_edges.lock().iter() {

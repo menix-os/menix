@@ -1,7 +1,7 @@
 use super::{
     memory::{
         PhysAddr, VirtAddr,
-        pmm::{AllocFlags, FreeList, PageAllocator},
+        pmm::{AllocFlags, KernelAlloc, PageAllocator},
         virt::VmFlags,
         virt::VmLevel,
     },
@@ -177,7 +177,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 }
 
                 // Allocate physical memory.
-                let phys = FreeList::alloc_bytes(memsz, AllocFlags::Zeroed)
+                let phys = KernelAlloc::alloc_bytes(memsz, AllocFlags::Zeroed)
                     .map_err(|_| ModuleLoadError::AllocFailed)?;
 
                 let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
@@ -185,7 +185,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 // Map memory with RW permissions.
                 for page in (0..memsz).step_by(arch::virt::get_page_size(VmLevel::L1)) {
                     page_table
-                        .map_single::<FreeList>(
+                        .map_single::<KernelAlloc>(
                             (load_base + aligned_virt + page).into(),
                             phys + page,
                             VmFlags::Read | VmFlags::Write,
@@ -363,7 +363,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
         let length = align_up(*length, arch::virt::get_page_size(VmLevel::L1));
         for page in (0..length).step_by(arch::virt::get_page_size(VmLevel::L1)) {
             page_table
-                .remap_single::<FreeList>(*virt + page, *flags, VmLevel::L1)
+                .remap_single::<KernelAlloc>(*virt + page, *flags, VmLevel::L1)
                 .map_err(|_| ModuleLoadError::AllocFailed)?;
         }
     }

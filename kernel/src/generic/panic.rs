@@ -99,7 +99,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
     }
 
     log_panic!("----------");
-    log_panic!("End of panic message.");
+    log_panic!("End of panic message");
 
     loop {
         unsafe { arch::irq::set_irq_state(false) };

@@ -45,9 +45,9 @@ pub fn init() -> ! {
     CpuData::get().scheduler.start(init);
 }
 
-/// The high-level kernel entry point. This is invoked by the scheduler once it's running.
+/// The high-level kernel entry point.
 pub extern "C" fn main(_: usize, _: usize) {
-    // Find init. If no path is given, search a few select directories.
+    // Find user-space init. If no path is given, search a few select directories.
     let path = match BootInfo::get().command_line.get_string("init") {
         Some(x) => x,
         // TODO: Search filesystem for init binaries.

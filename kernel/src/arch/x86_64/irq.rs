@@ -57,7 +57,7 @@ unsafe extern "C" fn interrupt_handler(context: *mut Context) {
         }
         // Any other ISR is an IRQ with a dynamic handler.
         _ => {
-            match &mut super::ARCH_DATA.get().irq_handlers[isr] {
+            match &mut super::ARCH_DATA.get().irq_handlers.lock()[isr] {
                 Some(x) => x.handle_immediate(),
                 None => {
                     panic!("Got an unhandled interrupt {}!", isr);

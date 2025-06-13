@@ -11,21 +11,26 @@ use crate::{
             mmio::{Mmio, Register},
         },
         percpu::CpuData,
+        util::mutex::Mutex,
     },
 };
-use core::{hint::unlikely, u32};
+use core::{
+    hint::unlikely,
+    sync::atomic::{AtomicU32, Ordering},
+    u32,
+};
 
 #[derive(Debug)]
 pub struct LocalApic {
     /// How many ticks pass in 10 milliseconds.
-    ticks_per_10ms: u32,
+    ticks_per_10ms: AtomicU32,
     /// If [`Some`], points to the xAPIC MMIO space.
     /// Otherwise, it's an x2APIC.
-    xapic_regs: Option<Mmio>,
+    xapic_regs: Mutex<Option<Mmio>>,
 }
 
 per_cpu! {
-    pub static LAPIC: LocalApic = LocalApic { ticks_per_10ms: 0, xapic_regs: None };
+    pub static LAPIC: LocalApic = LocalApic { ticks_per_10ms: AtomicU32::new(0), xapic_regs: Mutex::new(None) };
 }
 
 mod regs {
@@ -81,7 +86,7 @@ pub enum TriggerMode {
 }
 
 impl LocalApic {
-    pub fn init(context: &CpuData) {
+    pub fn init() {
         let lapic = LAPIC.get();
 
         // Enable the APIC flag.
@@ -89,7 +94,7 @@ impl LocalApic {
         apic_msr |= 1 << 11;
 
         // Enable the x2APIC if we have it.
-        lapic.xapic_regs = {
+        *lapic.xapic_regs.lock() = {
             let cpuid = asm::cpuid(1, 0);
             if cpuid.ecx & consts::CPUID_1C_X2APIC != 0 {
                 apic_msr |= 1 << 10;
@@ -108,7 +113,7 @@ impl LocalApic {
         // Enable APIC bit in the SIVR.
         lapic.write_reg(regs::SIVR, lapic.read_reg(regs::SIVR) | 0x100);
 
-        if lapic.xapic_regs.is_some() {
+        if lapic.xapic_regs.lock().is_some() {
             lapic.write_reg(regs::DFR, 0xF000_0000);
             // Logical destination = LAPIC ID.
             lapic.write_reg(regs::LDR, lapic.read_reg(regs::ID));
@@ -126,21 +131,22 @@ impl LocalApic {
             .expect("Unable to setup LAPIC, the kernel should have a working timer!");
 
         // Read how many ticks have passed in 10 ms.
-        lapic.ticks_per_10ms = u32::MAX - lapic.read_reg(regs::CCR) as u32;
+        lapic.ticks_per_10ms.store(
+            u32::MAX - lapic.read_reg(regs::CCR) as u32,
+            Ordering::Relaxed,
+        );
 
         // Finally, run the periodic timer interrupt on irq0.
         // lapic.write_reg(regs::LVT_TR, 0x20 | 0x20000);
         // lapic.write_reg(regs::DCR, 3);
         // lapic.write_reg(regs::ICR_TIMER, lapic.ticks_per_10ms as u64);
 
-        log!("Initialized LAPIC for CPU {}", context.id);
-
         // TODO
         // generic::irq::register_irq(Box::new(result)).unwrap();
     }
 
     fn read_reg(&self, reg: Register<u32>) -> u64 {
-        match &self.xapic_regs {
+        match &*self.xapic_regs.lock() {
             Some(x) => {
                 if reg == regs::ICR {
                     x.read(regs::ICR) as u64 | (x.read(regs::ICR_HI) as u64) << 32
@@ -153,7 +159,7 @@ impl LocalApic {
     }
 
     fn write_reg(&self, reg: Register<u32>, value: u64) {
-        match &self.xapic_regs {
+        match &*self.xapic_regs.lock() {
             Some(x) => {
                 if reg == regs::ICR {
                     x.write(regs::ICR_HI, (value >> 32) as u32);
@@ -166,8 +172,8 @@ impl LocalApic {
         }
     }
 
-    pub fn id(&self) -> usize {
-        return self.read_reg(regs::ID) as usize;
+    pub fn id(&self) -> u32 {
+        return self.read_reg(regs::ID) as u32;
     }
 
     pub fn eoi(&self) {
@@ -195,7 +201,7 @@ impl LocalApic {
             IpiTarget::All => 0b10,
             IpiTarget::AllButThisCpu => 0b11,
             IpiTarget::Specific(x) => {
-                if self.xapic_regs.is_some() {
+                if self.xapic_regs.lock().is_some() {
                     icr |= (x as u8 as u64) << 56;
                 } else {
                     icr |= (x as u64) << 32;
