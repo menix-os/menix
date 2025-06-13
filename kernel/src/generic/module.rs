@@ -44,7 +44,6 @@ pub struct ModuleInfo {
 
 init_stage! {
     #[depends(super::memory::MEMORY_STAGE)]
-    #[entails(super::GENERIC_STAGE)]
     pub MODULE_STAGE: "generic.module" => init;
 }
 
