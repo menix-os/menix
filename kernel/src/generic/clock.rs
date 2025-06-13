@@ -5,7 +5,6 @@ use super::util::mutex::Mutex;
 use alloc::boxed::Box;
 
 init_stage! {
-    #[entails(super::GENERIC_STAGE)]
     pub CLOCK_STAGE: "generic.clock" => || {};
 }
 

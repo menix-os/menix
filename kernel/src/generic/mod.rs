@@ -14,7 +14,3 @@ pub mod process;
 pub mod syscall;
 pub mod util;
 pub mod vfs;
-
-init_stage! {
-    pub GENERIC_STAGE: "generic" => || {};
-}
