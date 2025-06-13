@@ -11,7 +11,6 @@ pub mod panic;
 pub mod percpu;
 pub mod posix;
 pub mod process;
-pub mod resource;
 pub mod syscall;
 pub mod util;
 pub mod vfs;
