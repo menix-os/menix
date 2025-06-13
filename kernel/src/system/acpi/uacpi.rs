@@ -8,7 +8,7 @@ use crate::{
         clock,
         memory::{
             free, malloc,
-            pmm::FreeList,
+            pmm::KernelAlloc,
             virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
         },
         util::{self, spin::SpinLock},
@@ -36,7 +36,7 @@ extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c
     return unsafe {
         KERNEL_PAGE_TABLE
             .lock()
-            .map_memory::<FreeList>(
+            .map_memory::<KernelAlloc>(
                 aligned_addr.into(),
                 VmFlags::Read | VmFlags::Write,
                 VmLevel::L1,
@@ -157,7 +157,7 @@ extern "C" fn uacpi_kernel_get_nanoseconds_since_boot() -> uacpi_u64 {
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_stall(usec: uacpi_u8) {
-    clock::wait_ns(usec as usize);
+    clock::block_ns(usec as usize);
 }
 
 #[unsafe(no_mangle)]

@@ -5,7 +5,7 @@ use crate::generic::{
     log::{self, LoggerSink},
     memory::{
         PhysAddr, free, malloc,
-        pmm::FreeList,
+        pmm::KernelAlloc,
         virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
     },
 };
@@ -82,7 +82,11 @@ impl LoggerSink for FbCon {
     }
 }
 
-early_init_call_if_cmdline!("fbcon", true, init);
+init_stage! {
+    #[depends(super::memory::MEMORY_STAGE)]
+    FBCON_STAGE: "generic.fbcon" => init;
+}
+
 pub fn init() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;
@@ -93,7 +97,7 @@ pub fn init() {
     // Map the framebuffer in memory.
     let mem = KERNEL_PAGE_TABLE
         .lock()
-        .map_memory::<FreeList>(
+        .map_memory::<KernelAlloc>(
             fb.base,
             VmFlags::Read | VmFlags::Write,
             VmLevel::L1,

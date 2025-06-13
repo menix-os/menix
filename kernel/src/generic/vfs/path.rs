@@ -22,6 +22,11 @@ impl PathBuf {
     pub unsafe fn from_unchecked(value: Vec<u8>) -> Self {
         PathBuf(value)
     }
+
+    /// Returns true if the path contained is an absolute path.
+    pub fn is_absolute(&self) -> bool {
+        self.0.get(0).is_some_and(|&x| x == b'/')
+    }
 }
 
 impl Display for PathBuf {

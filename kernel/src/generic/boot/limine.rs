@@ -182,6 +182,5 @@ extern "C" fn _start() -> ! {
     // Finally, save the boot information.
     info.register();
 
-    // Call the kernel common entry point.
-    crate::main();
+    crate::init();
 }

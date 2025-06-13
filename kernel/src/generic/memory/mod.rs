@@ -172,13 +172,13 @@ pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
     };
 }
 
+init_stage! {
+    #[depends(crate::arch::EARLY_INIT_STAGE)]
+    pub MEMORY_STAGE: "generic.memory" => init;
+}
+
 /// Bootstraps the memory allocators and kernel virtual page table.
-///
-/// # Safety
-///
-/// Must be called as soon as control is handed to [`crate::main`] or the system won't function!
-#[deny(dead_code)]
-pub unsafe fn init() {
+fn init() {
     let info = BootInfo::get();
 
     let kernel_phys = info
@@ -199,32 +199,15 @@ pub unsafe fn init() {
 
     // Print the memory map.
     memory_map.iter().for_each(|x| {
+        if x.length == 0 {
+            return;
+        }
         log!(
             "[{:#018x} - {:#018x}]",
             x.address.0,
             x.address.0 + x.length - 1
         )
     });
-
-    // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
-    for entry in memory_map.iter_mut() {
-        if entry.address.value() >= 1 << 16 {
-            continue;
-        }
-
-        warn!(
-            "Dropping 16-bit memory starting at {:#018x}",
-            entry.address.value()
-        );
-
-        // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
-        if entry.address + entry.length >= PhysAddr(1 << 16) {
-            entry.length -= (1 << 16) - entry.address.value();
-            entry.address = PhysAddr(1 << 16);
-        } else {
-            entry.length = 0;
-        }
-    }
 
     let highest_addr = memory_map
         .iter()
@@ -252,7 +235,7 @@ pub unsafe fn init() {
     // Remap the kernel in our own page table.
     unsafe {
         log!("Using {}-level paging for page table", paging_level);
-        let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level);
+        let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level, AllocFlags::empty());
 
         let text_start = VirtAddr(&raw const virt::LD_TEXT_START as usize);
         let text_end = VirtAddr(&raw const virt::LD_TEXT_END as usize);

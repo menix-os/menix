@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["dylib"]
 
 [build-dependencies]
-bindgen = "0.71.1"
+bindgen = "0.72.0"
 
 [dependencies]
 uapi = { path = "../bindings/uapi" }
@@ -20,6 +20,7 @@ bytemuck = { version = "1.22.0", features = ["derive", "min_const_generics"] }
 num-traits = { version = "0.2.19", default-features = false }
 limine = { version = "0.5.0", optional = true }
 rustc-demangle = { version = "0.1.24" }
+intrusive-collections = { version = "0.9.7", features = ["nightly"] }
 
 [features]
 default = ["boot_limine"]

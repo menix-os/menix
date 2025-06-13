@@ -1,4 +1,12 @@
+use alloc::sync::Arc;
 use bytemuck::{Pod, Zeroable};
+
+use crate::generic::{
+    posix::errno::EResult,
+    vfs::{exec::ExecFormat, file::File},
+};
+
+use super::ExecutableInfo;
 
 // ELF Header Identification
 pub const ELF_MAG: [u8; 4] = [0x7F, b'E', b'L', b'F'];
@@ -147,22 +155,27 @@ pub const R_RISCV_RELATIVE: u32 = 3;
 pub const R_RISCV_COPY: u32 = 4;
 pub const R_RISCV_JUMP_SLOT: u32 = 5;
 
-cfg_match! {
-    target_arch = "x86_64" => {
-        pub const R_COMMON_NONE: u32 = R_X86_64_NONE;
-        pub const R_COMMON_64: u32 = R_X86_64_64;
-        pub const R_COMMON_GLOB_DAT: u32 = R_X86_64_GLOB_DAT;
-        pub const R_COMMON_JUMP_SLOT: u32 = R_X86_64_JUMP_SLOT;
-        pub const R_COMMON_RELATIVE: u32 = R_X86_64_RELATIVE;
-    }
-    target_arch = "riscv64" => {
-        pub const R_COMMON_NONE: u32 = R_RISCV_NONE;
-        pub const R_COMMON_64: u32 = R_RISCV_64;
-        pub const R_COMMON_GLOB_DAT: u32 = R_RISCV_64;
-        pub const R_COMMON_JUMP_SLOT: u32 = R_RISCV_JUMP_SLOT;
-        pub const R_COMMON_RELATIVE: u32 = R_RISCV_RELATIVE;
-    }
-}
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_NONE: u32 = R_X86_64_NONE;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_64: u32 = R_X86_64_64;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_GLOB_DAT: u32 = R_X86_64_GLOB_DAT;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_JUMP_SLOT: u32 = R_X86_64_JUMP_SLOT;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_RELATIVE: u32 = R_X86_64_RELATIVE;
+
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_NONE: u32 = R_RISCV_NONE;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_64: u32 = R_RISCV_64;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_GLOB_DAT: u32 = R_RISCV_64;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_JUMP_SLOT: u32 = R_RISCV_JUMP_SLOT;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_RELATIVE: u32 = R_RISCV_RELATIVE;
 
 #[cfg(target_pointer_width = "64")]
 pub type ElfAddr = u64;
@@ -304,3 +317,39 @@ pub struct ElfHdr {
     pub e_shstrndx: u16,
 }
 static_assert!(size_of::<ElfHdr>() == 64);
+
+// Yes I know ELF already has "Format" in the name.
+pub struct ElfFormat;
+
+impl ExecFormat for ElfFormat {
+    fn identify(&self, file: &File) -> bool {
+        let mut buffer = [0u8; size_of::<ElfHdr>()];
+
+        match file.pread(&mut buffer, 0) {
+            Ok(x) => {
+                if x != buffer.len() as u64 {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+        let Ok(header) = bytemuck::try_from_bytes::<ElfHdr>(&buffer) else {
+            return false;
+        };
+        if header.e_ident[0..4] != ELF_MAG {
+            return false;
+        }
+
+        return true;
+    }
+
+    fn parse(&self, info: &mut ExecutableInfo) -> EResult<()> {
+        todo!()
+    }
+}
+
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE)]
+    #[entails(crate::generic::vfs::VFS_STAGE)]
+    ELF_STAGE: "generic.vfs.exec.elf" => || super::register("elf", Arc::new(ElfFormat));
+}
