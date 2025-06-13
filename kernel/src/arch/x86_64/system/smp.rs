@@ -4,18 +4,20 @@ use crate::{
         x86_64::{
             consts::{CR0_ET, CR0_PE, CR0_PG, CR4_PAE, MSR_EFER, MSR_EFER_LME, MSR_EFER_NXE},
             system::{
-                apic::{DeliveryMode, DeliveryStatus, DestinationMode, LAPIC, Level, TriggerMode},
+                apic::{
+                    DeliveryMode, DeliveryStatus, DestinationMode, IpiTarget, LAPIC, Level,
+                    TriggerMode,
+                },
                 gdt::{GDT, Gdt},
             },
         },
     },
     generic::{
         clock,
-        irq::IpiTarget,
         memory::{
-            PhysAddr, VirtAddr,
+            PhysAddr,
             pmm::{AllocFlags, KernelAlloc, PageAllocator},
-            virt::{KERNEL_PAGE_TABLE, KERNEL_STACK_SIZE, PageTable, VmFlags, VmLevel},
+            virt::{KERNEL_PAGE_TABLE, KERNEL_STACK_SIZE, VmFlags, VmLevel},
         },
         percpu::{self, CpuData},
         util::mutex::Mutex,
@@ -23,8 +25,8 @@ use crate::{
 };
 use alloc::vec::Vec;
 use bytemuck::{Pod, Zeroable};
+use core::mem::offset_of;
 use core::{arch::global_asm, sync::atomic::Ordering};
-use core::{arch::naked_asm, mem::offset_of};
 use uacpi_sys::{UACPI_STATUS_OK, acpi_entry_hdr, acpi_madt_lapic, acpi_madt_x2apic, uacpi_table};
 
 unsafe extern "C" {
@@ -56,6 +58,7 @@ SMP_TRAMPOLINE_DATA:
 .set temp_stack_offset, (data_offset + {temp_stack_offset})
 .set temp_cr3_offset, (data_offset + {temp_cr3_offset})
 .set entry_offset, (data_offset + {entry_offset})
+.set hhdm_offset, (data_offset + {hhdm_offset})
 
 1:
     mov bx, cs
@@ -129,6 +132,7 @@ mode64:
 
     lea rdi, [rbx + data_offset]
     mov rax, [rbx + entry_offset]
+    add rsp, [rbx + hhdm_offset]
     jmp rax
 
 invalid_idtr:
@@ -143,6 +147,7 @@ SMP_TRAMPOLINE_END:",
     temp_stack_offset = const TEMP_STACK_OFFSET,
     temp_cr3_offset = const TEMP_CR3_OFFSET,
     entry_offset = const ENTRY_OFFSET,
+    hhdm_offset = const HHDM_OFFSET,
 
     kernel32_ds = const KERNEL32_DS,
     kernel64_cs = const KERNEL64_CS,
@@ -164,6 +169,7 @@ const FARJMP_OFFSET: usize = offset_of!(InfoData, farjmp_offset);
 const TEMP_STACK_OFFSET: usize = offset_of!(InfoData, temp_stack);
 const TEMP_CR3_OFFSET: usize = offset_of!(InfoData, temp_cr3);
 const ENTRY_OFFSET: usize = offset_of!(InfoData, entry);
+const HHDM_OFFSET: usize = offset_of!(InfoData, hhdm_offset);
 
 const KERNEL32_DS: usize = offset_of!(Gdt, kernel32_data);
 const KERNEL64_CS: usize = offset_of!(Gdt, kernel64_code);
@@ -184,19 +190,6 @@ struct InfoData {
     entry: u64,
     lapic_id: u32,
     booted: u8,
-}
-
-/// Swaps the stack for one in the higher half.
-#[unsafe(naked)]
-extern "C" fn ap_entry_stub(info: PhysAddr) {
-    unsafe {
-        naked_asm!(
-            "add rsp, [rdi + {hhdm_offset}]",
-            "jmp {ap_entry}",
-            hhdm_offset = const offset_of!(InfoData, hhdm_offset),
-            ap_entry = sym ap_entry,
-        );
-    }
 }
 
 extern "C" fn ap_entry(info: PhysAddr) -> ! {
@@ -267,7 +260,7 @@ fn start_ap(temp_cr3: u32, id: u32) {
         temp_stack: temp_stack as u32,
         hhdm_offset: PhysAddr::null().as_hhdm() as *mut u8 as _,
         temp_cr3,
-        entry: ap_entry_stub as *const fn() as _,
+        entry: ap_entry as *const fn() as _,
         lapic_id: id,
         booted: 0,
     };
@@ -313,7 +306,7 @@ fn start_ap(temp_cr3: u32, id: u32) {
 }
 
 init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE, crate::system::acpi::TABLES_STAGE)]
+    #[depends(crate::generic::memory::MEMORY_STAGE, crate::system::acpi::TABLES_STAGE, crate::generic::clock::CLOCK_STAGE)]
     #[entails(crate::arch::INIT_STAGE)]
     DISCOVER_STAGE: "arch.x86_64.discover-aps" => discover_aps;
 
@@ -382,7 +375,7 @@ fn init_aps() {
         let temp_l3_buffer = temp_l3.as_hhdm() as *mut u64;
 
         // Identity map the lower half.
-        for i in 0..256 {
+        for i in 0..4 {
             temp_l3_buffer.offset(i as isize).write(
                 PageTableEntry::new(
                     PhysAddr::new(i * get_page_size(VmLevel::L3)),
