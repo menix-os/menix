@@ -1,5 +1,8 @@
-use alloc::boxed::Box;
-use core::{fmt::Debug, sync::atomic::AtomicUsize};
+use alloc::sync::Arc;
+use core::{
+    fmt::Debug,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 #[derive(Debug)]
 pub enum IrqStatus {
@@ -11,27 +14,39 @@ pub enum IrqStatus {
     Defer,
 }
 
-#[derive(Debug)]
-pub enum IrqFlags {
-    /// The IRQ is edge-triggered.
-    Edge,
-    /// The IRQ is level-triggered.
-    Level,
-    /// The IRQ is active low.
-    ActiveLow,
-    /// The IRQ is active high.
-    ActiveHigh,
+bitflags::bitflags! {
+    #[derive(Debug)]
+    pub struct IrqFlags: u32 {
+        /// The IRQ is edge-triggered.
+        const Edge = 1 << 0;
+        /// The IRQ is level-triggered.
+        const Level = 1 << 1;
+        /// The IRQ is active low.
+        const ActiveLow = 1 << 2;
+        /// The IRQ is active high.
+        const ActiveHigh = 1 << 3;
+    }
 }
 
 pub trait IrqHandler: Debug {
     /// Handles an interrupt when it first happens.
     /// If it returns [`IrqStatus::Defer`], then [`IrqHandler::handle_threaded`] is called later.
-    fn handle_immediate(&mut self) -> IrqStatus;
+    fn handle_immediate(&self) -> IrqStatus;
 
     /// Called to complete heavy interrupt work which isn't required to be done immediately.
-    fn handle_threaded(&mut self) -> IrqStatus {
+    fn handle_threaded(&self) -> IrqStatus {
         IrqStatus::Handled
     }
+}
+
+#[derive(Debug)]
+pub enum IrqHandlerKind {
+    /// Nothing to handle.
+    None,
+    /// A static handler that is always available.
+    Static(&'static dyn IrqHandler),
+    /// A dynamic handler that can be changed at runtime.
+    Dynamic(Arc<dyn IrqHandler>),
 }
 
 pub type Irq = usize;
@@ -43,13 +58,13 @@ pub trait IrqController {
     fn register(
         &self,
         name: &str,
-        handler: Box<dyn IrqHandler>,
-        thread: Option<Box<dyn IrqHandler>>,
+        handler: IrqHandlerKind,
+        threaded_handler: Option<Arc<dyn IrqHandler>>,
         line: u32,
         flags: IrqFlags,
     ) -> Result<Irq, IrqError>;
 
-    /// Removes an IRQ handler for a specific IRQ.
+    /// Removes an IRQ handler.
     fn remove(&self, irq: Irq) -> Result<(), IrqError>;
 
     /// Masks an IRQ, preventing it from being triggered.
@@ -70,7 +85,12 @@ pub enum IrqError {
     /// The IRQ is already registered.
     AlreadyRegistered,
     /// The IRQ ID is out of range for this controller.
-    OutOfRange,
+    LineOutOfRange,
 }
 
-pub static IRQ_COUNTER: AtomicUsize = AtomicUsize::new(0);
+static IRQ_COUNTER: AtomicUsize = AtomicUsize::new(0);
+
+/// Allocates a new IRQ handle.
+pub fn allocate_irq() -> Irq {
+    IRQ_COUNTER.fetch_add(1, Ordering::Acquire)
+}

@@ -195,10 +195,6 @@ struct InfoData {
 extern "C" fn ap_entry(info: PhysAddr) -> ! {
     unsafe {
         KERNEL_PAGE_TABLE.lock().set_active();
-
-        // Let the BSP know that we're alive.
-        let booted = (info.as_hhdm() as *mut u8).byte_add(offset_of!(InfoData, booted));
-        booted.write_volatile(1);
     }
 
     let cpu_ctx = percpu::allocate_cpu().expect("Unable to allocate per-CPU context");
@@ -211,6 +207,12 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
     assert!(cpu_ctx.online.load(Ordering::Acquire), "CPU is not online?");
 
     status!("Hello from CPU {}", CpuData::get().id);
+
+    unsafe {
+        // Let the BSP know that we're alive.
+        let booted = (info.as_hhdm() as *mut u8).byte_add(offset_of!(InfoData, booted));
+        booted.write_volatile(1);
+    }
 
     loop {
         unsafe {
