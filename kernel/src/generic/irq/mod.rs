@@ -1,7 +1,7 @@
-use crate::generic::process::task::Task;
-use alloc::{boxed::Box, string::String, sync::Arc};
+use alloc::boxed::Box;
 use core::{fmt::Debug, sync::atomic::AtomicUsize};
 
+#[derive(Debug)]
 pub enum IrqStatus {
     /// Interrupt was not handled.
     Ignored,
@@ -9,6 +9,18 @@ pub enum IrqStatus {
     Handled,
     /// Handler wants to wake up the handler thread.
     Defer,
+}
+
+#[derive(Debug)]
+pub enum IrqFlags {
+    /// The IRQ is edge-triggered.
+    Edge,
+    /// The IRQ is level-triggered.
+    Level,
+    /// The IRQ is active low.
+    ActiveLow,
+    /// The IRQ is active high.
+    ActiveHigh,
 }
 
 pub trait IrqHandler: Debug {
@@ -24,36 +36,27 @@ pub trait IrqHandler: Debug {
 
 pub type Irq = usize;
 
-pub struct IrqAction {
-    /// The IRQ ID.
-    pub irq: Irq,
-    /// Callback to invoke.
-    pub handler: Box<dyn IrqHandler>,
-    /// The thread to execute the worker function on.
-    pub thread: Arc<Task>,
-    /// Name of the IRQ.
-    pub name: String,
-}
-
 /// Common functionality for an interrupt controller.
 pub trait IrqController {
+    /// Registers an IRQ handler for a specific IRQ.
+    /// If `thread` is [`Some`], a second handler will be run in a separate thread.
     fn register(
-        &mut self,
-        irq: u32,
+        &self,
         name: &str,
         handler: Box<dyn IrqHandler>,
+        thread: Option<Box<dyn IrqHandler>>,
+        line: u32,
+        flags: IrqFlags,
     ) -> Result<Irq, IrqError>;
-}
 
-pub enum IpiTarget {
-    /// Send an interrupt to the calling CPU.
-    ThisCpu,
-    /// Send an interrupt to all CPUs.
-    All,
-    /// Send an interrupt to all CPUs except the calling CPU.
-    AllButThisCpu,
-    /// Send an interrupt to a specific CPU. The value is the ID of the target [`IrqController`].
-    Specific(u32),
+    /// Removes an IRQ handler for a specific IRQ.
+    fn remove(&self, irq: Irq) -> Result<(), IrqError>;
+
+    /// Masks an IRQ, preventing it from being triggered.
+    fn mask(&self, irq: Irq) -> Result<(), IrqError>;
+
+    /// Unmasks an IRQ, allowing it to be triggered.
+    fn unmask(&self, irq: Irq) -> Result<(), IrqError>;
 }
 
 #[derive(Debug)]
@@ -62,6 +65,12 @@ pub enum IrqError {
     OperationNotSupported,
     /// There are no free IRQ slots left.
     NoIrqsLeft,
+    /// The IRQ ID is invalid.
+    NoSuchIrq,
+    /// The IRQ is already registered.
+    AlreadyRegistered,
+    /// The IRQ ID is out of range for this controller.
+    OutOfRange,
 }
 
 pub static IRQ_COUNTER: AtomicUsize = AtomicUsize::new(0);

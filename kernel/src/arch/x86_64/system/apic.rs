@@ -1,11 +1,13 @@
+use alloc::boxed::Box;
+
 use crate::{
     arch::{
         self,
-        x86_64::{asm, consts},
+        x86_64::{ARCH_DATA, asm, consts},
     },
     generic::{
         clock,
-        irq::{IpiTarget, IrqHandler, IrqStatus},
+        irq::{Irq, IrqController, IrqError, IrqFlags, IrqHandler, IrqStatus},
         memory::{
             PhysAddr,
             mmio::{Mmio, Register},
@@ -85,6 +87,17 @@ pub enum TriggerMode {
     Level = 1,
 }
 
+pub enum IpiTarget {
+    /// Send an interrupt to the calling CPU.
+    ThisCpu,
+    /// Send an interrupt to all CPUs.
+    All,
+    /// Send an interrupt to all CPUs except the calling CPU.
+    AllButThisCpu,
+    /// Send an interrupt to a specific CPU. The value is the ID of the target [`IrqController`].
+    Specific(u32),
+}
+
 impl LocalApic {
     pub fn init() {
         let lapic = LAPIC.get();
@@ -105,8 +118,6 @@ impl LocalApic {
         };
 
         unsafe { asm::wrmsr(0x1B, apic_msr) };
-
-        return;
 
         // Reset the TPR.
         lapic.write_reg(regs::TPR, 0);
@@ -137,9 +148,12 @@ impl LocalApic {
         );
 
         // Finally, run the periodic timer interrupt on irq0.
-        // lapic.write_reg(regs::LVT_TR, 0x20 | 0x20000);
-        // lapic.write_reg(regs::DCR, 3);
-        // lapic.write_reg(regs::ICR_TIMER, lapic.ticks_per_10ms as u64);
+        lapic.write_reg(regs::LVT_TR, 0x20 | 0x20000);
+        lapic.write_reg(regs::DCR, 3);
+        lapic.write_reg(
+            regs::ICR_TIMER,
+            lapic.ticks_per_10ms.load(Ordering::Relaxed) as u64,
+        );
 
         // TODO
         // generic::irq::register_irq(Box::new(result)).unwrap();
@@ -226,6 +240,51 @@ impl IrqHandler for LocalApic {
         }
 
         return IrqStatus::Handled;
+    }
+}
+
+impl IrqController for LocalApic {
+    fn register(
+        &self,
+        name: &str,
+        handler: Box<dyn IrqHandler>,
+        thread: Option<Box<dyn IrqHandler>>,
+        int_line: u32,
+        flags: IrqFlags,
+    ) -> Result<Irq, IrqError> {
+        if int_line < 32 || int_line > 255 {
+            return Err(IrqError::OutOfRange);
+        }
+
+        let mut array = ARCH_DATA.get().irq_handlers.lock();
+        let handler_slot = array
+            .get_mut(int_line as usize)
+            .ok_or(IrqError::OutOfRange)?;
+
+        // Check if the IRQ is already registered.
+        let Some(handler_slot) = handler_slot else {
+            return Err(IrqError::AlreadyRegistered);
+        };
+
+        // Register the IRQ handler.
+        *handler_slot = handler;
+
+        // Unmask the IRQ.
+        self.unmask(int_line as _)?;
+
+        Ok(0)
+    }
+
+    fn remove(&self, irq: Irq) -> Result<(), IrqError> {
+        todo!()
+    }
+
+    fn mask(&self, irq: Irq) -> Result<(), IrqError> {
+        todo!()
+    }
+
+    fn unmask(&self, irq: Irq) -> Result<(), IrqError> {
+        todo!()
     }
 }
 

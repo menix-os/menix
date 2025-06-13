@@ -1,11 +1,7 @@
 use super::task::{Task, Tid};
 use crate::{
     arch,
-    generic::{
-        percpu::CpuData,
-        process::task::TaskState,
-        util::mutex::{IrqMutex, Mutex},
-    },
+    generic::{percpu::CpuData, process::task::TaskState, util::mutex::Mutex},
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::{
@@ -18,7 +14,6 @@ use core::{
 pub struct Scheduler {
     /// The currently running task on this scheduler instance. Use [`Self::get_current`] instead.
     pub(crate) current: AtomicPtr<Task>,
-    pub(crate) lock: IrqMutex<()>,
     pub(crate) preempt_level: usize,
     run_queue: Mutex<BTreeMap<Tid, Arc<Task>>>,
 }
@@ -27,7 +22,6 @@ impl Scheduler {
     pub(crate) const fn new() -> Self {
         return Self {
             current: AtomicPtr::new(null_mut()),
-            lock: IrqMutex::new(()),
             preempt_level: 0,
             run_queue: Mutex::new(BTreeMap::new()),
         };
