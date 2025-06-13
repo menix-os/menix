@@ -328,9 +328,6 @@ fn discover_aps() {
     // Setup BSP.
     super::super::core::setup_core(CpuData::get());
 
-    let mut xapic = false;
-    let mut x2apic = false;
-
     // Parse the MADT to discover LAPICs.
     unsafe {
         let mut table = uacpi_table::default();
@@ -349,24 +346,20 @@ fn discover_aps() {
 
             match entry.type_ as u32 {
                 uacpi_sys::ACPI_MADT_ENTRY_TYPE_LAPIC => {
-                    assert_eq!(x2apic, false);
                     let lapic = (ptr as *const acpi_madt_lapic).read_unaligned();
 
                     // If this LAPIC is enabled and not the BSP, start it.
                     if lapic.flags & 1 != 0 && lapic.id as u32 != LAPIC.get().id() {
                         FOUND_APS.lock().push(lapic.id as u32)
                     }
-                    xapic = true;
                 }
                 uacpi_sys::ACPI_MADT_ENTRY_TYPE_LOCAL_X2APIC => {
-                    assert_eq!(xapic, false);
                     let lapic = (ptr as *const acpi_madt_x2apic).read_unaligned();
 
                     // If this LAPIC is enabled and not the BSP, start it.
                     if lapic.flags & 1 != 0 && lapic.id != LAPIC.get().id() {
                         FOUND_APS.lock().push(lapic.id)
                     }
-                    x2apic = true;
                 }
                 _ => {}
             }
