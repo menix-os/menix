@@ -10,7 +10,7 @@ init_stage! {
     #[depends(crate::generic::memory::MEMORY_STAGE)]
     pub TABLES_STAGE: "system.acpi.tables" => early_init;
 
-    #[depends(TABLES_STAGE, crate::arch::ARCH_INIT_STAGE, crate::generic::clock::CLOCK_STAGE, crate::generic::memory::MEMORY_STAGE)]
+    #[depends(TABLES_STAGE, crate::arch::INIT_STAGE, crate::generic::clock::CLOCK_STAGE, crate::generic::memory::MEMORY_STAGE)]
     #[entails(super::pci::PCI_STAGE)]
     pub INIT_STAGE: "system.acpi" => init;
 }

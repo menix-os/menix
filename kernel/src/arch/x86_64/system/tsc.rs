@@ -71,14 +71,16 @@ fn init() {
         // On a normal system, this should usually never be called and is a last resort
         // since at this point we have at least the HPET timer.
         if c.ecx != 0 && c.ebx != 0 && c.eax != 0 {
-            log!("Calibrating using CPUID 0x15");
+            log!("Calibrating TSC using CPUID 0x15");
             c.ecx as u64 * c.ebx as u64 / c.eax as u64
         } else {
+            log!("Unable to calibrate TSC using CPUID frequency information");
             return;
         }
     }
     // We tried.
     else {
+        log!("Unable to calibrate TSC");
         return;
     };
 

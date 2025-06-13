@@ -2,7 +2,7 @@
 
 use super::{
     PhysAddr, VirtAddr,
-    pmm::FreeList,
+    pmm::KernelAlloc,
     virt::{self, VmFlags, VmLevel},
 };
 use core::marker::PhantomData;
@@ -32,7 +32,7 @@ impl Mmio {
             // TODO: When adding memory type support, map this as uncacheable.
             base: virt::KERNEL_PAGE_TABLE
                 .lock()
-                .map_memory::<FreeList>(phys, VmFlags::Read | VmFlags::Write, VmLevel::L1, len)
+                .map_memory::<KernelAlloc>(phys, VmFlags::Read | VmFlags::Write, VmLevel::L1, len)
                 .unwrap() as *mut (),
             needs_unmap: true,
             len,

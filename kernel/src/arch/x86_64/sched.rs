@@ -7,7 +7,7 @@ use crate::{
     generic::{
         memory::{
             VirtAddr,
-            pmm::{AllocFlags, FreeList, PageAllocator},
+            pmm::{AllocFlags, KernelAlloc, PageAllocator},
             virt::KERNEL_STACK_SIZE,
         },
         percpu::CpuData,
@@ -19,6 +19,7 @@ use core::{
     arch::{asm, naked_asm},
     fmt::Write,
     mem::offset_of,
+    sync::atomic::Ordering,
 };
 
 #[repr(C)]
@@ -123,11 +124,11 @@ struct TaskFrame {
 pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe {
         let cpu = ARCH_DATA.get();
-        cpu.tss.rsp0 = (*to).stack.value() as u64 + KERNEL_STACK_SIZE as u64;
+        cpu.tss.lock().rsp0 = (*to).stack.value() as u64 + KERNEL_STACK_SIZE as u64;
 
         if (*from).is_user() {
             let mut from_context = (*from).task_context.lock();
-            (cpu.fpu_save)(from_context.fpu_region);
+            (*cpu.fpu_save.load(Ordering::Relaxed))(from_context.fpu_region);
             from_context.ds = super::asm::read_ds();
             from_context.es = super::asm::read_es();
             from_context.fs = super::asm::read_fs();
@@ -136,7 +137,7 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
 
         if (*to).is_user() {
             let mut to_context = (*to).task_context.lock();
-            (cpu.fpu_restore)(to_context.fpu_region);
+            (*cpu.fpu_restore.load(Ordering::Relaxed))(to_context.fpu_region);
             to_context.ds = super::asm::read_ds();
             to_context.es = super::asm::read_es();
             to_context.fs = super::asm::read_fs();
@@ -207,9 +208,10 @@ pub(in crate::arch) fn init_task(
         context.rsp = frame as u64;
 
         if is_user {
-            context.fpu_region = FreeList::alloc_bytes(cpu.fpu_size, AllocFlags::Zeroed)
-                .map_err(|_| Errno::ENOMEM)?
-                .as_hhdm();
+            context.fpu_region =
+                KernelAlloc::alloc_bytes(cpu.fpu_size.load(Ordering::Relaxed), AllocFlags::Zeroed)
+                    .map_err(|_| Errno::ENOMEM)?
+                    .as_hhdm();
             context.ds = super::asm::read_ds();
             context.es = super::asm::read_es();
             context.fs = super::asm::read_fs();

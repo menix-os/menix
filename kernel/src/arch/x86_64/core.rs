@@ -8,9 +8,9 @@ use crate::{
     },
     generic::percpu::{CpuData, LD_PERCPU_START},
 };
-use core::{arch::asm, mem::offset_of};
+use core::{arch::asm, mem::offset_of, ptr::null_mut, sync::atomic::Ordering};
 
-pub(in crate::arch) unsafe fn prepare_bsp() {
+fn early_init() {
     apic::disable_legacy_pic();
     idt::init();
     idt::set_idt();
@@ -22,7 +22,12 @@ pub(in crate::arch) unsafe fn prepare_bsp() {
         super::asm::wrmsr(consts::MSR_FS_BASE, 0);
     }
 
-    CpuData::get().present = true;
+    CpuData::get().present.store(true, Ordering::Relaxed);
+}
+
+init_stage! {
+    #[entails(crate::arch::EARLY_INIT_STAGE)]
+    EARLY_INIT_STAGE: "arch.x86_64.early-init" => early_init;
 }
 
 pub(in crate::arch) fn get_frame_pointer() -> usize {
@@ -42,17 +47,28 @@ pub(in crate::arch) fn get_per_cpu() -> *mut CpuData {
             this = const offset_of!(CpuData, this),
             options(nostack, preserves_flags),
         );
+        assert_ne!(cpu, null_mut());
         return cpu;
     }
 }
 
-pub(in crate::arch) fn setup_ap(context: &mut CpuData) {
+pub(super) fn setup_core(context: &'static CpuData) {
     let mut cr0: usize;
     let mut cr4: usize;
 
+    unsafe {
+        // Set FSGSBASE contents.
+        // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
+        super::asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
+        // We will save a reference to this struct in GS_BASE.
+        super::asm::wrmsr(consts::MSR_GS_BASE, context.this as u64);
+        super::asm::wrmsr(consts::MSR_FS_BASE, 0);
+    }
+
     let cpu = ARCH_DATA.get();
+
     // Load a GDT and TSS.
-    gdt::init(&mut cpu.gdt, &mut cpu.tss);
+    gdt::init(&cpu);
 
     // Load the IDT.
     // Note: The IDT itself is global, but still needs to be loaded for each CPU.
@@ -113,9 +129,11 @@ pub(in crate::arch) fn setup_ap(context: &mut CpuData) {
         unsafe { super::asm::wrxcr(0, xcr0) };
 
         // Change callbacks from FXSAVE to XSAVE.
-        cpu.fpu_size = cpuid13.ecx as usize; // ECX contains the size of the FPU block to save.
-        cpu.fpu_save = super::asm::xsave;
-        cpu.fpu_restore = super::asm::xrstor;
+        cpu.fpu_size.store(cpuid13.ecx as usize, Ordering::Relaxed); // ECX contains the size of the FPU block to save.
+        cpu.fpu_save
+            .store(super::asm::xsave as _, Ordering::Relaxed);
+        cpu.fpu_restore
+            .store(super::asm::xrstor as _, Ordering::Relaxed);
     }
 
     if cpuid7.ecx & consts::CPUID_7C_UMIP != 0 {
@@ -128,7 +146,7 @@ pub(in crate::arch) fn setup_ap(context: &mut CpuData) {
 
     if cpuid7.ebx & consts::CPUID_7B_SMAP != 0 {
         cr4 |= consts::CR4_SMAP;
-        cpu.can_smap = true;
+        cpu.can_smap.store(true, Ordering::Relaxed);
     }
 
     if cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0 {
@@ -139,16 +157,12 @@ pub(in crate::arch) fn setup_ap(context: &mut CpuData) {
         // Write back the modified control register values.
         asm!("mov cr0, {cr0}", cr0 = in(reg) cr0, options(nostack));
         asm!("mov cr4, {cr4}", cr4 = in(reg) cr4, options(nostack));
-
-        // Set FSGSBASE contents.
-        // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
-        super::asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
-        // We will save a reference to this struct in GS_BASE.
-        super::asm::wrmsr(consts::MSR_GS_BASE, context.this as u64);
-        super::asm::wrmsr(consts::MSR_FS_BASE, 0);
     }
 
-    LocalApic::init(context);
+    LocalApic::init();
+
+    context.present.store(true, Ordering::Release);
+    context.online.store(true, Ordering::Release);
 }
 
 pub(in crate::arch) fn halt() -> ! {

@@ -173,7 +173,7 @@ pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
 }
 
 init_stage! {
-    #[depends(crate::arch::BSP_EARLY_INIT_STAGE)]
+    #[depends(crate::arch::EARLY_INIT_STAGE)]
     pub MEMORY_STAGE: "generic.memory" => init;
 }
 
@@ -235,7 +235,7 @@ fn init() {
     // Remap the kernel in our own page table.
     unsafe {
         log!("Using {}-level paging for page table", paging_level);
-        let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level);
+        let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level, AllocFlags::empty());
 
         let text_start = VirtAddr(&raw const virt::LD_TEXT_START as usize);
         let text_end = VirtAddr(&raw const virt::LD_TEXT_END as usize);

@@ -15,15 +15,8 @@ pub mod sched;
 pub mod virt;
 
 init_stage! {
-    pub BSP_EARLY_INIT_STAGE: "arch.bsp.early-init" => || unsafe { core::prepare_bsp() };
+    pub EARLY_INIT_STAGE: "arch.early-init" => || {};
 
-    #[depends(BSP_EARLY_INIT_STAGE)]
-    pub AP_DISCOVER_STAGE: "arch.ap.discover" => || {};
-
-    #[depends(AP_DISCOVER_STAGE)]
-    #[entails(ARCH_INIT_STAGE)]
-    pub AP_INIT_STAGE: "arch.ap.init" => || {};
-
-    #[depends(BSP_EARLY_INIT_STAGE)]
-    pub ARCH_INIT_STAGE: "arch.init" => || {};
+    #[depends(EARLY_INIT_STAGE)]
+    pub INIT_STAGE: "arch.init" => || {};
 }

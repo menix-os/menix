@@ -10,13 +10,14 @@ use crate::{
 use alloc::alloc::AllocError;
 use bitflags::bitflags;
 use core::{
-    hint::{likely, unlikely},
+    hint::unlikely,
     ptr::{NonNull, null_mut, write_bytes},
     slice,
     sync::atomic::{AtomicPtr, Ordering},
 };
 
 bitflags! {
+    #[derive(Debug)]
     pub struct AllocFlags: usize {
         /// Only consider physical memory below 1MiB.
         const Kernel20 = 1 << 0;
@@ -60,8 +61,8 @@ pub static PAGE_DB_START: AtomicPtr<()> = AtomicPtr::new(null_mut());
 
 pub static PMM: Mutex<Option<NonNull<Page>>> = Mutex::new(None);
 
-pub struct FreeList;
-impl PageAllocator for FreeList {
+pub struct KernelAlloc;
+impl PageAllocator for KernelAlloc {
     fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
         let mut head = PMM.lock();
         let bytes = pages * arch::virt::get_page_size(VmLevel::L1);
@@ -181,5 +182,5 @@ pub fn init(memory_map: &[PhysMemory], pages: (*mut Page, usize)) {
         total_memory += entry.length;
     }
 
-    log!("Total available memory: {} KiB", total_memory / 1024);
+    log!("Total available memory: {} MiB", total_memory / 1024 / 1024);
 }

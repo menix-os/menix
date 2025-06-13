@@ -46,7 +46,8 @@ pub enum PageTableError {
 }
 
 // TODO: Replace with allocator.
-pub static KERNEL_PAGE_TABLE: Mutex<PageTable<true>> = Mutex::new(PageTable::new_kernel_uninit());
+pub static KERNEL_PAGE_TABLE: Mutex<PageTable<true>> =
+    Mutex::new(unsafe { PageTable::new_kernel_uninit() });
 pub static KERNEL_MMAP_BASE_ADDR: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -72,25 +73,25 @@ pub struct PageTable<const K: bool = false> {
 
 impl PageTable<false> {
     /// Creates a new page table for a user process.
-    pub fn new_user<P: PageAllocator>(root_level: usize) -> Self {
+    pub fn new_user<P: PageAllocator>(root_level: usize, flags: AllocFlags) -> Self {
         Self {
-            head: Mutex::new(P::alloc(1, AllocFlags::Zeroed).unwrap()),
+            head: Mutex::new(P::alloc(1, flags | AllocFlags::Zeroed).unwrap()),
             root_level,
         }
     }
 }
 
 impl PageTable<true> {
-    const fn new_kernel_uninit() -> Self {
+    pub const unsafe fn new_kernel_uninit() -> Self {
         Self {
             head: Mutex::new(PhysAddr(0)),
             root_level: 0,
         }
     }
 
-    pub fn new_kernel<P: PageAllocator>(root_level: usize) -> Self {
+    pub fn new_kernel<P: PageAllocator>(root_level: usize, flags: AllocFlags) -> Self {
         Self {
-            head: Mutex::new(P::alloc(1, AllocFlags::Zeroed).unwrap()),
+            head: Mutex::new(P::alloc(1, flags | AllocFlags::Zeroed).unwrap()),
             root_level,
         }
     }
@@ -117,7 +118,8 @@ impl PageTable<true> {
 }
 
 impl<const K: bool> PageTable<K> {
-    pub fn get_phys_addr(&self) -> PhysAddr {
+    /// Returns the physical address of the top level.
+    pub fn get_head_addr(&self) -> PhysAddr {
         *self.head.lock()
     }
 

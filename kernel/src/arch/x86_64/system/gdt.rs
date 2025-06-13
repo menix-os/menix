@@ -1,5 +1,8 @@
 use crate::{
-    arch::x86_64::consts::{CPL_KERNEL, CPL_USER},
+    arch::x86_64::{
+        ArchPerCpu,
+        consts::{CPL_KERNEL, CPL_USER, MSR_GS_BASE},
+    },
     generic::memory::virt::KERNEL_STACK_SIZE,
 };
 use alloc::boxed::Box;
@@ -326,7 +329,10 @@ pub static GDT: Gdt = Gdt {
     ),
 };
 
-pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
+pub fn init(cpu: &ArchPerCpu) {
+    let mut gdt = cpu.gdt.lock();
+    let mut tss = cpu.tss.lock();
+
     // Allocate an initial stack for the TSS.
     // TODO: Use kernel stack struct.
     let stack = unsafe { Box::new_zeroed_slice(KERNEL_STACK_SIZE).assume_init() };
@@ -338,12 +344,15 @@ pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
     // Construct a register to hold the GDT base and limit.
     let gdtr = GdtRegister {
         limit: (size_of::<Gdt>() - 1) as u16,
-        base: gdt as *const _ as u64,
+        base: &*gdt as *const _ as u64,
     };
 
     unsafe {
         // Load the table into the register.
         asm!("lgdt [{0}]", in(reg) &gdtr);
+
+        // Save the contents of MSR_GS_BASE, they get cleared by a write to `gs`.
+        let gs = crate::arch::x86_64::asm::rdmsr(MSR_GS_BASE);
 
         // Flush and reload the segment registers.
         asm!(
@@ -362,6 +371,9 @@ pub fn init(gdt: &mut Gdt, tss: &mut TaskStateSegment) {
             data_seg = const offset_of!(Gdt, kernel64_data),
             lateout("rax") _ // (R)AX was modified.
         );
+
+        // Restore MSR_GS_BASE
+        crate::arch::x86_64::asm::wrmsr(MSR_GS_BASE, gs);
 
         // Load the TSS.
         asm!(
