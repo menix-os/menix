@@ -7,7 +7,7 @@ edition = "2024"
 crate-type = ["dylib"]
 
 [build-dependencies]
-bindgen = "0.71.1"
+bindgen = "0.72.0"
 
 [dependencies]
 uapi = { path = "../bindings/uapi" }
