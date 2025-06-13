@@ -1,13 +1,11 @@
-use alloc::boxed::Box;
-
 use crate::{
     arch::{
         self,
-        x86_64::{ARCH_DATA, asm, consts},
+        x86_64::{asm, consts},
     },
     generic::{
         clock,
-        irq::{Irq, IrqController, IrqError, IrqFlags, IrqHandler, IrqStatus},
+        irq::{IrqHandler, IrqStatus},
         memory::{
             PhysAddr,
             mmio::{Mmio, Register},
@@ -154,9 +152,6 @@ impl LocalApic {
             regs::ICR_TIMER,
             lapic.ticks_per_10ms.load(Ordering::Relaxed) as u64,
         );
-
-        // TODO
-        // generic::irq::register_irq(Box::new(result)).unwrap();
     }
 
     fn read_reg(&self, reg: Register<u32>) -> u64 {
@@ -190,10 +185,12 @@ impl LocalApic {
         return self.read_reg(regs::ID) as u32;
     }
 
+    /// Signals an end of interrupt to the LAPIC.
     pub fn eoi(&self) {
         self.write_reg(regs::EOI, 0);
     }
 
+    /// Sends an inter-processor interrupt.
     pub fn send_ipi(
         &self,
         target: IpiTarget,
@@ -231,7 +228,7 @@ impl LocalApic {
 
 impl IrqHandler for LocalApic {
     // TODO
-    fn handle_immediate(&mut self) -> IrqStatus {
+    fn handle_immediate(&self) -> IrqStatus {
         unsafe { arch::sched::preempt_disable() };
         self.eoi();
 
@@ -240,51 +237,6 @@ impl IrqHandler for LocalApic {
         }
 
         return IrqStatus::Handled;
-    }
-}
-
-impl IrqController for LocalApic {
-    fn register(
-        &self,
-        name: &str,
-        handler: Box<dyn IrqHandler>,
-        thread: Option<Box<dyn IrqHandler>>,
-        int_line: u32,
-        flags: IrqFlags,
-    ) -> Result<Irq, IrqError> {
-        if int_line < 32 || int_line > 255 {
-            return Err(IrqError::OutOfRange);
-        }
-
-        let mut array = ARCH_DATA.get().irq_handlers.lock();
-        let handler_slot = array
-            .get_mut(int_line as usize)
-            .ok_or(IrqError::OutOfRange)?;
-
-        // Check if the IRQ is already registered.
-        let Some(handler_slot) = handler_slot else {
-            return Err(IrqError::AlreadyRegistered);
-        };
-
-        // Register the IRQ handler.
-        *handler_slot = handler;
-
-        // Unmask the IRQ.
-        self.unmask(int_line as _)?;
-
-        Ok(0)
-    }
-
-    fn remove(&self, irq: Irq) -> Result<(), IrqError> {
-        todo!()
-    }
-
-    fn mask(&self, irq: Irq) -> Result<(), IrqError> {
-        todo!()
-    }
-
-    fn unmask(&self, irq: Irq) -> Result<(), IrqError> {
-        todo!()
     }
 }
 

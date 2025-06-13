@@ -308,7 +308,7 @@ pub(in crate::arch) unsafe fn jump_to_user_context(context: *mut Context) -> ! {
             "mov rsp, {context}",
             "jmp {interrupt_return}",
             context = in(reg) context,
-            interrupt_return = sym super::irq::interrupt_return
+            interrupt_return = sym arch::x86_64::system::idt::interrupt_return
         );
 
         unreachable!();

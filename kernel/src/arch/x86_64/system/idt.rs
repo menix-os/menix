@@ -1,7 +1,14 @@
 use super::gdt::Gdt;
-use crate::arch::x86_64::irq;
+use crate::arch::sched::Context;
+use crate::arch::x86_64::{ARCH_DATA, consts};
+use crate::generic;
+use crate::generic::irq::IrqHandlerKind;
 use crate::generic::memory::VirtAddr;
-use core::{arch::asm, mem::offset_of};
+use crate::generic::memory::virt::{PageFaultCause, PageFaultInfo};
+use core::{
+    arch::{asm, naked_asm},
+    mem::offset_of,
+};
 use seq_macro::seq;
 
 pub const IDT_SIZE: usize = 256;
@@ -35,7 +42,7 @@ pub fn init() {
     // Set all gates to their respective handlers.
     unsafe {
         seq!(N in 0..256 {
-            (*idt).routines[N] = IdtEntry::new((irq::interrupt_stub~N as usize).into(), 0, GateType::Interrupt);
+            (*idt).routines[N] = IdtEntry::new((interrupt_stub~N as usize).into(), 0, GateType::Interrupt);
         });
     }
 }
@@ -111,4 +118,152 @@ impl IdtEntry {
             reserved: 0,
         }
     }
+}
+
+/// Invoked by an interrupt stub.
+unsafe extern "C" fn idt_handler(context: *const Context) {
+    let context = unsafe { context.as_ref().unwrap() };
+    let isr = context.isr;
+
+    match isr as u8 {
+        // Exceptions.
+        0x0E => {
+            page_fault_handler(context);
+        }
+        // Unhandled exceptions.
+        0x00..0x20 => {}
+        // Any other ISR is an IRQ with a dynamic handler.
+        _ => {
+            match &ARCH_DATA.get().irq_handlers.lock()[isr as usize] {
+                IrqHandlerKind::Static(x) => x.handle_immediate(),
+                IrqHandlerKind::Dynamic(x) => x.handle_immediate(),
+                IrqHandlerKind::None => {
+                    panic!("Got an unhandled interrupt {}!", isr);
+                }
+            };
+        }
+    };
+}
+
+/// Try to send a signal to the user-space program or panic if the interrupt is caused by the kernel.
+fn try_signal_or_die(context: &Context, signal: u32, code: u32) {}
+
+fn page_fault_handler(context: &Context) {
+    let mut cr2: usize;
+    unsafe { asm!("mov {cr2}, cr2", cr2 = out(reg) cr2) };
+
+    let mut cause = PageFaultCause::empty();
+    let err = context.error;
+    if err & (1 << 0) != 0 {
+        cause |= PageFaultCause::Present;
+    }
+    if err & (1 << 1) != 0 {
+        cause |= PageFaultCause::Write;
+    }
+    if err & (1 << 2) != 0 {
+        cause |= PageFaultCause::User;
+    }
+    if err & (1 << 4) != 0 {
+        cause |= PageFaultCause::Fetch;
+    }
+
+    let info = PageFaultInfo {
+        caused_by_user: context.cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
+        ip: (context.rip as usize).into(),
+        addr: cr2.into(),
+        cause,
+    };
+
+    generic::memory::virt::page_fault_handler(&info);
+}
+
+unsafe fn print_context(context: *const Context) {
+    unsafe {
+        error!("{:?}", *context);
+    }
+}
+
+/// Swaps GSBASE if we're coming from user space.
+macro_rules! swapgs_if_necessary {
+    () => {
+        concat!("cmp word ptr [rsp+24], 0x8;", "je 2f;", "swapgs;", "2:")
+    };
+}
+
+// There are some interrupts which generate an error code on the stack, while others do not.
+// We normalize this by just pushing 0 for those that don't generate an error code.
+seq! { N in 0..256 {
+    #[unsafe(naked)]
+    unsafe extern "C" fn interrupt_stub~N() {
+        naked_asm!(
+            // These codes push an error on the stack. Do nothing.
+            ".if ({i} == 8 || ({i} >= 10 && {i} <= 14) || {i} == 17 || {i} == 21 || {i} == 29 || {i} == 30)",
+            // All other ones don't, so we need to push something ourselves.
+            ".else",
+            "push 0",
+            ".endif",
+
+            "push {i}",
+            "jmp {interrupt_stub_internal}",
+
+            i = const N,
+            interrupt_stub_internal = sym interrupt_stub_internal
+        );
+    }
+}}
+
+/// To avoid having 256 big functions with essentially the same logic,
+/// this function is meant to do the actual heavy lifting.
+#[unsafe(naked)]
+unsafe extern "C" fn interrupt_stub_internal() {
+    naked_asm!(
+        swapgs_if_necessary!(),     // Load the kernel GS base.
+        "push rax",
+        "push rbx",
+        "push rcx",
+        "push rdx",
+        "push rbp",
+        "push rdi",
+        "push rsi",
+        "push r8",
+        "push r9",
+        "push r10",
+        "push r11",
+        "push r12",
+        "push r13",
+        "push r14",
+        "push r15",
+        "cld",                      // Clear direction flag.
+        "xor rbp, rbp",             // Zero out the base pointer since we can't trust it.
+        "mov rdi, rsp",             // Load the frame as second argument.
+        "call {interrupt_handler}", // Call interrupt handler.
+        "jmp {interrupt_return}",   // Leave.
+        interrupt_handler = sym idt_handler,
+        interrupt_return = sym interrupt_return
+    );
+}
+
+/// Returns from an interrupt frame.
+#[unsafe(naked)]
+pub unsafe extern "C" fn interrupt_return() {
+    naked_asm!(
+        "pop r15",
+        "pop r14",
+        "pop r13",
+        "pop r12",
+        "pop r11",
+        "pop r10",
+        "pop r9",
+        "pop r8",
+        "pop rsi",
+        "pop rdi",
+        "pop rbp",
+        "pop rdx",
+        "pop rcx",
+        "pop rbx",
+        "pop rax",
+        swapgs_if_necessary!(), // Change GS back if we came from user mode.
+        "add rsp, 0x10",        // Skip .error and .isr fields.
+        "iretq",
+    );
 }
