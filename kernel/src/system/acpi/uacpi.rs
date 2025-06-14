@@ -9,7 +9,7 @@ use crate::{
         memory::{
             free, malloc,
             pmm::KernelAlloc,
-            virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
+            virt::{PageTable, VmFlags, VmLevel},
         },
         util::{self, spin::SpinLock},
     },
@@ -34,8 +34,7 @@ extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c
     let difference = (addr as usize - aligned_addr);
     let aligned_len = util::align_up(len + difference, arch::virt::get_page_size(VmLevel::L1));
     return unsafe {
-        KERNEL_PAGE_TABLE
-            .lock()
+        PageTable::get_kernel()
             .map_memory::<KernelAlloc>(
                 aligned_addr.into(),
                 VmFlags::Read | VmFlags::Write,

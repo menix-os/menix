@@ -6,7 +6,7 @@ use crate::generic::{
     memory::{
         PhysAddr, free, malloc,
         pmm::KernelAlloc,
-        virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
+        virt::{PageTable, VmFlags, VmLevel},
     },
 };
 #[allow(unused)]
@@ -56,8 +56,7 @@ impl Drop for FbCon {
     fn drop(&mut self) {
         unsafe { flanterm_sys::flanterm_deinit(self.ctx.load(Ordering::Acquire), Some(free)) };
 
-        KERNEL_PAGE_TABLE
-            .lock()
+        PageTable::get_kernel()
             .unmap_range(
                 self.mem.load(Ordering::Relaxed).into(),
                 self.fb.pitch * self.fb.height,
@@ -95,8 +94,7 @@ pub fn init() {
     let back_buffer = vec![0; fb.pitch * fb.height];
 
     // Map the framebuffer in memory.
-    let mem = KERNEL_PAGE_TABLE
-        .lock()
+    let mem = PageTable::get_kernel()
         .map_memory::<KernelAlloc>(
             fb.base,
             VmFlags::Read | VmFlags::Write,

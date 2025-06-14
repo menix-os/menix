@@ -24,7 +24,7 @@ use core::{
 };
 use pmm::{AllocFlags, Page, PageAllocator};
 use slab::ALLOCATOR;
-use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
+use virt::{PageTable, VmFlags, VmLevel};
 
 static HHDM_START: Once<VirtAddr> = Once::new();
 
@@ -235,7 +235,7 @@ fn init() {
     // Remap the kernel in our own page table.
     unsafe {
         log!("Using {}-level paging for page table", paging_level);
-        let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level, AllocFlags::empty());
+        let table = PageTable::new_kernel::<BumpAllocator>(paging_level, AllocFlags::empty());
 
         let text_start = VirtAddr(&raw const virt::LD_TEXT_START as usize);
         let text_end = VirtAddr(&raw const virt::LD_TEXT_END as usize);
@@ -294,8 +294,7 @@ fn init() {
         table.set_active();
 
         // Save the page table.
-        let mut kernel_table = virt::KERNEL_PAGE_TABLE.lock();
-        *kernel_table = table;
+        virt::KERNEL_PAGE_TABLE.init(table);
 
         log!("Kernel map is now active");
     }
@@ -319,7 +318,7 @@ fn init() {
             page_size,
         );
 
-        let mut kernel_table = KERNEL_PAGE_TABLE.lock();
+        let kernel_table = PageTable::get_kernel();
         for page in (0..=length).step_by(page_size) {
             // We can't free any memory at this point, so we have to make sure we need every single one.
             if kernel_table.is_mapped((virt + page).into()) {

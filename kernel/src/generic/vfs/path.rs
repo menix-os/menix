@@ -27,6 +27,10 @@ impl PathBuf {
     pub fn is_absolute(&self) -> bool {
         self.0.get(0).is_some_and(|&x| x == b'/')
     }
+
+    pub fn inner(&self) -> &[u8] {
+        &self.0
+    }
 }
 
 impl Display for PathBuf {

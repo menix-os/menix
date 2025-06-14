@@ -17,7 +17,7 @@ use crate::{
         memory::{
             PhysAddr,
             pmm::{AllocFlags, KernelAlloc, PageAllocator},
-            virt::{KERNEL_PAGE_TABLE, KERNEL_STACK_SIZE, VmFlags, VmLevel},
+            virt::{KERNEL_STACK_SIZE, PageTable, VmFlags, VmLevel},
         },
         percpu::{self, CpuData},
         util::mutex::Mutex,
@@ -194,7 +194,7 @@ struct InfoData {
 
 extern "C" fn ap_entry(info: PhysAddr) -> ! {
     unsafe {
-        KERNEL_PAGE_TABLE.lock().set_active();
+        PageTable::get_kernel().set_active();
     }
 
     let cpu_ctx = percpu::allocate_cpu().expect("Unable to allocate per-CPU context");
@@ -394,7 +394,7 @@ fn init_aps() {
         );
 
         // Copy over the higher half maps from the root table.
-        let kernel_page = KERNEL_PAGE_TABLE.lock().get_head_addr().as_hhdm() as *const u64;
+        let kernel_page = PageTable::get_kernel().get_head_addr().as_hhdm() as *const u64;
         for i in 256..512 {
             temp_buffer.offset(i).write(kernel_page.offset(i).read());
         }

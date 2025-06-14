@@ -9,7 +9,10 @@ use super::{
     util::{align_down, align_up},
     vfs::exec::elf::{self, ElfHashTable, ElfHdr, ElfPhdr, ElfRela, ElfSym},
 };
-use crate::{arch, generic::memory::virt};
+use crate::{
+    arch,
+    generic::memory::virt::{self, PageTable},
+};
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{
     ffi::CStr,
@@ -179,7 +182,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 let phys = KernelAlloc::alloc_bytes(memsz, AllocFlags::Zeroed)
                     .map_err(|_| ModuleLoadError::AllocFailed)?;
 
-                let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
+                let page_table = PageTable::get_kernel();
 
                 // Map memory with RW permissions.
                 for page in (0..memsz).step_by(arch::virt::get_page_size(VmLevel::L1)) {
@@ -204,7 +207,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 buf[phdr.p_filesz as usize..].fill(0);
 
                 // Convert the flags to our format.
-                let mut flags = VmFlags::None;
+                let mut flags = VmFlags::empty();
                 if phdr.p_flags & elf::PF_EXECUTE != 0 {
                     flags |= VmFlags::Exec;
                 }
@@ -358,8 +361,8 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
 
     // Finally, remap everything so the permissions are as described.
     for (_, virt, length, flags) in &info.mappings {
-        let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
         let length = align_up(*length, arch::virt::get_page_size(VmLevel::L1));
+        let page_table = PageTable::get_kernel();
         for page in (0..length).step_by(arch::virt::get_page_size(VmLevel::L1)) {
             page_table
                 .remap_single::<KernelAlloc>(*virt + page, *flags, VmLevel::L1)

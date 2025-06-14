@@ -21,8 +21,13 @@ pub mod arch;
 pub mod generic;
 pub mod system;
 
-use crate::generic::{process::Process, vfs::path::PathBuf};
-use generic::{boot::BootInfo, percpu::CpuData, process::task::Task};
+use core::hint;
+
+use crate::generic::{
+    process::{Process, sched::Scheduler, task::Task},
+    vfs::path::PathBuf,
+};
+use generic::boot::BootInfo;
 
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
@@ -41,8 +46,13 @@ pub fn init() -> ! {
     log!("Command line: {}", BootInfo::get().command_line.inner());
 
     // Set up scheduler.
-    let init = Task::new(main, 0, 0, None, false).expect("Couldn't create kernel task");
-    CpuData::get().scheduler.start(init);
+    let init =
+        Task::new(main, 0, 0, Process::get_kernel(), false).expect("Couldn't create kernel task");
+    Scheduler::add_task(init);
+
+    loop {
+        hint::spin_loop();
+    }
 }
 
 /// The high-level kernel entry point.
