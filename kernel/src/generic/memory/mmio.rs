@@ -1,5 +1,7 @@
 //! Helpers for structured MMIO accesses.
 
+use crate::generic::memory::virt::PageTable;
+
 use super::{
     PhysAddr, VirtAddr,
     pmm::KernelAlloc,
@@ -30,8 +32,7 @@ impl Mmio {
     pub unsafe fn new_mmio(phys: PhysAddr, len: usize) -> Self {
         return Self {
             // TODO: When adding memory type support, map this as uncacheable.
-            base: virt::KERNEL_PAGE_TABLE
-                .lock()
+            base: PageTable::get_kernel()
                 .map_memory::<KernelAlloc>(phys, VmFlags::Read | VmFlags::Write, VmLevel::L1, len)
                 .unwrap() as *mut (),
             needs_unmap: true,
@@ -123,8 +124,7 @@ impl Mmio {
 impl Drop for Mmio {
     fn drop(&mut self) {
         if self.needs_unmap {
-            virt::KERNEL_PAGE_TABLE
-                .lock()
+            PageTable::get_kernel()
                 .unmap_range(VirtAddr(self.base as usize), self.len)
                 .unwrap();
         }

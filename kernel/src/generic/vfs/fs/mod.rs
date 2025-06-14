@@ -1,8 +1,13 @@
-pub(super) mod initrd;
-// TODO: pub(super) mod tmpfs;
+mod initrd;
+mod tmpfs;
 
 use super::inode::INode;
-use crate::generic::{posix::errno::EResult, util::mutex::Mutex, vfs::path::PathBuf};
+use crate::generic::{
+    posix::errno::EResult,
+    process::Identity,
+    util::mutex::Mutex,
+    vfs::{entry::Entry, inode::Mode, path::PathBuf},
+};
 use alloc::{boxed::Box, collections::btree_map::BTreeMap, sync::Arc};
 use core::fmt::Debug;
 
@@ -52,6 +57,7 @@ pub trait FileSystem: Debug {
         &self,
         mount_point: PathBuf,
         flags: MountFlags,
+        identity: &Identity,
     ) -> EResult<(Arc<dyn SuperBlock>, Arc<INode>)>;
 }
 
@@ -61,8 +67,11 @@ pub trait SuperBlock: Debug {
     /// Unmounts this super block.
     fn unmount(self) -> EResult<()>;
 
-    /// Gets the root node of this file system.
-    fn get_root(self: Arc<Self>) -> EResult<Arc<INode>>;
+    /// Gets the mount point entry of this file system.
+    fn get_mount_point(self: Arc<Self>) -> Arc<Entry>;
+
+    /// Gets the root entry of this file system.
+    fn get_root(self: Arc<Self>) -> EResult<Arc<Entry>>;
 
     /// Synchronizes the entire file system.
     fn sync(self: Arc<Self>) -> EResult<()>;
@@ -71,18 +80,19 @@ pub trait SuperBlock: Debug {
     fn statvfs(self: Arc<Self>) -> EResult<uapi::statvfs>;
 
     /// Allocates a new inode on this super block.
-    fn create_inode(self: Arc<Self>, mode: uapi::mode_t) -> EResult<Arc<INode>>;
+    fn create_inode(self: Arc<Self>, mode: Mode) -> EResult<Arc<INode>>;
 
     /// Deletes the inode.
     fn destroy_inode(self: Arc<Self>, inode: INode) -> EResult<()>;
 }
 
 /// Registers a new file system.
-pub fn register_fs(fs: Box<dyn FileSystem>) {
+pub fn register_fs(fs: &'static dyn FileSystem) {
     let name = fs.get_name();
     FS_TABLE.lock().insert(name, fs);
     log!("Registered new file system \"{}\"", name);
 }
 
 /// A map of all known and registered file systems.
-static FS_TABLE: Mutex<BTreeMap<&'static str, Box<dyn FileSystem>>> = Mutex::new(BTreeMap::new());
+static FS_TABLE: Mutex<BTreeMap<&'static str, &'static dyn FileSystem>> =
+    Mutex::new(BTreeMap::new());

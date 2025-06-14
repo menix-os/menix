@@ -54,6 +54,8 @@ pub enum SeekAnchor {
 pub struct File {
     /// The underlying inode that this file is pointing to.
     inode: Arc<INode>,
+    /// The cached entry for this node.
+    entry: Arc<Entry>,
     /// Operations that can be performed on this file.
     ops: Arc<dyn FileOps>,
     /// File open flags.

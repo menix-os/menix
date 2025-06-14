@@ -7,7 +7,7 @@ use crate::{
         memory::{
             self, PhysAddr,
             pmm::{AllocFlags, KernelAlloc, PageAllocator},
-            virt::{KERNEL_PAGE_TABLE, VmFlags},
+            virt::{PageTable, VmFlags},
         },
         posix::errno::{EResult, Errno},
     },
@@ -106,8 +106,7 @@ pub(crate) fn allocate_cpu() -> EResult<&'static CpuData> {
     let phys = memory::pmm::KernelAlloc::alloc_bytes(percpu_size, AllocFlags::Zeroed)
         .map_err(|_| Errno::ENOMEM)?;
 
-    KERNEL_PAGE_TABLE
-        .lock()
+    PageTable::get_kernel()
         .map_range::<KernelAlloc>(
             VirtAddr::from(percpu_new),
             PhysAddr::from(phys),
