@@ -1,10 +1,12 @@
 use super::gdt::Gdt;
 use crate::arch::sched::Context;
+use crate::arch::x86_64::system::apic::LAPIC;
 use crate::arch::x86_64::{ARCH_DATA, consts};
 use crate::generic;
 use crate::generic::irq::IrqHandlerKind;
 use crate::generic::memory::VirtAddr;
 use crate::generic::memory::virt::{PageFaultCause, PageFaultInfo};
+use crate::generic::percpu::CpuData;
 use core::{
     arch::{asm, naked_asm},
     mem::offset_of,
@@ -126,12 +128,24 @@ unsafe extern "C" fn idt_handler(context: *const Context) {
     let isr = context.isr;
 
     match isr as u8 {
+        0x20 => {
+            unsafe { crate::arch::sched::preempt_disable() };
+            let cpu = CpuData::get();
+            //log!("resched on {}, now {:?}", cpu.id, Scheduler::get_current());
+            if unsafe { crate::arch::sched::preempt_enable() } {
+                LAPIC.get().eoi();
+                cpu.scheduler.reschedule();
+            }
+        }
         // Exceptions.
         0x0E => {
             page_fault_handler(context);
         }
         // Unhandled exceptions.
-        0x00..0x20 => {}
+        0x00..0x20 => {
+            unsafe { print_context(context) };
+            panic!("Got an exception {} on CPU {}", isr, CpuData::get().id);
+        }
         // Any other ISR is an IRQ with a dynamic handler.
         _ => {
             match &ARCH_DATA.get().irq_handlers.lock()[isr as usize] {
@@ -183,13 +197,6 @@ unsafe fn print_context(context: *const Context) {
     }
 }
 
-/// Swaps GSBASE if we're coming from user space.
-macro_rules! swapgs_if_necessary {
-    () => {
-        concat!("cmp word ptr [rsp+24], 0x8;", "je 2f;", "swapgs;", "2:")
-    };
-}
-
 // There are some interrupts which generate an error code on the stack, while others do not.
 // We normalize this by just pushing 0 for those that don't generate an error code.
 seq! { N in 0..256 {
@@ -212,12 +219,18 @@ seq! { N in 0..256 {
     }
 }}
 
+const CS_OFFSET: usize = size_of::<Context>() - size_of::<u64>() - offset_of!(Context, cs);
+
 /// To avoid having 256 big functions with essentially the same logic,
 /// this function is meant to do the actual heavy lifting.
 #[unsafe(naked)]
 unsafe extern "C" fn interrupt_stub_internal() {
     naked_asm!(
-        swapgs_if_necessary!(),     // Load the kernel GS base.
+        // Load the kernel GS base if we're coming from user space.
+        "cmp word ptr [rsp+{cs}], {kernel_cs}",
+        "je 2f",
+        "swapgs",
+        "2:",
         "push rax",
         "push rbx",
         "push rcx",
@@ -233,11 +246,15 @@ unsafe extern "C" fn interrupt_stub_internal() {
         "push r13",
         "push r14",
         "push r15",
-        "cld",                      // Clear direction flag.
-        "xor rbp, rbp",             // Zero out the base pointer since we can't trust it.
-        "mov rdi, rsp",             // Load the frame as second argument.
-        "call {interrupt_handler}", // Call interrupt handler.
-        "jmp {interrupt_return}",   // Leave.
+        "cld",
+        // Zero out the base pointer since we can't trust it.
+        //"xor rbp, rbp",
+        // Load the frame as first argument.
+        "mov rdi, rsp",
+        "call {interrupt_handler}",
+        "jmp {interrupt_return}",
+        cs = const CS_OFFSET,
+        kernel_cs = const offset_of!(Gdt, kernel64_code),
         interrupt_handler = sym idt_handler,
         interrupt_return = sym interrupt_return
     );
@@ -262,8 +279,15 @@ pub unsafe extern "C" fn interrupt_return() {
         "pop rcx",
         "pop rbx",
         "pop rax",
-        swapgs_if_necessary!(), // Change GS back if we came from user mode.
-        "add rsp, 0x10",        // Skip .error and .isr fields.
+        // Change GS back if we came from user mode.
+        "cmp word ptr [rsp+{cs}], {kernel_cs}",
+        "je 2f",
+        "swapgs",
+        "2:",
+        // Skip .error and .isr fields.
+        "add rsp, 0x10",
         "iretq",
+        cs = const CS_OFFSET,
+        kernel_cs = const offset_of!(Gdt, kernel64_code),
     );
 }

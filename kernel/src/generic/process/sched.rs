@@ -7,7 +7,7 @@ use crate::{
         util::mutex::Mutex,
     },
 };
-use alloc::{collections::btree_map::BTreeMap, string::ToString, sync::Arc};
+use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::{
     ptr::null_mut,
     sync::atomic::{AtomicPtr, Ordering},
@@ -33,14 +33,11 @@ impl Scheduler {
 
     /// Adds a task to a run queue.
     /// The scheduler will find the most optimal CPU to run on.
-    pub fn add_task(task: Task) {
+    pub fn add_task(task: Arc<Task>) {
         // TODO: Find a CPU with the lowest effective load.
         let optimal = &CpuData::get().scheduler;
 
-        optimal
-            .run_queue
-            .lock()
-            .insert(task.get_id(), Arc::new(task));
+        optimal.run_queue.lock().insert(task.get_id(), task);
     }
 
     /// Returns the task currently running on this CPU.
@@ -86,6 +83,30 @@ impl Scheduler {
             arch::irq::set_irq_state(old);
         }
     }
+
+    /// Prepares a scheduler instance to start executing a certain task.
+    pub fn prepare(&self, task: Option<Arc<Task>>) {
+        let initial = match task {
+            Some(x) => x,
+            None => Arc::new(Task::new(idle_fn, 0, 0, Process::get_kernel(), false).unwrap()),
+        };
+        Scheduler::add_task(initial.clone());
+
+        // We create a dummy task on the stack which only exists to start the
+        // scheduler since it assumes that there's always a task running.
+        // Because this is a dead end, we don't actually add this to the run queue.
+        // Note: This also stops the kernel process from being freed.
+        let dummy = Task::new(dummy_fn, 0, 0, Process::get_kernel(), false).unwrap();
+
+        let sched = &CpuData::get().scheduler;
+        unsafe {
+            let to = Arc::into_raw(initial);
+            sched.current.store(to as *mut _, Ordering::Relaxed);
+
+            arch::irq::set_irq_state(true);
+            arch::sched::switch(&raw const dummy, to);
+        }
+    }
 }
 
 /// Generic task entry point. This is to be called by an implementing [`crate::arch::sched::init_task`].
@@ -97,58 +118,26 @@ pub extern "C" fn task_entry(entry: extern "C" fn(usize, usize), arg1: usize, ar
         let task = Scheduler::get_current();
         *task.state.lock() = TaskState::Dead;
     }
+    unsafe {
+        arch::sched::force_reschedule();
+    }
 
-    CpuData::get().scheduler.reschedule();
-    unreachable!();
+    unreachable!("The scheduler did not kill this task");
+}
+
+/// Function used for waiting.
+pub extern "C" fn idle_fn(_: usize, _: usize) {
+    unsafe { crate::arch::irq::set_irq_state(true) };
+    loop {
+        crate::arch::irq::wait_for_irq();
+    }
+}
+
+pub extern "C" fn dummy_fn(_: usize, _: usize) {
+    unreachable!("This is a dummy function, somehow the dummy task ended up in the scheduler");
 }
 
 init_stage! {
     #[depends(crate::generic::memory::MEMORY_STAGE, crate::generic::vfs::VFS_STAGE)]
-    pub SCHEDULER_STAGE: "generic.scheduler" => init;
-}
-
-fn init() {
-    // Create the kernel process and task.
-    unsafe {
-        super::KERNEL_PROCESS.init(Arc::new(
-            Process::new("kernel".to_string(), None, false)
-                .expect("Unable to create the main kernel process"),
-        ))
-    };
-
-    let task = Arc::new(
-        Task::new(idle_fn, 0, 0, Process::get_kernel().clone(), false)
-            .expect("Unable to create the main kernel task"),
-    );
-
-    // Set up scheduler structures on all CPUs.
-    let sched = &CpuData::get().scheduler;
-    sched.run_queue.lock().insert(task.get_id(), task.clone());
-
-    // We create a dummy task on the stack which only exists to start the
-    // scheduler since it assumes that there's always a task running.
-    // Because this is a dead end, we don't actually add this to the run queue.
-    // Note: This also stops the kernel process from being freed.
-    let dummy = Task::new(dummy_fn, 0, 0, Process::get_kernel().clone(), false).unwrap();
-
-    unsafe {
-        let to = Arc::into_raw(task);
-        sched.current.store(to as *mut _, Ordering::Relaxed);
-
-        arch::sched::switch(&raw const dummy, to);
-    }
-
-    unreachable!("Failed to start scheduling");
-}
-
-/// This function is used for idling CPUs waiting to be scheduled a real job. Does essentially nothing.
-extern "C" fn idle_fn(_: usize, _: usize) {
-    loop {
-        core::hint::spin_loop();
-        arch::irq::wait_for_irq();
-    }
-}
-
-extern "C" fn dummy_fn(_: usize, _: usize) {
-    unreachable!("This is a dummy function, somehow the dummy task ended up in the scheduler");
+    pub SCHEDULER_STAGE: "generic.scheduler" => || {};
 }
