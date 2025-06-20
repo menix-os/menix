@@ -38,6 +38,38 @@ impl CpuData {
     pub fn get() -> &'static CpuData {
         return unsafe { arch::core::get_per_cpu().as_ref().unwrap() };
     }
+
+    /// Gets the data for a specified CPU.
+    pub fn get_for(id: usize) -> Option<&'static CpuData> {
+        if id >= NUM_CPUS.load(Ordering::Acquire) {
+            return None;
+        }
+
+        let percpu_size = &raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize;
+
+        unsafe {
+            let start = &raw const LD_PERCPU_START as *const CpuData;
+            return start.byte_add(percpu_size * id).as_ref();
+        }
+    }
+
+    pub fn iter() -> CpuDataIter {
+        CpuDataIter { id: 0 }
+    }
+}
+
+pub struct CpuDataIter {
+    id: usize,
+}
+
+impl Iterator for CpuDataIter {
+    type Item = &'static CpuData;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = CpuData::get_for(self.id);
+        self.id += 1;
+        result
+    }
 }
 
 /// [`PerCpuData`] uses the following trick: All data is placed into a special section.
@@ -69,8 +101,13 @@ impl<T> PerCpuData<T> {
     /// Gets the CPU-local instance of this variable.
     #[inline]
     pub fn get(&self) -> &'static T {
+        self.get_for(CpuData::get())
+    }
+
+    /// Gets the CPU-local instance of this variable for a given context.
+    #[inline]
+    pub fn get_for(&self, context: &'static CpuData) -> &'static T {
         unsafe {
-            let context = CpuData::get();
             let start = &raw const LD_PERCPU_START as usize;
             (context.this as *mut T)
                 .byte_add(&raw const self.storage as usize - start)

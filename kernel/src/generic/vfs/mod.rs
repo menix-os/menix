@@ -6,21 +6,16 @@ pub mod inode;
 pub mod path;
 
 use crate::generic::{
-    posix::errno::{EResult, Errno},
-    util::mutex::Mutex,
+    util::once::Once,
+    vfs::{entry::MountFlags, path::Path},
 };
-use alloc::sync::Arc;
-use entry::Entry;
 
-static ROOT: Mutex<Option<Arc<Entry>>> = Mutex::new(None);
+/// The root directory entry.
+static ROOT: Once<Path> = Once::new();
 
 /// Gets a reference to the root of the VFS.
-/// May return [`Errno::ENOENT`] if there is no root entry.
-pub fn get_root() -> EResult<Arc<Entry>> {
-    match &*ROOT.lock() {
-        Some(x) => Ok(x.clone()),
-        None => Err(Errno::ENOENT),
-    }
+pub fn get_root() -> Path {
+    ROOT.get().clone()
 }
 
 init_stage! {
@@ -29,8 +24,14 @@ init_stage! {
 }
 
 fn init() {
-    // fs::register_fs(Box::new(fs::tmpfs::TmpFs));
+    // Mount a tmpfs as root.
+    let initrd_mount =
+        fs::mount(None, b"tmpfs", MountFlags::empty()).expect("Unable to mount the tmpfs");
 
-    // Mount the tmpfs as root.
-    // TODO
+    let root_path = Path {
+        entry: initrd_mount.root.clone(),
+        mount: initrd_mount,
+    };
+
+    unsafe { ROOT.init(root_path) };
 }

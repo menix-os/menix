@@ -2,10 +2,9 @@ use super::fs::SuperBlock;
 use crate::generic::{
     posix::errno::{EResult, Errno},
     process::Identity,
-    util::mutex::Mutex,
     vfs::{
         entry::Entry,
-        file::{FileOps, OpenFlags},
+        file::{File, FileOps, OpenFlags},
     },
 };
 use alloc::{boxed::Box, sync::Arc};
@@ -16,7 +15,7 @@ use core::{fmt::Debug, sync::atomic::AtomicBool};
 pub struct INode {
     pub id: u64,
     /// Operations that work on every type of node.
-    pub common: Box<dyn CommonOps>,
+    pub common_ops: Box<dyn CommonOps>,
     /// Operations that only work on a certain type of node.
     pub node_ops: NodeOps,
     /// Operations that can be performed on an open file pointing to this node.
@@ -25,8 +24,6 @@ pub struct INode {
     pub sb: Arc<dyn SuperBlock>,
     /// If true, the node has been modified and has to be sync'd.
     pub dirty: AtomicBool,
-
-    pub stat: Mutex<Stat>,
 }
 
 impl INode {
@@ -37,9 +34,8 @@ impl INode {
             // If this file is not able to be executed, always fail.
             if flags.contains(OpenFlags::Executeable)
                 && !self
-                    .stat
-                    .lock()
-                    .mode
+                    .common_ops
+                    .get_mode()?
                     .contains(Mode::UserExec | Mode::GroupExec | Mode::OtherExec)
             {
                 return Err(Errno::EACCES);
@@ -51,7 +47,7 @@ impl INode {
     }
 }
 
-/// Operations which work on a node.
+/// Operations which work on any kind of [`INode`].
 pub trait CommonOps: Debug {
     /// Updates the node with given timestamps.
     /// If an argument is [`None`], the respective value is not updated.
@@ -62,6 +58,8 @@ pub trait CommonOps: Debug {
         atime: Option<uapi::timespec>,
         ctime: Option<uapi::timespec>,
     ) -> EResult<()>;
+
+    fn get_mode(&self) -> EResult<Mode>;
 
     /// Changes permissions on this `node`.
     fn chmod(&self, node: &INode, mode: Mode) -> EResult<()>;
@@ -84,31 +82,29 @@ pub enum NodeOps {
     Socket,
 }
 
-/// Operations for directory nodes.
+/// Operations for directory [`INode`]s.
 pub trait DirectoryOps: Debug {
-    /// Attempts to resolve an `entry` in a given `node` directory.
-    /// If a node is found, the target node is set on `entry`.
-    /// If it isn't found, the entry is marked negative and [`Errno::ENOENT`] is returned.
-    fn lookup(&self, node: &INode, entry: &Entry) -> EResult<()>;
+    fn open(&self, node: &INode, entry: &Entry, flags: OpenFlags) -> EResult<Arc<File>>;
+
+    /// Looks up all children in an `node` directory and caches them in `entry`.
+    fn populate(&self, node: &INode, entry: &Entry);
 }
 
-/// Operations for regular file nodes.
+/// Operations for regular file [`INode`]s.
 pub trait RegularOps: Debug {
-    fn open(&self, node: &INode, entry: &Entry);
-
     /// Truncates the node to a given length in bytes.
     /// `length` must be equal or less than the current node size.
     fn truncate(&self, node: &INode, length: u64) -> EResult<()>;
 }
 
-/// Operations for symbolic link nodes.
+/// Operations for symbolic link [`INode`]s.
 pub trait SymlinkOps: Debug {
     /// Reads the path of the symbolic link of the node.
     fn read_link(&self, node: &INode) -> EResult<usize>;
 }
 
 bitflags::bitflags! {
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, PartialEq)]
     pub struct Mode: u32 {
         const UserRead = uapi::S_IRUSR;
         const UserWrite = uapi::S_IWUSR;
@@ -124,13 +120,13 @@ bitflags::bitflags! {
 
         const SetUserId = uapi::S_ISUID;
         const SetGroupId = uapi::S_ISGID;
-    }
-}
 
-#[derive(Debug, Default)]
-pub struct Stat {
-    pub links: u64,
-    pub size: u64,
-    pub blocks: u64,
-    pub mode: Mode,
+        const Regular = uapi::S_IFREG;
+        const Directory = uapi::S_IFDIR;
+        const SymbolicLink = uapi::S_IFLNK;
+        const FIFO = uapi::S_IFIFO;
+        const BlockDevice = uapi::S_IFBLK;
+        const CharacterDevice = uapi::S_IFCHR;
+        const Socket = uapi::S_IFSOCK;
+    }
 }

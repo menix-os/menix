@@ -21,12 +21,12 @@ pub mod arch;
 pub mod generic;
 pub mod system;
 
-use core::hint;
-
 use crate::generic::{
+    percpu::CpuData,
     process::{Process, sched::Scheduler, task::Task},
-    vfs::path::PathBuf,
 };
+use alloc::{string::String, sync::Arc};
+use core::hint;
 use generic::boot::BootInfo;
 
 /// Initializes all important kernel structures.
@@ -34,6 +34,19 @@ use generic::boot::BootInfo;
 pub fn init() -> ! {
     crate::generic::init::run();
 
+    // Set up scheduler.
+    let init = Arc::new(
+        Task::new(main, 0, 0, Process::get_kernel(), false).expect("Couldn't create kernel task"),
+    );
+    CpuData::get().scheduler.prepare(Some(init));
+
+    loop {
+        hint::spin_loop();
+    }
+}
+
+/// The high-level kernel entry point.
+pub extern "C" fn main(_: usize, _: usize) {
     // Say hello to the console.
     log!(
         "{} {} {} {}",
@@ -45,28 +58,20 @@ pub fn init() -> ! {
 
     log!("Command line: {}", BootInfo::get().command_line.inner());
 
-    // Set up scheduler.
-    let init =
-        Task::new(main, 0, 0, Process::get_kernel(), false).expect("Couldn't create kernel task");
-    Scheduler::add_task(init);
-
-    loop {
-        hint::spin_loop();
-    }
-}
-
-/// The high-level kernel entry point.
-pub extern "C" fn main(_: usize, _: usize) {
-    // Find user-space init. If no path is given, search a few select directories.
+    // Find user space init. If no path is given, search a few select directories.
     let path = match BootInfo::get().command_line.get_string("init") {
-        Some(x) => x,
+        Some(x) => x.as_bytes(),
         // TODO: Search filesystem for init binaries.
-        None => "/sbin/init",
+        None => b"/init",
     };
 
-    let path = PathBuf::from_str(path);
+    log!("Starting init \"{}\"", String::from_utf8_lossy(path));
 
-    log!("Starting init \"{}\"", path);
-    let init = Process::from_file(&path).unwrap();
+    let kernel_proc = Scheduler::get_current().get_process();
+    let init_proc = Process::from_file(path).unwrap();
     // TODO: Add to run queue.
+
+    loop {
+        // TODO: For some reason going past this triggers a #UD.
+    }
 }

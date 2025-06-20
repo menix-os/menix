@@ -12,13 +12,17 @@ use crate::generic::{
     util::{mutex::Mutex, once::Once},
     vfs::{
         self,
-        entry::Entry,
         exec::ExecutableInfo,
         file::{File, OpenFlags},
-        path::PathBuf,
+        inode::Mode,
+        path::Path,
     },
 };
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{
+    string::{String, ToString},
+    sync::Arc,
+    vec::Vec,
+};
 use core::sync::atomic::{AtomicUsize, Ordering};
 use task::Task;
 
@@ -32,23 +36,18 @@ pub struct Process {
     id: Pid,
     /// The display name of this process.
     name: String,
-    pub page_table: PageTable,
+    /// If this process is a user process or not.
+    is_user: bool,
     /// A list of associated tasks.
     threads: Mutex<Vec<Tid>>,
+    /// The address space for this process.
+    pub page_table: Arc<PageTable>,
     /// The root directory for this process.
-    pub root_dir: Mutex<Arc<Entry>>,
+    pub root_dir: Mutex<Path>,
     /// Current working directory.
-    pub working_dir: Mutex<Arc<Entry>>,
-    is_user: bool,
-}
-
-static PID_COUNTER: AtomicUsize = AtomicUsize::new(0);
-static KERNEL_PROCESS: Once<Arc<Process>> = Once::new();
-
-init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE)]
-    #[entails(sched::SCHEDULER_STAGE)]
-    PROCESS_STAGE: "" => || {};
+    pub working_dir: Mutex<Path>,
+    /// The user identity of this process.
+    pub identity: Mutex<Identity>,
 }
 
 impl Process {
@@ -58,28 +57,38 @@ impl Process {
         self.id
     }
 
-    pub fn new(name: String, parent: Option<Arc<Self>>, is_user: bool) -> EResult<Self> {
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn new(name: &str, parent: Option<Arc<Self>>, is_user: bool) -> EResult<Self> {
         let root = match &parent {
             Some(x) => x.root_dir.lock().clone(),
-            None => vfs::get_root()?,
+            None => vfs::get_root(),
         };
 
         let cwd = match &parent {
             Some(x) => x.working_dir.lock().clone(),
-            None => vfs::get_root()?,
+            None => vfs::get_root(),
+        };
+
+        let identity = match &parent {
+            Some(x) => x.identity.lock().clone(),
+            None => Identity::default(),
         };
 
         Ok(Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
-            name,
-            page_table: PageTable::new_user::<KernelAlloc>(
+            name: name.to_string(),
+            page_table: Arc::try_new(PageTable::new_user::<KernelAlloc>(
                 PageTable::get_kernel().root_level(),
                 AllocFlags::empty(),
-            ),
+            ))?,
             threads: Mutex::new(Vec::new()),
             root_dir: Mutex::new(root),
             working_dir: Mutex::new(cwd),
             is_user,
+            identity: Mutex::new(identity),
         })
     }
 
@@ -89,12 +98,12 @@ impl Process {
     }
 
     /// Creates a new user process from a file path. It determines the execution format by reading the first few bytes.
-    pub fn from_file(path: &PathBuf) -> EResult<Arc<Self>> {
+    pub fn from_file(path: &[u8]) -> EResult<Arc<Self>> {
         let file = File::open(
             path,
-            None,
             OpenFlags::ReadOnly | OpenFlags::Executeable,
-            &KERNEL_IDENTITY,
+            Mode::empty(),
+            Identity::get_kernel(),
         )?;
 
         let mut info = ExecutableInfo {
@@ -106,7 +115,7 @@ impl Process {
         format.parse(&mut info)?;
 
         // TODO: Give this a name.
-        let result = Arc::new(Self::new(String::new(), None, true)?);
+        let result = Arc::new(Self::new("", None, true)?);
 
         // TODO: Set up stack.
 
@@ -124,7 +133,7 @@ pub extern "C" fn to_user(ip: usize, sp: usize) {
     unsafe { crate::arch::sched::jump_to_user(VirtAddr::from(ip), VirtAddr::from(sp)) };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Default)]
 pub struct Identity {
     pub user_id: uapi::uid_t,
     pub group_id: uapi::gid_t,
@@ -138,13 +147,36 @@ pub struct Identity {
     pub groups: Vec<uapi::gid_t>,
 }
 
-/// An indentity for accesses to be made by the kernel.
-pub static KERNEL_IDENTITY: Identity = Identity {
-    user_id: 0,
-    group_id: 0,
-    effective_user_id: 0,
-    effective_group_id: 0,
-    set_user_id: 0,
-    set_group_id: 0,
-    groups: vec![],
-};
+impl Identity {
+    /// Returns an identity suitable for kernel accesses, with absolute privileges for everything.
+    pub fn get_kernel() -> &'static Identity {
+        static KERNEL_IDENTITY: Identity = Identity {
+            user_id: 0,
+            group_id: 0,
+            effective_user_id: 0,
+            effective_group_id: 0,
+            set_user_id: 0,
+            set_group_id: 0,
+            groups: vec![],
+        };
+        &KERNEL_IDENTITY
+    }
+}
+
+static PID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+static KERNEL_PROCESS: Once<Arc<Process>> = Once::new();
+
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE, crate::generic::vfs::VFS_STAGE)]
+    #[entails(sched::SCHEDULER_STAGE)]
+    PROCESS_STAGE: "generic.process" => init;
+}
+
+fn init() {
+    // Create the kernel process and task.
+    unsafe {
+        KERNEL_PROCESS.init(Arc::new(
+            Process::new("kernel", None, false).expect("Unable to create the main kernel process"),
+        ))
+    };
+}

@@ -1,40 +1,39 @@
-use alloc::{string::String, vec::Vec};
+use crate::generic::{
+    posix::errno::{EResult, Errno},
+    process::sched::Scheduler,
+    vfs::entry::{Entry, Mount},
+};
+use alloc::sync::Arc;
 use core::fmt::{Display, Formatter};
 
-/// Represents an owned file system path.
-#[derive(Debug)]
-pub struct PathBuf(Vec<u8>);
+#[derive(Debug, Clone)]
+pub struct Path {
+    pub mount: Arc<Mount>,
+    pub entry: Arc<Entry>,
+}
 
-impl PathBuf {
-    /// Creates a new path pointing to the root.
-    pub fn new_root() -> Self {
-        PathBuf(vec![b'/'])
+impl Path {
+    /// Creates a new path from a string path, relative to the working directory of the current process.
+    pub fn new(value: &[u8]) -> EResult<Self> {
+        let proc = Scheduler::get_current().get_process();
+        let cwd = proc.working_dir.lock();
+
+        if *value.get(0).ok_or(Errno::EINVAL)? == b'/' {}
+
+        todo!()
     }
 
-    /// Creates a new owned path from a string reference.
-    pub fn from_str(value: &str) -> Self {
-        Self(value.as_bytes().to_vec())
-    }
+    /// Looks up a child identified by `name`.
+    pub fn lookup_child(self, name: &[u8]) -> Path {
+        let mut mount = self.mount.as_ref();
+        let mut entry = self.entry.as_ref();
 
-    /// Creates a new path from a buffer.
-    /// # Safety
-    /// The caller must ensure that the buffer contains a legal path.
-    pub unsafe fn from_unchecked(value: Vec<u8>) -> Self {
-        PathBuf(value)
-    }
-
-    /// Returns true if the path contained is an absolute path.
-    pub fn is_absolute(&self) -> bool {
-        self.0.get(0).is_some_and(|&x| x == b'/')
-    }
-
-    pub fn inner(&self) -> &[u8] {
-        &self.0
+        todo!()
     }
 }
 
-impl Display for PathBuf {
+impl Display for Path {
     fn fmt(&self, f: &mut Formatter<'_>) -> core::fmt::Result {
-        f.write_str(&String::from_utf8_lossy(&self.0))
+        f.write_str(todo!())
     }
 }

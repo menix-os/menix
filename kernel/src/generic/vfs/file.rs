@@ -6,13 +6,14 @@ use crate::generic::{
     vfs::{
         entry::Entry,
         inode::{Mode, NodeOps},
-        path::PathBuf,
+        path::Path,
     },
 };
 use alloc::sync::Arc;
 use core::fmt::Debug;
 
 bitflags::bitflags! {
+    #[derive(Clone, Copy)]
     pub struct OpenFlags: u32 {
         /// Create the file if it's missing.
         const Create = uapi::O_CREAT as u32;
@@ -52,14 +53,12 @@ pub enum SeekAnchor {
 
 /// The kernel representation of an open file.
 pub struct File {
-    /// The underlying inode that this file is pointing to.
-    inode: Arc<INode>,
     /// The cached entry for this node.
-    entry: Arc<Entry>,
+    pub path: Path,
     /// Operations that can be performed on this file.
-    ops: Arc<dyn FileOps>,
+    pub ops: Arc<dyn FileOps>,
     /// File open flags.
-    flags: OpenFlags,
+    pub flags: OpenFlags,
 }
 
 /// Operations that can be performed on a file.
@@ -98,12 +97,39 @@ pub trait FileOps: Debug {
 impl File {
     /// Opens a file referenced by a path for a given `identity`.
     pub fn open(
-        path: &PathBuf,
-        at: Option<&Self>,
+        path: &[u8],
         flags: OpenFlags,
+        mode: Mode,
         identity: &Identity,
     ) -> EResult<Arc<Self>> {
-        todo!()
+        let file_path = Path::new(path)?;
+        let inode = file_path.entry.get_inode().ok_or(Errno::ENOENT)?;
+
+        // If we want to open as a directory, make sure this is actually a directory.
+        if flags.contains(OpenFlags::Directory) {
+            match &inode.node_ops {
+                NodeOps::Directory(_) => {}
+                _ => return Err(Errno::ENOTDIR),
+            }
+        }
+
+        // Check if we are allowed to access this node.
+        inode.try_access(identity, flags)?;
+
+        let file = match &inode.node_ops {
+            NodeOps::Regular(reg) => {
+                todo!()
+            }
+            NodeOps::Directory(dir) => dir.open(&inode, &file_path.entry, flags),
+            NodeOps::BlockDevice | NodeOps::CharacterDevice => todo!(),
+            NodeOps::FIFO => todo!(),
+            // Attempting to open a symbolic link means the resolution was faulty.
+            NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
+            // Doesn't make sense to call open() on anything else.
+            _ => return Err(Errno::ENOTSUP),
+        };
+
+        return file;
     }
 
     /// Reads directory entries into a buffer.
@@ -152,39 +178,5 @@ impl File {
         size: usize,
     ) -> EResult<VirtAddr> {
         self.ops.mmap(self, space, offset, hint, size)
-    }
-
-    fn open_entry(
-        &self,
-        entry: &Entry,
-        inode: Arc<INode>,
-        flags: OpenFlags,
-        identity: &Identity,
-    ) -> EResult<Arc<Self>> {
-        if flags.contains(OpenFlags::Directory) {
-            if let NodeOps::Directory(x) = &inode.node_ops {
-                return Err(Errno::ENOTDIR);
-            }
-        }
-
-        // Check if we are allowed to access this node.
-        inode.try_access(identity, flags)?;
-
-        match &inode.node_ops {
-            NodeOps::Regular(reg) => {
-                todo!();
-            }
-            NodeOps::Directory(dir) => {
-                todo!();
-            }
-            // Symbolic links can't be opened.
-            NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
-            NodeOps::FIFO => todo!(),
-            NodeOps::BlockDevice => todo!(),
-            NodeOps::CharacterDevice => todo!(),
-            NodeOps::Socket => todo!(),
-        }
-
-        todo!()
     }
 }
