@@ -17,9 +17,12 @@ use core::{
 };
 
 bitflags! {
+    #[derive(Debug)]
     pub struct AllocFlags: usize {
+        /// Only consider physical memory below 1MiB.
+        const Kernel20 = 1 << 0;
         /// Only consider physical memory below 4GiB.
-        const Kernel32 = 1 << 0;
+        const Kernel32 = 1 << 1;
         /// Allocated memory has to be initialized to zero.
         const Zeroed = 1 << 2;
     }
@@ -58,17 +61,32 @@ pub static PAGE_DB_START: AtomicPtr<()> = AtomicPtr::new(null_mut());
 
 pub static PMM: Mutex<Option<NonNull<Page>>> = Mutex::new(None);
 
-pub struct FreeList;
-impl PageAllocator for FreeList {
+pub struct KernelAlloc;
+impl PageAllocator for KernelAlloc {
     fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
         let mut head = PMM.lock();
         let bytes = pages * arch::virt::get_page_size(VmLevel::L1);
+
+        let limit = if flags.contains(AllocFlags::Kernel20) {
+            PhysAddr(1 << 20)
+        } else if flags.contains(AllocFlags::Kernel32) {
+            PhysAddr(1 << 32)
+        } else {
+            PhysAddr(usize::MAX)
+        };
 
         let mut addr = None;
         let mut it = *head;
         let mut prev_it = None;
         while let Some(mut x) = it {
             let page = unsafe { x.as_mut() };
+
+            if page.get_address() + bytes >= limit {
+                prev_it = it;
+                it = page.next;
+                continue;
+            }
+
             if unlikely(page.count < pages) {
                 prev_it = it;
                 it = page.next;
@@ -150,6 +168,10 @@ pub fn init(memory_map: &[PhysMemory], pages: (*mut Page, usize)) {
 
     // Register free regions.
     for entry in memory_map.iter() {
+        if entry.length < arch::virt::get_page_size(VmLevel::L1) {
+            continue;
+        }
+
         let mut pmm = PMM.lock();
         let mut page_db = PAGE_DB.lock();
         let page = page_db.get_mut(Page::idx_from_addr(entry.address)).unwrap();
@@ -160,5 +182,5 @@ pub fn init(memory_map: &[PhysMemory], pages: (*mut Page, usize)) {
         total_memory += entry.length;
     }
 
-    log!("Total available memory: {} KiB", total_memory / 1024);
+    log!("Total available memory: {} MiB", total_memory / 1024 / 1024);
 }

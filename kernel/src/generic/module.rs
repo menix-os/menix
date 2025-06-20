@@ -1,18 +1,17 @@
 use super::{
-    memory::{PhysAddr, VirtAddr, virt::VmFlags},
+    memory::{
+        PhysAddr, VirtAddr,
+        pmm::{AllocFlags, KernelAlloc, PageAllocator},
+        virt::VmFlags,
+        virt::VmLevel,
+    },
     util::mutex::Mutex,
+    util::{align_down, align_up},
     vfs::exec::elf::{self, ElfHashTable, ElfHdr, ElfPhdr, ElfRela, ElfSym},
 };
 use crate::{
     arch,
-    generic::{
-        boot::BootInfo,
-        memory::{
-            pmm::{AllocFlags, FreeList, PageAllocator},
-            virt::{self, VmLevel},
-        },
-        util::{align_down, align_up},
-    },
+    generic::memory::virt::{self, PageTable},
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{
@@ -46,9 +45,13 @@ pub struct ModuleInfo {
     pub mappings: Vec<(PhysAddr, VirtAddr, usize, VmFlags)>,
 }
 
+init_stage! {
+    #[depends(super::memory::MEMORY_STAGE)]
+    pub MODULE_STAGE: "generic.module" => init;
+}
+
 /// Sets up the module system.
-pub(crate) fn init() {
-    let boot_info = BootInfo::get();
+fn init() {
     let dynsym_start = &raw const LD_DYNSYM_START;
     let dynsym_end = &raw const LD_DYNSYM_END;
     let dynstr_start = &raw const LD_DYNSTR_START;
@@ -146,14 +149,11 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
     let mut dt_strtab = None;
     let mut dt_strsz = None;
     let mut dt_symtab = None;
-    let mut dt_syment = None;
     let mut dt_rela = None;
     let mut dt_relasz = None;
-    let mut dt_relaent = None;
     let mut dt_pltrelsz = None;
     let mut dt_jmprel = None;
     let mut dt_init_array = None;
-    let mut dt_init_arraysz = None;
     let mut dt_hash = None;
     let mut dt_needed = Vec::new();
 
@@ -179,15 +179,15 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 }
 
                 // Allocate physical memory.
-                let phys = FreeList::alloc_bytes(memsz, AllocFlags::Zeroed)
+                let phys = KernelAlloc::alloc_bytes(memsz, AllocFlags::Zeroed)
                     .map_err(|_| ModuleLoadError::AllocFailed)?;
 
-                let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
+                let page_table = PageTable::get_kernel();
 
                 // Map memory with RW permissions.
                 for page in (0..memsz).step_by(arch::virt::get_page_size(VmLevel::L1)) {
                     page_table
-                        .map_single::<FreeList>(
+                        .map_single::<KernelAlloc>(
                             (load_base + aligned_virt + page).into(),
                             phys + page,
                             VmFlags::Read | VmFlags::Write,
@@ -207,7 +207,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 buf[phdr.p_filesz as usize..].fill(0);
 
                 // Convert the flags to our format.
-                let mut flags = VmFlags::None;
+                let mut flags = VmFlags::empty();
                 if phdr.p_flags & elf::PF_EXECUTE != 0 {
                     flags |= VmFlags::Exec;
                 }
@@ -232,15 +232,12 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                     match entry.d_tag as u32 {
                         elf::DT_STRTAB => dt_strtab = Some(entry.d_val),
                         elf::DT_SYMTAB => dt_symtab = Some(entry.d_val),
-                        elf::DT_SYMENT => dt_syment = Some(entry.d_val),
                         elf::DT_STRSZ => dt_strsz = Some(entry.d_val),
                         elf::DT_RELA => dt_rela = Some(entry.d_val),
                         elf::DT_RELASZ => dt_relasz = Some(entry.d_val),
-                        elf::DT_RELAENT => dt_relaent = Some(entry.d_val),
                         elf::DT_PLTRELSZ => dt_pltrelsz = Some(entry.d_val),
                         elf::DT_JMPREL => dt_jmprel = Some(entry.d_val),
                         elf::DT_INIT_ARRAY => dt_init_array = Some(entry.d_val),
-                        elf::DT_INIT_ARRAYSZ => dt_init_arraysz = Some(entry.d_val),
                         elf::DT_HASH => dt_hash = Some(entry.d_val),
                         elf::DT_NEEDED => dt_needed.push(entry.d_val),
                         elf::DT_NULL => break,
@@ -364,11 +361,11 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
 
     // Finally, remap everything so the permissions are as described.
     for (_, virt, length, flags) in &info.mappings {
-        let mut page_table = virt::KERNEL_PAGE_TABLE.lock();
         let length = align_up(*length, arch::virt::get_page_size(VmLevel::L1));
+        let page_table = PageTable::get_kernel();
         for page in (0..length).step_by(arch::virt::get_page_size(VmLevel::L1)) {
             page_table
-                .remap_single::<FreeList>(*virt + page, *flags, VmLevel::L1)
+                .remap_single::<KernelAlloc>(*virt + page, *flags, VmLevel::L1)
                 .map_err(|_| ModuleLoadError::AllocFailed)?;
         }
     }

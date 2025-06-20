@@ -37,7 +37,7 @@ pub struct Task {
     /// The unique identifier of this task.
     id: Tid,
     /// The process which this task belongs to.
-    process: Option<Arc<Process>>,
+    process: Arc<Process>,
     /// If this task is a user task. `false` forbids this task to ever enter user mode.
     is_user: bool,
     /// The current state of the thread.
@@ -61,7 +61,7 @@ impl Task {
         entry: extern "C" fn(usize, usize),
         arg1: usize,
         arg2: usize,
-        parent: Option<Arc<Process>>,
+        parent: Arc<Process>,
         is_user: bool,
     ) -> EResult<Self> {
         // TODO: see above
@@ -106,10 +106,10 @@ impl Task {
         self.id
     }
 
-    /// Returns the process which this task belongs to. If it doesn't belong to any, [`None`] is returned.
+    /// Returns the process which this task belongs to.
     #[inline]
-    pub fn get_process(&self) -> Option<Pid> {
-        self.process.as_ref().map(|x| x.get_pid())
+    pub fn get_process(&self) -> Arc<Process> {
+        self.process.clone()
     }
 }
 

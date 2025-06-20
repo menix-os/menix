@@ -5,20 +5,33 @@ pub mod fs;
 pub mod inode;
 pub mod path;
 
-use crate::generic::{posix::errno::EResult, util::mutex::Mutex};
-use alloc::{boxed::Box, sync::Arc};
-use entry::Entry;
-use {
-    file::{File, OpenFlags},
-    path::PathBuf,
+use crate::generic::{
+    util::once::Once,
+    vfs::{entry::MountFlags, path::Path},
 };
 
-/// The root of the VFS.
-static ROOT: Mutex<Option<Arc<Entry>>> = Mutex::new(None);
+/// The root directory entry.
+static ROOT: Once<Path> = Once::new();
 
-pub(crate) fn init() {
-    // fs::register_fs(Box::new(fs::tmpfs::TmpFs));
+/// Gets a reference to the root of the VFS.
+pub fn get_root() -> Path {
+    ROOT.get().clone()
+}
 
-    // Mount the tmpfs as root.
-    // TODO
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE)]
+    pub VFS_STAGE: "generic.vfs" => init;
+}
+
+fn init() {
+    // Mount a tmpfs as root.
+    let initrd_mount =
+        fs::mount(None, b"tmpfs", MountFlags::empty()).expect("Unable to mount the tmpfs");
+
+    let root_path = Path {
+        entry: initrd_mount.root.clone(),
+        mount: initrd_mount,
+    };
+
+    unsafe { ROOT.init(root_path) };
 }

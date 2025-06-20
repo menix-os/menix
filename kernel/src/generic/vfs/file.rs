@@ -2,13 +2,18 @@ use super::inode::INode;
 use crate::generic::{
     memory::{VirtAddr, virt::AddressSpace},
     posix::errno::{EResult, Errno},
-    util::mutex::Mutex,
-    vfs::{entry::Entry, path::PathBuf},
+    process::Identity,
+    vfs::{
+        entry::Entry,
+        inode::{Mode, NodeOps},
+        path::Path,
+    },
 };
 use alloc::sync::Arc;
-use core::{fmt::Debug, sync::atomic::AtomicUsize};
+use core::fmt::Debug;
 
 bitflags::bitflags! {
+    #[derive(Clone, Copy)]
     pub struct OpenFlags: u32 {
         /// Create the file if it's missing.
         const Create = uapi::O_CREAT as u32;
@@ -30,32 +35,49 @@ bitflags::bitflags! {
         /// Don't update the access time.
         const NoAccessTime = uapi::O_NOATIME as u32;
         const Temporary = uapi::O_TMPFILE as u32;
+        const ReadOnly = uapi::O_RDONLY as u32;
+        const WriteOnly = uapi::O_WRONLY as u32;
+        const ReadWrite = uapi::O_RDWR as u32;
+        const Executeable = uapi::O_EXEC as u32;
     }
+}
+
+pub enum SeekAnchor {
+    /// Seek relative to the start of the file.
+    Start(i64),
+    /// Seek relative to the current cursor position.
+    Current(i64),
+    /// Seek relative to the end of the file.
+    End(i64),
 }
 
 /// The kernel representation of an open file.
 pub struct File {
-    /// The underlying inode that this file is pointing to.
-    pub inode: Arc<INode>,
-    /// The current position of the cursor in this file.
-    pub position: AtomicUsize,
+    /// The cached entry for this node.
+    pub path: Path,
+    /// Operations that can be performed on this file.
+    pub ops: Arc<dyn FileOps>,
     /// File open flags.
-    pub flags: Mutex<OpenFlags>,
+    pub flags: OpenFlags,
 }
 
 /// Operations that can be performed on a file.
 pub trait FileOps: Debug {
+    /// Reads directory entries into a buffer.
+    /// Returns actual bytes read.
+    fn read_dir(&self, file: &File, buffer: &mut [u8]) -> EResult<u64>;
+
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
-    fn read(&self, file: &File, buffer: &mut [u8]) -> EResult<usize>;
+    fn read(&self, file: &File, buffer: &mut [u8], offset: SeekAnchor) -> EResult<u64>;
 
     /// Writes a buffer to the file.
     /// Returns actual bytes written.
-    fn write(&self, file: &File, buffer: &[u8]) -> EResult<usize>;
+    fn write(&self, file: &File, buffer: &[u8], offset: SeekAnchor) -> EResult<u64>;
 
     /// Seeks inside the file.
     /// Returns the new absolute offset.
-    fn seek(&self, file: &File, offset: isize, whence: isize) -> EResult<usize>;
+    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64>;
 
     /// Performs a generic ioctl operation on the file.
     /// Returns a status code.
@@ -73,33 +95,88 @@ pub trait FileOps: Debug {
 }
 
 impl File {
-    /// Opens a file identified by a path.
+    /// Opens a file referenced by a path for a given `identity`.
     pub fn open(
-        relative_to: &Self,
-        path: PathBuf, // TODO: This doesn't have to be an owned value.
+        path: &[u8],
         flags: OpenFlags,
-        mode: uapi::mode_t,
+        mode: Mode,
+        identity: &Identity,
     ) -> EResult<Arc<Self>> {
-        todo!()
+        let file_path = Path::new(path)?;
+        let inode = file_path.entry.get_inode().ok_or(Errno::ENOENT)?;
+
+        // If we want to open as a directory, make sure this is actually a directory.
+        if flags.contains(OpenFlags::Directory) {
+            match &inode.node_ops {
+                NodeOps::Directory(_) => {}
+                _ => return Err(Errno::ENOTDIR),
+            }
+        }
+
+        // Check if we are allowed to access this node.
+        inode.try_access(identity, flags)?;
+
+        let file = match &inode.node_ops {
+            NodeOps::Regular(reg) => {
+                todo!()
+            }
+            NodeOps::Directory(dir) => dir.open(&inode, &file_path.entry, flags),
+            NodeOps::BlockDevice | NodeOps::CharacterDevice => todo!(),
+            NodeOps::FIFO => todo!(),
+            // Attempting to open a symbolic link means the resolution was faulty.
+            NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
+            // Doesn't make sense to call open() on anything else.
+            _ => return Err(Errno::ENOTSUP),
+        };
+
+        return file;
     }
 
-    /// Reads into a buffer from a file. Returns actual bytes read.
-    pub fn read(&self, buf: &mut [u8]) -> EResult<usize> {
-        todo!()
+    /// Reads directory entries into a buffer.
+    /// Returns actual bytes read.
+    pub fn read_dir(&self, buf: &mut [u8]) -> EResult<u64> {
+        self.ops.read_dir(self, buf)
     }
 
-    /// Reads into a buffer from a file at a specified offset. Returns actual bytes read.
-    pub fn pread(&self, buf: &mut [u8], offset: u64) -> EResult<usize> {
-        todo!()
+    /// Reads into a buffer from a file.
+    /// Returns actual bytes read.
+    pub fn read(&self, buf: &mut [u8]) -> EResult<u64> {
+        self.ops.read(self, buf, SeekAnchor::Current(0))
     }
 
-    /// Writes a buffer to a file. Returns actual bytes written.
-    pub fn write(&self, buf: &[u8]) -> EResult<usize> {
-        todo!()
+    /// Reads into a buffer from a file at a specified offset.
+    /// Returns actual bytes read.
+    pub fn pread(&self, buf: &mut [u8], offset: i64) -> EResult<u64> {
+        self.ops.read(self, buf, SeekAnchor::Start(offset))
     }
 
-    /// Writes a buffer to a file at a specified offset. Returns actual bytes written.
-    pub fn pwrite(&self, buf: &[u8], offset: u64) -> EResult<usize> {
-        todo!()
+    /// Writes a buffer to a file.
+    /// Returns actual bytes written.
+    pub fn write(&self, buf: &[u8]) -> EResult<u64> {
+        self.ops.write(self, buf, SeekAnchor::Current(0))
+    }
+
+    /// Writes a buffer to a file at a specified offset.
+    /// Returns actual bytes written.
+    pub fn pwrite(&self, buf: &[u8], offset: i64) -> EResult<u64> {
+        self.ops.write(self, buf, SeekAnchor::Start(offset))
+    }
+
+    pub fn seek(&self, offset: SeekAnchor) -> EResult<u64> {
+        self.ops.seek(self, offset)
+    }
+
+    pub fn ioctl(&self, request: usize, arg: usize) -> EResult<usize> {
+        self.ops.ioctl(self, request, arg)
+    }
+
+    pub fn mmap(
+        &self,
+        space: &AddressSpace,
+        offset: u64,
+        hint: VirtAddr,
+        size: usize,
+    ) -> EResult<VirtAddr> {
+        self.ops.mmap(self, space, offset, hint, size)
     }
 }

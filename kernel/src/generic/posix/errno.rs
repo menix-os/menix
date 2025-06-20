@@ -1,3 +1,5 @@
+use alloc::alloc::AllocError;
+
 /// Encapsulates an Errno value as a result.
 pub type EResult<T> = Result<T, Errno>;
 
@@ -137,4 +139,11 @@ pub enum Errno {
     ERFKILL = uapi::ERFKILL,
     EHWPOISON = uapi::EHWPOISON,
     EIEIO = uapi::EIEIO,
+}
+
+// Short form to translate an alloc failure to ENOMEM.
+impl From<AllocError> for Errno {
+    fn from(_: AllocError) -> Self {
+        Errno::ENOMEM
+    }
 }

@@ -1,14 +1,17 @@
 //! Helpers for structured MMIO accesses.
 
+use crate::generic::memory::virt::PageTable;
+
 use super::{
     PhysAddr, VirtAddr,
-    pmm::FreeList,
+    pmm::KernelAlloc,
     virt::{self, VmFlags, VmLevel},
 };
 use core::marker::PhantomData;
 use num_traits::PrimInt;
 
 /// Represents a region of memory mapped IO.
+#[derive(Debug)]
 pub struct Mmio {
     /// A pointer to the start of this region in virtual memory.
     base: *mut (),
@@ -29,9 +32,8 @@ impl Mmio {
     pub unsafe fn new_mmio(phys: PhysAddr, len: usize) -> Self {
         return Self {
             // TODO: When adding memory type support, map this as uncacheable.
-            base: virt::KERNEL_PAGE_TABLE
-                .lock()
-                .map_memory::<FreeList>(phys, VmFlags::Read | VmFlags::Write, VmLevel::L1, len)
+            base: PageTable::get_kernel()
+                .map_memory::<KernelAlloc>(phys, VmFlags::Read | VmFlags::Write, VmLevel::L1, len)
                 .unwrap() as *mut (),
             needs_unmap: true,
             len,
@@ -55,7 +57,7 @@ impl Mmio {
     }
 
     /// Reads data from a single field.
-    pub fn read<T: PrimInt>(&self, field: Field<T>) -> T {
+    pub fn read<T: PrimInt>(&self, field: Register<T>) -> T {
         let value = unsafe { (self.base as *mut T).byte_add(field.offset).read_volatile() };
         return match field.native_endian {
             true => value,
@@ -64,7 +66,7 @@ impl Mmio {
     }
 
     /// Writes data to a single field.
-    pub fn write<T: PrimInt>(&mut self, field: Field<T>, value: T) {
+    pub fn write<T: PrimInt>(&self, field: Register<T>, value: T) {
         unsafe {
             (self.base as *mut T).byte_add(field.offset).write_volatile(
                 match field.native_endian {
@@ -84,7 +86,7 @@ impl Mmio {
     }
 
     /// Writes multiple array elements from a buffer.
-    pub fn write_array<T: PrimInt>(&mut self, vector: Array<T>, offset: usize, value: &[T]) {
+    pub fn write_array<T: PrimInt>(&self, vector: Array<T>, offset: usize, value: &[T]) {
         assert!(value.len() == vector.count);
         for (idx, elem) in value.iter().enumerate() {
             self.write_at(vector, offset + idx, *elem);
@@ -106,7 +108,7 @@ impl Mmio {
     }
 
     /// Writes a single element to a vector.
-    pub fn write_at<T: PrimInt>(&mut self, vector: Array<T>, index: usize, value: T) {
+    pub fn write_at<T: PrimInt>(&self, vector: Array<T>, index: usize, value: T) {
         assert!(index < vector.count);
         unsafe {
             (self.base as *mut T)
@@ -122,24 +124,24 @@ impl Mmio {
 impl Drop for Mmio {
     fn drop(&mut self) {
         if self.needs_unmap {
-            virt::KERNEL_PAGE_TABLE
-                .lock()
+            PageTable::get_kernel()
                 .unmap_range(VirtAddr(self.base as usize), self.len)
                 .unwrap();
         }
     }
 }
 
-/// Single member of a structure.
-#[derive(Debug, Clone, Copy)]
-pub struct Field<T: PrimInt> {
-    _p: PhantomData<T>,
+/// A hardware register mapped in the current address space.
+/// All reads and writes must be properly aligned.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Register<T: PrimInt> {
     offset: usize,
     native_endian: bool,
+    _p: PhantomData<T>,
 }
 
-impl<T: PrimInt> Field<T> {
-    /// Creates a new field with native endianness.
+impl<T: PrimInt> Register<T> {
+    /// Creates a new register with native endianness.
     /// `offset` is in units of bytes.
     pub const fn new(offset: usize) -> Self {
         assert!(offset % size_of::<T>() == 0);
@@ -160,6 +162,10 @@ impl<T: PrimInt> Field<T> {
     pub const fn with_be(mut self) -> Self {
         self.native_endian = !is_little_endian();
         self
+    }
+
+    pub const fn offset(&self) -> usize {
+        self.offset
     }
 }
 

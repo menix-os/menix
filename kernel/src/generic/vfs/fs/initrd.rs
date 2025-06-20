@@ -6,11 +6,24 @@
 //! for actually loading the modules and mounting the real root file system from
 //! disk.
 
-use core::ffi::CStr;
+#![allow(unused)]
 
-use crate::generic::{boot::BootInfo, util, vfs::entry::Entry};
+use crate::generic::{
+    boot::BootInfo,
+    posix::errno::{EResult, Errno},
+    process::Identity,
+    util::{self, mutex::Mutex},
+    vfs::{
+        entry::{Entry, Mount, MountFlags},
+        file::{File, OpenFlags},
+        fs::{FileSystem, SuperBlock},
+        inode::{INode, Mode},
+        path::Path,
+    },
+};
 use alloc::sync::Arc;
 use bytemuck::AnyBitPattern;
+use core::ffi::CStr;
 
 #[repr(C)]
 #[derive(AnyBitPattern, Clone, Copy)]
@@ -58,11 +71,11 @@ fn oct2bin(str: &[u8]) -> usize {
     return n;
 }
 
-pub fn load(data: &[u8], mount: Arc<Entry>) {
+pub fn load(data: &[u8], root: Arc<Entry>) -> EResult<()> {
     let mut offset = 0;
     let mut name_override = None;
-
     let mut files_loaded = 0usize;
+
     loop {
         let current_file: &UStarFsHeader =
             bytemuck::try_from_bytes(&data[offset..][..size_of::<UStarFsHeader>()]).unwrap();
@@ -72,8 +85,7 @@ pub fn load(data: &[u8], mount: Arc<Entry>) {
 
         let mut file_name = CStr::from_bytes_until_nul(&current_file.name)
             .unwrap()
-            .to_str()
-            .unwrap();
+            .to_bytes();
         if let Some(n) = name_override {
             file_name = n;
             name_override = None;
@@ -82,31 +94,13 @@ pub fn load(data: &[u8], mount: Arc<Entry>) {
         let file_mode = oct2bin(&current_file.mode);
         let file_size = oct2bin(&current_file.size);
 
-        if BootInfo::get()
-            .command_line
-            .get_bool("initrd_module_autoload")
-            .unwrap_or(false)
-            && file_name.ends_with(".kso")
-        {
-            let name = file_name
-                .rsplit_once('/')
-                .map(|(_, name)| name)
-                .unwrap()
-                .split_once('.')
-                .map(|(name, _)| name)
-                .unwrap();
-
-            if BootInfo::get().command_line.get_bool(name).unwrap_or(true) {
-                log!("Loading \"{}\"", name);
-                if let Err(x) =
-                    crate::generic::module::load(name, &data[(offset + 512)..][..file_size])
-                {
-                    log!("Failed to load module: {:?}", x);
-                }
-            }
-        }
-
         // TODO
+        let file = File::open(
+            file_name,
+            OpenFlags::Create,
+            Mode::UserRead | Mode::UserWrite | Mode::UserExec,
+            Identity::get_kernel(),
+        );
         match current_file.typ {
             REGULAR => (),
             NORMAL => (),
@@ -126,5 +120,5 @@ pub fn load(data: &[u8], mount: Arc<Entry>) {
         offset += 512 + util::align_up(file_size, 512);
     }
 
-    log!("Loaded {} files from initrd", files_loaded);
+    return Ok(());
 }
