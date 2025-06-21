@@ -3,6 +3,7 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     process::Identity,
     vfs::{
+        PathNode,
         cache::Entry,
         file::{File, FileOps, OpenFlags},
     },
@@ -10,7 +11,7 @@ use crate::generic::{
 use alloc::{boxed::Box, sync::Arc};
 use core::{fmt::Debug, sync::atomic::AtomicBool};
 
-/// A standalone inode. See [`super::entry::Entry`] for information.
+/// A standalone inode. See [`super::cache::Entry`] for information.
 #[derive(Debug)]
 pub struct INode {
     pub id: u64,
@@ -29,7 +30,7 @@ pub struct INode {
 impl INode {
     /// Checks if the node can be accessed with the given identity.
     /// Returns [`Errno::EACCES`] if an access is not allowed.
-    pub fn try_access(&self, ident: &Identity, flags: OpenFlags) -> EResult<()> {
+    pub fn try_access(&self, ident: &Identity, flags: OpenFlags, use_real: bool) -> EResult<()> {
         if ident.effective_user_id == 0 {
             // If this file is not able to be executed, always fail.
             if flags.contains(OpenFlags::Executeable)
@@ -84,10 +85,10 @@ pub enum NodeOps {
 
 /// Operations for directory [`INode`]s.
 pub trait DirectoryOps: Debug {
-    fn open(&self, node: &INode, entry: &Entry, flags: OpenFlags) -> EResult<Arc<File>>;
+    fn open(&self, node: &Arc<INode>, entry: PathNode, flags: OpenFlags) -> EResult<Arc<File>>;
 
     /// Looks up all children in an `node` directory and caches them in `entry`.
-    fn populate(&self, node: &INode, entry: &Entry);
+    fn lookup(&self, node: &Arc<INode>, entry: &mut Entry) -> EResult<()>;
 }
 
 /// Operations for regular file [`INode`]s.
@@ -103,8 +104,18 @@ pub trait SymlinkOps: Debug {
     fn read_link(&self, node: &INode) -> EResult<usize>;
 }
 
+pub enum NodeType {
+    Regular = uapi::S_IFREG as _,
+    Directory = uapi::S_IFDIR as _,
+    SymbolicLink = uapi::S_IFLNK as _,
+    FIFO = uapi::S_IFIFO as _,
+    BlockDevice = uapi::S_IFBLK as _,
+    CharacterDevice = uapi::S_IFCHR as _,
+    Socket = uapi::S_IFSOCK as _,
+}
+
 bitflags::bitflags! {
-    #[derive(Debug, Default, PartialEq)]
+    #[derive(Debug, Default)]
     pub struct Mode: u32 {
         const UserRead = uapi::S_IRUSR;
         const UserWrite = uapi::S_IWUSR;
@@ -120,13 +131,5 @@ bitflags::bitflags! {
 
         const SetUserId = uapi::S_ISUID;
         const SetGroupId = uapi::S_ISGID;
-
-        const Regular = uapi::S_IFREG;
-        const Directory = uapi::S_IFDIR;
-        const SymbolicLink = uapi::S_IFLNK;
-        const FIFO = uapi::S_IFIFO;
-        const BlockDevice = uapi::S_IFBLK;
-        const CharacterDevice = uapi::S_IFCHR;
-        const Socket = uapi::S_IFSOCK;
     }
 }
