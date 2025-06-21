@@ -6,7 +6,7 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     util::mutex::Mutex,
     vfs::{
-        entry::{Entry, Mount, MountFlags},
+        cache::{Entry, Mount, MountFlags},
         inode::Mode,
     },
 };

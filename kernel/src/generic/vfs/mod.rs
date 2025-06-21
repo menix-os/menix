@@ -1,20 +1,19 @@
-pub mod entry;
+pub mod cache;
 pub mod exec;
 pub mod file;
 pub mod fs;
 pub mod inode;
-pub mod path;
 
 use crate::generic::{
     util::once::Once,
-    vfs::{entry::MountFlags, path::Path},
+    vfs::cache::{MountFlags, PathNode},
 };
 
 /// The root directory entry.
-static ROOT: Once<Path> = Once::new();
+static ROOT: Once<PathNode> = Once::new();
 
 /// Gets a reference to the root of the VFS.
-pub fn get_root() -> Path {
+pub fn get_root() -> PathNode {
     ROOT.get().clone()
 }
 
@@ -28,7 +27,7 @@ fn init() {
     let initrd_mount =
         fs::mount(None, b"tmpfs", MountFlags::empty()).expect("Unable to mount the tmpfs");
 
-    let root_path = Path {
+    let root_path = PathNode {
         entry: initrd_mount.root.clone(),
         mount: initrd_mount,
     };

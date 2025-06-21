@@ -1,15 +1,16 @@
-#![allow(unused)]
-
 use super::inode::INode;
 use crate::generic::{
+    posix::errno::{EResult, Errno},
+    process::{Identity, sched::Scheduler},
     util::mutex::Mutex,
-    vfs::{fs::SuperBlock, path::Path},
+    vfs::{fs::SuperBlock, inode::NodeOps},
 };
 use alloc::{
     collections::btree_map::BTreeMap,
     sync::{Arc, Weak},
     vec::Vec,
 };
+use core::hint::unlikely;
 
 bitflags::bitflags! {
     #[derive(Debug)]
@@ -23,18 +24,18 @@ bitflags::bitflags! {
 pub struct Entry {
     /// The name of this entry.
     pub name: Vec<u8>,
-    flags: EntryFlags,
+    pub flags: EntryFlags,
     /// The underlying [`INode`] this entry is pointing to.
     /// A [`None`] value indicates that this entry is negative.
-    inode: Mutex<Option<Weak<INode>>>,
+    pub inode: Mutex<Option<Weak<INode>>>,
     /// The parent of this [`Entry`].
     /// A [`None`] value indicates that this entry is a root.
-    parent: Option<Arc<Entry>>,
+    pub parent: Option<Arc<Entry>>,
     /// If the [`EntryFlags::Cached`] bit is set in [`Self::flags`],
     /// then this contains a map of all children of this entry.
-    children: Mutex<BTreeMap<Vec<u8>, Weak<Entry>>>,
+    pub children: Mutex<BTreeMap<Vec<u8>, Weak<Entry>>>,
     /// A list of mounts on this entry.
-    mounts: Mutex<Vec<Weak<Mount>>>,
+    pub mounts: Mutex<Vec<Weak<Mount>>>,
 }
 
 impl Entry {
@@ -65,7 +66,7 @@ pub struct Mount {
     pub flags: MountFlags,
     pub super_block: Arc<dyn SuperBlock>,
     pub root: Arc<Entry>,
-    pub mount_point: Mutex<Option<Path>>,
+    pub mount_point: Mutex<Option<PathNode>>,
 }
 
 bitflags::bitflags! {
@@ -101,5 +102,69 @@ bitflags::bitflags! {
         const Born = uapi::MS_BORN as u32;
         const Active = uapi::MS_ACTIVE as u32;
         const NoUser = uapi::MS_NOUSER as u32;
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PathNode {
+    pub mount: Arc<Mount>,
+    pub entry: Arc<Entry>,
+}
+
+impl PathNode {
+    pub fn lookup(start: Option<Self>, path: &[u8], identity: &Identity) -> EResult<Self> {
+        if unlikely(path.is_empty()) {
+            return Err(Errno::ENOENT);
+        }
+
+        let proc = Scheduler::get_current().get_process();
+
+        // If a path starts with '/', it's an absolute path.
+        // In that case, skip the first character and use the current root as a starting point.
+        let (mut current_node, path) = if path.get(0).is_some_and(|&x| x == b'/') {
+            (proc.root_dir.lock().clone(), &path[1..])
+        } else {
+            (start.unwrap_or(proc.working_dir.lock().clone()), path)
+        };
+
+        // Parse each component.
+        for component in path.split(|&x| x == b'/').filter(|&x| x.is_empty()) {
+            // A path may never contain a NUL terminator.
+            if unlikely(component.contains(&0)) {
+                return Err(Errno::EILSEQ);
+            }
+
+            // TODO: Resolve symlinks.
+            let Some(inode) = current_node.entry.get_inode() else {
+                return Err(Errno::ENOENT);
+            };
+
+            let NodeOps::Directory(_) = &inode.node_ops else {
+                return Err(Errno::ENOTDIR);
+            };
+
+            current_node = current_node.lookup_child(component, identity)?;
+        }
+
+        return Ok(current_node);
+    }
+
+    pub fn lookup_child(self, name: &[u8], identity: &Identity) -> EResult<Self> {
+        todo!()
+    }
+
+    /// Traverses a path until it encounters a node with no mount point.
+    pub fn get_mount_top(self) -> PathNode {
+        let mut current = self;
+
+        loop {
+            let root = match &*current.mount.mount_point.lock() {
+                Some(x) => x.clone(),
+                None => break,
+            };
+            current = root;
+        }
+
+        current
     }
 }

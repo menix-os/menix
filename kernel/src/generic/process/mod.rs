@@ -12,10 +12,10 @@ use crate::generic::{
     util::{mutex::Mutex, once::Once},
     vfs::{
         self,
+        cache::PathNode,
         exec::ExecutableInfo,
         file::{File, OpenFlags},
         inode::Mode,
-        path::Path,
     },
 };
 use alloc::{
@@ -43,9 +43,9 @@ pub struct Process {
     /// The address space for this process.
     pub page_table: Arc<PageTable>,
     /// The root directory for this process.
-    pub root_dir: Mutex<Path>,
+    pub root_dir: Mutex<PathNode>,
     /// Current working directory.
-    pub working_dir: Mutex<Path>,
+    pub working_dir: Mutex<PathNode>,
     /// The user identity of this process.
     pub identity: Mutex<Identity>,
 }
@@ -98,8 +98,9 @@ impl Process {
     }
 
     /// Creates a new user process from a file path. It determines the execution format by reading the first few bytes.
-    pub fn from_file(path: &[u8]) -> EResult<Arc<Self>> {
+    pub fn from_file(parent: Option<Arc<Self>>, path: &[u8]) -> EResult<Arc<Self>> {
         let file = File::open(
+            None,
             path,
             OpenFlags::ReadOnly | OpenFlags::Executeable,
             Mode::empty(),

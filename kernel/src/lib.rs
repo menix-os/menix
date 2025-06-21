@@ -32,13 +32,14 @@ use generic::boot::BootInfo;
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
 pub fn init() -> ! {
-    crate::generic::init::run();
+    generic::init::run();
 
     // Set up scheduler.
-    let init = Arc::new(
+    let bsp_scheduler = &CpuData::get().scheduler;
+    bsp_scheduler.add_task(Arc::new(
         Task::new(main, 0, 0, Process::get_kernel(), false).expect("Couldn't create kernel task"),
-    );
-    CpuData::get().scheduler.prepare(Some(init));
+    ));
+    bsp_scheduler.prepare();
 
     loop {
         hint::spin_loop();
@@ -61,14 +62,14 @@ pub extern "C" fn main(_: usize, _: usize) {
     // Find user space init. If no path is given, search a few select directories.
     let path = match BootInfo::get().command_line.get_string("init") {
         Some(x) => x.as_bytes(),
-        // TODO: Search filesystem for init binaries.
+        // TODO: Search VFS for alternative init paths like "/sbin/init"
         None => b"/init",
     };
 
     log!("Starting init \"{}\"", String::from_utf8_lossy(path));
 
     let kernel_proc = Scheduler::get_current().get_process();
-    let init_proc = Process::from_file(path).unwrap();
+    let init_proc = Process::from_file(None, path).expect("Unable to create init process");
     // TODO: Add to run queue.
 
     loop {

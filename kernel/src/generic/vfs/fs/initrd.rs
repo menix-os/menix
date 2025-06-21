@@ -1,9 +1,8 @@
-//! The initrd (initial ram disk) is a CPIO archive which is loaded into memory
-//! by the bootloader.
+//! The initramfs (initial RAM file system) is a CPIO archive which is loaded into memory by the bootloader.
 //!
-//! This allows the kernel to load drivers needed in order to boot from a
-//! block device. It also usually contains the init process which is responsible
-//! for actually loading the modules and mounting the real root file system from
+//! This allows the kernel to load drivers needed in order to boot from a block
+//! device. It also usually contains the init process which is responsible for
+//! actually loading the modules and mounting the real root file system from
 //! disk.
 
 #![allow(unused)]
@@ -14,11 +13,10 @@ use crate::generic::{
     process::Identity,
     util::{self, mutex::Mutex},
     vfs::{
-        entry::{Entry, Mount, MountFlags},
+        cache::{Entry, Mount, MountFlags},
         file::{File, OpenFlags},
         fs::{FileSystem, SuperBlock},
         inode::{INode, Mode},
-        path::Path,
     },
 };
 use alloc::sync::Arc;
@@ -96,6 +94,7 @@ pub fn load(data: &[u8], root: Arc<Entry>) -> EResult<()> {
 
         // TODO
         let file = File::open(
+            None,
             file_name,
             OpenFlags::Create,
             Mode::UserRead | Mode::UserWrite | Mode::UserExec,

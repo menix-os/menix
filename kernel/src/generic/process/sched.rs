@@ -33,11 +33,8 @@ impl Scheduler {
 
     /// Adds a task to a run queue.
     /// The scheduler will find the most optimal CPU to run on.
-    pub fn add_task(task: Arc<Task>) {
-        // TODO: Find a CPU with the lowest effective load.
-        let optimal = &CpuData::get().scheduler;
-
-        optimal.run_queue.lock().insert(task.get_id(), task);
+    pub fn add_task(&self, task: Arc<Task>) {
+        self.run_queue.lock().insert(task.get_id(), task);
     }
 
     /// Returns the task currently running on this CPU.
@@ -85,12 +82,9 @@ impl Scheduler {
     }
 
     /// Prepares a scheduler instance to start executing a certain task.
-    pub fn prepare(&self, task: Option<Arc<Task>>) {
-        let initial = match task {
-            Some(x) => x,
-            None => Arc::new(Task::new(idle_fn, 0, 0, Process::get_kernel(), false).unwrap()),
-        };
-        Scheduler::add_task(initial.clone());
+    pub fn prepare(&self) {
+        let initial = Arc::new(Task::new(idle_fn, 0, 0, Process::get_kernel(), false).unwrap());
+        self.add_task(initial.clone());
 
         // We create a dummy task on the stack which only exists to start the
         // scheduler since it assumes that there's always a task running.
