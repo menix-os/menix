@@ -3,7 +3,7 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     process::Identity,
     vfs::{
-        entry::Entry,
+        cache::Entry,
         file::{File, FileOps, OpenFlags},
     },
 };

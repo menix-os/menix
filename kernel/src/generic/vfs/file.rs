@@ -4,9 +4,8 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     process::Identity,
     vfs::{
-        entry::Entry,
+        cache::PathNode,
         inode::{Mode, NodeOps},
-        path::Path,
     },
 };
 use alloc::sync::Arc;
@@ -44,7 +43,7 @@ bitflags::bitflags! {
 
 pub enum SeekAnchor {
     /// Seek relative to the start of the file.
-    Start(i64),
+    Start(u64),
     /// Seek relative to the current cursor position.
     Current(i64),
     /// Seek relative to the end of the file.
@@ -53,10 +52,12 @@ pub enum SeekAnchor {
 
 /// The kernel representation of an open file.
 pub struct File {
-    /// The cached entry for this node.
-    pub path: Path,
+    /// The cached entry for this file.
+    pub path: PathNode,
     /// Operations that can be performed on this file.
     pub ops: Arc<dyn FileOps>,
+    /// The opened inode.
+    pub inode: Option<Arc<INode>>,
     /// File open flags.
     pub flags: OpenFlags,
 }
@@ -97,12 +98,13 @@ pub trait FileOps: Debug {
 impl File {
     /// Opens a file referenced by a path for a given `identity`.
     pub fn open(
+        at: Option<Arc<File>>,
         path: &[u8],
         flags: OpenFlags,
         mode: Mode,
         identity: &Identity,
     ) -> EResult<Arc<Self>> {
-        let file_path = Path::new(path)?;
+        let file_path = PathNode::lookup(at.map(|x| x.path.clone()), path, identity)?;
         let inode = file_path.entry.get_inode().ok_or(Errno::ENOENT)?;
 
         // If we want to open as a directory, make sure this is actually a directory.
@@ -135,30 +137,45 @@ impl File {
     /// Reads directory entries into a buffer.
     /// Returns actual bytes read.
     pub fn read_dir(&self, buf: &mut [u8]) -> EResult<u64> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
         self.ops.read_dir(self, buf)
     }
 
     /// Reads into a buffer from a file.
     /// Returns actual bytes read.
     pub fn read(&self, buf: &mut [u8]) -> EResult<u64> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
         self.ops.read(self, buf, SeekAnchor::Current(0))
     }
 
     /// Reads into a buffer from a file at a specified offset.
     /// Returns actual bytes read.
-    pub fn pread(&self, buf: &mut [u8], offset: i64) -> EResult<u64> {
+    pub fn pread(&self, buf: &mut [u8], offset: u64) -> EResult<u64> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
         self.ops.read(self, buf, SeekAnchor::Start(offset))
     }
 
     /// Writes a buffer to a file.
     /// Returns actual bytes written.
     pub fn write(&self, buf: &[u8]) -> EResult<u64> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
         self.ops.write(self, buf, SeekAnchor::Current(0))
     }
 
     /// Writes a buffer to a file at a specified offset.
     /// Returns actual bytes written.
-    pub fn pwrite(&self, buf: &[u8], offset: i64) -> EResult<u64> {
+    pub fn pwrite(&self, buf: &[u8], offset: u64) -> EResult<u64> {
+        if buf.is_empty() {
+            return Ok(0);
+        }
         self.ops.write(self, buf, SeekAnchor::Start(offset))
     }
 

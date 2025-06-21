@@ -6,24 +6,19 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-/// An IRQ-safe mutex.
-pub type IrqMutex<T> = Mutex<T, true>;
-pub type IrqMutexGuard<'m, T> = MutexGuard<'m, T, true>;
-
 /// A locking primitive for mutually exclusive accesses.
 /// `T` is the type of the inner value to store.
-/// `I` indicates whether this [`Mutex`] is safe in IRQ-sensitive contexts.
-pub struct Mutex<T: ?Sized, const I: bool = false> {
-    inner: UnsafeCell<InnerMutex<T, I>>,
+pub struct Mutex<T: ?Sized> {
+    inner: UnsafeCell<InnerMutex<T>>,
 }
 
 /// The inner workings of a [`Mutex`].
-struct InnerMutex<T: ?Sized, const I: bool> {
+struct InnerMutex<T: ?Sized> {
     spin: SpinLock,
     data: T,
 }
 
-impl<T, const I: bool> Mutex<T, I> {
+impl<T> Mutex<T> {
     pub const fn new(data: T) -> Self {
         Self {
             inner: UnsafeCell::new(InnerMutex {
@@ -34,26 +29,25 @@ impl<T, const I: bool> Mutex<T, I> {
     }
 }
 
-impl<T: Default, const I: bool> Default for Mutex<T, I> {
+impl<T: Default> Default for Mutex<T> {
     fn default() -> Self {
         Self::new(Default::default())
     }
 }
 
-impl<T: ?Sized, const I: bool> Mutex<T, I> {
-    pub fn lock(&self) -> MutexGuard<'_, T, I> {
-        // Get the previous IRQ state.
-        let irq = if I {
-            // If we care about IRQ safety, disable IRQs at this point.
-            unsafe { arch::irq::set_irq_state(false) }
-        } else {
-            // If we don't care about IRQ safety, just use false.
-            false
-        };
-
+impl<T: ?Sized> Mutex<T> {
+    pub fn lock(&self) -> MutexGuard<'_, T> {
         let inner = unsafe { &mut *self.inner.get() };
         inner.spin.lock();
-        MutexGuard { parent: self, irq }
+        MutexGuard { parent: self }
+    }
+
+    pub fn try_lock(&self) -> Option<MutexGuard<'_, T>> {
+        if self.is_locked() {
+            return None;
+        } else {
+            return Some(self.lock());
+        }
     }
 
     pub fn is_locked(&self) -> bool {
@@ -65,18 +59,13 @@ impl<T: ?Sized, const I: bool> Mutex<T, I> {
     /// `irq` controls if IRQs should be reactivated after unlocking.
     /// # Safety
     /// The caller must ensure that enabling IRQs at this point is safe.
-    pub unsafe fn force_unlock(&self, irq: bool) {
+    pub unsafe fn force_unlock(&self) {
         let inner = unsafe { &mut (*self.inner.get()) };
         inner.spin.unlock();
-
-        // If we care about IRQ safety and the caller wants to, enable IRQs again.
-        if I && irq {
-            unsafe { arch::irq::set_irq_state(true) };
-        }
     }
 }
 
-impl<T, const I: bool> Mutex<T, I> {
+impl<T> Mutex<T> {
     /// Returns a pointer to the contained value.
     ///
     /// # Safety
@@ -95,9 +84,9 @@ impl<T, const I: bool> Mutex<T, I> {
 
 /// # Safety
 /// We can guarantee that types encapuslated by a [`Mutex`] are thread safe.
-unsafe impl<T, const I: bool> Sync for Mutex<T, I> {}
+unsafe impl<T> Sync for Mutex<T> {}
 
-impl<T: ?Sized + Debug, const I: bool> Debug for Mutex<T, I> {
+impl<T: ?Sized + Debug> Debug for Mutex<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         let guard = self.lock();
         Debug::fmt(&*guard, f)
@@ -105,12 +94,11 @@ impl<T: ?Sized + Debug, const I: bool> Debug for Mutex<T, I> {
 }
 
 /// This struct is returned by [`Mutex::lock`] and is used to safely control mutex locking state.
-pub struct MutexGuard<'m, T: ?Sized, const I: bool> {
-    parent: &'m Mutex<T, I>,
-    irq: bool,
+pub struct MutexGuard<'m, T: ?Sized> {
+    parent: &'m Mutex<T>,
 }
 
-impl<T: ?Sized, const I: bool> Deref for MutexGuard<'_, T, I> {
+impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
     fn deref(&self) -> &Self::Target {
@@ -118,29 +106,29 @@ impl<T: ?Sized, const I: bool> Deref for MutexGuard<'_, T, I> {
     }
 }
 
-impl<T: ?Sized, const I: bool> DerefMut for MutexGuard<'_, T, I> {
+impl<T: ?Sized> DerefMut for MutexGuard<'_, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         unsafe { &mut (*self.parent.inner.get()).data }
     }
 }
 
 /// A guard is only valid in the current thread and any attempt to move it out is illegal.
-impl<T: ?Sized, const I: bool> !Send for MutexGuard<'_, T, I> {}
+impl<T: ?Sized> !Send for MutexGuard<'_, T> {}
 
 /// # Safety
 /// We can guarantee that an acquired mutex context will never be accessed by two callers at the same time.
-unsafe impl<T: ?Sized + Sync, const I: bool> Sync for MutexGuard<'_, T, I> {}
+unsafe impl<T: ?Sized + Sync> Sync for MutexGuard<'_, T> {}
 
-impl<T: ?Sized + Debug, const I: bool> Debug for MutexGuard<'_, T, I> {
+impl<T: ?Sized + Debug> Debug for MutexGuard<'_, T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
         Debug::fmt(self.deref(), f)
     }
 }
 
-impl<T: ?Sized, const I: bool> Drop for MutexGuard<'_, T, I> {
+impl<T: ?Sized> Drop for MutexGuard<'_, T> {
     fn drop(&mut self) {
         unsafe {
-            self.parent.force_unlock(self.irq);
+            self.parent.force_unlock();
         }
     }
 }

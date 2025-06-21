@@ -35,7 +35,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
     unsafe { arch::irq::set_irq_state(false) };
 
     // Force unlock output in cases like panics during printing.
-    unsafe { GLOBAL_LOGGERS.force_unlock(false) };
+    unsafe { GLOBAL_LOGGERS.force_unlock() };
 
     // We write directly to the loggers because something might've happened to the timers.
     log_panic!("Kernel panic - Environment is unsound!");
@@ -68,7 +68,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
 
     // Do a stack trace.
     unsafe {
-        super::module::SYMBOL_TABLE.force_unlock(false);
+        super::module::SYMBOL_TABLE.force_unlock();
 
         let table = &*super::module::SYMBOL_TABLE.lock();
 

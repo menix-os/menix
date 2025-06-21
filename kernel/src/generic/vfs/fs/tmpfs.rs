@@ -6,7 +6,7 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     util::mutex::Mutex,
     vfs::{
-        entry::{Entry, Mount},
+        cache::{Entry, Mount},
         file::{File, FileOps, OpenFlags, SeekAnchor},
         fs::FileSystem,
         inode::{CommonOps, DirectoryOps, INode, Mode, NodeOps, RegularOps},
