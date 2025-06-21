@@ -6,10 +6,11 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     util::mutex::Mutex,
     vfs::{
-        cache::{Entry, Mount},
+        PathNode,
+        cache::Entry,
         file::{File, FileOps, OpenFlags, SeekAnchor},
-        fs::FileSystem,
-        inode::{CommonOps, DirectoryOps, INode, Mode, NodeOps, RegularOps},
+        fs::{FileSystem, Mount},
+        inode::{CommonOps, DirectoryOps, INode, Mode, NodeOps, NodeType, RegularOps},
     },
 };
 use alloc::{boxed::Box, sync::Arc, vec::Vec};
@@ -24,15 +25,19 @@ impl FileSystem for TmpFs {
     }
 
     fn mount(&self, _: Option<Arc<Entry>>, flags: MountFlags) -> EResult<Arc<Mount>> {
-        let sb = Arc::try_new(TmpSuper {
+        let super_block = Arc::try_new(TmpSuper {
             inode_counter: AtomicUsize::new(0),
         })?;
 
+        let root_inode = super_block
+            .clone()
+            .create_inode(NodeType::Directory, Mode::from_bits_truncate(0o755))?;
+
         Ok(Arc::try_new(Mount {
             flags,
-            super_block: sb,
-            root: Arc::new(Entry::new(b"root", None, None)),
-            mount_point: Mutex::new(None),
+            super_block,
+            root: Arc::try_new(Entry::new(b"", Some(root_inode), None))?,
+            mount_point: Mutex::default(),
         })?)
     }
 }
@@ -52,16 +57,16 @@ impl SuperBlock for TmpSuper {
         todo!()
     }
 
-    fn create_inode(self: Arc<Self>, mode: Mode) -> EResult<Arc<INode>> {
-        let node_ops = match mode {
-            Mode::Regular => NodeOps::Regular(Box::new(TmpRegular::default())),
-            Mode::Directory => NodeOps::Directory(Box::new(TmpDir::default())),
+    fn create_inode(self: Arc<Self>, node_type: NodeType, mode: Mode) -> EResult<Arc<INode>> {
+        let node_ops = match node_type {
+            NodeType::Regular => NodeOps::Regular(Box::new(TmpRegular::default())),
+            NodeType::Directory => NodeOps::Directory(Box::new(TmpDir::default())),
             _ => return Err(Errno::EINVAL),
         };
 
         let node = INode {
             id: self.inode_counter.fetch_add(1, Ordering::Acquire) as u64,
-            common_ops: Box::new(TmpNode::default()),
+            common_ops: Box::try_new(TmpNode::default())?,
             node_ops,
             file_ops: Arc::try_new(TmpFile::default())?,
             sb: self,
@@ -125,12 +130,18 @@ impl CommonOps for TmpNode {
 struct TmpDir {}
 
 impl DirectoryOps for TmpDir {
-    fn populate(&self, node: &INode, entry: &Entry) {
-        todo!()
+    fn open(&self, node: &Arc<INode>, path: PathNode, flags: OpenFlags) -> EResult<Arc<File>> {
+        let file = File {
+            path: Some(path),
+            ops: Arc::new(TmpFile::default()),
+            inode: Some(node.clone()),
+            flags,
+        };
+        return Ok(Arc::try_new(file)?);
     }
 
-    fn open(&self, node: &INode, entry: &Entry, flags: OpenFlags) -> EResult<Arc<File>> {
-        todo!()
+    fn lookup(&self, node: &Arc<INode>, entry: &mut Entry) -> EResult<()> {
+        unreachable!("tmpfs directories only live in memory")
     }
 }
 

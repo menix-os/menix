@@ -4,7 +4,7 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     process::Identity,
     vfs::{
-        cache::PathNode,
+        cache::{LookupFlags, PathNode},
         inode::{Mode, NodeOps},
     },
 };
@@ -12,7 +12,7 @@ use alloc::sync::Arc;
 use core::fmt::Debug;
 
 bitflags::bitflags! {
-    #[derive(Clone, Copy)]
+    #[derive(Debug, Clone, Copy)]
     pub struct OpenFlags: u32 {
         /// Create the file if it's missing.
         const Create = uapi::O_CREAT as u32;
@@ -53,7 +53,7 @@ pub enum SeekAnchor {
 /// The kernel representation of an open file.
 pub struct File {
     /// The cached entry for this file.
-    pub path: PathNode,
+    pub path: Option<PathNode>,
     /// Operations that can be performed on this file.
     pub ops: Arc<dyn FileOps>,
     /// The opened inode.
@@ -96,7 +96,7 @@ pub trait FileOps: Debug {
 }
 
 impl File {
-    /// Opens a file referenced by a path for a given `identity`.
+    /// Opens a file referenced by a path.
     pub fn open(
         at: Option<Arc<File>>,
         path: &[u8],
@@ -104,7 +104,24 @@ impl File {
         mode: Mode,
         identity: &Identity,
     ) -> EResult<Arc<Self>> {
-        let file_path = PathNode::lookup(at.map(|x| x.path.clone()), path, identity)?;
+        if flags.contains(OpenFlags::Directory)
+            && flags.intersects(OpenFlags::Create | OpenFlags::Temporary)
+        {
+            return Err(Errno::EINVAL);
+        }
+
+        let mut lookup_flags = LookupFlags::empty();
+        if !flags.contains(OpenFlags::Create) || flags.contains(OpenFlags::Temporary) {
+            lookup_flags |= LookupFlags::MustExist;
+        }
+        if flags.contains(OpenFlags::Exclusive) {
+            lookup_flags |= LookupFlags::MustNotExist;
+        }
+        if !flags.intersects(OpenFlags::Exclusive | OpenFlags::NoFollow) {
+            lookup_flags |= LookupFlags::FollowSymlinks;
+        }
+
+        let file_path = PathNode::flookup(at, path, identity, lookup_flags)?;
         let inode = file_path.entry.get_inode().ok_or(Errno::ENOENT)?;
 
         // If we want to open as a directory, make sure this is actually a directory.
@@ -115,23 +132,28 @@ impl File {
             }
         }
 
-        // Check if we are allowed to access this node.
-        inode.try_access(identity, flags)?;
-
         let file = match &inode.node_ops {
             NodeOps::Regular(reg) => {
                 todo!()
             }
-            NodeOps::Directory(dir) => dir.open(&inode, &file_path.entry, flags),
+            NodeOps::Directory(dir) => dir.open(&inode, file_path, flags),
             NodeOps::BlockDevice | NodeOps::CharacterDevice => todo!(),
             NodeOps::FIFO => todo!(),
-            // Attempting to open a symbolic link means the resolution was faulty.
             NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
             // Doesn't make sense to call open() on anything else.
             _ => return Err(Errno::ENOTSUP),
         };
 
         return file;
+    }
+
+    pub fn fopen(
+        path: PathNode,
+        flags: OpenFlags,
+        mode: Mode,
+        identity: &Identity,
+    ) -> EResult<Arc<Self>> {
+        todo!()
     }
 
     /// Reads directory entries into a buffer.

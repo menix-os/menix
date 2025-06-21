@@ -166,6 +166,7 @@ pub(super) fn setup_core(context: &'static CpuData) {
 }
 
 pub(in crate::arch) fn halt() -> ! {
+    // TODO: Send panic IPI to actually store all CPUs.
     loop {
         unsafe {
             core::arch::asm!("cli; hlt");

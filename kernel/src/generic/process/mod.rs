@@ -169,7 +169,6 @@ static KERNEL_PROCESS: Once<Arc<Process>> = Once::new();
 
 init_stage! {
     #[depends(crate::generic::memory::MEMORY_STAGE, crate::generic::vfs::VFS_STAGE)]
-    #[entails(sched::SCHEDULER_STAGE)]
     PROCESS_STAGE: "generic.process" => init;
 }
 

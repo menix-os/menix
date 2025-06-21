@@ -80,27 +80,6 @@ impl Scheduler {
             arch::irq::set_irq_state(old);
         }
     }
-
-    /// Prepares a scheduler instance to start executing a certain task.
-    pub fn prepare(&self) {
-        let initial = Arc::new(Task::new(idle_fn, 0, 0, Process::get_kernel(), false).unwrap());
-        self.add_task(initial.clone());
-
-        // We create a dummy task on the stack which only exists to start the
-        // scheduler since it assumes that there's always a task running.
-        // Because this is a dead end, we don't actually add this to the run queue.
-        // Note: This also stops the kernel process from being freed.
-        let dummy = Task::new(dummy_fn, 0, 0, Process::get_kernel(), false).unwrap();
-
-        let sched = &CpuData::get().scheduler;
-        unsafe {
-            let to = Arc::into_raw(initial);
-            sched.current.store(to as *mut _, Ordering::Relaxed);
-
-            arch::irq::set_irq_state(true);
-            arch::sched::switch(&raw const dummy, to);
-        }
-    }
 }
 
 /// Generic task entry point. This is to be called by an implementing [`crate::arch::sched::init_task`].
@@ -127,11 +106,17 @@ pub extern "C" fn idle_fn(_: usize, _: usize) {
     }
 }
 
-pub extern "C" fn dummy_fn(_: usize, _: usize) {
-    unreachable!("This is a dummy function, somehow the dummy task ended up in the scheduler");
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE, super::PROCESS_STAGE)]
+    pub SCHEDULER_STAGE: "generic.scheduler" => init;
 }
 
-init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE, crate::generic::vfs::VFS_STAGE)]
-    pub SCHEDULER_STAGE: "generic.scheduler" => || {};
+fn init() {
+    // Set up scheduler.
+    let bsp_scheduler = &CpuData::get().scheduler;
+    let initial = Arc::new(Task::new(idle_fn, 0, 0, Process::get_kernel(), false).unwrap());
+    bsp_scheduler.add_task(initial.clone());
+
+    let to = Arc::into_raw(initial);
+    bsp_scheduler.current.store(to as *mut _, Ordering::Relaxed);
 }

@@ -4,6 +4,7 @@
 #![feature(str_from_raw_parts)]
 #![feature(new_zeroed_alloc)]
 #![feature(likely_unlikely)]
+#![feature(slice_split_once)]
 #![no_builtins]
 // Clippy lints
 #![allow(clippy::needless_return)]
@@ -32,14 +33,16 @@ use generic::boot::BootInfo;
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
 pub fn init() -> ! {
-    generic::init::run();
+    unsafe {
+        arch::irq::set_irq_state(false);
+        generic::init::run();
+        arch::irq::set_irq_state(true);
+    }
 
-    // Set up scheduler.
-    let bsp_scheduler = &CpuData::get().scheduler;
-    bsp_scheduler.add_task(Arc::new(
-        Task::new(main, 0, 0, Process::get_kernel(), false).expect("Couldn't create kernel task"),
+    CpuData::get().scheduler.add_task(Arc::new(
+        Task::new(crate::main, 0, 0, Process::get_kernel(), false)
+            .expect("Couldn't create kernel task"),
     ));
-    bsp_scheduler.prepare();
 
     loop {
         hint::spin_loop();
@@ -63,7 +66,7 @@ pub extern "C" fn main(_: usize, _: usize) {
     let path = match BootInfo::get().command_line.get_string("init") {
         Some(x) => x.as_bytes(),
         // TODO: Search VFS for alternative init paths like "/sbin/init"
-        None => b"/init",
+        None => b"/usr/sbin/openrc-init",
     };
 
     log!("Starting init \"{}\"", String::from_utf8_lossy(path));

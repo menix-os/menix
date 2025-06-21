@@ -11,7 +11,7 @@ pub fn get_per_cpu() -> *mut CpuData {
     internal::core::get_per_cpu()
 }
 
-/// Stop execution on this CPU.
+/// Stops execution on all CPUs.
 pub fn halt() -> ! {
     internal::core::halt()
 }
