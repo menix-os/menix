@@ -1,8 +1,9 @@
-use alloc::sync::Arc;
+use alloc::{string::String, sync::Arc, vec::Vec};
 use bytemuck::{Pod, Zeroable};
 
 use crate::generic::{
-    posix::errno::EResult,
+    memory::virt::VmFlags,
+    posix::errno::{EResult, Errno},
     vfs::{exec::ExecFormat, file::File},
 };
 
@@ -324,7 +325,6 @@ pub struct ElfFormat;
 impl ExecFormat for ElfFormat {
     fn identify(&self, file: &File) -> bool {
         let mut buffer = [0u8; size_of::<ElfHdr>()];
-
         match file.pread(&mut buffer, 0) {
             Ok(x) => {
                 if x != buffer.len() as u64 {
@@ -333,9 +333,8 @@ impl ExecFormat for ElfFormat {
             }
             Err(_) => return false,
         }
-        let Ok(header) = bytemuck::try_from_bytes::<ElfHdr>(&buffer) else {
-            return false;
-        };
+        let header = bytemuck::pod_read_unaligned::<ElfHdr>(&buffer);
+
         if header.e_ident[0..4] != ELF_MAG {
             return false;
         }
@@ -343,8 +342,54 @@ impl ExecFormat for ElfFormat {
         return true;
     }
 
-    fn parse(&self, info: &mut ExecutableInfo) -> EResult<()> {
-        dbg!(info);
+    fn load(&self, info: &mut ExecutableInfo) -> EResult<()> {
+        // Read the header.
+        let mut hdr_data = [0u8; size_of::<ElfHdr>()];
+        info.executable.pread(&mut hdr_data, 0)?;
+        let elf_hdr = bytemuck::pod_read_unaligned::<ElfHdr>(&hdr_data);
+
+        // TODO: Do the rest of IDENT checks.
+        if elf_hdr.e_ident[EI_OSABI] != ELFOSABI_SYSV || elf_hdr.e_ident[EI_VERSION] != EV_CURRENT {
+            return Err(Errno::ENOEXEC);
+        }
+        if elf_hdr.e_machine != EM_CURRENT {
+            return Err(Errno::ENOEXEC);
+        }
+
+        // Iterate all PHDRs.
+        for i in 0..elf_hdr.e_phnum {
+            let mut phdr_data = vec![0u8; elf_hdr.e_phentsize as usize];
+            info.executable.pread(
+                &mut phdr_data,
+                elf_hdr.e_phoff as u64 + elf_hdr.e_phentsize as u64 * i as u64,
+            )?;
+            let phdr = bytemuck::pod_read_unaligned::<ElfPhdr>(&phdr_data);
+
+            match phdr.p_type {
+                PT_LOAD => {
+                    let mut prot = VmFlags::empty();
+                    if phdr.p_flags & PF_READ != 0 {
+                        prot |= VmFlags::Read;
+                    }
+                    if phdr.p_flags & PF_WRITE != 0 {
+                        prot |= VmFlags::Write;
+                    }
+                    if phdr.p_flags & PF_EXECUTE != 0 {
+                        prot |= VmFlags::Exec;
+                    }
+                }
+                PT_PHDR => {}
+                PT_INTERP => {
+                    let mut interp_name = vec![0u8; phdr.p_filesz as usize - 1]; // Minus the trailing NUL.
+                    info.executable.pread(&mut interp_name, phdr.p_offset)?;
+                    warn!(
+                        "Interpreter path: {}",
+                        String::from_utf8_lossy(&interp_name)
+                    )
+                }
+                _ => (),
+            }
+        }
 
         todo!();
     }

@@ -4,7 +4,6 @@ use crate::generic::{
     process::Identity,
     vfs::{
         PathNode,
-        cache::Entry,
         file::{File, FileOps, OpenFlags},
     },
 };
@@ -85,10 +84,43 @@ pub enum NodeOps {
 
 /// Operations for directory [`INode`]s.
 pub trait DirectoryOps: Debug {
-    fn open(&self, node: &Arc<INode>, entry: PathNode, flags: OpenFlags) -> EResult<Arc<File>>;
-
     /// Looks up all children in an `node` directory and caches them in `entry`.
-    fn lookup(&self, node: &Arc<INode>, entry: &mut Entry) -> EResult<()>;
+    /// An implementation shall return [`Errno::ENOENT`] if a lookup fails and
+    /// shall leave `entry` unchanged.
+    fn lookup(&self, node: &Arc<INode>, entry: &PathNode) -> EResult<()>;
+
+    /// Opens a directory.
+    fn open(
+        &self,
+        node: &Arc<INode>,
+        entry: PathNode,
+        flags: OpenFlags,
+        identity: &Identity,
+    ) -> EResult<Arc<File>>;
+
+    /// Creates a new symbolic link.
+    fn symlink(
+        &self,
+        node: &Arc<INode>,
+        entry: PathNode,
+        target_path: &[u8],
+        identity: &Identity,
+    ) -> EResult<()>;
+
+    /// Creates a new hard link.
+    fn link(&self, node: &Arc<INode>, target: &Arc<INode>) -> EResult<()>;
+
+    /// Removes a link.
+    fn unlink(&self, node: &Arc<INode>, target: &Arc<INode>) -> EResult<()>;
+
+    /// Renames a node.
+    fn rename(
+        &self,
+        node: &Arc<INode>,
+        entry: PathNode,
+        target: &Arc<INode>,
+        target_entry: PathNode,
+    ) -> EResult<()>;
 }
 
 /// Operations for regular file [`INode`]s.
@@ -104,7 +136,7 @@ pub trait RegularOps: Debug {
 /// Operations for symbolic link [`INode`]s.
 pub trait SymlinkOps: Debug {
     /// Reads the path of the symbolic link of the node.
-    fn read_link(&self, node: &INode) -> EResult<usize>;
+    fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<usize>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

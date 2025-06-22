@@ -179,34 +179,61 @@ impl PathNode {
             return Err(Errno::ENOTDIR);
         };
 
-        let mut child = Entry {
-            name: name.to_vec(),
-            inode: Mutex::default(),
-            parent: Some(self.entry.clone()),
-            children: Mutex::default(),
-            mounts: Mutex::default(),
+        let child = PathNode {
+            mount: self.mount,
+            entry: Arc::try_new(Entry {
+                name: name.to_vec(),
+                inode: Mutex::default(),
+                parent: Some(self.entry.clone()),
+                children: Mutex::default(),
+                mounts: Mutex::default(),
+            })?,
         };
 
-        if let Err(e) = x.lookup(&parent, &mut child) {
+        if let Err(e) = x.lookup(&parent, &child) {
             // Allow lookup failures so we can cache it as a negative entry.
             if e != Errno::ENOENT {
                 return Err(e);
             }
-            *child.inode.lock() = EntryData::NotPresent;
+            *child.entry.inode.lock() = EntryData::NotPresent;
         }
-
-        let child_arc = Arc::try_new(child)?;
 
         // Insert the new entry as a child.
         self.entry
             .children
             .lock()
-            .insert(name.to_vec(), child_arc.clone());
+            .insert(name.to_vec(), child.entry.clone());
 
-        return Ok(PathNode {
-            mount: self.mount,
-            entry: child_arc,
-        });
+        return Ok(child);
+    }
+
+    #[allow(unused)]
+    fn resolve_symlink(&self, identity: &Identity, flags: LookupFlags) -> EResult<Self> {
+        let mut link_buf = vec![0u8; uapi::PATH_MAX as _];
+        let mut current = self.clone();
+        while let Some(inode) = current.entry.get_inode()
+            && let NodeOps::SymbolicLink(symlink) = &inode.node_ops
+        {
+            let parent = current.entry.parent.as_ref().expect("Should have a root");
+            let link_length = symlink.read_link(&inode, &mut link_buf)?;
+
+            let result = Self::lookup(
+                Some(PathNode {
+                    mount: self.mount.clone(),
+                    entry: parent.clone(),
+                }),
+                &link_buf[0..link_length],
+                identity,
+                flags,
+            )?;
+
+            if Arc::ptr_eq(&result.entry, &current.entry) {
+                return Err(Errno::ELOOP);
+            }
+            current = result;
+        }
+
+        return Ok(current);
     }
 
     /// Traverses a path until it encounters a node with no mount point.
@@ -226,7 +253,7 @@ impl PathNode {
 }
 
 bitflags::bitflags! {
-    #[derive(Debug)]
+    #[derive(Debug, Clone, Copy)]
     pub struct LookupFlags: u32 {
         const FollowSymlinks = 1 << 0;
         const MustExist = 1 << 1;

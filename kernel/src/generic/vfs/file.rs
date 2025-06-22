@@ -132,7 +132,7 @@ impl File {
 
         let file_path = PathNode::flookup(at, path, identity, lookup_flags)?;
         match file_path.entry.get_inode() {
-            Some(x) => Self::do_fopen(file_path, &x, flags, mode, identity),
+            Some(x) => Self::do_open_inode(file_path, &x, flags, mode, identity),
             None => {
                 // If the lookup was successful, we expect that the entry is positive.
                 if !flags.contains(OpenFlags::Create) {
@@ -176,10 +176,10 @@ impl File {
         mode: Mode,
         identity: &Identity,
     ) -> EResult<Arc<Self>> {
-        Self::do_fopen(path, inode, flags, mode, identity)
+        Self::do_open_inode(path, inode, flags, mode, identity)
     }
 
-    fn do_fopen(
+    fn do_open_inode(
         file_path: PathNode,
         inode: &Arc<INode>,
         flags: OpenFlags,
@@ -208,7 +208,7 @@ impl File {
 
                 Ok(Arc::try_new(result)?)
             }
-            NodeOps::Directory(dir) => dir.open(&inode, file_path, flags),
+            NodeOps::Directory(dir) => dir.open(&inode, file_path, flags, identity),
             NodeOps::BlockDevice | NodeOps::CharacterDevice => todo!(),
             NodeOps::FIFO => todo!(),
             NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),

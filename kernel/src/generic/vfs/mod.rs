@@ -13,7 +13,7 @@ use crate::generic::{
         inode::{Mode, NodeType},
     },
 };
-use alloc::sync::Arc;
+use alloc::{string::String, sync::Arc};
 
 pub use cache::Entry;
 pub use cache::PathNode;
@@ -60,6 +60,16 @@ pub fn mknod(
     path.entry.set_inode(new_inode);
 
     Ok(())
+}
+
+/// Creates a symbolic link at `path`, pointing to `target_path`.
+pub fn symlink(
+    at: Option<Arc<File>>,
+    path: &[u8],
+    target_path: &[u8],
+    identity: &Identity,
+) -> EResult<()> {
+    todo!()
 }
 
 init_stage! {

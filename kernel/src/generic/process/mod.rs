@@ -108,17 +108,19 @@ impl Process {
         )?;
 
         let mut info = ExecutableInfo {
+            page_table: PageTable::new_user::<KernelAlloc>(
+                PageTable::get_kernel().root_level(),
+                AllocFlags::empty(),
+            ),
             executable: file.clone(),
             interpreter: None,
         };
 
         let format = vfs::exec::identify(&file).ok_or(Errno::ENOEXEC)?;
-        format.parse(&mut info)?;
+        format.load(&mut info)?;
 
         // TODO: Give this a name.
         let result = Arc::new(Self::new("", None, true)?);
-
-        // TODO: Set up stack.
 
         let ip = 0;
         let sp = 0;

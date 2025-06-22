@@ -1,19 +1,22 @@
 pub mod elf;
 
-use crate::generic::{posix::errno::EResult, util::mutex::Mutex, vfs::file::File};
+use crate::generic::{
+    memory::virt::PageTable, posix::errno::EResult, util::mutex::Mutex, vfs::file::File,
+};
 use alloc::{
     collections::btree_map::BTreeMap,
     string::{String, ToString},
     sync::Arc,
 };
 
-/// Information passed to [`ExecFormat::parse`].
+/// Information passed to [`ExecFormat::load`].
 #[derive(Debug)]
 pub struct ExecutableInfo {
     /// The excutable to load.
     pub executable: Arc<File>,
     /// An interpreter that's tasked with loading the given executable.
     pub interpreter: Option<Arc<File>>,
+    pub page_table: PageTable,
 }
 
 /// An executable format.
@@ -22,7 +25,7 @@ pub trait ExecFormat {
     fn identify(&self, file: &File) -> bool;
 
     /// Loads an executable.
-    fn parse(&self, info: &mut ExecutableInfo) -> EResult<()>;
+    fn load(&self, info: &mut ExecutableInfo) -> EResult<()>;
 }
 
 static KNOWN_FORMATS: Mutex<BTreeMap<String, Arc<dyn ExecFormat>>> = Mutex::new(BTreeMap::new());
