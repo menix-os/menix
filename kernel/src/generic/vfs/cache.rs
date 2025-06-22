@@ -60,8 +60,6 @@ impl Entry {
             EntryData::NotCached => {
                 // Do lookup if it wasn't cached already.
                 *lock = EntryData::NotPresent;
-                drop(lock);
-                dbg!(self);
                 todo!()
             }
         }
@@ -69,6 +67,15 @@ impl Entry {
 
     pub fn set_inode(&self, inode: Arc<INode>) {
         *self.inode.lock() = EntryData::Present(inode);
+    }
+
+    pub fn path(&self) {
+        let mut cur = self;
+        log!("{}", alloc::string::String::from_utf8_lossy(&cur.name));
+        while let Some(x) = &cur.parent {
+            log!("{}", alloc::string::String::from_utf8_lossy(&x.name));
+            cur = x;
+        }
     }
 }
 
@@ -123,8 +130,8 @@ impl PathNode {
             }
 
             // TODO: Resolve symlinks.
-
             let Some(inode) = current_node.entry.get_inode() else {
+                current_node.entry.path();
                 return Err(Errno::ENOENT);
             };
 
@@ -141,11 +148,11 @@ impl PathNode {
             current_node = current_node.lookup_child(component)?;
         }
 
-        if flags.contains(LookupFlags::MustExist) && current_node.entry.get_inode().is_none() {
+        let inode = current_node.entry.get_inode();
+        if flags.contains(LookupFlags::MustExist) && inode.is_none() {
             return Err(Errno::ENOENT);
         }
-
-        if flags.contains(LookupFlags::MustNotExist) && current_node.entry.get_inode().is_some() {
+        if flags.contains(LookupFlags::MustNotExist) && inode.is_some() {
             return Err(Errno::EEXIST);
         }
 

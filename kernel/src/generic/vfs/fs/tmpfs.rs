@@ -66,7 +66,10 @@ impl SuperBlock for TmpSuper {
 
         let node = INode {
             id: self.inode_counter.fetch_add(1, Ordering::Acquire) as u64,
-            common_ops: Box::try_new(TmpNode::default())?,
+            common_ops: Box::try_new(TmpNode {
+                mode,
+                ..Default::default()
+            })?,
             node_ops,
             file_ops: Arc::try_new(TmpFile::default())?,
             sb: self,
@@ -86,6 +89,7 @@ struct TmpNode {
     mtime: Mutex<uapi::timespec>,
     atime: Mutex<uapi::timespec>,
     ctime: Mutex<uapi::timespec>,
+    mode: Mode,
 }
 
 impl CommonOps for TmpNode {
@@ -122,7 +126,7 @@ impl CommonOps for TmpNode {
     }
 
     fn get_mode(&self) -> EResult<Mode> {
-        todo!()
+        Ok(self.mode.clone())
     }
 }
 

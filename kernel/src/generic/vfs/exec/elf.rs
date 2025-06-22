@@ -344,7 +344,9 @@ impl ExecFormat for ElfFormat {
     }
 
     fn parse(&self, info: &mut ExecutableInfo) -> EResult<()> {
-        todo!()
+        dbg!(info);
+
+        todo!();
     }
 }
 
