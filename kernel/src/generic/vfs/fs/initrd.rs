@@ -5,22 +5,18 @@
 //! actually loading the modules and mounting the real root file system from
 //! disk.
 
-#![allow(unused)]
-
 use crate::generic::{
     boot::BootInfo,
     posix::errno::{EResult, Errno},
     process::Identity,
-    util::{self, mutex::Mutex},
+    util::{self},
     vfs::{
-        cache::{Entry, PathNode},
         file::{File, OpenFlags},
-        fs::{FileSystem, SuperBlock},
-        inode::{INode, Mode, NodeType},
-        mknod,
+        inode::{Mode, NodeType},
+        mknod, symlink,
     },
 };
-use alloc::{string::String, sync::Arc};
+use alloc::sync::Arc;
 use bytemuck::AnyBitPattern;
 use core::ffi::CStr;
 
@@ -51,12 +47,8 @@ const REGULAR: u8 = 0;
 const NORMAL: u8 = b'0';
 const HARD_LINK: u8 = b'1';
 const SYM_LINK: u8 = b'2';
-const CHAR_DEV: u8 = b'3';
-const BLOCK_DEV: u8 = b'4';
 const DIRECTORY: u8 = b'5';
-const FIFO: u8 = b'6';
 const CONTIGOUS: u8 = b'7';
-const GNULONG_PATH: u8 = b'L';
 
 /// Converts a 0-terminated octal string into a number.
 fn oct2bin(str: &[u8]) -> usize {
@@ -141,7 +133,19 @@ pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
                 file.pwrite(&data[offset + 512..][..file_size], 0)?;
             }
             HARD_LINK => todo!(),
-            SYM_LINK => todo!(),
+            SYM_LINK => {
+                let link_len = current_file
+                    .linkname
+                    .iter()
+                    .take_while(|&x| *x != 0)
+                    .count();
+                symlink(
+                    Some(dir),
+                    file_name,
+                    &current_file.linkname[0..link_len],
+                    Identity::get_kernel(),
+                )?;
+            }
             DIRECTORY => todo!(),
             _ => (),
         }

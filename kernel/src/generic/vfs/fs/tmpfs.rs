@@ -4,6 +4,7 @@ use super::{MountFlags, SuperBlock};
 use crate::generic::{
     memory::{VirtAddr, virt::AddressSpace},
     posix::errno::{EResult, Errno},
+    process::Identity,
     util::mutex::Mutex,
     vfs::{
         PathNode,
@@ -134,7 +135,18 @@ impl CommonOps for TmpNode {
 struct TmpDir {}
 
 impl DirectoryOps for TmpDir {
-    fn open(&self, node: &Arc<INode>, path: PathNode, flags: OpenFlags) -> EResult<Arc<File>> {
+    fn lookup(&self, node: &Arc<INode>, entry: &PathNode) -> EResult<()> {
+        // tmpfs directories only live in memory, so we cannot look up entries that do not exist.
+        return Err(Errno::ENOENT);
+    }
+
+    fn open(
+        &self,
+        node: &Arc<INode>,
+        path: PathNode,
+        flags: OpenFlags,
+        identity: &Identity,
+    ) -> EResult<Arc<File>> {
         let file = File {
             path: Some(path),
             ops: Arc::new(TmpFile::default()),
@@ -145,9 +157,32 @@ impl DirectoryOps for TmpDir {
         return Ok(Arc::try_new(file)?);
     }
 
-    fn lookup(&self, node: &Arc<INode>, entry: &mut Entry) -> EResult<()> {
-        // tmpfs directories only live in memory, so we cannot look up entries that do not exist.
-        return Err(Errno::ENOENT);
+    fn symlink(
+        &self,
+        node: &Arc<INode>,
+        entry: PathNode,
+        target_path: &[u8],
+        identity: &Identity,
+    ) -> EResult<()> {
+        todo!()
+    }
+
+    fn link(&self, node: &Arc<INode>, target: &Arc<INode>) -> EResult<()> {
+        todo!()
+    }
+
+    fn unlink(&self, node: &Arc<INode>, target: &Arc<INode>) -> EResult<()> {
+        todo!()
+    }
+
+    fn rename(
+        &self,
+        node: &Arc<INode>,
+        entry: PathNode,
+        target: &Arc<INode>,
+        target_entry: PathNode,
+    ) -> EResult<()> {
+        todo!()
     }
 }
 
