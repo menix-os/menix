@@ -10,27 +10,30 @@ use alloc::{
     sync::{Arc, Weak},
     vec::Vec,
 };
-use core::{
-    hint::unlikely,
-    sync::atomic::{AtomicBool, Ordering},
-};
+use core::hint::unlikely;
+
+#[derive(Debug, Default)]
+pub enum EntryData {
+    Present(Arc<INode>),
+    NotPresent,
+    #[default]
+    NotCached,
+}
 
 /// This struct represents an entry in the VFS.
 #[derive(Debug)]
 pub struct Entry {
     /// The name of this entry.
     pub name: Vec<u8>,
-    /// Whether this entry has a backing node.
-    pub present: AtomicBool,
     /// The underlying [`INode`] this entry is pointing to.
-    /// A [`None`] value indicates that this entry is negative.
-    pub inode: Mutex<Option<Arc<INode>>>,
+    /// A [`EntryData::None`] value indicates that this entry is negative.
+    pub inode: Mutex<EntryData>,
     /// The parent of this [`Entry`].
     /// A [`None`] value indicates that this entry is a root.
     pub parent: Option<Arc<Entry>>,
     /// If the [`Self::present`] is set to `true`,
     /// then this contains a map of all children of this entry.
-    pub children: Mutex<BTreeMap<Vec<u8>, Weak<Entry>>>,
+    pub children: Mutex<BTreeMap<Vec<u8>, Arc<Entry>>>,
     /// A list of mounts on this entry.
     pub mounts: Mutex<Vec<Weak<Mount>>>,
 }
@@ -39,8 +42,10 @@ impl Entry {
     pub fn new(name: &[u8], inode: Option<Arc<INode>>, parent: Option<Arc<Entry>>) -> Self {
         Entry {
             name: name.to_vec(),
-            present: AtomicBool::new(inode.is_some()),
-            inode: Mutex::new(inode),
+            inode: Mutex::new(match inode {
+                Some(x) => EntryData::Present(x),
+                None => EntryData::NotPresent,
+            }),
             parent,
             children: Mutex::new(BTreeMap::new()),
             mounts: Mutex::new(Vec::new()),
@@ -48,12 +53,22 @@ impl Entry {
     }
 
     pub fn get_inode(&self) -> Option<Arc<INode>> {
-        if self.present.load(Ordering::Acquire) {
-            return self.inode.lock().clone();
+        let mut lock = self.inode.lock();
+        match &*lock {
+            EntryData::Present(inode) => Some(inode.clone()),
+            EntryData::NotPresent => None,
+            EntryData::NotCached => {
+                // Do lookup if it wasn't cached already.
+                *lock = EntryData::NotPresent;
+                drop(lock);
+                dbg!(self);
+                todo!()
+            }
         }
+    }
 
-        // Do lookup if it wasn't cached already.
-        todo!()
+    pub fn set_inode(&self, inode: Arc<INode>) {
+        *self.inode.lock() = EntryData::Present(inode);
     }
 }
 
@@ -122,48 +137,64 @@ impl PathNode {
                 OpenFlags::empty(),
                 flags.contains(LookupFlags::UseRealId),
             )?;
+
             current_node = current_node.lookup_child(component)?;
+        }
+
+        if flags.contains(LookupFlags::MustExist) && current_node.entry.get_inode().is_none() {
+            return Err(Errno::ENOENT);
+        }
+
+        if flags.contains(LookupFlags::MustNotExist) && current_node.entry.get_inode().is_some() {
+            return Err(Errno::EEXIST);
         }
 
         return Ok(current_node);
     }
 
     pub fn lookup_child(self, name: &[u8]) -> EResult<Self> {
+        // If this entry has already been looked up before, return that.
         if let Some(child) = self.entry.children.lock().get(name) {
-            return Ok(child
-                .upgrade()
-                .map(|x| Self {
-                    mount: self.mount.clone(),
-                    entry: x,
-                })
-                .expect("Child node should have been accessible"));
+            return Ok(Self {
+                mount: self.mount.clone(),
+                entry: child.clone(),
+            });
         }
 
+        // If it hasn't, we have to perform a new lookup into the file system.
         let parent = self
             .entry
             .get_inode()
             .expect("This directory didn't contain an inode");
+
+        // A lookup only makes sense on directories.
         let NodeOps::Directory(x) = &parent.node_ops else {
             return Err(Errno::ENOTDIR);
         };
 
         let mut child = Entry {
             name: name.to_vec(),
-            present: AtomicBool::new(false),
             inode: Mutex::default(),
             parent: Some(self.entry.clone()),
             children: Mutex::default(),
             mounts: Mutex::default(),
         };
 
-        x.lookup(&parent, &mut child)?;
+        if let Err(e) = x.lookup(&parent, &mut child) {
+            // Allow lookup failures so we can cache it as a negative entry.
+            if e != Errno::ENOENT {
+                return Err(e);
+            }
+            *child.inode.lock() = EntryData::NotPresent;
+        }
 
         let child_arc = Arc::try_new(child)?;
 
+        // Insert the new entry as a child.
         self.entry
             .children
             .lock()
-            .insert(name.to_vec(), Arc::downgrade(&child_arc));
+            .insert(name.to_vec(), child_arc.clone());
 
         return Ok(PathNode {
             mount: self.mount,

@@ -77,22 +77,29 @@ pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
     let (path, file_name) = path.rsplit_once(|&x| x == b'/').ok_or(Errno::EINVAL)?;
 
     for component in path.split(|&x| x == b'/').filter(|&x| !x.is_empty()) {
-        log!("{}", String::from_utf8_lossy(component));
-        mknod(
+        match mknod(
             Some(current.clone()),
             component,
             NodeType::Directory,
             Mode::from_bits_truncate(0o755),
             None,
-        )?;
-
-        current = File::open(
-            Some(current.clone()),
-            component,
-            OpenFlags::Directory,
-            Mode::empty(),
             Identity::get_kernel(),
-        )?;
+        ) {
+            Ok(_) => {
+                current = File::open(
+                    Some(current.clone()),
+                    component,
+                    OpenFlags::Directory,
+                    Mode::empty(),
+                    Identity::get_kernel(),
+                )?;
+            }
+            Err(e) => {
+                if e != Errno::EEXIST {
+                    return Err(e);
+                }
+            }
+        }
     }
 
     return Ok((current, file_name));
@@ -101,14 +108,13 @@ pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
 pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
     let mut offset = 0;
     let mut name_override = None;
-    let mut files_loaded = 0usize;
+    let mut files_loaded = 0;
 
     loop {
         let current_file: &FileHeader =
             bytemuck::try_from_bytes(&data[offset..][..size_of::<FileHeader>()]).unwrap();
         if &current_file.signature != b"ustar\0" || &current_file.version != b"00" {
-            error!("Unknown archive version or format");
-            return Err(Errno::EINVAL);
+            break;
         }
 
         let mut file_name = CStr::from_bytes_until_nul(&current_file.name)
@@ -134,6 +140,7 @@ pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
                     Mode::from_bits_truncate(file_mode as u32),
                     Identity::get_kernel(),
                 )?;
+
                 file.pwrite(&data[offset + 512..][..file_size], 0)?;
             }
             HARD_LINK => todo!(),
@@ -146,6 +153,8 @@ pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
 
         offset += 512 + util::align_up(file_size, 512);
     }
+
+    log!("Loaded {files_loaded} files from initrd");
 
     return Ok(());
 }

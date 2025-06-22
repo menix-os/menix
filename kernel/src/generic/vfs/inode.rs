@@ -96,6 +96,9 @@ pub trait RegularOps: Debug {
     /// Truncates the node to a given length in bytes.
     /// `length` must be equal or less than the current node size.
     fn truncate(&self, node: &INode, length: u64) -> EResult<()>;
+
+    fn read(&self, node: &INode, buf: &mut [u8], offset: u64) -> EResult<u64>;
+    fn write(&self, node: &INode, buf: &[u8], offset: u64) -> EResult<u64>;
 }
 
 /// Operations for symbolic link [`INode`]s.
@@ -104,6 +107,7 @@ pub trait SymlinkOps: Debug {
     fn read_link(&self, node: &INode) -> EResult<usize>;
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NodeType {
     Regular = uapi::S_IFREG as _,
     Directory = uapi::S_IFDIR as _,

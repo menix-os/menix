@@ -9,6 +9,7 @@ use crate::{
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::{
+    mem,
     ptr::null_mut,
     sync::atomic::{AtomicPtr, Ordering},
 };
@@ -41,7 +42,12 @@ impl Scheduler {
     pub fn get_current() -> Arc<Task> {
         unsafe {
             let ptr = arch::sched::get_task();
-            Arc::from_raw(ptr).clone()
+            debug_assert!(!ptr.is_null());
+            let task = Arc::from_raw(ptr);
+            let result = task.clone();
+            mem::forget(task);
+
+            result
         }
     }
 

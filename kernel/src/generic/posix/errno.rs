@@ -3,7 +3,7 @@ use alloc::alloc::AllocError;
 /// Encapsulates an Errno value as a result.
 pub type EResult<T> = Result<T, Errno>;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 #[repr(u32)]
 pub enum Errno {
     EPERM = uapi::EPERM,
