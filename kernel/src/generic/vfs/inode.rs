@@ -119,7 +119,7 @@ pub enum NodeType {
 }
 
 bitflags::bitflags! {
-    #[derive(Debug, Default)]
+    #[derive(Debug, Default, Clone)]
     pub struct Mode: u32 {
         const UserRead = uapi::S_IRUSR;
         const UserWrite = uapi::S_IWUSR;

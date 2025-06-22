@@ -107,8 +107,6 @@ impl Process {
             Identity::get_kernel(),
         )?;
 
-        dbg!(file);
-
         let mut info = ExecutableInfo {
             executable: file.clone(),
             interpreter: None,

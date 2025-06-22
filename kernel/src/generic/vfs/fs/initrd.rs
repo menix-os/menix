@@ -77,7 +77,7 @@ pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
     let (path, file_name) = path.rsplit_once(|&x| x == b'/').ok_or(Errno::EINVAL)?;
 
     for component in path.split(|&x| x == b'/').filter(|&x| !x.is_empty()) {
-        match mknod(
+        if let Err(e) = mknod(
             Some(current.clone()),
             component,
             NodeType::Directory,
@@ -85,21 +85,18 @@ pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
             None,
             Identity::get_kernel(),
         ) {
-            Ok(_) => {
-                current = File::open(
-                    Some(current.clone()),
-                    component,
-                    OpenFlags::Directory,
-                    Mode::empty(),
-                    Identity::get_kernel(),
-                )?;
-            }
-            Err(e) => {
-                if e != Errno::EEXIST {
-                    return Err(e);
-                }
+            if e != Errno::EEXIST {
+                return Err(e);
             }
         }
+
+        current = File::open(
+            Some(current.clone()),
+            component,
+            OpenFlags::Directory,
+            Mode::empty(),
+            Identity::get_kernel(),
+        )?;
     }
 
     return Ok((current, file_name));

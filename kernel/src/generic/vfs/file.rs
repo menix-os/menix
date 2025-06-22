@@ -153,8 +153,9 @@ impl File {
                 }
 
                 parent.try_access(identity, flags, false)?;
-                let file_node = parent.sb.clone().create_inode(NodeType::Regular, mode)?;
 
+                let file_node = parent.sb.clone().create_inode(NodeType::Regular, mode)?;
+                file_path.entry.as_ref().set_inode(file_node.clone());
                 let result = File {
                     path: Some(file_path),
                     ops: file_node.file_ops.clone(),
@@ -179,7 +180,7 @@ impl File {
     }
 
     fn do_fopen(
-        path: PathNode,
+        file_path: PathNode,
         inode: &Arc<INode>,
         flags: OpenFlags,
         mode: Mode,
@@ -194,10 +195,20 @@ impl File {
         }
 
         match &inode.node_ops {
-            NodeOps::Regular(reg) => {
-                todo!()
+            NodeOps::Regular(_) => {
+                inode.try_access(identity, flags, false)?;
+
+                let result = File {
+                    path: Some(file_path),
+                    ops: inode.file_ops.clone(),
+                    inode: Some(inode.clone()),
+                    flags,
+                    position: AtomicUsize::new(0),
+                };
+
+                Ok(Arc::try_new(result)?)
             }
-            NodeOps::Directory(dir) => dir.open(&inode, path, flags),
+            NodeOps::Directory(dir) => dir.open(&inode, file_path, flags),
             NodeOps::BlockDevice | NodeOps::CharacterDevice => todo!(),
             NodeOps::FIFO => todo!(),
             NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
