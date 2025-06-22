@@ -5,9 +5,13 @@ pub mod fs;
 pub mod inode;
 
 use crate::generic::{
-    posix::errno::EResult,
+    posix::errno::{EResult, Errno},
+    process::Identity,
     util::once::Once,
-    vfs::inode::{Mode, NodeType},
+    vfs::{
+        cache::LookupFlags,
+        inode::{Mode, NodeType},
+    },
 };
 use alloc::sync::Arc;
 
@@ -32,7 +36,29 @@ pub fn mknod(
     file_type: NodeType,
     mode: Mode,
     device: Option<()>, // TODO
+    identity: &Identity,
 ) -> EResult<()> {
+    // POSIX only allows these types of nodes to be created.
+    match file_type {
+        NodeType::Regular
+        | NodeType::Directory
+        | NodeType::BlockDevice
+        | NodeType::CharacterDevice
+        | NodeType::FIFO => (),
+        _ => return Err(Errno::EINVAL),
+    }
+
+    let path = PathNode::flookup(at, path, identity, LookupFlags::MustNotExist)?;
+    let parent_inode = path
+        .entry
+        .parent
+        .as_ref()
+        .and_then(|p| p.get_inode())
+        .expect("Entry has no parent node?");
+
+    let new_inode = parent_inode.sb.clone().create_inode(file_type, mode)?;
+    path.entry.set_inode(new_inode);
+
     Ok(())
 }
 

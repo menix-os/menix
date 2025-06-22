@@ -136,12 +136,14 @@ impl DirectoryOps for TmpDir {
             ops: Arc::new(TmpFile::default()),
             inode: Some(node.clone()),
             flags,
+            position: AtomicUsize::new(0),
         };
         return Ok(Arc::try_new(file)?);
     }
 
     fn lookup(&self, node: &Arc<INode>, entry: &mut Entry) -> EResult<()> {
-        unreachable!("tmpfs directories only live in memory")
+        // tmpfs directories only live in memory, so we cannot look up entries that do not exist.
+        return Err(Errno::ENOENT);
     }
 }
 
@@ -155,11 +157,32 @@ impl RegularOps for TmpRegular {
         self.data.lock().truncate(length as usize);
         Ok(())
     }
+
+    fn read(&self, node: &INode, buf: &mut [u8], offset: u64) -> EResult<u64> {
+        let mut v = self.data.lock();
+        if offset as usize >= v.len() {
+            return Ok(0);
+        }
+
+        let copy_size = buf.len().min(v.len() - offset as usize);
+        buf.copy_from_slice(&v[offset as usize..][..copy_size]);
+
+        Ok(copy_size as u64)
+    }
+
+    fn write(&self, node: &INode, buf: &[u8], offset: u64) -> EResult<u64> {
+        let mut v = self.data.lock();
+        if offset as usize + buf.len() >= v.len() {
+            v.resize(offset as usize + buf.len(), 0u8);
+        }
+        v[offset as usize..][..buf.len()].copy_from_slice(buf);
+
+        Ok(buf.len() as u64)
+    }
 }
 
 #[derive(Debug, Default)]
 struct TmpFile {
-    position: AtomicUsize,
     length: AtomicUsize,
 }
 
@@ -168,12 +191,22 @@ impl FileOps for TmpFile {
         todo!()
     }
 
-    fn read(&self, file: &File, buffer: &mut [u8], offset: SeekAnchor) -> EResult<u64> {
-        todo!()
+    fn read(&self, file: &File, buffer: &mut [u8], offset: u64) -> EResult<u64> {
+        let inode = file.inode.as_ref().unwrap();
+
+        match &inode.node_ops {
+            NodeOps::Regular(regular_ops) => regular_ops.read(inode, buffer, offset),
+            _ => todo!(),
+        }
     }
 
-    fn write(&self, file: &File, buffer: &[u8], offset: SeekAnchor) -> EResult<u64> {
-        todo!()
+    fn write(&self, file: &File, buffer: &[u8], offset: u64) -> EResult<u64> {
+        let inode = file.inode.as_ref().unwrap();
+
+        match &inode.node_ops {
+            NodeOps::Regular(regular_ops) => regular_ops.write(inode, buffer, offset),
+            _ => todo!(),
+        }
     }
 
     fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64> {
