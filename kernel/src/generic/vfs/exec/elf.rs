@@ -1,10 +1,15 @@
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{string::String, sync::Arc};
 use bytemuck::{Pod, Zeroable};
 
 use crate::generic::{
     memory::virt::VmFlags,
     posix::errno::{EResult, Errno},
-    vfs::{exec::ExecFormat, file::File},
+    process::Identity,
+    vfs::{
+        exec::ExecFormat,
+        file::{File, OpenFlags},
+        inode::Mode,
+    },
 };
 
 use super::ExecutableInfo;
@@ -382,10 +387,6 @@ impl ExecFormat for ElfFormat {
                 PT_INTERP => {
                     let mut interp_name = vec![0u8; phdr.p_filesz as usize - 1]; // Minus the trailing NUL.
                     info.executable.pread(&mut interp_name, phdr.p_offset)?;
-                    warn!(
-                        "Interpreter path: {}",
-                        String::from_utf8_lossy(&interp_name)
-                    )
                 }
                 _ => (),
             }

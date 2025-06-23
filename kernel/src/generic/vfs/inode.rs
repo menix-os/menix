@@ -2,18 +2,22 @@ use super::fs::SuperBlock;
 use crate::generic::{
     posix::errno::{EResult, Errno},
     process::Identity,
+    util::mutex::Mutex,
     vfs::{
         PathNode,
         file::{File, FileOps, OpenFlags},
     },
 };
 use alloc::{boxed::Box, sync::Arc};
-use core::{fmt::Debug, sync::atomic::AtomicBool};
+use core::{
+    any::Any,
+    fmt::Debug,
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
+};
 
 /// A standalone inode. See [`super::cache::Entry`] for information.
 #[derive(Debug)]
 pub struct INode {
-    pub id: u64,
     /// Operations that work on every type of node.
     pub common_ops: Box<dyn CommonOps>,
     /// Operations that only work on a certain type of node.
@@ -24,6 +28,16 @@ pub struct INode {
     pub sb: Arc<dyn SuperBlock>,
     /// If true, the node has been modified and has to be sync'd.
     pub dirty: AtomicBool,
+
+    // The following fields make up `stat`.
+    pub id: u64,
+    pub size: AtomicU64,
+    pub uid: AtomicUsize,
+    pub gid: AtomicUsize,
+    pub atime: Mutex<uapi::timespec>,
+    pub mtime: Mutex<uapi::timespec>,
+    pub ctime: Mutex<uapi::timespec>,
+    pub mode: AtomicU32,
 }
 
 impl INode {
@@ -33,9 +47,7 @@ impl INode {
         if ident.effective_user_id == 0 {
             // If this file is not able to be executed, always fail.
             if flags.contains(OpenFlags::Executeable)
-                && !self
-                    .common_ops
-                    .get_mode()?
+                && !Mode::from_bits_truncate(self.mode.load(Ordering::Acquire))
                     .contains(Mode::UserExec | Mode::GroupExec | Mode::OtherExec)
             {
                 return Err(Errno::EACCES);
@@ -45,10 +57,7 @@ impl INode {
 
         todo!()
     }
-}
 
-/// Operations which work on any kind of [`INode`].
-pub trait CommonOps: Debug {
     /// Updates the node with given timestamps.
     /// If an argument is [`None`], the respective value is not updated.
     fn update_time(
@@ -57,16 +66,27 @@ pub trait CommonOps: Debug {
         mtime: Option<uapi::timespec>,
         atime: Option<uapi::timespec>,
         ctime: Option<uapi::timespec>,
-    ) -> EResult<()>;
+    ) -> EResult<()> {
+        todo!();
+    }
 
-    fn get_mode(&self) -> EResult<Mode>;
+    fn get_mode(&self) -> EResult<Mode> {
+        todo!();
+    }
 
     /// Changes permissions on this `node`.
-    fn chmod(&self, node: &INode, mode: Mode) -> EResult<()>;
+    fn chmod(&self, node: &INode, mode: Mode) -> EResult<()> {
+        todo!();
+    }
 
     /// Changes ownership on this `node`.
-    fn chown(&self, node: &INode, uid: uapi::uid_t, gid: uapi::gid_t) -> EResult<()>;
+    fn chown(&self, node: &INode, uid: uapi::uid_t, gid: uapi::gid_t) -> EResult<()> {
+        todo!();
+    }
+}
 
+/// Operations which work on any kind of [`INode`].
+pub trait CommonOps: Debug {
     /// Synchronizes the node back to the underlying file system.
     fn sync(&self, node: &INode) -> EResult<()>;
 }
@@ -83,7 +103,7 @@ pub enum NodeOps {
 }
 
 /// Operations for directory [`INode`]s.
-pub trait DirectoryOps: Debug {
+pub trait DirectoryOps: Any + Debug {
     /// Looks up all children in an `node` directory and caches them in `entry`.
     /// An implementation shall return [`Errno::ENOENT`] if a lookup fails and
     /// shall leave `entry` unchanged.
@@ -108,10 +128,10 @@ pub trait DirectoryOps: Debug {
     ) -> EResult<()>;
 
     /// Creates a new hard link.
-    fn link(&self, node: &Arc<INode>, target: &Arc<INode>) -> EResult<()>;
+    fn link(&self, node: &Arc<INode>, entry: &PathNode, target: &Arc<INode>) -> EResult<()>;
 
     /// Removes a link.
-    fn unlink(&self, node: &Arc<INode>, target: &Arc<INode>) -> EResult<()>;
+    fn unlink(&self, node: &Arc<INode>, entry: &PathNode) -> EResult<()>;
 
     /// Renames a node.
     fn rename(
@@ -124,7 +144,7 @@ pub trait DirectoryOps: Debug {
 }
 
 /// Operations for regular file [`INode`]s.
-pub trait RegularOps: Debug {
+pub trait RegularOps: Any + Debug {
     /// Truncates the node to a given length in bytes.
     /// `length` must be equal or less than the current node size.
     fn truncate(&self, node: &INode, length: u64) -> EResult<()>;
@@ -134,9 +154,9 @@ pub trait RegularOps: Debug {
 }
 
 /// Operations for symbolic link [`INode`]s.
-pub trait SymlinkOps: Debug {
+pub trait SymlinkOps: Any + Debug {
     /// Reads the path of the symbolic link of the node.
-    fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<usize>;
+    fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<u64>;
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

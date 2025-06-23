@@ -35,7 +35,7 @@ pub struct Entry {
     /// then this contains a map of all children of this entry.
     pub children: Mutex<BTreeMap<Vec<u8>, Arc<Entry>>>,
     /// A list of mounts on this entry.
-    pub mounts: Mutex<Vec<Weak<Mount>>>,
+    pub mounts: Mutex<Vec<Arc<Mount>>>,
 }
 
 impl Entry {
@@ -60,22 +60,13 @@ impl Entry {
             EntryData::NotCached => {
                 // Do lookup if it wasn't cached already.
                 *lock = EntryData::NotPresent;
-                todo!()
+                todo!("Lookup inode and cache")
             }
         }
     }
 
     pub fn set_inode(&self, inode: Arc<INode>) {
         *self.inode.lock() = EntryData::Present(inode);
-    }
-
-    pub fn path(&self) {
-        let mut cur = self;
-        log!("{}", alloc::string::String::from_utf8_lossy(&cur.name));
-        while let Some(x) = &cur.parent {
-            log!("{}", alloc::string::String::from_utf8_lossy(&x.name));
-            cur = x;
-        }
     }
 }
 
@@ -129,9 +120,8 @@ impl PathNode {
                 return Err(Errno::EILSEQ);
             }
 
-            // TODO: Resolve symlinks.
+            current_node = current_node.resolve_symlink(identity, flags)?;
             let Some(inode) = current_node.entry.get_inode() else {
-                current_node.entry.path();
                 return Err(Errno::ENOENT);
             };
 
@@ -148,6 +138,10 @@ impl PathNode {
             current_node = current_node.lookup_child(component)?;
         }
 
+        if flags.contains(LookupFlags::FollowSymlinks) {
+            current_node = current_node.resolve_symlink(identity, flags)?;
+        }
+
         let inode = current_node.entry.get_inode();
         if flags.contains(LookupFlags::MustExist) && inode.is_none() {
             return Err(Errno::ENOENT);
@@ -155,22 +149,35 @@ impl PathNode {
         if flags.contains(LookupFlags::MustNotExist) && inode.is_some() {
             return Err(Errno::EEXIST);
         }
-
         return Ok(current_node);
     }
 
     pub fn lookup_child(self, name: &[u8]) -> EResult<Self> {
+        // Traverse the mounts.
+        let mut mount = self.mount.clone();
+        let mut entry = self.entry.clone();
+
+        'again: loop {
+            for child_mnt in entry.clone().mounts.lock().iter() {
+                if Arc::ptr_eq(&child_mnt, &mount) {
+                    mount = child_mnt.clone();
+                    entry = child_mnt.root.clone();
+                    continue 'again;
+                }
+            }
+            break;
+        }
+
         // If this entry has already been looked up before, return that.
-        if let Some(child) = self.entry.children.lock().get(name) {
+        if let Some(child) = entry.children.lock().get(name) {
             return Ok(Self {
-                mount: self.mount.clone(),
+                mount,
                 entry: child.clone(),
             });
         }
 
         // If it hasn't, we have to perform a new lookup into the file system.
-        let parent = self
-            .entry
+        let parent = entry
             .get_inode()
             .expect("This directory didn't contain an inode");
 
@@ -180,11 +187,11 @@ impl PathNode {
         };
 
         let child = PathNode {
-            mount: self.mount,
+            mount,
             entry: Arc::try_new(Entry {
                 name: name.to_vec(),
                 inode: Mutex::default(),
-                parent: Some(self.entry.clone()),
+                parent: Some(entry.clone()),
                 children: Mutex::default(),
                 mounts: Mutex::default(),
             })?,
@@ -199,7 +206,7 @@ impl PathNode {
         }
 
         // Insert the new entry as a child.
-        self.entry
+        entry
             .children
             .lock()
             .insert(name.to_vec(), child.entry.clone());
@@ -207,7 +214,23 @@ impl PathNode {
         return Ok(child);
     }
 
-    #[allow(unused)]
+    pub fn lookup_parent(&self) -> EResult<Self> {
+        // Get the top mount point.
+        let mut mount = self.mount.clone();
+        let mut entry = self.entry.clone();
+        while let Some(mount_point) = mount.clone().mount_point.lock().as_ref()
+            && Arc::ptr_eq(&entry, &mount.root)
+        {
+            mount = mount_point.mount.clone();
+            entry = mount_point.entry.clone();
+        }
+
+        return Ok(Self {
+            mount,
+            entry: entry.parent.clone().ok_or(Errno::ENOENT)?,
+        });
+    }
+
     fn resolve_symlink(&self, identity: &Identity, flags: LookupFlags) -> EResult<Self> {
         let mut link_buf = vec![0u8; uapi::PATH_MAX as _];
         let mut current = self.clone();
@@ -215,7 +238,7 @@ impl PathNode {
             && let NodeOps::SymbolicLink(symlink) = &inode.node_ops
         {
             let parent = current.entry.parent.as_ref().expect("Should have a root");
-            let link_length = symlink.read_link(&inode, &mut link_buf)?;
+            let link_length = symlink.read_link(&inode, &mut link_buf)? as usize;
 
             let result = Self::lookup(
                 Some(PathNode {

@@ -141,10 +141,8 @@ impl File {
                 }
 
                 let parent = file_path
-                    .entry
-                    .parent
-                    .as_ref()
-                    .and_then(|p| p.get_inode())
+                    .lookup_parent()
+                    .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
                     .expect("Entry should always have a parent");
 
                 match &parent.node_ops {

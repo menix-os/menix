@@ -10,7 +10,8 @@ use crate::generic::{
     util::once::Once,
     vfs::{
         cache::LookupFlags,
-        inode::{Mode, NodeType},
+        file::OpenFlags,
+        inode::{Mode, NodeOps, NodeType},
     },
 };
 use alloc::{string::String, sync::Arc};
@@ -49,14 +50,12 @@ pub fn mknod(
     }
 
     let path = PathNode::flookup(at, path, identity, LookupFlags::MustNotExist)?;
-    let parent_inode = path
-        .entry
-        .parent
-        .as_ref()
-        .and_then(|p| p.get_inode())
+    let parent = path
+        .lookup_parent()
+        .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
         .expect("Entry has no parent node?");
 
-    let new_inode = parent_inode.sb.clone().create_inode(file_type, mode)?;
+    let new_inode = parent.sb.clone().create_inode(file_type, mode)?;
     path.entry.set_inode(new_inode);
 
     Ok(())
@@ -69,7 +68,25 @@ pub fn symlink(
     target_path: &[u8],
     identity: &Identity,
 ) -> EResult<()> {
-    todo!()
+    let path = PathNode::lookup(
+        at.and_then(|x| x.path.clone()),
+        path,
+        identity,
+        LookupFlags::MustNotExist,
+    )?;
+
+    let parent_inode = path
+        .lookup_parent()?
+        .entry
+        .get_inode()
+        .ok_or(Errno::ENOENT)?;
+    parent_inode.try_access(identity, OpenFlags::WriteOnly, false)?;
+
+    // Create the symlink in the parent directory.
+    match &parent_inode.node_ops {
+        NodeOps::Directory(x) => x.symlink(&parent_inode, path, target_path, identity),
+        _ => return Err(Errno::ENOTDIR),
+    }
 }
 
 init_stage! {

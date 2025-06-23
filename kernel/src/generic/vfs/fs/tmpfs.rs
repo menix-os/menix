@@ -11,11 +11,14 @@ use crate::generic::{
         cache::Entry,
         file::{File, FileOps, OpenFlags, SeekAnchor},
         fs::{FileSystem, Mount},
-        inode::{CommonOps, DirectoryOps, INode, Mode, NodeOps, NodeType, RegularOps},
+        inode::{CommonOps, DirectoryOps, INode, Mode, NodeOps, NodeType, RegularOps, SymlinkOps},
     },
 };
 use alloc::{boxed::Box, sync::Arc, vec::Vec};
-use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use core::{
+    any::Any,
+    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
+};
 
 #[derive(Debug)]
 struct TmpFs;
@@ -59,22 +62,25 @@ impl SuperBlock for TmpSuper {
     }
 
     fn create_inode(self: Arc<Self>, node_type: NodeType, mode: Mode) -> EResult<Arc<INode>> {
-        let node_ops = match node_type {
-            NodeType::Regular => NodeOps::Regular(Box::new(TmpRegular::default())),
-            NodeType::Directory => NodeOps::Directory(Box::new(TmpDir::default())),
-            _ => return Err(Errno::EINVAL),
-        };
-
         let node = INode {
             id: self.inode_counter.fetch_add(1, Ordering::Acquire) as u64,
-            common_ops: Box::try_new(TmpNode {
-                mode,
-                ..Default::default()
-            })?,
-            node_ops,
+            common_ops: Box::try_new(TmpNode)?,
+            node_ops: match node_type {
+                NodeType::Regular => NodeOps::Regular(Box::new(TmpRegular::default())),
+                NodeType::SymbolicLink => NodeOps::SymbolicLink(Box::new(TmpRegular::default())),
+                NodeType::Directory => NodeOps::Directory(Box::new(TmpDir::default())),
+                _ => return Err(Errno::EINVAL),
+            },
             file_ops: Arc::try_new(TmpFile::default())?,
             sb: self,
             dirty: AtomicBool::new(false),
+            atime: Mutex::default(),
+            mtime: Mutex::default(),
+            ctime: Mutex::default(),
+            size: AtomicU64::default(),
+            uid: AtomicUsize::default(),
+            gid: AtomicUsize::default(),
+            mode: AtomicU32::new(mode.bits()),
         };
 
         return Ok(Arc::try_new(node)?);
@@ -86,48 +92,12 @@ impl SuperBlock for TmpSuper {
 }
 
 #[derive(Debug, Default)]
-struct TmpNode {
-    mtime: Mutex<uapi::timespec>,
-    atime: Mutex<uapi::timespec>,
-    ctime: Mutex<uapi::timespec>,
-    mode: Mode,
-}
+struct TmpNode;
 
 impl CommonOps for TmpNode {
-    fn update_time(
-        &self,
-        _node: &INode,
-        mtime: Option<uapi::timespec>,
-        atime: Option<uapi::timespec>,
-        ctime: Option<uapi::timespec>,
-    ) -> EResult<()> {
-        if let Some(x) = mtime {
-            *self.mtime.lock() = x;
-        }
-        if let Some(x) = atime {
-            *self.atime.lock() = x;
-        }
-        if let Some(x) = ctime {
-            *self.ctime.lock() = x;
-        }
-        Ok(())
-    }
-
-    fn chmod(&self, node: &INode, mode: Mode) -> EResult<()> {
-        todo!()
-    }
-
-    fn chown(&self, node: &INode, uid: uapi::uid_t, gid: uapi::gid_t) -> EResult<()> {
-        todo!()
-    }
-
     fn sync(&self, _node: &INode) -> EResult<()> {
         // This is a no-op.
         Ok(())
-    }
-
-    fn get_mode(&self) -> EResult<Mode> {
-        Ok(self.mode.clone())
     }
 }
 
@@ -160,18 +130,35 @@ impl DirectoryOps for TmpDir {
     fn symlink(
         &self,
         node: &Arc<INode>,
-        entry: PathNode,
+        path: PathNode,
         target_path: &[u8],
         identity: &Identity,
     ) -> EResult<()> {
-        todo!()
+        let sym_inode = node
+            .sb
+            .clone()
+            .create_inode(NodeType::SymbolicLink, Mode::from_bits_truncate(0o777))?;
+
+        match &sym_inode.node_ops {
+            NodeOps::SymbolicLink(x) => {
+                let data: &TmpRegular = (x.as_ref() as &dyn Any)
+                    .downcast_ref()
+                    .ok_or(Errno::EINVAL)?;
+                data.data.lock().extend_from_slice(target_path);
+                path.entry.set_inode(sym_inode);
+
+                Ok(())
+            }
+            _ => Err(Errno::EINVAL),
+        }
     }
 
-    fn link(&self, node: &Arc<INode>, target: &Arc<INode>) -> EResult<()> {
-        todo!()
+    fn link(&self, node: &Arc<INode>, path: &PathNode, target: &Arc<INode>) -> EResult<()> {
+        path.entry.set_inode(target.clone());
+        Ok(())
     }
 
-    fn unlink(&self, node: &Arc<INode>, target: &Arc<INode>) -> EResult<()> {
+    fn unlink(&self, node: &Arc<INode>, entry: &PathNode) -> EResult<()> {
         todo!()
     }
 
@@ -217,6 +204,15 @@ impl RegularOps for TmpRegular {
         v[offset as usize..][..buf.len()].copy_from_slice(buf);
 
         Ok(buf.len() as u64)
+    }
+}
+
+impl SymlinkOps for TmpRegular {
+    fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<u64> {
+        let mut v = self.data.lock();
+        let copy_size = buf.len().min(v.len());
+        &buf[0..copy_size].copy_from_slice(&v[0..copy_size]);
+        Ok(copy_size as u64)
     }
 }
 
