@@ -14,7 +14,7 @@ use crate::generic::{
         inode::{Mode, NodeOps, NodeType},
     },
 };
-use alloc::{string::String, sync::Arc};
+use alloc::sync::Arc;
 
 pub use cache::Entry;
 pub use cache::PathNode;
