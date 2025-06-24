@@ -13,6 +13,7 @@ use crate::{
         },
     },
     generic::{
+        boot::BootInfo,
         clock,
         memory::{
             PhysAddr,
@@ -27,6 +28,7 @@ use alloc::vec::Vec;
 use bytemuck::{Pod, Zeroable};
 use core::mem::offset_of;
 use core::{arch::global_asm, sync::atomic::Ordering};
+use num_traits::Saturating;
 use uacpi_sys::{UACPI_STATUS_OK, acpi_entry_hdr, acpi_madt_lapic, acpi_madt_x2apic, uacpi_table};
 
 unsafe extern "C" {
@@ -405,8 +407,17 @@ fn init_aps() {
         "Temporary page table *must* fit inside a 32-bit value"
     );
 
-    for ap in FOUND_APS.lock().iter() {
-        start_ap(temp_table.value() as u32, *ap);
+    match BootInfo::get().command_line.get_usize("smp") {
+        Some(x) => {
+            for ap in FOUND_APS.lock().iter().take(x.saturating_sub(1)) {
+                start_ap(temp_table.value() as u32, *ap);
+            }
+        }
+        None => {
+            for ap in FOUND_APS.lock().iter() {
+                start_ap(temp_table.value() as u32, *ap);
+            }
+        }
     }
 
     unsafe {

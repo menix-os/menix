@@ -180,6 +180,7 @@ fn init() {
     .expect("Unable to open root directory");
 
     for file in BootInfo::get().files {
-        load(root_dir.clone(), file.data).expect("Failed to load one of the provided initramfs archives");
+        load(root_dir.clone(), file.data)
+            .expect("Failed to load one of the provided initramfs archives");
     }
 }
