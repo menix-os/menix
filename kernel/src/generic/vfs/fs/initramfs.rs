@@ -1,9 +1,8 @@
 //! The initramfs (initial RAM file system) is a CPIO archive which is loaded into memory by the bootloader.
 //!
-//! This allows the kernel to load drivers needed in order to boot from a block
-//! device. It also usually contains the init process which is responsible for
-//! actually loading the modules and mounting the real root file system from
-//! disk.
+//! This allows the kernel to load drivers needed in order to boot from a block device.
+//! It also usually contains the init process which is responsible for actually loading the modules
+//! and mounting the real root file system from disk.
 
 use crate::generic::{
     boot::BootInfo,
@@ -66,7 +65,12 @@ fn oct2bin(str: &[u8]) -> usize {
 /// Creates all directories in the given path and opens the last one. Also returns the final file name.
 pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
     let mut current = at;
-    let (path, file_name) = path.rsplit_once(|&x| x == b'/').ok_or(Errno::EINVAL)?;
+
+    // If there is a path to split off, do that. If there isn't, there are no directories to create.
+    let (path, file_name) = match path.rsplit_once(|&x| x == b'/') {
+        Some(x) => x,
+        None => (&[][..], path),
+    };
 
     for component in path.split(|&x| x == b'/').filter(|&x| !x.is_empty()) {
         if let Err(e) = mknod(
@@ -129,7 +133,6 @@ pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
                     Mode::from_bits_truncate(file_mode as u32),
                     Identity::get_kernel(),
                 )?;
-
                 file.pwrite(&data[offset + 512..][..file_size], 0)?;
             }
             HARD_LINK => todo!(),
@@ -155,14 +158,14 @@ pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
         offset += 512 + util::align_up(file_size, 512);
     }
 
-    log!("Loaded {files_loaded} files from initrd");
+    log!("Loaded {files_loaded} files from initramfs");
 
     return Ok(());
 }
 
 init_stage! {
     #[depends(super::super::VFS_STAGE, crate::generic::process::sched::SCHEDULER_STAGE)]
-    INITRD_STAGE: "generic.vfs.initrd" => init;
+    INITRAMFS_STAGE: "generic.vfs.initramfs" => init;
 }
 
 fn init() {
@@ -177,6 +180,6 @@ fn init() {
     .expect("Unable to open root directory");
 
     for file in BootInfo::get().files {
-        load(root_dir.clone(), file.data).expect("Failed to load one of the provided initrds");
+        load(root_dir.clone(), file.data).expect("Failed to load one of the provided initramfs archives");
     }
 }

@@ -66,7 +66,7 @@ pub extern "C" fn main(_: usize, _: usize) {
     let path = match BootInfo::get().command_line.get_string("init") {
         Some(x) => x.as_bytes(),
         // TODO: Search VFS for alternative init paths like "/sbin/init"
-        None => b"/usr/sbin/openrc-init",
+        None => b"/init",
     };
 
     log!("Starting init \"{}\"", String::from_utf8_lossy(path));

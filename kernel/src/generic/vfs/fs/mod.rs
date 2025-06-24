@@ -1,4 +1,4 @@
-pub mod initrd;
+pub mod initramfs;
 mod tmpfs;
 
 use super::inode::INode;

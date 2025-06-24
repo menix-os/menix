@@ -17,7 +17,6 @@ String arguments can be escaped with double quotes (`" "`).
 | Name                   | Type   | Default      | Description                                                        |
 | ---------------------- | ------ | ------------ | ------------------------------------------------------------------ |
 | init                   | string | `/sbin/init` | The file path to the init process to start                         |
-| initrd_module_autoload | bool   | false        | Attempts to link in all files ending in `.kso` from the initrd     |
 | acpi                   | bool   | true         | On supported platforms, uses ACPI to configure the machine         |
 | openfw                 | bool   | true         | On supported platforms, uses device trees to configure the machine |
 | pci                    | bool   | true         | Configures the PCI subsystem                                       |

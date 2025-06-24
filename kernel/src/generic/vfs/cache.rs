@@ -7,7 +7,7 @@ use crate::generic::{
 };
 use alloc::{
     collections::btree_map::BTreeMap,
-    sync::{Arc, Weak},
+    sync::Arc,
     vec::Vec,
 };
 use core::hint::unlikely;
