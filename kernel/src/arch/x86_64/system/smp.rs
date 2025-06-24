@@ -28,7 +28,6 @@ use alloc::vec::Vec;
 use bytemuck::{Pod, Zeroable};
 use core::mem::offset_of;
 use core::{arch::global_asm, sync::atomic::Ordering};
-use num_traits::Saturating;
 use uacpi_sys::{UACPI_STATUS_OK, acpi_entry_hdr, acpi_madt_lapic, acpi_madt_x2apic, uacpi_table};
 
 unsafe extern "C" {
