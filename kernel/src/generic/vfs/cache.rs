@@ -5,11 +5,7 @@ use crate::generic::{
     util::mutex::Mutex,
     vfs::{File, file::OpenFlags, fs::Mount, inode::NodeOps},
 };
-use alloc::{
-    collections::btree_map::BTreeMap,
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};
 use core::hint::unlikely;
 
 #[derive(Debug, Default)]
