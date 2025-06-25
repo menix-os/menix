@@ -5,12 +5,16 @@ pub mod fs;
 pub mod inode;
 
 use crate::generic::{
+    memory::{
+        VirtAddr,
+        virt::{AddressSpace, VmFlags},
+    },
     posix::errno::{EResult, Errno},
     process::Identity,
     util::once::Once,
     vfs::{
         cache::LookupFlags,
-        file::OpenFlags,
+        file::{MmapFlags, OpenFlags},
         inode::{Mode, NodeOps, NodeType},
     },
 };
@@ -87,6 +91,18 @@ pub fn symlink(
         NodeOps::Directory(x) => x.symlink(&parent_inode, path, target_path, identity),
         _ => return Err(Errno::ENOTDIR),
     }
+}
+
+pub unsafe fn mmap(
+    file: Option<Arc<File>>,
+    space: &AddressSpace,
+    addr: VirtAddr,
+    len: usize,
+    prot: VmFlags,
+    flags: MmapFlags,
+    offset: uapi::off_t,
+) -> EResult<VirtAddr> {
+    todo!()
 }
 
 init_stage! {

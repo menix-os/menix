@@ -1,14 +1,22 @@
 use alloc::{string::String, sync::Arc};
 use bytemuck::{Pod, Zeroable};
 
-use crate::generic::{
-    memory::virt::VmFlags,
-    posix::errno::{EResult, Errno},
-    process::Identity,
-    vfs::{
-        exec::ExecFormat,
-        file::{File, OpenFlags},
-        inode::Mode,
+use crate::{
+    arch,
+    generic::{
+        memory::{
+            VirtAddr,
+            pmm::{AllocFlags, KernelAlloc, PageAllocator},
+            virt::{VmFlags, VmLevel},
+        },
+        posix::errno::{EResult, Errno},
+        process::Identity,
+        util::{align_down, align_up},
+        vfs::{
+            exec::ExecFormat,
+            file::{File, MmapFlags, OpenFlags},
+            inode::Mode,
+        },
     },
 };
 
@@ -348,6 +356,8 @@ impl ExecFormat for ElfFormat {
     }
 
     fn load(&self, info: &mut ExecutableInfo) -> EResult<()> {
+        let base = 0x40000; // Start mapping a relocatable ELF at this address.
+
         // Read the header.
         let mut hdr_data = [0u8; size_of::<ElfHdr>()];
         info.executable.pread(&mut hdr_data, 0)?;
@@ -382,6 +392,15 @@ impl ExecFormat for ElfFormat {
                     if phdr.p_flags & PF_EXECUTE != 0 {
                         prot |= VmFlags::Exec;
                     }
+
+                    info.executable.mmap(
+                        &info.address_space,
+                        phdr.p_offset.into(),
+                        (phdr.p_vaddr + base).into(),
+                        phdr.p_filesz as usize,
+                        prot,
+                        MmapFlags::Anonymous | MmapFlags::Fixed,
+                    )?;
                 }
                 PT_PHDR => {}
                 PT_INTERP => {

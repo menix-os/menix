@@ -9,9 +9,12 @@ use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};
 use core::hint::unlikely;
 
 #[derive(Debug, Default)]
-pub enum EntryData {
+pub enum EntryState {
+    /// Entry is positive and contains a link to the inode.
     Present(Arc<INode>),
+    /// Entry is negative.
     NotPresent,
+    /// The entry hasn't been looked up yet.
     #[default]
     NotCached,
 }
@@ -22,8 +25,7 @@ pub struct Entry {
     /// The name of this entry.
     pub name: Vec<u8>,
     /// The underlying [`INode`] this entry is pointing to.
-    /// A [`EntryData::None`] value indicates that this entry is negative.
-    pub inode: Mutex<EntryData>,
+    pub inode: Mutex<EntryState>,
     /// The parent of this [`Entry`].
     /// A [`None`] value indicates that this entry is a root.
     pub parent: Option<Arc<Entry>>,
@@ -39,8 +41,8 @@ impl Entry {
         Entry {
             name: name.to_vec(),
             inode: Mutex::new(match inode {
-                Some(x) => EntryData::Present(x),
-                None => EntryData::NotPresent,
+                Some(x) => EntryState::Present(x),
+                None => EntryState::NotPresent,
             }),
             parent,
             children: Mutex::new(BTreeMap::new()),
@@ -51,18 +53,18 @@ impl Entry {
     pub fn get_inode(&self) -> Option<Arc<INode>> {
         let mut lock = self.inode.lock();
         match &*lock {
-            EntryData::Present(inode) => Some(inode.clone()),
-            EntryData::NotPresent => None,
-            EntryData::NotCached => {
+            EntryState::Present(inode) => Some(inode.clone()),
+            EntryState::NotPresent => None,
+            EntryState::NotCached => {
                 // Do lookup if it wasn't cached already.
-                *lock = EntryData::NotPresent;
+                *lock = EntryState::NotPresent;
                 todo!("Lookup inode and cache")
             }
         }
     }
 
     pub fn set_inode(&self, inode: Arc<INode>) {
-        *self.inode.lock() = EntryData::Present(inode);
+        *self.inode.lock() = EntryState::Present(inode);
     }
 }
 
@@ -198,7 +200,7 @@ impl PathNode {
             if e != Errno::ENOENT {
                 return Err(e);
             }
-            *child.entry.inode.lock() = EntryData::NotPresent;
+            *child.entry.inode.lock() = EntryState::NotPresent;
         }
 
         // Insert the new entry as a child.

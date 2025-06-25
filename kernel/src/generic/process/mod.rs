@@ -5,7 +5,7 @@ use crate::generic::{
     memory::{
         VirtAddr,
         pmm::{AllocFlags, KernelAlloc},
-        virt::PageTable,
+        virt::{AddressSpace, PageTable},
     },
     posix::errno::{EResult, Errno},
     process::task::Tid,
@@ -108,10 +108,13 @@ impl Process {
         )?;
 
         let mut info = ExecutableInfo {
-            page_table: PageTable::new_user::<KernelAlloc>(
-                PageTable::get_kernel().root_level(),
-                AllocFlags::empty(),
-            ),
+            address_space: AddressSpace {
+                table: PageTable::new_user::<KernelAlloc>(
+                    PageTable::get_kernel().root_level(),
+                    AllocFlags::empty(),
+                ),
+                mappings: Mutex::default(),
+            },
             executable: file.clone(),
             interpreter: None,
         };
