@@ -1,6 +1,9 @@
 use super::inode::{INode, NodeType};
 use crate::generic::{
-    memory::{VirtAddr, virt::AddressSpace},
+    memory::{
+        VirtAddr,
+        virt::{AddressSpace, VmFlags},
+    },
     posix::errno::{EResult, Errno},
     process::Identity,
     vfs::{
@@ -41,6 +44,14 @@ bitflags::bitflags! {
         const WriteOnly = uapi::O_WRONLY as _;
         const ReadWrite = uapi::O_RDWR as _;
         const Executeable = uapi::O_EXEC as _;
+    }
+
+    #[derive(Debug, Clone, Copy)]
+    pub struct MmapFlags: u32 {
+        const Anonymous = uapi::MAP_ANONYMOUS as _;
+        const Shared = uapi::MAP_SHARED as _;
+        const Private = uapi::MAP_PRIVATE as _;
+        const Fixed = uapi::MAP_FIXED as _;
     }
 }
 
@@ -276,6 +287,8 @@ impl File {
         offset: u64,
         hint: VirtAddr,
         size: usize,
+        prot: VmFlags,
+        flags: MmapFlags,
     ) -> EResult<VirtAddr> {
         self.ops.mmap(self, space, offset, hint, size)
     }

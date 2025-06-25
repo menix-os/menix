@@ -1,7 +1,7 @@
 pub mod elf;
 
 use crate::generic::{
-    memory::virt::PageTable, posix::errno::EResult, util::mutex::Mutex, vfs::file::File,
+    memory::virt::AddressSpace, posix::errno::EResult, util::mutex::Mutex, vfs::file::File,
 };
 use alloc::{
     collections::btree_map::BTreeMap,
@@ -16,7 +16,7 @@ pub struct ExecutableInfo {
     pub executable: Arc<File>,
     /// An interpreter that's tasked with loading the given executable.
     pub interpreter: Option<Arc<File>>,
-    pub page_table: PageTable,
+    pub address_space: AddressSpace,
 }
 
 /// An executable format.
