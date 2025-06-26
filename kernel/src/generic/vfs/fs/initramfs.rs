@@ -80,10 +80,10 @@ pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
             Mode::from_bits_truncate(0o755),
             None,
             Identity::get_kernel(),
-        )
-            && e != Errno::EEXIST {
-                return Err(e);
-            }
+        ) && e != Errno::EEXIST
+        {
+            return Err(e);
+        }
 
         current = File::open(
             Some(current.clone()),

@@ -77,10 +77,11 @@ fn init() {
             let name = CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]);
             if let Ok(x) = name
                 && let Ok(s) = x.to_str()
-                    && !s.is_empty() {
-                        let result = symbol_table.insert(s.to_owned(), (*sym, None));
-                        assert!(result.is_none(), "Duplicate symbol names!");
-                    }
+                && !s.is_empty()
+            {
+                let result = symbol_table.insert(s.to_owned(), (*sym, None));
+                assert!(result.is_none(), "Duplicate symbol names!");
+            }
         }
         log!("Registered {} kernel symbols", symbol_table.len());
     }

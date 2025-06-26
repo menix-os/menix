@@ -43,9 +43,10 @@ pub fn remove_sink(name: &str) {
     let mut logger = GLOBAL_LOGGERS.lock();
     for sink in &mut logger.sinks {
         if let Some(x) = sink
-            && x.name() == name {
-                *sink = None;
-            }
+            && x.name() == name
+        {
+            *sink = None;
+        }
     }
 }
 
