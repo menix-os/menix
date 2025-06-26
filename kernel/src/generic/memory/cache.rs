@@ -121,6 +121,7 @@ impl RcPage {
     /// Returns a mutable slice pointing to the page data.
     /// # Safety
     /// The caller must ensure that there is only one simultaneous write access on this data.
+    #[allow(clippy::mut_from_ref)]
     pub unsafe fn as_slice_mut<T: AnyBitPattern>(&self) -> &mut [T] {
         unsafe {
             core::slice::from_raw_parts_mut(
