@@ -72,23 +72,27 @@ impl PageTableEntry {
             }
         }
 
-        return Self { inner: result };
+        Self { inner: result }
     }
 
     pub const fn inner(&self) -> usize {
-        return self.inner as usize;
+        self.inner as usize
     }
 
     pub fn is_present(&self) -> bool {
-        return PageFlags::from_bits_retain(self.inner).contains(PageFlags::Present);
+        PageFlags::from_bits_retain(self.inner).contains(PageFlags::Present)
     }
 
     pub fn is_directory(&self, level: usize) -> bool {
-        return level > 0 && !PageFlags::from_bits_retain(self.inner).contains(PageFlags::Size);
+        level > 0 && !PageFlags::from_bits_retain(self.inner).contains(PageFlags::Size)
+    }
+
+    pub fn is_dirty(&self) -> bool {
+        PageFlags::from_bits_retain(self.inner).contains(PageFlags::Dirty)
     }
 
     pub fn address(&self) -> PhysAddr {
-        return (self.inner & ADDR_MASK).into();
+        (self.inner & ADDR_MASK).into()
     }
 }
 
