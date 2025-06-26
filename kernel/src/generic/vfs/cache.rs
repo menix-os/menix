@@ -105,7 +105,7 @@ impl PathNode {
 
         // If a path starts with '/', it's an absolute path.
         // In that case, skip the first character and use the current root as a starting point.
-        let (mut current_node, path) = if path.get(0).is_some_and(|&x| x == b'/') {
+        let (mut current_node, path) = if path.first().is_some_and(|&x| x == b'/') {
             (proc.root_dir.lock().clone(), &path[1..])
         } else {
             (start.unwrap_or(proc.working_dir.lock().clone()), path)
@@ -157,7 +157,7 @@ impl PathNode {
 
         'again: loop {
             for child_mnt in entry.clone().mounts.lock().iter() {
-                if Arc::ptr_eq(&child_mnt, &mount) {
+                if Arc::ptr_eq(child_mnt, &mount) {
                     mount = child_mnt.clone();
                     entry = child_mnt.root.clone();
                     continue 'again;

@@ -146,7 +146,7 @@ pub(crate) fn allocate_cpu() -> EResult<&'static CpuData> {
     PageTable::get_kernel()
         .map_range::<KernelAlloc>(
             VirtAddr::from(percpu_new),
-            PhysAddr::from(phys),
+            phys,
             VmFlags::Read | VmFlags::Write,
             memory::virt::VmLevel::L1,
             percpu_size,

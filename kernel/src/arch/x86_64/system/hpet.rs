@@ -30,12 +30,11 @@ impl ClockSource for Hpet {
     }
 
     fn reset(&mut self) {
-        self.regs.write(regs::MAIN_COUNTER, 0 as u64);
+        self.regs.write(regs::MAIN_COUNTER, 0_u64);
     }
 
     fn get_elapsed_ns(&self) -> usize {
-        return (self.regs.read(regs::MAIN_COUNTER) * self.period as u64 / 1_000_000) as usize
-            as usize;
+        return (self.regs.read(regs::MAIN_COUNTER) * self.period as u64 / 1_000_000) as usize;
     }
 }
 

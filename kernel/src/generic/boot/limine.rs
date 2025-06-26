@@ -151,8 +151,8 @@ extern "C" fn _start() -> ! {
         }
     }
 
-    if let Some(response) = FRAMEBUFFER_REQUEST.get_response() {
-        if let Some(fb) = response.framebuffers().next() {
+    if let Some(response) = FRAMEBUFFER_REQUEST.get_response()
+        && let Some(fb) = response.framebuffers().next() {
             // We can't call `as_hhdm` yet because it's not been initialized yet.
             let fb_addr = fb.addr() as usize;
             let hhdm = (HHDM_REQUEST.get_response().unwrap().offset()) as usize;
@@ -177,7 +177,6 @@ extern "C" fn _start() -> ! {
                 },
             });
         }
-    }
 
     // Finally, save the boot information.
     info.register();

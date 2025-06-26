@@ -338,7 +338,7 @@ pub fn init(cpu: &ArchPerCpu) {
     let stack = unsafe { Box::new_zeroed_slice(KERNEL_STACK_SIZE).assume_init() };
     tss.rsp0 = Box::leak(stack).as_mut_ptr() as *mut u8 as u64 + KERNEL_STACK_SIZE as u64;
 
-    *gdt = GDT.clone();
+    *gdt = GDT;
     gdt.tss.set_base(&raw const tss as u64);
 
     // Construct a register to hold the GDT base and limit.

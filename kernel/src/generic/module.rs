@@ -75,14 +75,12 @@ fn init() {
             sym.st_value += &raw const virt::LD_KERNEL_START as u64;
 
             let name = CStr::from_bytes_until_nul(&strings[sym.st_name as usize..]);
-            if let Ok(x) = name {
-                if let Ok(s) = x.to_str() {
-                    if !s.is_empty() {
+            if let Ok(x) = name
+                && let Ok(s) = x.to_str()
+                    && !s.is_empty() {
                         let result = symbol_table.insert(s.to_owned(), (*sym, None));
                         assert!(result.is_none(), "Duplicate symbol names!");
                     }
-                }
-            }
         }
         log!("Registered {} kernel symbols", symbol_table.len());
     }

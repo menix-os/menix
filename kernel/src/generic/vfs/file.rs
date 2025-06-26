@@ -14,7 +14,7 @@ use crate::generic::{
 use alloc::sync::Arc;
 use core::{
     fmt::Debug,
-    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 bitflags::bitflags! {
@@ -225,7 +225,7 @@ impl File {
 
                 Ok(Arc::try_new(result)?)
             }
-            NodeOps::Directory(dir) => dir.open(&inode, file_path, flags, identity),
+            NodeOps::Directory(dir) => dir.open(inode, file_path, flags, identity),
             NodeOps::BlockDevice(blk) => todo!(),
             NodeOps::CharacterDevice(chr) => todo!(),
             NodeOps::FIFO => todo!(),
@@ -251,7 +251,7 @@ impl File {
             return Ok(0);
         }
         self.ops
-            .read(self, buf, self.position.load(Ordering::Acquire) as u64)
+            .read(self, buf, self.position.load(Ordering::Acquire))
     }
 
     /// Reads into a buffer from a file at a specified offset.
@@ -270,7 +270,7 @@ impl File {
             return Ok(0);
         }
         self.ops
-            .write(self, buf, self.position.load(Ordering::Acquire) as u64)
+            .write(self, buf, self.position.load(Ordering::Acquire))
     }
 
     /// Writes a buffer to a file at a specified offset.
@@ -291,7 +291,7 @@ impl File {
             SeekAnchor::Start(x) => Ok(self.position.swap(x, Ordering::AcqRel)),
             SeekAnchor::Current(x) => {
                 let old = if x.is_negative() {
-                    self.position.fetch_sub(x.abs() as u64, Ordering::AcqRel)
+                    self.position.fetch_sub(x.unsigned_abs(), Ordering::AcqRel)
                 } else {
                     self.position.fetch_add(x as u64, Ordering::AcqRel)
                 };
@@ -312,7 +312,7 @@ impl File {
                 };
 
                 self.position.store(new, Ordering::Release);
-                Ok(new as u64)
+                Ok(new)
             }
         }
     }
