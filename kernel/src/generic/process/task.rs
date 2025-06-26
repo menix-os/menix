@@ -1,4 +1,4 @@
-use super::{Pid, Process};
+use super::Process;
 use crate::{
     arch::{self},
     generic::{

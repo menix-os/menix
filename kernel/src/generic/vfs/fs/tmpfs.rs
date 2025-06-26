@@ -2,7 +2,11 @@
 
 use super::{MountFlags, SuperBlock};
 use crate::generic::{
-    memory::{VirtAddr, virt::AddressSpace},
+    memory::{
+        VirtAddr,
+        cache::PageCache,
+        virt::{VmRegion, VmSpace},
+    },
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::Mutex,
@@ -73,21 +77,27 @@ impl SuperBlock for TmpSuper {
             },
             file_ops: Arc::try_new(TmpFile::default())?,
             sb: self,
-            dirty: AtomicBool::new(false),
+            mode: AtomicU32::new(mode.bits()),
+            cache: PageCache::default(),
             atime: Mutex::default(),
             mtime: Mutex::default(),
             ctime: Mutex::default(),
             size: AtomicU64::default(),
             uid: AtomicUsize::default(),
             gid: AtomicUsize::default(),
-            mode: AtomicU32::new(mode.bits()),
         };
 
         return Ok(Arc::try_new(node)?);
     }
 
     fn destroy_inode(self: Arc<Self>, inode: INode) -> EResult<()> {
-        todo!()
+        match Arc::into_inner(self) {
+            Some(x) => {
+                drop(x);
+                Ok(())
+            }
+            None => Err(Errno::EBUSY),
+        }
     }
 }
 
@@ -96,6 +106,11 @@ struct TmpNode;
 
 impl CommonOps for TmpNode {
     fn sync(&self, _node: &INode) -> EResult<()> {
+        // This is a no-op.
+        Ok(())
+    }
+
+    fn sync_page(&self, node: &INode, page: &crate::generic::memory::pmm::Page) -> EResult<()> {
         // This is a no-op.
         Ok(())
     }
@@ -122,7 +137,7 @@ impl DirectoryOps for TmpDir {
             ops: Arc::new(TmpFile::default()),
             inode: Some(node.clone()),
             flags,
-            position: AtomicUsize::new(0),
+            position: AtomicU64::new(0),
         };
         return Ok(Arc::try_new(file)?);
     }
@@ -244,22 +259,18 @@ impl FileOps for TmpFile {
         }
     }
 
-    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64> {
-        todo!()
-    }
-
-    fn ioctl(&self, file: &File, request: usize, arg: usize) -> EResult<usize> {
-        todo!()
-    }
-
     fn mmap(
         &self,
         file: &File,
-        space: &AddressSpace,
+        space: &VmSpace,
         offset: u64,
         hint: VirtAddr,
         size: usize,
     ) -> EResult<VirtAddr> {
+        todo!()
+    }
+
+    fn poll(&self, file: &File, mask: u16) -> EResult<u16> {
         todo!()
     }
 }

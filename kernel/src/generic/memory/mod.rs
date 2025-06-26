@@ -1,5 +1,6 @@
 // We don't want to use the bump allocator anywhere after initial setup.
 mod bump;
+pub mod cache;
 pub mod mmio;
 pub mod pmm;
 pub mod slab;

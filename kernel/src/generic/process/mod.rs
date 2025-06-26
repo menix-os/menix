@@ -5,7 +5,7 @@ use crate::generic::{
     memory::{
         VirtAddr,
         pmm::{AllocFlags, KernelAlloc},
-        virt::{AddressSpace, PageTable},
+        virt::{PageTable, VmSpace},
     },
     posix::errno::{EResult, Errno},
     process::task::Tid,
@@ -48,6 +48,8 @@ pub struct Process {
     pub working_dir: Mutex<PathNode>,
     /// The user identity of this process.
     pub identity: Mutex<Identity>,
+    /// The parent of this process.
+    pub parent: Option<Arc<Self>>,
 }
 
 impl Process {
@@ -89,6 +91,7 @@ impl Process {
             working_dir: Mutex::new(cwd),
             is_user,
             identity: Mutex::new(identity),
+            parent,
         })
     }
 
@@ -108,7 +111,7 @@ impl Process {
         )?;
 
         let mut info = ExecutableInfo {
-            address_space: AddressSpace {
+            address_space: VmSpace {
                 table: PageTable::new_user::<KernelAlloc>(
                     PageTable::get_kernel().root_level(),
                     AllocFlags::empty(),
@@ -123,7 +126,7 @@ impl Process {
         format.load(&mut info)?;
 
         // TODO: Give this a name.
-        let result = Arc::new(Self::new("", None, true)?);
+        let result = Arc::new(Self::new("", parent, true)?);
 
         let ip = 0;
         let sp = 0;

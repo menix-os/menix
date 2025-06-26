@@ -282,3 +282,9 @@ bitflags::bitflags! {
         const UseRealId = 1 << 3;
     }
 }
+
+/// A cached and/or mapped object.
+#[derive(Debug)]
+pub struct AddressSpace {
+    pub owner: Arc<INode>,
+}

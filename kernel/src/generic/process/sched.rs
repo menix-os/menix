@@ -93,10 +93,11 @@ pub extern "C" fn task_entry(entry: extern "C" fn(usize, usize), arg1: usize, ar
     (entry)(arg1, arg2);
 
     // The task function is over, kill the task.
-    {
-        let task = Scheduler::get_current();
-        *task.state.lock() = TaskState::Dead;
-    }
+    let task = Scheduler::get_current();
+    let mut state = task.state.lock();
+    *state = TaskState::Dead;
+    drop(state);
+
     unsafe {
         arch::sched::force_reschedule();
     }

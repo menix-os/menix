@@ -1,6 +1,7 @@
 pub mod boot;
 pub mod clock;
 pub mod cmdline;
+pub mod device;
 pub mod fbcon;
 pub mod init;
 pub mod irq;
