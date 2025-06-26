@@ -152,31 +152,32 @@ extern "C" fn _start() -> ! {
     }
 
     if let Some(response) = FRAMEBUFFER_REQUEST.get_response()
-        && let Some(fb) = response.framebuffers().next() {
-            // We can't call `as_hhdm` yet because it's not been initialized yet.
-            let fb_addr = fb.addr() as usize;
-            let hhdm = (HHDM_REQUEST.get_response().unwrap().offset()) as usize;
+        && let Some(fb) = response.framebuffers().next()
+    {
+        // We can't call `as_hhdm` yet because it's not been initialized yet.
+        let fb_addr = fb.addr() as usize;
+        let hhdm = (HHDM_REQUEST.get_response().unwrap().offset()) as usize;
 
-            info.framebuffer = Some(FrameBuffer {
-                base: (fb_addr - hhdm).into(),
-                width: fb.width() as usize,
-                height: fb.height() as usize,
-                pitch: fb.pitch() as usize,
-                cpp: fb.bpp() as usize / 8,
-                red: FbColorBits {
-                    offset: fb.red_mask_shift(),
-                    size: fb.red_mask_size(),
-                },
-                green: FbColorBits {
-                    offset: fb.green_mask_shift(),
-                    size: fb.green_mask_size(),
-                },
-                blue: FbColorBits {
-                    offset: fb.blue_mask_shift(),
-                    size: fb.blue_mask_size(),
-                },
-            });
-        }
+        info.framebuffer = Some(FrameBuffer {
+            base: (fb_addr - hhdm).into(),
+            width: fb.width() as usize,
+            height: fb.height() as usize,
+            pitch: fb.pitch() as usize,
+            cpp: fb.bpp() as usize / 8,
+            red: FbColorBits {
+                offset: fb.red_mask_shift(),
+                size: fb.red_mask_size(),
+            },
+            green: FbColorBits {
+                offset: fb.green_mask_shift(),
+                size: fb.green_mask_size(),
+            },
+            blue: FbColorBits {
+                offset: fb.blue_mask_shift(),
+                size: fb.blue_mask_size(),
+            },
+        });
+    }
 
     // Finally, save the boot information.
     info.register();
