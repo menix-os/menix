@@ -2,7 +2,7 @@ use super::inode::{INode, NodeType};
 use crate::generic::{
     memory::{
         VirtAddr,
-        virt::{AddressSpace, VmFlags},
+        virt::{VmFlags, VmSpace},
     },
     posix::errno::{EResult, Errno},
     process::Identity,
@@ -14,7 +14,7 @@ use crate::generic::{
 use alloc::sync::Arc;
 use core::{
     fmt::Debug,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicU64, AtomicUsize, Ordering},
 };
 
 bitflags::bitflags! {
@@ -76,14 +76,17 @@ pub struct File {
     /// File open flags.
     pub flags: OpenFlags,
     /// The cursor of this file.
-    pub position: AtomicUsize,
+    pub position: AtomicU64,
 }
 
 /// Operations that can be performed on a file.
 pub trait FileOps: Debug {
     /// Reads directory entries into a buffer.
     /// Returns actual bytes read.
-    fn read_dir(&self, file: &File, buffer: &mut [u8]) -> EResult<u64>;
+    fn read_dir(&self, file: &File, buffer: &mut [u8]) -> EResult<u64> {
+        _ = (file, buffer);
+        Err(Errno::EBADF)
+    }
 
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
@@ -93,19 +96,24 @@ pub trait FileOps: Debug {
     /// Returns actual bytes written.
     fn write(&self, file: &File, buffer: &[u8], offset: u64) -> EResult<u64>;
 
-    /// Seeks inside the file.
-    /// Returns the new absolute offset.
-    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64>;
-
     /// Performs a generic ioctl operation on the file.
     /// Returns a status code.
-    fn ioctl(&self, file: &File, request: usize, arg: usize) -> EResult<usize>;
+    fn ioctl(&self, file: &File, request: usize, arg: usize) -> EResult<usize> {
+        _ = (arg, request, file);
+        Err(Errno::ENOTTY)
+    }
+
+    /// Polls this file with a mask.
+    fn poll(&self, file: &File, mask: u16) -> EResult<u16> {
+        _ = (file, mask);
+        Ok(mask)
+    }
 
     /// Maps a file from an `offset` into the given address space.
     fn mmap(
         &self,
         file: &File,
-        space: &AddressSpace,
+        space: &VmSpace,
         offset: u64,
         hint: VirtAddr,
         size: usize,
@@ -170,7 +178,7 @@ impl File {
                     ops: file_node.file_ops.clone(),
                     inode: Some(file_node),
                     flags,
-                    position: AtomicUsize::new(0),
+                    position: AtomicU64::new(0),
                 };
 
                 Ok(Arc::try_new(result)?)
@@ -212,13 +220,14 @@ impl File {
                     ops: inode.file_ops.clone(),
                     inode: Some(inode.clone()),
                     flags,
-                    position: AtomicUsize::new(0),
+                    position: AtomicU64::new(0),
                 };
 
                 Ok(Arc::try_new(result)?)
             }
             NodeOps::Directory(dir) => dir.open(&inode, file_path, flags, identity),
-            NodeOps::BlockDevice | NodeOps::CharacterDevice => todo!(),
+            NodeOps::BlockDevice(blk) => todo!(),
+            NodeOps::CharacterDevice(chr) => todo!(),
             NodeOps::FIFO => todo!(),
             NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
             // Doesn't make sense to call open() on anything else.
@@ -273,8 +282,39 @@ impl File {
         self.ops.write(self, buf, offset)
     }
 
+    pub fn poll(&self, mask: u16) -> EResult<u16> {
+        self.ops.poll(self, mask)
+    }
+
     pub fn seek(&self, offset: SeekAnchor) -> EResult<u64> {
-        self.ops.seek(self, offset)
+        match offset {
+            SeekAnchor::Start(x) => Ok(self.position.swap(x, Ordering::AcqRel)),
+            SeekAnchor::Current(x) => {
+                let old = if x.is_negative() {
+                    self.position.fetch_sub(x.abs() as u64, Ordering::AcqRel)
+                } else {
+                    self.position.fetch_add(x as u64, Ordering::AcqRel)
+                };
+                Ok(old + x as u64)
+            }
+            SeekAnchor::End(x) => {
+                let size = self
+                    .inode
+                    .as_ref()
+                    .ok_or(Errno::EINVAL)?
+                    .size
+                    .load(Ordering::Acquire);
+
+                let new = if x.is_negative() {
+                    size.checked_add_signed(x).ok_or(Errno::EINVAL)?
+                } else {
+                    size.checked_add_signed(x).ok_or(Errno::EOVERFLOW)?
+                };
+
+                self.position.store(new, Ordering::Release);
+                Ok(new as u64)
+            }
+        }
     }
 
     pub fn ioctl(&self, request: usize, arg: usize) -> EResult<usize> {
@@ -283,7 +323,7 @@ impl File {
 
     pub fn mmap(
         &self,
-        space: &AddressSpace,
+        space: &VmSpace,
         offset: u64,
         hint: VirtAddr,
         size: usize,

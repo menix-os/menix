@@ -1,26 +1,15 @@
-use alloc::{string::String, sync::Arc};
-use bytemuck::{Pod, Zeroable};
-
-use crate::{
-    arch,
-    generic::{
-        memory::{
-            VirtAddr,
-            pmm::{AllocFlags, KernelAlloc, PageAllocator},
-            virt::{VmFlags, VmLevel},
-        },
-        posix::errno::{EResult, Errno},
-        process::Identity,
-        util::{align_down, align_up},
-        vfs::{
-            exec::ExecFormat,
-            file::{File, MmapFlags, OpenFlags},
-            inode::Mode,
-        },
+use super::ExecutableInfo;
+use crate::generic::{
+    memory::virt::VmFlags,
+    posix::errno::{EResult, Errno},
+    process::Process,
+    vfs::{
+        exec::ExecFormat,
+        file::{File, MmapFlags},
     },
 };
-
-use super::ExecutableInfo;
+use alloc::sync::Arc;
+use bytemuck::{Pod, Zeroable};
 
 // ELF Header Identification
 pub const ELF_MAG: [u8; 4] = [0x7F, b'E', b'L', b'F'];
@@ -355,7 +344,7 @@ impl ExecFormat for ElfFormat {
         return true;
     }
 
-    fn load(&self, info: &mut ExecutableInfo) -> EResult<()> {
+    fn load(&self, info: &mut ExecutableInfo) -> EResult<Process> {
         let base = 0x40000; // Start mapping a relocatable ELF at this address.
 
         // Read the header.

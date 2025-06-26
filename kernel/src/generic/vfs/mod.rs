@@ -4,11 +4,16 @@ pub mod file;
 pub mod fs;
 pub mod inode;
 
+pub use cache::Entry;
+pub use cache::PathNode;
+pub use file::File;
+pub use fs::Mount;
+pub use fs::MountFlags;
+
+use crate::generic::memory::virt::VmSpace;
 use crate::generic::{
-    memory::{
-        VirtAddr,
-        virt::{AddressSpace, VmFlags},
-    },
+    device::Device,
+    memory::{VirtAddr, virt::VmFlags},
     posix::errno::{EResult, Errno},
     process::Identity,
     util::once::Once,
@@ -19,12 +24,6 @@ use crate::generic::{
     },
 };
 use alloc::sync::Arc;
-
-pub use cache::Entry;
-pub use cache::PathNode;
-pub use file::File;
-pub use fs::Mount;
-pub use fs::MountFlags;
 
 /// The root directory entry.
 static ROOT: Once<PathNode> = Once::new();
@@ -40,7 +39,7 @@ pub fn mknod(
     path: &[u8],
     file_type: NodeType,
     mode: Mode,
-    device: Option<()>, // TODO
+    device: Option<Arc<dyn Device>>,
     identity: &Identity,
 ) -> EResult<()> {
     // POSIX only allows these types of nodes to be created.
@@ -93,9 +92,9 @@ pub fn symlink(
     }
 }
 
-pub unsafe fn mmap(
+pub fn mmap(
     file: Option<Arc<File>>,
-    space: &AddressSpace,
+    space: &VmSpace,
     addr: VirtAddr,
     len: usize,
     prot: VmFlags,

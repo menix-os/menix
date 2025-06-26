@@ -13,7 +13,7 @@ use core::{
     hint::unlikely,
     ptr::{NonNull, null_mut, write_bytes},
     slice,
-    sync::atomic::{AtomicPtr, Ordering},
+    sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering},
 };
 
 bitflags! {
@@ -45,15 +45,17 @@ pub trait PageAllocator {
     unsafe fn dealloc(addr: PhysAddr, pages: usize);
 }
 
+// WARNING: Keep this structure as small as possible, every single physical page has one!
 /// Metadata about a physical page.
-/// Keep this structure as small as possible, every single physical page has one!
 #[derive(Debug)]
 #[repr(C)]
 pub struct Page {
     pub next: Option<NonNull<Page>>,
     pub count: usize,
+    pub dirty: AtomicBool,
+    pub last_write: AtomicUsize,
 }
-static_assert!(size_of::<Page>() <= 16);
+// If this assert fails, the PFNDB can't properly allocate data.
 static_assert!(0x1000 % size_of::<Page>() == 0);
 
 pub static PAGE_DB: Mutex<&'static mut [Page]> = Mutex::new(&mut []);

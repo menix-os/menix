@@ -5,7 +5,7 @@ use crate::generic::memory::virt::PageTable;
 use super::{
     PhysAddr, VirtAddr,
     pmm::KernelAlloc,
-    virt::{self, VmFlags, VmLevel},
+    virt::{VmFlags, VmLevel},
 };
 use core::marker::PhantomData;
 use num_traits::PrimInt;

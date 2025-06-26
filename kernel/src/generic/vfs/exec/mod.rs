@@ -1,7 +1,8 @@
 pub mod elf;
 
 use crate::generic::{
-    memory::virt::AddressSpace, posix::errno::EResult, util::mutex::Mutex, vfs::file::File,
+    memory::virt::VmSpace, posix::errno::EResult, process::Process, util::mutex::Mutex,
+    vfs::file::File,
 };
 use alloc::{
     collections::btree_map::BTreeMap,
@@ -16,16 +17,16 @@ pub struct ExecutableInfo {
     pub executable: Arc<File>,
     /// An interpreter that's tasked with loading the given executable.
     pub interpreter: Option<Arc<File>>,
-    pub address_space: AddressSpace,
+    pub address_space: VmSpace,
 }
 
 /// An executable format.
 pub trait ExecFormat {
-    /// Attempts to identify whether a file is a valid executable.
+    /// Attempts to identify whether a file is a valid executable of this format.
     fn identify(&self, file: &File) -> bool;
 
-    /// Loads an executable.
-    fn load(&self, info: &mut ExecutableInfo) -> EResult<()>;
+    /// Loads an executable and returns a ready to run process.
+    fn load(&self, info: &mut ExecutableInfo) -> EResult<Process>;
 }
 
 static KNOWN_FORMATS: Mutex<BTreeMap<String, Arc<dyn ExecFormat>>> = Mutex::new(BTreeMap::new());

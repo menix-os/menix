@@ -1,5 +1,7 @@
 use super::fs::SuperBlock;
 use crate::generic::{
+    device::{BlockDevice, CharDevice},
+    memory::{cache::PageCache, pmm::Page},
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::Mutex,
@@ -12,7 +14,7 @@ use alloc::{boxed::Box, sync::Arc};
 use core::{
     any::Any,
     fmt::Debug,
-    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
+    sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering},
 };
 
 /// A standalone inode. See [`super::cache::Entry`] for information.
@@ -26,8 +28,7 @@ pub struct INode {
     pub file_ops: Arc<dyn FileOps>,
     /// The super block which this node is located in.
     pub sb: Arc<dyn SuperBlock>,
-    /// If true, the node has been modified and has to be sync'd.
-    pub dirty: AtomicBool,
+    pub cache: PageCache,
 
     // The following fields make up `stat`.
     pub id: u64,
@@ -55,12 +56,12 @@ impl INode {
             return Ok(());
         }
 
-        todo!()
+        todo!("Implement UID handling for !root");
     }
 
     /// Updates the node with given timestamps.
     /// If an argument is [`None`], the respective value is not updated.
-    fn update_time(
+    pub fn update_time(
         &self,
         node: &INode,
         mtime: Option<uapi::timespec>,
@@ -70,25 +71,29 @@ impl INode {
         todo!();
     }
 
-    fn get_mode(&self) -> EResult<Mode> {
-        todo!();
+    /// Returns the current mode of this inode.
+    pub fn get_mode(&self) -> Mode {
+        Mode::from_bits_truncate(self.mode.load(Ordering::Acquire))
     }
 
     /// Changes permissions on this `node`.
-    fn chmod(&self, node: &INode, mode: Mode) -> EResult<()> {
+    pub fn chmod(&self, node: &INode, mode: Mode) -> EResult<()> {
         todo!();
     }
 
     /// Changes ownership on this `node`.
-    fn chown(&self, node: &INode, uid: uapi::uid_t, gid: uapi::gid_t) -> EResult<()> {
+    pub fn chown(&self, node: &INode, uid: uapi::uid_t, gid: uapi::gid_t) -> EResult<()> {
         todo!();
     }
 }
 
 /// Operations which work on any kind of [`INode`].
 pub trait CommonOps: Debug {
-    /// Synchronizes the node back to the underlying file system.
+    /// Synchronizes the node metadata back to the underlying file system.
     fn sync(&self, node: &INode) -> EResult<()>;
+
+    /// Synchronizes a cached page back to the underlying file system.
+    fn sync_page(&self, node: &INode, page: &Page) -> EResult<()>;
 }
 
 #[derive(Debug)]
@@ -97,8 +102,8 @@ pub enum NodeOps {
     Directory(Box<dyn DirectoryOps>),
     SymbolicLink(Box<dyn SymlinkOps>),
     FIFO,
-    BlockDevice,
-    CharacterDevice,
+    BlockDevice(Arc<BlockDevice>),
+    CharacterDevice(Arc<CharDevice>),
     Socket,
 }
 
@@ -156,6 +161,7 @@ pub trait RegularOps: Any + Debug {
 /// Operations for symbolic link [`INode`]s.
 pub trait SymlinkOps: Any + Debug {
     /// Reads the path of the symbolic link of the node.
+    /// Returns amount of bytes read into the buffer.
     fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<u64>;
 }
 

@@ -9,7 +9,7 @@ use crate::{
         util::{align_up, mutex::Mutex, once::Once},
     },
 };
-use alloc::{alloc::AllocError, vec::Vec};
+use alloc::{alloc::AllocError, collections::btree_map::BTreeMap};
 use bitflags::bitflags;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -372,9 +372,9 @@ impl PageTable {
 pub struct VmRegion {}
 
 #[derive(Debug)]
-pub struct AddressSpace {
+pub struct VmSpace {
     pub table: PageTable,
-    pub mappings: Mutex<Vec<VmRegion>>,
+    pub mappings: Mutex<BTreeMap<VirtAddr, VmRegion>>,
 }
 
 /// Abstract information about a page fault.
