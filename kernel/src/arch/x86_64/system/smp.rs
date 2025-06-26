@@ -379,7 +379,7 @@ fn init_aps() {
 
         // Identity map the lower half.
         for i in 0..4 {
-            temp_l3_buffer.offset(i as isize).write(
+            temp_l3_buffer.add(i).write(
                 PageTableEntry::new(
                     PhysAddr::new(i * get_page_size(VmLevel::L3)),
                     VmFlags::Read | VmFlags::Write | VmFlags::Exec | VmFlags::Large,

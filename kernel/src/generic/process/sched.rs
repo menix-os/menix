@@ -53,7 +53,7 @@ impl Scheduler {
 
     /// Attempts to find a task by its ID on this scheduler.
     pub fn get_by_tid(&self, tid: Tid) -> Option<Arc<Task>> {
-        self.run_queue.lock().get(&tid).map(|x| x.clone())
+        self.run_queue.lock().get(&tid).cloned()
     }
 
     fn next(&self) -> Option<Arc<Task>> {

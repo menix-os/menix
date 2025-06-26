@@ -384,7 +384,7 @@ impl ExecFormat for ElfFormat {
 
                     info.executable.mmap(
                         &info.address_space,
-                        phdr.p_offset.into(),
+                        phdr.p_offset,
                         (phdr.p_vaddr + base).into(),
                         phdr.p_filesz as usize,
                         prot,

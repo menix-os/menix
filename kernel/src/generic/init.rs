@@ -38,7 +38,7 @@ impl Node {
     }
 
     fn run(&self) {
-        assert_eq!(self.done.load(Ordering::Relaxed), false);
+        assert!(!self.done.load(Ordering::Relaxed));
         assert_eq!(self.unsatisfied_deps.load(Ordering::Relaxed), 0);
         (self.action)();
         self.done.store(true, Ordering::Relaxed);

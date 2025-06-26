@@ -42,11 +42,10 @@ pub fn add_sink(sink: Box<dyn LoggerSink>) {
 pub fn remove_sink(name: &str) {
     let mut logger = GLOBAL_LOGGERS.lock();
     for sink in &mut logger.sinks {
-        if let Some(x) = sink {
-            if x.name() == name {
+        if let Some(x) = sink
+            && x.name() == name {
                 *sink = None;
             }
-        }
     }
 }
 

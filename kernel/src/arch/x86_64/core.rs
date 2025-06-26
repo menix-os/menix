@@ -68,7 +68,7 @@ pub(super) fn setup_core(context: &'static CpuData) {
     let cpu = ARCH_DATA.get();
 
     // Load a GDT and TSS.
-    gdt::init(&cpu);
+    gdt::init(cpu);
 
     // Load the IDT.
     // Note: The IDT itself is global, but still needs to be loaded for each CPU.

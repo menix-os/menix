@@ -1,5 +1,4 @@
 use super::spin::SpinLock;
-use crate::arch;
 use core::{
     cell::UnsafeCell,
     fmt::{self, Debug, Formatter},

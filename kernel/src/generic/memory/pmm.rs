@@ -151,7 +151,7 @@ impl Page {
         let page: *const Page = self;
         let page = page as usize;
         let db = PAGE_DB_START.load(Ordering::Relaxed) as usize;
-        debug_assert!(page >= db, "{:#018x} >= {:#018x}", page, db);
+        debug_assert!(page >= db, "{page:#018x} >= {db:#018x}");
         return (page - db) / size_of::<Page>();
     }
 

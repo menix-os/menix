@@ -226,7 +226,7 @@ impl SymlinkOps for TmpRegular {
     fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<u64> {
         let mut v = self.data.lock();
         let copy_size = buf.len().min(v.len());
-        &buf[0..copy_size].copy_from_slice(&v[0..copy_size]);
+        buf[0..copy_size].copy_from_slice(&v[0..copy_size]);
         Ok(copy_size as u64)
     }
 }
