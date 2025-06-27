@@ -78,7 +78,7 @@ impl RcPage {
             // If we've already written
             if let Some(t) = timestamp {
                 let last_write = page.last_write.load(Ordering::Acquire);
-                if t < last_write {
+                if t < last_write + WRITE_BACK_DELAY_NS {
                     continue;
                 }
             }
