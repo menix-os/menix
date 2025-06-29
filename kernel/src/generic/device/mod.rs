@@ -1,5 +1,5 @@
 use crate::generic::{
-    memory::cache::{BackingKind, PageCache, RcPage},
+    memory::cache::Object,
     posix::errno::{EResult, Errno},
     vfs::{file::FileOps, inode::Mode},
 };
@@ -38,7 +38,7 @@ pub struct BlockDevice {
     pub id: uapi::dev_t,
     pub path: Vec<u8>,
     pub mode: Mode,
-    pub cache: PageCache,
+    pub cache: Object,
     pub ops: Box<dyn BlockDeviceOps>,
 }
 
@@ -47,13 +47,6 @@ pub trait BlockDeviceOps: Debug {
     fn get_block_size(&self) -> u64;
 
     fn get_block_count(&self) -> u64;
-
-    fn read_data(
-        &self,
-        page_offset: u64,
-        page_count: usize,
-        backing: BackingKind,
-    ) -> EResult<RcPage>;
 
     fn write_data(&self, page_offset: u64, buffer: &[u8]) -> EResult<()>;
 

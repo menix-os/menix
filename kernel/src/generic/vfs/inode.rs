@@ -1,7 +1,7 @@
 use super::fs::SuperBlock;
 use crate::generic::{
     device::{BlockDevice, CharDevice},
-    memory::{cache::PageCache, pmm::Page},
+    memory::{cache::Object, pmm::Page},
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::Mutex,
@@ -28,7 +28,7 @@ pub struct INode {
     pub file_ops: Arc<dyn FileOps>,
     /// The super block which this node is located in.
     pub sb: Arc<dyn SuperBlock>,
-    pub cache: PageCache,
+    pub object: Object,
 
     // The following fields make up `stat`.
     pub id: u64,

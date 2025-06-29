@@ -4,7 +4,7 @@ use super::{MountFlags, SuperBlock};
 use crate::generic::{
     memory::{
         VirtAddr,
-        cache::PageCache,
+        cache::Object,
         virt::{VmRegion, VmSpace},
     },
     posix::errno::{EResult, Errno},
@@ -78,7 +78,7 @@ impl SuperBlock for TmpSuper {
             file_ops: Arc::try_new(TmpFile::default())?,
             sb: self,
             mode: AtomicU32::new(mode.bits()),
-            cache: PageCache::default(),
+            object: Object::new(),
             atime: Mutex::default(),
             mtime: Mutex::default(),
             ctime: Mutex::default(),
