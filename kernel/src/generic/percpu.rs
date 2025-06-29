@@ -5,7 +5,7 @@ use crate::{
     arch,
     generic::{
         memory::{
-            self, PhysAddr,
+            self,
             pmm::{AllocFlags, KernelAlloc, PageAllocator},
             virt::{PageTable, VmFlags},
         },
