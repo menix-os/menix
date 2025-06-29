@@ -1,31 +1,34 @@
 //! Safe user memory reading/writing.
 
 use super::VirtAddr;
+use crate::generic::memory::virt::VmSpace;
+use alloc::sync::Arc;
+use bytemuck::AnyBitPattern;
 use core::marker::PhantomData;
 
 /// Provides safe access to memory from userland.
-pub struct UserBuffer<T> {
+pub struct UserSlice<'a, T: AnyBitPattern> {
+    map: Arc<VmSpace>,
     addr: VirtAddr,
     len: usize,
-    _p: PhantomData<T>,
+    _p: PhantomData<&'a T>,
 }
 
-impl<T> UserBuffer<T> {
-    pub const fn new(addr: VirtAddr, len: usize) -> Self {
+impl<'a, T: AnyBitPattern> UserSlice<'a, T> {
+    pub const fn new(map: Arc<VmSpace>, addr: VirtAddr, len: usize) -> Self {
         Self {
+            map,
             addr,
             len,
             _p: PhantomData,
         }
     }
 
-    /// Gets the address of this buffer.
-    pub const fn value(&self) -> VirtAddr {
-        return self.addr;
+    pub fn as_slice(&self) -> &'a [T] {
+        todo!()
     }
 
-    /// Gets the length of this buffer.
-    pub const fn len(&self) -> usize {
-        return self.len;
+    pub fn as_mut_slice(&mut self) -> &'a mut [T] {
+        todo!()
     }
 }

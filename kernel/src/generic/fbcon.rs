@@ -5,8 +5,8 @@ use crate::generic::{
     log::{self, LoggerSink},
     memory::{
         PhysAddr, free, malloc,
-        pmm::FreeList,
-        virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
+        pmm::KernelAlloc,
+        virt::{PageTable, VmFlags, VmLevel},
     },
 };
 #[allow(unused)]
@@ -56,8 +56,7 @@ impl Drop for FbCon {
     fn drop(&mut self) {
         unsafe { flanterm_sys::flanterm_deinit(self.ctx.load(Ordering::Acquire), Some(free)) };
 
-        KERNEL_PAGE_TABLE
-            .lock()
+        PageTable::get_kernel()
             .unmap_range(
                 self.mem.load(Ordering::Relaxed).into(),
                 self.fb.pitch * self.fb.height,
@@ -82,7 +81,11 @@ impl LoggerSink for FbCon {
     }
 }
 
-early_init_call_if_cmdline!("fbcon", true, init);
+init_stage! {
+    #[depends(super::memory::MEMORY_STAGE)]
+    FBCON_STAGE: "generic.fbcon" => init;
+}
+
 pub fn init() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;
@@ -91,9 +94,8 @@ pub fn init() {
     let back_buffer = vec![0; fb.pitch * fb.height];
 
     // Map the framebuffer in memory.
-    let mem = KERNEL_PAGE_TABLE
-        .lock()
-        .map_memory::<FreeList>(
+    let mem = PageTable::get_kernel()
+        .map_memory::<KernelAlloc>(
             fb.base,
             VmFlags::Read | VmFlags::Write,
             VmLevel::L1,

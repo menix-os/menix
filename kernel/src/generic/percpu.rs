@@ -5,20 +5,20 @@ use crate::{
     arch,
     generic::{
         memory::{
-            self, PhysAddr,
-            pmm::{AllocFlags, FreeList, PageAllocator},
-            virt::{KERNEL_PAGE_TABLE, VmFlags},
+            self,
+            pmm::{AllocFlags, KernelAlloc, PageAllocator},
+            virt::{PageTable, VmFlags},
         },
         posix::errno::{EResult, Errno},
     },
 };
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
 /// Common processor-local information.
 #[derive(Debug)]
 pub struct CpuData {
     /// A pointer to this exact structure.
-    pub this: *mut CpuData,
+    pub this: *const CpuData,
     /// The ID of this CPU.
     pub id: usize,
     /// Stack pointer for kernel mode. Only used for task switching.
@@ -26,17 +26,49 @@ pub struct CpuData {
     /// Stack pointer for user mode.
     pub user_stack: VirtAddr,
     /// Whether this CPU is online.
-    pub online: bool,
+    pub online: AtomicBool,
     /// Whether this CPU is present.
-    pub present: bool,
+    pub present: AtomicBool,
     /// A scheduler instance on this CPU.
     pub scheduler: Scheduler,
 }
 
 impl CpuData {
     /// Gets the data for the current CPU.
-    pub fn get() -> &'static mut CpuData {
-        return unsafe { arch::core::get_per_cpu().as_mut().unwrap() };
+    pub fn get() -> &'static CpuData {
+        return unsafe { arch::core::get_per_cpu().as_ref().unwrap() };
+    }
+
+    /// Gets the data for a specified CPU.
+    pub fn get_for(id: usize) -> Option<&'static CpuData> {
+        if id >= NUM_CPUS.load(Ordering::Acquire) {
+            return None;
+        }
+
+        let percpu_size = &raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize;
+
+        unsafe {
+            let start = &raw const LD_PERCPU_START as *const CpuData;
+            return start.byte_add(percpu_size * id).as_ref();
+        }
+    }
+
+    pub fn iter() -> CpuDataIter {
+        CpuDataIter { id: 0 }
+    }
+}
+
+pub struct CpuDataIter {
+    id: usize,
+}
+
+impl Iterator for CpuDataIter {
+    type Item = &'static CpuData;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let result = CpuData::get_for(self.id);
+        self.id += 1;
+        result
     }
 }
 
@@ -66,15 +98,21 @@ impl<T> PerCpuData<T> {
         return Self { storage: value };
     }
 
-    /// Gets the inner CPU-local instance of this field.
-    pub fn get(&self) -> &'static mut T {
-        unsafe {
-            let context = CpuData::get();
+    /// Gets the CPU-local instance of this variable.
+    #[inline]
+    pub fn get(&self) -> &'static T {
+        self.get_for(CpuData::get())
+    }
 
+    /// Gets the CPU-local instance of this variable for a given context.
+    #[inline]
+    pub fn get_for(&self, context: &'static CpuData) -> &'static T {
+        unsafe {
             let start = &raw const LD_PERCPU_START as usize;
-            let size = &raw const LD_PERCPU_END as usize - start;
-            let offset = (&raw const self.storage as usize - start) + (size * context.id);
-            (context.this as *mut T).byte_add(offset).as_mut().unwrap()
+            (context.this as *mut T)
+                .byte_add(&raw const self.storage as usize - start)
+                .as_mut()
+                .unwrap()
         }
     }
 }
@@ -87,8 +125,8 @@ pub static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
     id: 0,
     kernel_stack: VirtAddr::null(),
     user_stack: VirtAddr::null(),
-    online: false,
-    present: false,
+    online: AtomicBool::new(false),
+    present: AtomicBool::new(false),
     scheduler: Scheduler::new(),
 });
 
@@ -96,26 +134,30 @@ pub static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
 static NUM_CPUS: AtomicUsize = AtomicUsize::new(1);
 
 /// Extends the per-CPU data for a new CPU.
-/// Returns the new CpuData context and the new CPU ID.
-pub(crate) fn allocate_cpu() -> EResult<(&'static mut CpuData, usize)> {
+/// Returns the new CpuData context.
+pub(crate) fn allocate_cpu() -> EResult<&'static CpuData> {
     let id = NUM_CPUS.fetch_add(1, Ordering::Relaxed);
     let percpu_size = &raw const LD_PERCPU_END as usize - &raw const LD_PERCPU_START as usize;
-    let percpu_end = &raw const LD_PERCPU_END as usize + (percpu_size * id);
+    let percpu_new = &raw const LD_PERCPU_START as usize + (percpu_size * id);
 
-    let phys = memory::pmm::FreeList::alloc_bytes(percpu_size, AllocFlags::Zeroed)
+    let phys = memory::pmm::KernelAlloc::alloc_bytes(percpu_size, AllocFlags::Zeroed)
         .map_err(|_| Errno::ENOMEM)?;
 
-    KERNEL_PAGE_TABLE
-        .lock()
-        .map_range::<FreeList>(
-            VirtAddr::from(percpu_end),
-            PhysAddr::from(phys),
+    PageTable::get_kernel()
+        .map_range::<KernelAlloc>(
+            VirtAddr::from(percpu_new),
+            phys,
             VmFlags::Read | VmFlags::Write,
             memory::virt::VmLevel::L1,
             percpu_size,
         )
         .map_err(|_| Errno::ENOMEM)?;
 
-    let new_context = unsafe { (percpu_end as *mut CpuData).as_mut().unwrap() };
-    return Ok((new_context, id));
+    unsafe {
+        let this_ptr = percpu_new as *mut CpuData;
+        (*this_ptr).this = this_ptr;
+        (*this_ptr).id = id;
+        let new_context = this_ptr.as_ref().unwrap();
+        return Ok(new_context);
+    }
 }

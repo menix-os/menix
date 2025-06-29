@@ -1,5 +1,7 @@
-use super::asm::{read8, write8};
-use crate::generic::log::{self, LoggerSink};
+use crate::{
+    arch::x86_64::asm::{read8, write8},
+    generic::log::{self, LoggerSink},
+};
 use alloc::boxed::Box;
 
 /// Serial port
@@ -60,4 +62,7 @@ fn init() {
     log::add_sink(Box::new(SerialLogger));
 }
 
-early_init_call_if_cmdline!("com1", true, init);
+init_stage! {
+    #[entails(crate::arch::EARLY_INIT_STAGE)]
+    SERIAL_STAGE: "arch.x86_64.serial" => init;
+}

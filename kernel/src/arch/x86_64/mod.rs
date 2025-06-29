@@ -2,46 +2,41 @@ mod asm;
 mod consts;
 pub mod core;
 pub mod irq;
-pub mod platform;
 pub mod sched;
+pub mod system;
 pub mod virt;
 
-use platform::gdt::{Gdt, TaskStateSegment};
+use crate::generic::{irq::IrqHandlerKind, util::mutex::Mutex};
+use ::core::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize};
+use system::gdt::{Gdt, TaskStateSegment};
 
 #[derive(Debug)]
 #[repr(C)]
 pub struct ArchPerCpu {
     /// Processor local Global Descriptor Table.
     /// The GDT refers to a different TSS every time, so unlike the IDT it has to exist for each processor.
-    pub gdt: Gdt,
-    pub tss: TaskStateSegment,
-    // TODO
+    pub gdt: Mutex<Gdt>,
+    pub tss: Mutex<TaskStateSegment>,
     /// IRQ mappings.
-    pub irq_handlers: [Option<usize>; 256],
-    /// A map of ISRs to IRQs.
-    pub irq_map: [usize; 256],
-    /// The Local APIC ID.
-    pub lapic_id: u64,
+    pub irq_handlers: Mutex<[IrqHandlerKind; 256]>,
     /// Size of the FPU.
-    pub fpu_size: usize,
+    pub fpu_size: AtomicUsize,
     /// Function called to save the FPU context.
-    pub fpu_save: unsafe fn(memory: *mut u8),
+    pub fpu_save: AtomicPtr<unsafe fn(memory: *mut u8)>,
     /// Function called to restore the FPU context.
-    pub fpu_restore: unsafe fn(memory: *const u8),
+    pub fpu_restore: AtomicPtr<unsafe fn(memory: *const u8)>,
     /// If this CPU supports the STAC/CLAC instructions.
-    pub can_smap: bool,
+    pub can_smap: AtomicBool,
 }
 
 per_cpu!(
     pub(crate) static ARCH_DATA: ArchPerCpu = ArchPerCpu {
-        gdt: Gdt::new(),
-        tss: TaskStateSegment::new(),
-        irq_handlers: [None; 256],
-        irq_map: [0; 256],
-        lapic_id: 0,
-        fpu_size: 512,
-        fpu_save: asm::fxsave,
-        fpu_restore: asm::fxrstor,
-        can_smap: false,
+        gdt: Mutex::new(Gdt::new()),
+        tss: Mutex::new(TaskStateSegment::new()),
+        irq_handlers: Mutex::new([const { IrqHandlerKind::None }; 256]),
+        fpu_size: AtomicUsize::new(512),
+        fpu_save: AtomicPtr::new(asm::fxsave as _),
+        fpu_restore: AtomicPtr::new(asm::fxrstor as _),
+        can_smap: AtomicBool::new(false),
     };
 );

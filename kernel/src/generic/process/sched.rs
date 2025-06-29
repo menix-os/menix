@@ -1,85 +1,75 @@
 use super::task::{Task, Tid};
 use crate::{
-    arch,
-    generic::{percpu::CpuData, process::task::TaskState, util::mutex::IrqMutex},
+    arch::{self},
+    generic::{
+        percpu::CpuData,
+        process::{Process, task::TaskState},
+        util::mutex::Mutex,
+    },
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::{
+    mem,
     ptr::null_mut,
     sync::atomic::{AtomicPtr, Ordering},
 };
 
-/// An instance of a scheduler. Each CPU has one instance running to coordinate thread management.
+/// An instance of a scheduler. Each CPU has one instance running to coordinate task management.
 #[derive(Debug)]
 pub struct Scheduler {
     /// The currently running task on this scheduler instance. Use [`Self::get_current`] instead.
     pub(crate) current: AtomicPtr<Task>,
-    pub(crate) lock: IrqMutex<()>,
     pub(crate) preempt_level: usize,
-    run_queue: BTreeMap<Tid, Arc<Task>>,
+    run_queue: Mutex<BTreeMap<Tid, Arc<Task>>>,
 }
 
 impl Scheduler {
     pub(crate) const fn new() -> Self {
         return Self {
             current: AtomicPtr::new(null_mut()),
-            lock: IrqMutex::new(()),
             preempt_level: 0,
-            run_queue: BTreeMap::new(),
+            run_queue: Mutex::new(BTreeMap::new()),
         };
     }
 
-    pub fn add_task(&mut self, task: Task) {
-        log!("New task {} added to run queue", task.get_id());
-        self.run_queue.insert(task.get_id(), Arc::new(task));
+    /// Adds a task to a run queue.
+    /// The scheduler will find the most optimal CPU to run on.
+    pub fn add_task(&self, task: Arc<Task>) {
+        self.run_queue.lock().insert(task.get_id(), task);
     }
 
     /// Returns the task currently running on this CPU.
     pub fn get_current() -> Arc<Task> {
         unsafe {
             let ptr = arch::sched::get_task();
-            Arc::from_raw(ptr).clone()
+            debug_assert!(!ptr.is_null());
+            let task = Arc::from_raw(ptr);
+            let result = task.clone();
+            mem::forget(task);
+
+            result
         }
     }
 
+    /// Attempts to find a task by its ID on this scheduler.
     pub fn get_by_tid(&self, tid: Tid) -> Option<Arc<Task>> {
-        self.run_queue.get(&tid).map(|x| x.clone())
-    }
-
-    /// Starts running this scheduler.
-    pub(crate) fn start(&mut self, initial: Task) -> ! {
-        let task = Arc::new(initial);
-
-        self.run_queue.insert(task.get_id(), task.clone());
-
-        // We create a dummy thread on the stack which only exists to start the scheduler since
-        // the scheduler assumes that there's always a task running. Since this is a dead end,
-        // we don't actually add this to the run queue.
-        let dummy = Task::new(dummy_fn, 0, 0, None, false).unwrap();
-
-        unsafe {
-            let to = Arc::into_raw(task);
-            self.current.store(to as *mut _, Ordering::Relaxed);
-
-            arch::sched::switch(&raw const dummy, to);
-        }
-
-        unreachable!("Failed to start scheduling!");
+        self.run_queue.lock().get(&tid).cloned()
     }
 
     fn next(&self) -> Option<Arc<Task>> {
         let current_tid = Self::get_current().get_id();
         let filter = |&(_, b): &(&Tid, &Arc<Task>)| *b.state.lock() == TaskState::Ready;
 
-        self.run_queue
-            .range((current_tid + 1)..)
+        let rq = self.run_queue.lock();
+
+        rq.range((current_tid + 1)..)
             .find(filter)
-            .or_else(|| self.run_queue.range(..=current_tid).find(filter))
+            .or_else(|| rq.range(..=current_tid).find(filter))
             .map(|(_, task)| task.clone())
     }
 
     /// Runs the scheduler. `preempt` tells the scheduler if it's supposed to handle preemption or not.
-    pub(crate) fn reschedule(&mut self) {
+    pub(crate) fn reschedule(&self) {
         let old = unsafe { arch::irq::set_irq_state(false) };
         let from = self.current.load(Ordering::Relaxed);
         let to = Arc::into_raw(self.next().expect("No more tasks to run!")) as *mut Task;
@@ -103,15 +93,37 @@ pub extern "C" fn task_entry(entry: extern "C" fn(usize, usize), arg1: usize, ar
     (entry)(arg1, arg2);
 
     // The task function is over, kill the task.
-    {
-        let task = Scheduler::get_current();
-        *task.state.lock() = TaskState::Dead;
+    let task = Scheduler::get_current();
+    let mut state = task.state.lock();
+    *state = TaskState::Dead;
+    drop(state);
+
+    unsafe {
+        arch::sched::force_reschedule();
     }
 
-    CpuData::get().scheduler.reschedule();
-    unreachable!();
+    unreachable!("The scheduler did not kill this task");
 }
 
-extern "C" fn dummy_fn(_: usize, _: usize) {
-    unreachable!("This is a dummy function, somehow the dummy task ended up in the scheduler");
+/// Function used for waiting.
+pub extern "C" fn idle_fn(_: usize, _: usize) {
+    unsafe { crate::arch::irq::set_irq_state(true) };
+    loop {
+        crate::arch::irq::wait_for_irq();
+    }
+}
+
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE, super::PROCESS_STAGE)]
+    pub SCHEDULER_STAGE: "generic.scheduler" => init;
+}
+
+fn init() {
+    // Set up scheduler.
+    let bsp_scheduler = &CpuData::get().scheduler;
+    let initial = Arc::new(Task::new(idle_fn, 0, 0, Process::get_kernel(), false).unwrap());
+    bsp_scheduler.add_task(initial.clone());
+
+    let to = Arc::into_raw(initial);
+    bsp_scheduler.current.store(to as *mut _, Ordering::Relaxed);
 }

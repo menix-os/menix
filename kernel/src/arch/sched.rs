@@ -38,6 +38,10 @@ pub unsafe fn preempt_enable() -> bool {
 }
 
 /// Switches the current CPU context from one task to another.
+///
+/// # Safety
+/// The caller must ensure that `from` and `to` are both valid tasks and
+/// that both arguments do not point to the same task.
 pub unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe { internal::sched::switch(from, to) }
 }

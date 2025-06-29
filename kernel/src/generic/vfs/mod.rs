@@ -1,24 +1,123 @@
-pub mod entry;
+pub mod cache;
 pub mod exec;
 pub mod file;
 pub mod fs;
 pub mod inode;
-pub mod path;
 
-use crate::generic::{posix::errno::EResult, util::mutex::Mutex};
-use alloc::{boxed::Box, sync::Arc};
-use entry::Entry;
-use {
-    file::{File, OpenFlags},
-    path::PathBuf,
+pub use cache::Entry;
+pub use cache::PathNode;
+pub use file::File;
+pub use fs::Mount;
+pub use fs::MountFlags;
+
+use crate::generic::memory::virt::VmSpace;
+use crate::generic::{
+    device::Device,
+    memory::{VirtAddr, virt::VmFlags},
+    posix::errno::{EResult, Errno},
+    process::Identity,
+    util::once::Once,
+    vfs::{
+        cache::LookupFlags,
+        file::{MmapFlags, OpenFlags},
+        inode::{Mode, NodeOps, NodeType},
+    },
 };
+use alloc::sync::Arc;
 
-/// The root of the VFS.
-static ROOT: Mutex<Option<Arc<Entry>>> = Mutex::new(None);
+/// The root directory entry.
+static ROOT: Once<PathNode> = Once::new();
 
-pub(crate) fn init() {
-    // fs::register_fs(Box::new(fs::tmpfs::TmpFs));
+/// Gets a reference to the root of the VFS.
+pub fn get_root() -> PathNode {
+    ROOT.get().clone()
+}
 
-    // Mount the tmpfs as root.
-    // TODO
+/// Creates a new node in the VFS.
+pub fn mknod(
+    at: Option<Arc<File>>,
+    path: &[u8],
+    file_type: NodeType,
+    mode: Mode,
+    device: Option<Arc<dyn Device>>,
+    identity: &Identity,
+) -> EResult<()> {
+    // POSIX only allows these types of nodes to be created.
+    match file_type {
+        NodeType::Regular
+        | NodeType::Directory
+        | NodeType::BlockDevice
+        | NodeType::CharacterDevice
+        | NodeType::FIFO => (),
+        _ => return Err(Errno::EINVAL),
+    }
+
+    let path = PathNode::flookup(at, path, identity, LookupFlags::MustNotExist)?;
+    let parent = path
+        .lookup_parent()
+        .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
+        .expect("Entry has no parent node?");
+
+    let new_inode = parent.sb.clone().create_inode(file_type, mode)?;
+    path.entry.set_inode(new_inode);
+
+    Ok(())
+}
+
+/// Creates a symbolic link at `path`, pointing to `target_path`.
+pub fn symlink(
+    at: Option<Arc<File>>,
+    path: &[u8],
+    target_path: &[u8],
+    identity: &Identity,
+) -> EResult<()> {
+    let path = PathNode::lookup(
+        at.and_then(|x| x.path.clone()),
+        path,
+        identity,
+        LookupFlags::MustNotExist,
+    )?;
+
+    let parent_inode = path
+        .lookup_parent()?
+        .entry
+        .get_inode()
+        .ok_or(Errno::ENOENT)?;
+    parent_inode.try_access(identity, OpenFlags::WriteOnly, false)?;
+
+    // Create the symlink in the parent directory.
+    match &parent_inode.node_ops {
+        NodeOps::Directory(x) => x.symlink(&parent_inode, path, target_path, identity),
+        _ => return Err(Errno::ENOTDIR),
+    }
+}
+
+pub fn mmap(
+    file: Option<Arc<File>>,
+    space: &VmSpace,
+    addr: VirtAddr,
+    len: usize,
+    prot: VmFlags,
+    flags: MmapFlags,
+    offset: uapi::off_t,
+) -> EResult<VirtAddr> {
+    todo!()
+}
+
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE)]
+    pub VFS_STAGE: "generic.vfs" => init;
+}
+
+fn init() {
+    // Mount a tmpfs as root.
+    let tmpfs =
+        fs::mount(None, b"tmpfs", MountFlags::empty()).expect("Unable to mount the root tmpfs");
+
+    let root_path = PathNode {
+        entry: tmpfs.root.clone(),
+        mount: tmpfs,
+    };
+
+    unsafe { ROOT.init(root_path.clone()) };
 }

@@ -3,8 +3,8 @@
 #![feature(allocator_api)]
 #![feature(str_from_raw_parts)]
 #![feature(new_zeroed_alloc)]
-#![feature(cfg_match)]
 #![feature(likely_unlikely)]
+#![feature(slice_split_once)]
 #![no_builtins]
 // Clippy lints
 #![allow(clippy::needless_return)]
@@ -20,37 +20,37 @@ pub extern crate core;
 pub mod macros;
 pub mod arch;
 pub mod generic;
+pub mod system;
 
-use crate::generic::{process::Process, vfs::path::PathBuf};
-use generic::{boot::BootInfo, memory::virt, percpu::CpuData, process::task::Task};
-
-// TODO: Instead of having global init functions, use an initgraph with distinguishable stages.
-unsafe fn run_init_tasks(start: *const fn(), end: *const fn()) {
-    let mut cur = start;
-    while cur < end {
-        unsafe {
-            (*cur)();
-            cur = cur.add(1);
-        }
-    }
-}
+use crate::generic::{
+    percpu::CpuData,
+    process::{Process, sched::Scheduler, task::Task},
+};
+use alloc::{string::String, sync::Arc};
+use core::hint;
+use generic::boot::BootInfo;
 
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
-pub fn main() -> ! {
+pub fn init() -> ! {
     unsafe {
-        arch::core::setup_bsp();
-        generic::memory::init();
+        arch::irq::set_irq_state(false);
+        generic::init::run();
+        arch::irq::set_irq_state(true);
     }
 
-    // Run early init calls.
-    unsafe {
-        run_init_tasks(
-            &raw const virt::LD_EARLY_ARRAY_START as *const fn(),
-            &raw const virt::LD_EARLY_ARRAY_END as *const fn(),
-        );
-    }
+    CpuData::get().scheduler.add_task(Arc::new(
+        Task::new(crate::main, 0, 0, Process::get_kernel(), false)
+            .expect("Couldn't create kernel task"),
+    ));
 
+    loop {
+        hint::spin_loop();
+    }
+}
+
+/// The high-level kernel entry point.
+pub extern "C" fn main(_: usize, _: usize) {
     // Say hello to the console.
     log!(
         "{} {} {} {}",
@@ -62,35 +62,20 @@ pub fn main() -> ! {
 
     log!("Command line: {}", BootInfo::get().command_line.inner());
 
-    generic::vfs::init();
-    generic::module::init();
-    generic::platform::init();
-
-    // Run init calls.
-    unsafe {
-        run_init_tasks(
-            &raw const virt::LD_INIT_ARRAY_START as *const fn(),
-            &raw const virt::LD_INIT_ARRAY_END as *const fn(),
-        );
-    }
-
-    // Set up scheduler.
-    let init = Task::new(run_init, 0, 0, None, false).expect("Couldn't create kernel task");
-    CpuData::get().scheduler.start(init);
-}
-
-/// The high-level kernel entry point. This is invoked by the scheduler once it's running.
-extern "C" fn run_init(_: usize, _: usize) {
-    // Find init. If no path is given, search a few select directories.
+    // Find user space init. If no path is given, search a few select directories.
     let path = match BootInfo::get().command_line.get_string("init") {
-        Some(x) => x,
-        // TODO: Search filesystem for init binaries.
-        None => "/sbin/init",
+        Some(x) => x.as_bytes(),
+        // TODO: Search VFS for alternative init paths like "/sbin/init"
+        None => b"/init",
     };
 
-    let path = PathBuf::from_str(path);
+    log!("Starting init \"{}\"", String::from_utf8_lossy(path));
 
-    log!("Starting init \"{}\"", path);
-    let init = Process::from_file(&path).unwrap();
+    let kernel_proc = Scheduler::get_current().get_process();
+    let init_proc = Process::from_file(None, path).expect("Unable to create init process");
     // TODO: Add to run queue.
+
+    loop {
+        // TODO: For some reason going past this triggers a #UD.
+    }
 }
