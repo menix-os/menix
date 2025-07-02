@@ -7,7 +7,7 @@ pub mod system;
 pub mod virt;
 
 use crate::generic::{irq::IrqHandlerKind, util::mutex::Mutex};
-use ::core::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize};
+use ::core::sync::atomic::{AtomicBool, AtomicUsize};
 use system::gdt::{Gdt, TaskStateSegment};
 
 #[derive(Debug)]
@@ -22,9 +22,9 @@ pub struct ArchPerCpu {
     /// Size of the FPU.
     pub fpu_size: AtomicUsize,
     /// Function called to save the FPU context.
-    pub fpu_save: AtomicPtr<unsafe fn(memory: *mut u8)>,
+    fpu_save: AtomicUsize,
     /// Function called to restore the FPU context.
-    pub fpu_restore: AtomicPtr<unsafe fn(memory: *const u8)>,
+    fpu_restore: AtomicUsize,
     /// If this CPU supports the STAC/CLAC instructions.
     pub can_smap: AtomicBool,
 }
@@ -35,8 +35,8 @@ per_cpu!(
         tss: Mutex::new(TaskStateSegment::new()),
         irq_handlers: Mutex::new([const { IrqHandlerKind::None }; 256]),
         fpu_size: AtomicUsize::new(512),
-        fpu_save: AtomicPtr::new(asm::fxsave as _),
-        fpu_restore: AtomicPtr::new(asm::fxrstor as _),
+        fpu_save: AtomicUsize::new(0),
+        fpu_restore: AtomicUsize::new(0),
         can_smap: AtomicBool::new(false),
     };
 );

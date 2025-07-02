@@ -128,7 +128,8 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
 
         if (*from).is_user() {
             let mut from_context = (*from).task_context.lock();
-            (*cpu.fpu_save.load(Ordering::Relaxed))(from_context.fpu_region);
+            let save = cpu.fpu_save.load(Ordering::Relaxed) as *const fn(*mut u8);
+            (*save)(from_context.fpu_region);
             from_context.ds = super::asm::read_ds();
             from_context.es = super::asm::read_es();
             from_context.fs = super::asm::read_fs();
@@ -137,7 +138,8 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
 
         if (*to).is_user() {
             let mut to_context = (*to).task_context.lock();
-            (*cpu.fpu_restore.load(Ordering::Relaxed))(to_context.fpu_region);
+            let restore = cpu.fpu_restore.load(Ordering::Relaxed) as *const fn(*const u8);
+            (*restore)(to_context.fpu_region);
             to_context.ds = super::asm::read_ds();
             to_context.es = super::asm::read_es();
             to_context.fs = super::asm::read_fs();
