@@ -94,9 +94,9 @@ impl core::fmt::Debug for Context {
     }
 }
 
-pub fn get_task() -> *mut Task {
+pub fn get_task() -> *const Task {
     unsafe {
-        let task: *mut Task;
+        let task: *const Task;
         asm!(
             "mov {cpu}, gs:[{this}]",
             cpu = out(reg) task,
