@@ -131,9 +131,14 @@ pub(super) fn setup_core(context: &'static CpuData) {
         // Change callbacks from FXSAVE to XSAVE.
         cpu.fpu_size.store(cpuid13.ecx as usize, Ordering::Relaxed); // ECX contains the size of the FPU block to save.
         cpu.fpu_save
-            .store(super::asm::xsave as _, Ordering::Relaxed);
+            .store(&super::asm::xsave as *const _ as _, Ordering::Relaxed);
         cpu.fpu_restore
-            .store(super::asm::xrstor as _, Ordering::Relaxed);
+            .store(&super::asm::xrstor as *const _ as _, Ordering::Relaxed);
+    } else {
+        cpu.fpu_save
+            .store(&super::asm::fxsave as *const _ as _, Ordering::Relaxed);
+        cpu.fpu_restore
+            .store(&super::asm::fxrstor as *const _ as _, Ordering::Relaxed);
     }
 
     if cpuid7.ecx & consts::CPUID_7C_UMIP != 0 {
