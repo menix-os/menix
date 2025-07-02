@@ -5,7 +5,7 @@ use crate::generic::{
     memory::{
         VirtAddr,
         cache::Object,
-        virt::{VmRegion, VmSpace},
+        virt::{VmFlags, VmSpace},
     },
     posix::errno::{EResult, Errno},
     process::Identity,
@@ -18,7 +18,11 @@ use crate::generic::{
         inode::{CommonOps, DirectoryOps, INode, Mode, NodeOps, NodeType, RegularOps, SymlinkOps},
     },
 };
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use alloc::{
+    boxed::Box,
+    sync::{Arc, Weak},
+    vec::Vec,
+};
 use core::{
     any::Any,
     sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
@@ -66,28 +70,30 @@ impl SuperBlock for TmpSuper {
     }
 
     fn create_inode(self: Arc<Self>, node_type: NodeType, mode: Mode) -> EResult<Arc<INode>> {
-        let node = INode {
+        let node_ops = match node_type {
+            NodeType::Regular => NodeOps::Regular(Box::new(TmpRegular::default())),
+            NodeType::SymbolicLink => NodeOps::SymbolicLink(Box::new(TmpRegular::default())),
+            NodeType::Directory => NodeOps::Directory(Box::new(TmpDir::default())),
+            _ => return Err(Errno::EINVAL),
+        };
+        let common_ops = Box::try_new(TmpNode)?;
+        let file_ops = Arc::try_new(TmpFile::default())?;
+
+        Ok(Arc::new_cyclic(|weak: &Weak<INode>| INode {
             id: self.inode_counter.fetch_add(1, Ordering::Acquire) as u64,
-            common_ops: Box::try_new(TmpNode)?,
-            node_ops: match node_type {
-                NodeType::Regular => NodeOps::Regular(Box::new(TmpRegular::default())),
-                NodeType::SymbolicLink => NodeOps::SymbolicLink(Box::new(TmpRegular::default())),
-                NodeType::Directory => NodeOps::Directory(Box::new(TmpDir::default())),
-                _ => return Err(Errno::EINVAL),
-            },
-            file_ops: Arc::try_new(TmpFile::default())?,
+            common_ops,
+            node_ops,
+            file_ops,
             sb: self,
             mode: AtomicU32::new(mode.bits()),
-            object: Object::new(),
+            object: Object::new_paged(0, VmFlags::empty(), weak.clone()), // TODO
             atime: Mutex::default(),
             mtime: Mutex::default(),
             ctime: Mutex::default(),
             size: AtomicU64::default(),
             uid: AtomicUsize::default(),
             gid: AtomicUsize::default(),
-        };
-
-        return Ok(Arc::try_new(node)?);
+        }))
     }
 
     fn destroy_inode(self: Arc<Self>, inode: INode) -> EResult<()> {
@@ -106,11 +112,6 @@ struct TmpNode;
 
 impl CommonOps for TmpNode {
     fn sync(&self, _node: &INode) -> EResult<()> {
-        // This is a no-op.
-        Ok(())
-    }
-
-    fn sync_page(&self, node: &INode, page: &crate::generic::memory::pmm::Page) -> EResult<()> {
         // This is a no-op.
         Ok(())
     }

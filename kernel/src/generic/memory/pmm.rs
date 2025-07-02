@@ -3,17 +3,17 @@ use crate::{
     arch,
     generic::{
         boot::PhysMemory,
-        memory::virt::VmLevel,
+        memory::{cache::Object, virt::VmLevel},
         util::{align_up, mutex::Mutex},
     },
 };
-use alloc::alloc::AllocError;
+use alloc::{alloc::AllocError, sync::Arc};
 use bitflags::bitflags;
 use core::{
     hint::unlikely,
     ptr::{NonNull, null_mut, write_bytes},
     slice,
-    sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering},
+    sync::atomic::{AtomicPtr, Ordering},
 };
 
 bitflags! {
@@ -52,9 +52,11 @@ pub trait PageAllocator {
 pub struct Page {
     pub next: Option<NonNull<Page>>,
     pub count: usize,
-    pub dirty: AtomicBool,
-    pub last_write: AtomicUsize,
+    /// The object owning this page.
+    pub parent_object: Option<Arc<Object>>,
+    pad: usize, // TODO
 }
+
 // If this assert fails, the PFNDB can't properly allocate data.
 static_assert!(0x1000 % size_of::<Page>() == 0);
 

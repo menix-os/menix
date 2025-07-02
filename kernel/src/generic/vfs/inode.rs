@@ -1,7 +1,7 @@
 use super::fs::SuperBlock;
 use crate::generic::{
     device::{BlockDevice, CharDevice},
-    memory::{cache::Object, pmm::Page},
+    memory::cache::{Object, Pager},
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::Mutex,
@@ -87,13 +87,29 @@ impl INode {
     }
 }
 
+impl Pager for INode {
+    fn get_pages(
+        &self,
+        object: &Object,
+        pages: &[usize],
+        faulty_page: usize,
+    ) -> Result<&[usize], crate::generic::memory::cache::PagerError> {
+        todo!()
+    }
+
+    fn write_pages(
+        &self,
+        object: &Object,
+        pages: &[u64],
+    ) -> Result<(), crate::generic::memory::cache::PagerError> {
+        todo!()
+    }
+}
+
 /// Operations which work on any kind of [`INode`].
 pub trait CommonOps: Debug {
     /// Synchronizes the node metadata back to the underlying file system.
     fn sync(&self, node: &INode) -> EResult<()>;
-
-    /// Synchronizes a cached page back to the underlying file system.
-    fn sync_page(&self, node: &INode, page: &Page) -> EResult<()>;
 }
 
 #[derive(Debug)]

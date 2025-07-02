@@ -5,6 +5,7 @@ use super::{
 use crate::{
     arch::{self, virt::PageTableEntry},
     generic::{
+        memory::cache::Object,
         process::task::Task,
         util::{align_up, mutex::Mutex, once::Once},
     },
@@ -18,7 +19,7 @@ pub const KERNEL_STACK_SIZE: usize = 0x20000;
 bitflags! {
     /// Page protection flags.
     #[derive(Debug, Copy, Clone)]
-    pub struct VmFlags: usize {
+    pub struct VmFlags: u8 {
         /// Page can be read from.
         const Read = 1 << 0;
         /// Page can be written to.
@@ -369,12 +370,9 @@ impl PageTable {
 }
 
 #[derive(Debug)]
-pub struct VmRegion {}
-
-#[derive(Debug)]
 pub struct VmSpace {
     pub table: PageTable,
-    pub mappings: Mutex<BTreeMap<VirtAddr, VmRegion>>,
+    pub mappings: Mutex<BTreeMap<VirtAddr, Object>>,
 }
 
 /// Abstract information about a page fault.
