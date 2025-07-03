@@ -5,8 +5,8 @@ use super::{
 use crate::{
     arch::{self, virt::PageTableEntry},
     generic::{
-        memory::cache::Object,
-        process::task::Task,
+        memory::{cache::Object, pmm::KernelAlloc},
+        process::{sched::Scheduler, task::Task},
         util::{align_up, mutex::Mutex, once::Once},
     },
 };
@@ -370,40 +370,43 @@ impl PageTable {
 }
 
 #[derive(Debug)]
-pub struct VmSpace {
+pub struct AddressSpace {
     pub table: PageTable,
     pub mappings: Mutex<BTreeMap<VirtAddr, Object>>,
 }
 
+impl AddressSpace {
+    pub fn new() -> Self {
+        Self {
+            table: PageTable::new_user::<KernelAlloc>(4, AllocFlags::empty()),
+            mappings: Mutex::default(),
+        }
+    }
+}
+
+pub type PageNumber = usize;
+
 /// Abstract information about a page fault.
 pub struct PageFaultInfo {
-    /// Fault caused by the user.
-    pub caused_by_user: bool,
     /// The instruction pointer address.
     pub ip: VirtAddr,
     /// The address that was attempted to access.
     pub addr: VirtAddr,
-    /// The cause of this page fault.
-    pub cause: PageFaultCause,
-}
-
-bitflags! {
-    /// The origin of the page fault.
-    #[derive(Debug)]
-    pub struct PageFaultCause: usize {
-        /// If set, the fault occured in a mapped page.
-        const Present = 1 << 0;
-        /// If set, the fault was caused by a write.
-        const Write = 1 << 1;
-        /// If set, the fault was caused by an instruction fetch.
-        const Fetch = 1 << 2;
-        /// If set, the fault was caused by a user access.
-        const User = 1 << 3;
-    }
+    /// If set, the fault was caused by a user access.
+    pub caused_by_user: bool,
+    /// If set, the fault was caused by a write.
+    pub caused_by_write: bool,
+    /// If set, the fault was caused by an instruction fetch.
+    pub caused_by_fetch: bool,
+    /// If set, the fault occured in a present page.
+    pub page_was_present: bool,
 }
 
 /// Generic page fault handler. May reschedule and return a different task to run.
 pub fn page_fault_handler(info: &PageFaultInfo) -> *mut Task {
+    // TODO
+    let space = &Scheduler::get_current().get_process().address_space;
+
     if info.caused_by_user {
         // TODO: Send SIGSEGV and reschedule.
         // Kill process.
@@ -411,8 +414,21 @@ pub fn page_fault_handler(info: &PageFaultInfo) -> *mut Task {
     }
 
     panic!(
-        "Kernel caused an unrecoverable page fault: {:?}! IP: {:#x}, Address: {:#x}",
-        info.cause, info.ip.0, info.addr.0
+        "Kernel caused an unrecoverable page fault. Attempted to {} a {} page at {:#x} (IP: {:#x})",
+        if info.caused_by_write {
+            "write to"
+        } else if info.caused_by_fetch {
+            "execute on"
+        } else {
+            "read from"
+        },
+        if info.page_was_present {
+            "present"
+        } else {
+            "non-present"
+        },
+        info.addr.0,
+        info.ip.0
     );
 }
 

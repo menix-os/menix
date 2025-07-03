@@ -2,7 +2,7 @@ use super::inode::{INode, NodeType};
 use crate::generic::{
     memory::{
         VirtAddr,
-        virt::{VmFlags, VmSpace},
+        virt::{VmFlags, AddressSpace},
     },
     posix::errno::{EResult, Errno},
     process::Identity,
@@ -113,7 +113,7 @@ pub trait FileOps: Debug {
     fn mmap(
         &self,
         file: &File,
-        space: &VmSpace,
+        space: &AddressSpace,
         offset: u64,
         hint: VirtAddr,
         size: usize,
@@ -323,7 +323,7 @@ impl File {
 
     pub fn mmap(
         &self,
-        space: &VmSpace,
+        space: &AddressSpace,
         offset: u64,
         hint: VirtAddr,
         size: usize,
