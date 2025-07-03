@@ -1,3 +1,14 @@
+use super::ExecutableInfo;
+use crate::generic::{
+    memory::virt::VmFlags,
+    posix::errno::{EResult, Errno},
+    process::Process,
+    vfs::{
+        exec::ExecFormat,
+        file::{File, MmapFlags},
+    },
+};
+use alloc::sync::Arc;
 use bytemuck::{Pod, Zeroable};
 
 // ELF Header Identification
@@ -147,22 +158,27 @@ pub const R_RISCV_RELATIVE: u32 = 3;
 pub const R_RISCV_COPY: u32 = 4;
 pub const R_RISCV_JUMP_SLOT: u32 = 5;
 
-cfg_match! {
-    target_arch = "x86_64" => {
-        pub const R_COMMON_NONE: u32 = R_X86_64_NONE;
-        pub const R_COMMON_64: u32 = R_X86_64_64;
-        pub const R_COMMON_GLOB_DAT: u32 = R_X86_64_GLOB_DAT;
-        pub const R_COMMON_JUMP_SLOT: u32 = R_X86_64_JUMP_SLOT;
-        pub const R_COMMON_RELATIVE: u32 = R_X86_64_RELATIVE;
-    }
-    target_arch = "riscv64" => {
-        pub const R_COMMON_NONE: u32 = R_RISCV_NONE;
-        pub const R_COMMON_64: u32 = R_RISCV_64;
-        pub const R_COMMON_GLOB_DAT: u32 = R_RISCV_64;
-        pub const R_COMMON_JUMP_SLOT: u32 = R_RISCV_JUMP_SLOT;
-        pub const R_COMMON_RELATIVE: u32 = R_RISCV_RELATIVE;
-    }
-}
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_NONE: u32 = R_X86_64_NONE;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_64: u32 = R_X86_64_64;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_GLOB_DAT: u32 = R_X86_64_GLOB_DAT;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_JUMP_SLOT: u32 = R_X86_64_JUMP_SLOT;
+#[cfg(target_arch = "x86_64")]
+pub const R_COMMON_RELATIVE: u32 = R_X86_64_RELATIVE;
+
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_NONE: u32 = R_RISCV_NONE;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_64: u32 = R_RISCV_64;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_GLOB_DAT: u32 = R_RISCV_64;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_JUMP_SLOT: u32 = R_RISCV_JUMP_SLOT;
+#[cfg(target_arch = "riscv64")]
+pub const R_COMMON_RELATIVE: u32 = R_RISCV_RELATIVE;
 
 #[cfg(target_pointer_width = "64")]
 pub type ElfAddr = u64;
@@ -304,3 +320,92 @@ pub struct ElfHdr {
     pub e_shstrndx: u16,
 }
 static_assert!(size_of::<ElfHdr>() == 64);
+
+// Yes I know ELF already has "Format" in the name.
+pub struct ElfFormat;
+
+impl ExecFormat for ElfFormat {
+    fn identify(&self, file: &File) -> bool {
+        let mut buffer = [0u8; size_of::<ElfHdr>()];
+        match file.pread(&mut buffer, 0) {
+            Ok(x) => {
+                if x != buffer.len() as u64 {
+                    return false;
+                }
+            }
+            Err(_) => return false,
+        }
+        let header = bytemuck::pod_read_unaligned::<ElfHdr>(&buffer);
+
+        if header.e_ident[0..4] != ELF_MAG {
+            return false;
+        }
+
+        return true;
+    }
+
+    fn load(&self, info: &mut ExecutableInfo) -> EResult<Process> {
+        let base = 0x40000; // Start mapping a relocatable ELF at this address.
+
+        // Read the header.
+        let mut hdr_data = [0u8; size_of::<ElfHdr>()];
+        info.executable.pread(&mut hdr_data, 0)?;
+        let elf_hdr = bytemuck::pod_read_unaligned::<ElfHdr>(&hdr_data);
+
+        // TODO: Do the rest of IDENT checks.
+        if elf_hdr.e_ident[EI_OSABI] != ELFOSABI_SYSV || elf_hdr.e_ident[EI_VERSION] != EV_CURRENT {
+            return Err(Errno::ENOEXEC);
+        }
+        if elf_hdr.e_machine != EM_CURRENT {
+            return Err(Errno::ENOEXEC);
+        }
+
+        // Iterate all PHDRs.
+        for i in 0..elf_hdr.e_phnum {
+            let mut phdr_data = vec![0u8; elf_hdr.e_phentsize as usize];
+            info.executable.pread(
+                &mut phdr_data,
+                elf_hdr.e_phoff as u64 + elf_hdr.e_phentsize as u64 * i as u64,
+            )?;
+            let phdr = bytemuck::pod_read_unaligned::<ElfPhdr>(&phdr_data);
+
+            match phdr.p_type {
+                PT_LOAD => {
+                    let mut prot = VmFlags::empty();
+                    if phdr.p_flags & PF_READ != 0 {
+                        prot |= VmFlags::Read;
+                    }
+                    if phdr.p_flags & PF_WRITE != 0 {
+                        prot |= VmFlags::Write;
+                    }
+                    if phdr.p_flags & PF_EXECUTE != 0 {
+                        prot |= VmFlags::Exec;
+                    }
+
+                    info.executable.mmap(
+                        &info.address_space,
+                        phdr.p_offset,
+                        (phdr.p_vaddr + base).into(),
+                        phdr.p_filesz as usize,
+                        prot,
+                        MmapFlags::Anonymous | MmapFlags::Fixed,
+                    )?;
+                }
+                PT_PHDR => {}
+                PT_INTERP => {
+                    let mut interp_name = vec![0u8; phdr.p_filesz as usize - 1]; // Minus the trailing NUL.
+                    info.executable.pread(&mut interp_name, phdr.p_offset)?;
+                }
+                _ => (),
+            }
+        }
+
+        todo!();
+    }
+}
+
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE)]
+    #[entails(crate::generic::vfs::VFS_STAGE)]
+    ELF_STAGE: "generic.vfs.exec.elf" => || super::register("elf", Arc::new(ElfFormat));
+}

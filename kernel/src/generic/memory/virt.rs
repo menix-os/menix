@@ -1,15 +1,16 @@
 use super::{
     PhysAddr, VirtAddr,
-    pmm::{AllocFlags, FreeList, PageAllocator},
+    pmm::{AllocFlags, PageAllocator},
 };
 use crate::{
     arch::{self, virt::PageTableEntry},
     generic::{
-        process::task::Task,
-        util::{align_up, mutex::Mutex},
+        memory::{cache::Object, pmm::KernelAlloc},
+        process::{sched::Scheduler, task::Task},
+        util::{align_up, mutex::Mutex, once::Once},
     },
 };
-use alloc::alloc::AllocError;
+use alloc::{alloc::AllocError, collections::btree_map::BTreeMap};
 use bitflags::bitflags;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -18,8 +19,7 @@ pub const KERNEL_STACK_SIZE: usize = 0x20000;
 bitflags! {
     /// Page protection flags.
     #[derive(Debug, Copy, Clone)]
-    pub struct VmFlags: usize {
-        const None = 0;
+    pub struct VmFlags: u8 {
         /// Page can be read from.
         const Read = 1 << 0;
         /// Page can be written to.
@@ -45,8 +45,9 @@ pub enum PageTableError {
     NeedAllocation,
 }
 
+pub(super) static KERNEL_PAGE_TABLE: Once<PageTable> = Once::new();
+
 // TODO: Replace with allocator.
-pub static KERNEL_PAGE_TABLE: Mutex<PageTable<true>> = Mutex::new(PageTable::new_kernel_uninit());
 pub static KERNEL_MMAP_BASE_ADDR: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd)]
@@ -61,43 +62,42 @@ pub enum VmLevel {
 }
 
 /// Represents a virtual address space.
-/// `K` controls whether or not this page table is for the kernel or a user process.
 #[derive(Debug)]
-pub struct PageTable<const K: bool = false> {
+pub struct PageTable {
     /// Physical address of the root directory.
     head: Mutex<PhysAddr>,
     /// The root page level.
     root_level: usize,
+    /// `true`, if this is a user page table.
+    is_user: bool,
 }
 
-impl PageTable<false> {
+impl PageTable {
     /// Creates a new page table for a user process.
-    pub fn new_user<P: PageAllocator>(root_level: usize) -> Self {
+    pub fn new_user<P: PageAllocator>(root_level: usize, flags: AllocFlags) -> Self {
         Self {
-            head: Mutex::new(P::alloc(1, AllocFlags::Zeroed).unwrap()),
+            head: Mutex::new(P::alloc(1, flags | AllocFlags::Zeroed).unwrap()),
             root_level,
-        }
-    }
-}
-
-impl PageTable<true> {
-    const fn new_kernel_uninit() -> Self {
-        Self {
-            head: Mutex::new(PhysAddr(0)),
-            root_level: 0,
+            is_user: true,
         }
     }
 
-    pub fn new_kernel<P: PageAllocator>(root_level: usize) -> Self {
+    /// Creates a new page table for a kernel process.
+    pub fn new_kernel<P: PageAllocator>(root_level: usize, flags: AllocFlags) -> Self {
         Self {
-            head: Mutex::new(P::alloc(1, AllocFlags::Zeroed).unwrap()),
+            head: Mutex::new(P::alloc(1, flags | AllocFlags::Zeroed).unwrap()),
             root_level,
+            is_user: false,
         }
+    }
+
+    pub fn get_kernel() -> &'static PageTable {
+        KERNEL_PAGE_TABLE.get()
     }
 
     /// Maps physical memory to a free area in virtual address space.
     pub fn map_memory<P: PageAllocator>(
-        &mut self,
+        &self,
         phys: PhysAddr,
         flags: VmFlags,
         level: VmLevel,
@@ -116,7 +116,12 @@ impl PageTable<true> {
     }
 }
 
-impl<const K: bool> PageTable<K> {
+impl PageTable {
+    /// Returns the physical address of the top level.
+    pub fn get_head_addr(&self) -> PhysAddr {
+        *self.head.lock()
+    }
+
     pub const fn root_level(&self) -> usize {
         self.root_level
     }
@@ -126,7 +131,7 @@ impl<const K: bool> PageTable<K> {
     /// # Safety
     ///
     /// All parts of the kernel must still be mapped for this call to be safe.
-    pub unsafe fn set_active(&mut self) {
+    pub unsafe fn set_active(&self) {
         unsafe {
             arch::virt::set_page_table(*self.head.lock());
         }
@@ -140,7 +145,7 @@ impl<const K: bool> PageTable<K> {
         virt: VirtAddr,
         allocate: bool,
         target_level: VmLevel,
-    ) -> Result<&mut PageTableEntry, PageTableError> {
+    ) -> Result<*mut PageTableEntry, PageTableError> {
         let head = self.head.lock();
         let mut current_head: *mut PageTableEntry = head.as_hhdm();
         let mut index = 0;
@@ -165,8 +170,12 @@ impl<const K: bool> PageTable<K> {
             unsafe {
                 let pte = current_head.add(index);
 
-                let mut pte_flags =
-                    VmFlags::Directory | if K { VmFlags::None } else { VmFlags::User };
+                let mut pte_flags = VmFlags::Directory
+                    | if self.is_user {
+                        VmFlags::User
+                    } else {
+                        VmFlags::empty()
+                    };
 
                 if (*pte).is_present() {
                     // If this PTE is a large page, it already contains the final address. Don't continue.
@@ -207,17 +216,14 @@ impl<const K: bool> PageTable<K> {
         }
 
         unsafe {
-            return current_head
-                .add(index)
-                .as_mut()
-                .ok_or(PageTableError::PageTableEntryMissing);
+            return Ok(current_head.add(index));
         }
     }
 
     /// Establishes a new mapping in this address space.
     /// Fails if the mapping already exists. To overwrite a mapping, use [`Self::remap_single`] instead.
     pub fn map_single<P: PageAllocator>(
-        &mut self,
+        &self,
         virt: VirtAddr,
         phys: PhysAddr,
         flags: VmFlags,
@@ -225,46 +231,51 @@ impl<const K: bool> PageTable<K> {
     ) -> Result<(), PageTableError> {
         let pte = self.get_pte::<P>(virt, true, level)?;
 
-        *pte = PageTableEntry::new(
-            phys,
-            flags
-                | if level != VmLevel::L1 {
-                    VmFlags::Large
-                } else {
-                    VmFlags::None
-                },
-            level as usize,
-        );
+        unsafe {
+            *pte = PageTableEntry::new(
+                phys,
+                flags
+                    | if level != VmLevel::L1 {
+                        VmFlags::Large
+                    } else {
+                        VmFlags::empty()
+                    },
+                level as usize,
+            );
+        }
 
         return Ok(());
     }
 
     /// Changes the permissions on a mapping.
     pub fn remap_single<P: PageAllocator>(
-        &mut self,
+        &self,
         virt: VirtAddr,
         flags: VmFlags,
         level: VmLevel,
     ) -> Result<(), PageTableError> {
         let pte = self.get_pte::<P>(virt, false, level)?;
 
-        *pte = PageTableEntry::new(
-            pte.address(),
-            flags
-                | if level != VmLevel::L1 {
-                    VmFlags::Large
-                } else {
-                    VmFlags::None
-                },
-            level as usize,
-        );
+        unsafe {
+            *pte = PageTableEntry::new(
+                (*pte).address(),
+                flags
+                    | if level != VmLevel::L1 {
+                        VmFlags::Large
+                    } else {
+                        VmFlags::empty()
+                    },
+                level as usize,
+            );
+        }
         crate::arch::virt::flush_tlb(virt);
+
         return Ok(());
     }
 
     /// Maps a range of consecutive memory in this address space.
     pub fn map_range<P: PageAllocator>(
-        &mut self,
+        &self,
         virt: VirtAddr,
         phys: PhysAddr,
         flags: VmFlags,
@@ -288,7 +299,7 @@ impl<const K: bool> PageTable<K> {
 
     /// Changes the permissions on a mapping of consecutive memory.
     pub fn remap_range<P: PageAllocator>(
-        &mut self,
+        &self,
         virt: VirtAddr,
         flags: VmFlags,
         level: VmLevel,
@@ -306,13 +317,15 @@ impl<const K: bool> PageTable<K> {
     }
 
     /// Un-maps a page from this address space.
-    pub fn unmap_single(&mut self, virt: VirtAddr) -> Result<(), PageTableError> {
+    pub fn unmap_single(&self, virt: VirtAddr) -> Result<(), PageTableError> {
         crate::arch::virt::flush_tlb(virt);
-        todo!();
+
+        // TODO
+        Ok(())
     }
 
     /// Un-maps a range from this address space.
-    pub fn unmap_range(&mut self, virt: VirtAddr, len: usize) -> Result<(), PageTableError> {
+    pub fn unmap_range(&self, virt: VirtAddr, len: usize) -> Result<(), PageTableError> {
         // TODO
         Ok(())
     }
@@ -330,7 +343,12 @@ impl<const K: bool> PageTable<K> {
 
             unsafe {
                 let pte = current_head.add(index);
-                let pte_flags = VmFlags::Directory | if K { VmFlags::None } else { VmFlags::User };
+                let pte_flags = VmFlags::Directory
+                    | if self.is_user {
+                        VmFlags::User
+                    } else {
+                        VmFlags::empty()
+                    };
 
                 if (*pte).is_present() {
                     // If this PTE is a large page, it already contains the final address. Don't continue.
@@ -351,39 +369,44 @@ impl<const K: bool> PageTable<K> {
     }
 }
 
+#[derive(Debug)]
 pub struct AddressSpace {
-    table: PageTable,
+    pub table: PageTable,
+    pub mappings: Mutex<BTreeMap<VirtAddr, Object>>,
 }
+
+impl AddressSpace {
+    pub fn new() -> Self {
+        Self {
+            table: PageTable::new_user::<KernelAlloc>(4, AllocFlags::empty()),
+            mappings: Mutex::default(),
+        }
+    }
+}
+
+pub type PageNumber = usize;
 
 /// Abstract information about a page fault.
 pub struct PageFaultInfo {
-    /// Fault caused by the user.
-    pub caused_by_user: bool,
     /// The instruction pointer address.
     pub ip: VirtAddr,
     /// The address that was attempted to access.
     pub addr: VirtAddr,
-    /// The cause of this page fault.
-    pub cause: PageFaultCause,
-}
-
-bitflags! {
-    /// The origin of the page fault.
-    #[derive(Debug)]
-    pub struct PageFaultCause: usize {
-        /// If set, the fault occured in a mapped page.
-        const Present = 1 << 0;
-        /// If set, the fault was caused by a write.
-        const Write = 1 << 1;
-        /// If set, the fault was caused by an instruction fetch.
-        const Fetch = 1 << 2;
-        /// If set, the fault was caused by a user access.
-        const User = 1 << 3;
-    }
+    /// If set, the fault was caused by a user access.
+    pub caused_by_user: bool,
+    /// If set, the fault was caused by a write.
+    pub caused_by_write: bool,
+    /// If set, the fault was caused by an instruction fetch.
+    pub caused_by_fetch: bool,
+    /// If set, the fault occured in a present page.
+    pub page_was_present: bool,
 }
 
 /// Generic page fault handler. May reschedule and return a different task to run.
-pub fn page_fault_handler<'a>(info: &PageFaultInfo) -> *mut Task {
+pub fn page_fault_handler(info: &PageFaultInfo) -> *mut Task {
+    // TODO
+    let space = &Scheduler::get_current().get_process().address_space;
+
     if info.caused_by_user {
         // TODO: Send SIGSEGV and reschedule.
         // Kill process.
@@ -391,16 +414,25 @@ pub fn page_fault_handler<'a>(info: &PageFaultInfo) -> *mut Task {
     }
 
     panic!(
-        "Kernel caused an unrecoverable page fault: {:?}! IP: {:#x}, Address: {:#x}",
-        info.cause, info.ip.0, info.addr.0
+        "Kernel caused an unrecoverable page fault. Attempted to {} a {} page at {:#x} (IP: {:#x})",
+        if info.caused_by_write {
+            "write to"
+        } else if info.caused_by_fetch {
+            "execute on"
+        } else {
+            "read from"
+        },
+        if info.page_was_present {
+            "present"
+        } else {
+            "non-present"
+        },
+        info.addr.0,
+        info.ip.0
     );
 }
 
 unsafe extern "C" {
-    pub unsafe static LD_EARLY_ARRAY_START: u8;
-    pub unsafe static LD_EARLY_ARRAY_END: u8;
-    pub unsafe static LD_INIT_ARRAY_START: u8;
-    pub unsafe static LD_INIT_ARRAY_END: u8;
     pub unsafe static LD_KERNEL_START: u8;
     pub unsafe static LD_TEXT_START: u8;
     pub unsafe static LD_TEXT_END: u8;

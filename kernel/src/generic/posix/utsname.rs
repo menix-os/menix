@@ -10,12 +10,12 @@ const fn copy_str_to_buf(buf: &mut [c_char], s: &str) {
     }
 }
 
-pub const SYSNAME: &'static str = "Menix";
-pub const RELEASE: &'static str = env!("CARGO_PKG_VERSION");
-pub const VERSION: &'static str = env!("MENIX_VERSION");
+pub const SYSNAME: &str = "Menix";
+pub const RELEASE: &str = env!("CARGO_PKG_VERSION");
+pub const VERSION: &str = env!("MENIX_VERSION");
 
 #[cfg(target_arch = "x86_64")]
-pub const MACHINE: &'static str = "x86_64";
+pub const MACHINE: &str = "x86_64";
 
 pub fn utsname(result: &mut uapi::utsname) {
     copy_str_to_buf(&mut result.sysname, SYSNAME);
