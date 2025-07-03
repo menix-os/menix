@@ -5,7 +5,7 @@ use crate::generic::{
     memory::{
         VirtAddr,
         cache::Object,
-        virt::{VmFlags, VmSpace},
+        virt::{AddressSpace, VmFlags},
     },
     posix::errno::{EResult, Errno},
     process::Identity,
@@ -263,7 +263,7 @@ impl FileOps for TmpFile {
     fn mmap(
         &self,
         file: &File,
-        space: &VmSpace,
+        space: &AddressSpace,
         offset: u64,
         hint: VirtAddr,
         size: usize,

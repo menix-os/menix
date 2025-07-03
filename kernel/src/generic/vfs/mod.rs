@@ -10,7 +10,7 @@ pub use file::File;
 pub use fs::Mount;
 pub use fs::MountFlags;
 
-use crate::generic::memory::virt::VmSpace;
+use crate::generic::memory::virt::AddressSpace;
 use crate::generic::{
     device::Device,
     memory::{VirtAddr, virt::VmFlags},
@@ -94,7 +94,7 @@ pub fn symlink(
 
 pub fn mmap(
     file: Option<Arc<File>>,
-    space: &VmSpace,
+    space: &AddressSpace,
     addr: VirtAddr,
     len: usize,
     prot: VmFlags,

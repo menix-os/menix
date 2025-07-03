@@ -5,7 +5,7 @@ use crate::generic::{
     memory::{
         VirtAddr,
         pmm::{AllocFlags, KernelAlloc},
-        virt::{PageTable, VmSpace},
+        virt::{AddressSpace, PageTable},
     },
     posix::errno::{EResult, Errno},
     process::task::Tid,
@@ -41,7 +41,7 @@ pub struct Process {
     /// A list of associated tasks.
     threads: Mutex<Vec<Tid>>,
     /// The address space for this process.
-    pub page_table: Arc<PageTable>,
+    pub address_space: Arc<AddressSpace>,
     /// The root directory for this process.
     pub root_dir: Mutex<PathNode>,
     /// Current working directory.
@@ -82,10 +82,7 @@ impl Process {
         Ok(Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             name: name.to_string(),
-            page_table: Arc::try_new(PageTable::new_user::<KernelAlloc>(
-                PageTable::get_kernel().root_level(),
-                AllocFlags::empty(),
-            ))?,
+            address_space: Arc::try_new(AddressSpace::new())?,
             threads: Mutex::new(Vec::new()),
             root_dir: Mutex::new(root),
             working_dir: Mutex::new(cwd),
@@ -111,7 +108,7 @@ impl Process {
         )?;
 
         let mut info = ExecutableInfo {
-            address_space: VmSpace {
+            address_space: AddressSpace {
                 table: PageTable::new_user::<KernelAlloc>(
                     PageTable::get_kernel().root_level(),
                     AllocFlags::empty(),

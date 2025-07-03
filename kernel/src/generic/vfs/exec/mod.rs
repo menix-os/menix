@@ -1,7 +1,7 @@
 pub mod elf;
 
 use crate::generic::{
-    memory::virt::VmSpace, posix::errno::EResult, process::Process, util::mutex::Mutex,
+    memory::virt::AddressSpace, posix::errno::EResult, process::Process, util::mutex::Mutex,
     vfs::file::File,
 };
 use alloc::{
@@ -17,7 +17,7 @@ pub struct ExecutableInfo {
     pub executable: Arc<File>,
     /// An interpreter that's tasked with loading the given executable.
     pub interpreter: Option<Arc<File>>,
-    pub address_space: VmSpace,
+    pub address_space: AddressSpace,
 }
 
 /// An executable format.

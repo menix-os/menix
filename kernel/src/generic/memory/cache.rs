@@ -1,5 +1,8 @@
 use crate::generic::{
-    memory::{PhysAddr, virt::VmFlags},
+    memory::{
+        PhysAddr,
+        virt::{PageNumber, VmFlags},
+    },
     percpu::CpuData,
     process::{Process, task::Task},
     util::mutex::Mutex,
@@ -10,15 +13,14 @@ use alloc::{
 };
 use core::fmt::Debug;
 
-/// A virtual mapped memory object.
+/// A virtual memory object. It represents a single mapped entity and its backing storage.
 #[derive(Debug)]
 pub struct Object {
     pub backing: Option<Arc<Object>>,
     /// All currently present pages of this object. Keys are offsets (in pages) to physical pages.
-    pub present_pages: Mutex<BTreeMap<usize, PhysAddr>>,
-    pub num_pages: usize,
+    pub present_pages: Mutex<BTreeMap<PageNumber, PhysAddr>>,
     /// Used to read and write back pages from/to a backing storage.
-    pub pager: Option<Weak<dyn Pager>>,
+    pub pager: Weak<dyn Pager>,
     /// The protection flags for this mapping.
     pub protection: VmFlags,
 }
@@ -26,12 +28,11 @@ pub struct Object {
 impl Object {
     /// Creates a new anonymous object.
     pub fn new_anon(num_pages: usize, protection: VmFlags) -> Self {
-        // TODO
+        let anon: Arc<dyn Pager> = Arc::new(AnonPager {});
         Self {
             backing: None,
             present_pages: Mutex::new(BTreeMap::new()),
-            num_pages,
-            pager: None,
+            pager: Arc::downgrade(&anon),
             protection,
         }
     }
@@ -39,27 +40,43 @@ impl Object {
     pub fn new_paged(num_pages: usize, protection: VmFlags, pager: Weak<dyn Pager>) -> Self {
         Self {
             backing: None,
-            num_pages,
             present_pages: Mutex::new(BTreeMap::new()),
-            pager: Some(pager),
+            pager,
             protection,
         }
     }
 }
 
+pub enum PagerError {}
 pub trait Pager: Debug {
-    /// Reads pages from the backing storage.
+    /// Reads pages from the backing storage. `pages` is an array of page numbers to read
     fn get_pages(
         &self,
         object: &Object,
-        pages: &[usize],
-        faulty_page: usize,
-    ) -> Result<&[usize], PagerError>;
+        pages: &[PageNumber],
+        faulty_page: PageNumber,
+    ) -> Result<&[PageNumber], PagerError>;
+
     /// Writes pages to the backing store.
-    fn write_pages(&self, object: &Object, pages: &[u64]) -> Result<(), PagerError>;
+    fn write_pages(&self, object: &Object, pages: &[PageNumber]) -> Result<(), PagerError>;
 }
 
-pub enum PagerError {}
+#[derive(Debug)]
+struct AnonPager {}
+impl Pager for AnonPager {
+    fn get_pages(
+        &self,
+        object: &Object,
+        pages: &[PageNumber],
+        faulty_page: PageNumber,
+    ) -> Result<&[PageNumber], PagerError> {
+        todo!()
+    }
+
+    fn write_pages(&self, object: &Object, pages: &[PageNumber]) -> Result<(), PagerError> {
+        todo!()
+    }
+}
 
 init_stage! {
     #[depends(crate::generic::process::sched::SCHEDULER_STAGE)]

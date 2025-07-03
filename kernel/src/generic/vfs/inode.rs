@@ -1,7 +1,10 @@
 use super::fs::SuperBlock;
 use crate::generic::{
     device::{BlockDevice, CharDevice},
-    memory::cache::{Object, Pager},
+    memory::{
+        cache::{Object, Pager, PagerError},
+        virt::PageNumber,
+    },
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::Mutex,
@@ -91,17 +94,13 @@ impl Pager for INode {
     fn get_pages(
         &self,
         object: &Object,
-        pages: &[usize],
-        faulty_page: usize,
-    ) -> Result<&[usize], crate::generic::memory::cache::PagerError> {
+        pages: &[PageNumber],
+        faulty_page: PageNumber,
+    ) -> Result<&[PageNumber], PagerError> {
         todo!()
     }
 
-    fn write_pages(
-        &self,
-        object: &Object,
-        pages: &[u64],
-    ) -> Result<(), crate::generic::memory::cache::PagerError> {
+    fn write_pages(&self, object: &Object, pages: &[PageNumber]) -> Result<(), PagerError> {
         todo!()
     }
 }

@@ -1,12 +1,16 @@
 use super::gdt::Gdt;
-use crate::arch::sched::Context;
-use crate::arch::x86_64::system::apic::LAPIC;
-use crate::arch::x86_64::{ARCH_DATA, consts};
-use crate::generic;
-use crate::generic::irq::IrqHandlerKind;
-use crate::generic::memory::VirtAddr;
-use crate::generic::memory::virt::{PageFaultCause, PageFaultInfo};
-use crate::generic::percpu::CpuData;
+use crate::{
+    arch::{
+        sched::Context,
+        x86_64::{ARCH_DATA, consts, system::apic::LAPIC},
+    },
+    generic::{
+        self,
+        irq::IrqHandlerKind,
+        memory::{VirtAddr, virt::PageFaultInfo},
+        percpu::CpuData,
+    },
+};
 use core::{
     arch::{asm, naked_asm},
     mem::offset_of,
@@ -166,26 +170,14 @@ fn page_fault_handler(context: &Context) {
     let mut cr2: usize;
     unsafe { asm!("mov {cr2}, cr2", cr2 = out(reg) cr2) };
 
-    let mut cause = PageFaultCause::empty();
     let err = context.error;
-    if err & (1 << 0) != 0 {
-        cause |= PageFaultCause::Present;
-    }
-    if err & (1 << 1) != 0 {
-        cause |= PageFaultCause::Write;
-    }
-    if err & (1 << 2) != 0 {
-        cause |= PageFaultCause::User;
-    }
-    if err & (1 << 4) != 0 {
-        cause |= PageFaultCause::Fetch;
-    }
-
     let info = PageFaultInfo {
+        page_was_present: err & (1 << 0) != 0,
+        caused_by_write: err & (1 << 1) != 0,
+        caused_by_fetch: err & (1 << 4) != 0,
         caused_by_user: context.cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
         ip: (context.rip as usize).into(),
         addr: cr2.into(),
-        cause,
     };
 
     generic::memory::virt::page_fault_handler(&info);
