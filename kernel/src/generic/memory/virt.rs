@@ -5,12 +5,14 @@ use super::{
 use crate::{
     arch::{self, virt::PageTableEntry},
     generic::{
-        memory::{cache::Object, pmm::KernelAlloc},
+        memory::{cache::MemoryObject, pmm::KernelAlloc},
+        posix::errno::{EResult, Errno},
         process::{sched::Scheduler, task::Task},
-        util::{align_up, mutex::Mutex, once::Once},
+        util::{align_up, divide_up, mutex::Mutex, once::Once},
+        vfs::file::MmapFlags,
     },
 };
-use alloc::{alloc::AllocError, collections::btree_map::BTreeMap};
+use alloc::{alloc::AllocError, collections::btree_map::BTreeMap, sync::Arc};
 use bitflags::bitflags;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -220,7 +222,7 @@ impl PageTable {
         }
     }
 
-    /// Establishes a new mapping in this address space.
+    /// Establishes a new mapping in this page table.
     /// Fails if the mapping already exists. To overwrite a mapping, use [`Self::remap_single`] instead.
     pub fn map_single<P: PageAllocator>(
         &self,
@@ -273,7 +275,7 @@ impl PageTable {
         return Ok(());
     }
 
-    /// Maps a range of consecutive memory in this address space.
+    /// Maps a range of consecutive memory in this page table.
     pub fn map_range<P: PageAllocator>(
         &self,
         virt: VirtAddr,
@@ -316,7 +318,7 @@ impl PageTable {
         return Ok(());
     }
 
-    /// Un-maps a page from this address space.
+    /// Un-maps a page from this page table.
     pub fn unmap_single(&self, virt: VirtAddr) -> Result<(), PageTableError> {
         crate::arch::virt::flush_tlb(virt);
 
@@ -324,13 +326,13 @@ impl PageTable {
         Ok(())
     }
 
-    /// Un-maps a range from this address space.
+    /// Un-maps a range from this page table.
     pub fn unmap_range(&self, virt: VirtAddr, len: usize) -> Result<(), PageTableError> {
         // TODO
         Ok(())
     }
 
-    /// Checks if the address (may be unaligned) is mapped in this address space.
+    /// Checks if the address (may be unaligned) is mapped in this page table.
     pub fn is_mapped(&self, virt: VirtAddr) -> bool {
         let head = self.head.lock();
         let mut current_head: *mut PageTableEntry = head.as_hhdm();
@@ -372,23 +374,64 @@ impl PageTable {
 #[derive(Debug)]
 pub struct AddressSpace {
     pub table: PageTable,
-    pub mappings: Mutex<BTreeMap<VirtAddr, Object>>,
+    /// A map that translates global page offsets (virt / page size) to mapped inodes with the mapping length in pages.
+    pub mappings: Mutex<BTreeMap<usize, (usize, VmFlags, Arc<MemoryObject>)>>,
 }
 
 impl AddressSpace {
     pub fn new() -> Self {
         Self {
-            table: PageTable::new_user::<KernelAlloc>(4, AllocFlags::empty()),
+            table: PageTable::new_user::<KernelAlloc>(
+                KERNEL_PAGE_TABLE.get().root_level(),
+                AllocFlags::empty(),
+            ),
             mappings: Mutex::default(),
         }
     }
-}
 
-pub type PageNumber = usize;
+    /// Maps an object into the address space.
+    pub fn map_object(
+        &self,
+        object: Arc<MemoryObject>,
+        addr: VirtAddr,
+        len: usize,
+        prot: VmFlags,
+        flags: MmapFlags,
+        off: uapi::off_t,
+    ) -> EResult<()> {
+        let page_size = arch::virt::get_page_size(VmLevel::L1);
+
+        // Find a suitable base address.
+        let addr = if flags.contains(MmapFlags::Fixed) {
+            if addr.value() % page_size != off as usize % page_size {
+                return Err(Errno::EINVAL);
+            }
+            addr
+        } else {
+            todo!("Find an address for !MAP_FIXED")
+        };
+
+        let mut mappings = self.mappings.lock();
+        // We need enough pages to fit all bytes.
+        let num_pages = divide_up(len, page_size);
+        let start_page = addr.value() / page_size;
+        let offset_page = off as usize / page_size;
+
+        for page in 0..num_pages {
+            let current_page = page + offset_page;
+            mappings.insert(
+                start_page + current_page,
+                (current_page, prot, object.clone()),
+            );
+        }
+
+        Ok(())
+    }
+}
 
 /// Abstract information about a page fault.
 pub struct PageFaultInfo {
-    /// The instruction pointer address.
+    /// The instruction pointer address at the point of the page fault.
     pub ip: VirtAddr,
     /// The address that was attempted to access.
     pub addr: VirtAddr,

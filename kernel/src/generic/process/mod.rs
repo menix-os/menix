@@ -13,7 +13,7 @@ use crate::generic::{
     vfs::{
         self,
         cache::PathNode,
-        exec::ExecutableInfo,
+        exec::ExecInfo,
         file::{File, OpenFlags},
         inode::Mode,
     },
@@ -107,7 +107,7 @@ impl Process {
             Identity::get_kernel(),
         )?;
 
-        let mut info = ExecutableInfo {
+        let mut info = ExecInfo {
             address_space: AddressSpace {
                 table: PageTable::new_user::<KernelAlloc>(
                     PageTable::get_kernel().root_level(),
@@ -117,6 +117,8 @@ impl Process {
             },
             executable: file.clone(),
             interpreter: None,
+            argc: 0,
+            envc: 0,
         };
 
         let format = vfs::exec::identify(&file).ok_or(Errno::ENOEXEC)?;

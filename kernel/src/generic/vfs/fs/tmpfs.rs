@@ -1,31 +1,27 @@
 #![allow(unused)]
 
 use super::{MountFlags, SuperBlock};
-use crate::generic::{
-    memory::{
-        VirtAddr,
-        cache::Object,
-        virt::{AddressSpace, VmFlags},
-    },
-    posix::errno::{EResult, Errno},
-    process::Identity,
-    util::mutex::Mutex,
-    vfs::{
-        PathNode,
-        cache::Entry,
-        file::{File, FileOps, OpenFlags, SeekAnchor},
-        fs::{FileSystem, Mount},
-        inode::{CommonOps, DirectoryOps, INode, Mode, NodeOps, NodeType, RegularOps, SymlinkOps},
+use crate::{
+    arch,
+    generic::{
+        memory::{PhysAddr, cache::MemoryObject, virt::VmLevel},
+        posix::errno::{EResult, Errno},
+        process::Identity,
+        util::mutex::Mutex,
+        vfs::{
+            PathNode,
+            cache::Entry,
+            file::{File, FileOps, MmapFlags, OpenFlags},
+            fs::{FileSystem, Mount},
+            inode::{DirectoryOps, INode, Mode, NodeOps, NodeType, RegularOps, SymlinkOps},
+        },
     },
 };
-use alloc::{
-    boxed::Box,
-    sync::{Arc, Weak},
-    vec::Vec,
-};
+use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use core::{
     any::Any,
-    sync::atomic::{AtomicBool, AtomicU32, AtomicU64, AtomicUsize, Ordering},
+    slice,
+    sync::atomic::{AtomicU32, AtomicUsize, Ordering},
 };
 
 #[derive(Debug)]
@@ -76,24 +72,22 @@ impl SuperBlock for TmpSuper {
             NodeType::Directory => NodeOps::Directory(Box::new(TmpDir::default())),
             _ => return Err(Errno::EINVAL),
         };
-        let common_ops = Box::try_new(TmpNode)?;
         let file_ops = Arc::try_new(TmpFile::default())?;
 
-        Ok(Arc::new_cyclic(|weak: &Weak<INode>| INode {
+        Ok(Arc::try_new(INode {
             id: self.inode_counter.fetch_add(1, Ordering::Acquire) as u64,
-            common_ops,
             node_ops,
             file_ops,
             sb: self,
+            cache: Arc::new(MemoryObject::new_phys()),
             mode: AtomicU32::new(mode.bits()),
-            object: Object::new_paged(0, VmFlags::empty(), weak.clone()), // TODO
             atime: Mutex::default(),
             mtime: Mutex::default(),
             ctime: Mutex::default(),
-            size: AtomicU64::default(),
+            size: AtomicUsize::default(),
             uid: AtomicUsize::default(),
             gid: AtomicUsize::default(),
-        }))
+        })?)
     }
 
     fn destroy_inode(self: Arc<Self>, inode: INode) -> EResult<()> {
@@ -108,20 +102,9 @@ impl SuperBlock for TmpSuper {
 }
 
 #[derive(Debug, Default)]
-struct TmpNode;
-
-impl CommonOps for TmpNode {
-    fn sync(&self, _node: &INode) -> EResult<()> {
-        // This is a no-op.
-        Ok(())
-    }
-}
-
-#[derive(Debug, Default)]
-struct TmpDir {}
-
+struct TmpDir;
 impl DirectoryOps for TmpDir {
-    fn lookup(&self, node: &Arc<INode>, entry: &PathNode) -> EResult<()> {
+    fn lookup(&self, _: &Arc<INode>, _: &PathNode) -> EResult<()> {
         // tmpfs directories only live in memory, so we cannot look up entries that do not exist.
         return Err(Errno::ENOENT);
     }
@@ -138,35 +121,9 @@ impl DirectoryOps for TmpDir {
             ops: Arc::new(TmpFile::default()),
             inode: Some(node.clone()),
             flags,
-            position: AtomicU64::new(0),
+            position: AtomicUsize::new(0),
         };
         return Ok(Arc::try_new(file)?);
-    }
-
-    fn symlink(
-        &self,
-        node: &Arc<INode>,
-        path: PathNode,
-        target_path: &[u8],
-        identity: &Identity,
-    ) -> EResult<()> {
-        let sym_inode = node
-            .sb
-            .clone()
-            .create_inode(NodeType::SymbolicLink, Mode::from_bits_truncate(0o777))?;
-
-        match &sym_inode.node_ops {
-            NodeOps::SymbolicLink(x) => {
-                let data: &TmpRegular = (x.as_ref() as &dyn Any)
-                    .downcast_ref()
-                    .ok_or(Errno::EINVAL)?;
-                data.data.lock().extend_from_slice(target_path);
-                path.entry.set_inode(sym_inode);
-
-                Ok(())
-            }
-            _ => Err(Errno::EINVAL),
-        }
     }
 
     fn link(&self, node: &Arc<INode>, path: &PathNode, target: &Arc<INode>) -> EResult<()> {
@@ -190,91 +147,25 @@ impl DirectoryOps for TmpDir {
 }
 
 #[derive(Debug, Default)]
-struct TmpRegular {
-    data: Mutex<Vec<u8>>,
-}
+struct TmpRegular {}
 
 impl RegularOps for TmpRegular {
     fn truncate(&self, node: &INode, length: u64) -> EResult<()> {
-        self.data.lock().truncate(length as usize);
-        Ok(())
-    }
-
-    fn read(&self, node: &INode, buf: &mut [u8], offset: u64) -> EResult<u64> {
-        let mut v = self.data.lock();
-        if offset as usize >= v.len() {
-            return Ok(0);
-        }
-
-        let copy_size = buf.len().min(v.len() - offset as usize);
-        buf.copy_from_slice(&v[offset as usize..][..copy_size]);
-
-        Ok(copy_size as u64)
-    }
-
-    fn write(&self, node: &INode, buf: &[u8], offset: u64) -> EResult<u64> {
-        let mut v = self.data.lock();
-        if offset as usize + buf.len() >= v.len() {
-            v.resize(offset as usize + buf.len(), 0u8);
-        }
-        v[offset as usize..][..buf.len()].copy_from_slice(buf);
-
-        Ok(buf.len() as u64)
+        todo!()
     }
 }
 
 impl SymlinkOps for TmpRegular {
     fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<u64> {
-        let mut v = self.data.lock();
-        let copy_size = buf.len().min(v.len());
-        buf[0..copy_size].copy_from_slice(&v[0..copy_size]);
+        let copy_size = buf.len().min(node.len());
+        node.cache.read(&mut buf[0..copy_size], 0);
         Ok(copy_size as u64)
     }
 }
 
 #[derive(Debug, Default)]
-struct TmpFile {
-    length: AtomicUsize,
-}
-
-impl FileOps for TmpFile {
-    fn read_dir(&self, file: &File, buffer: &mut [u8]) -> EResult<u64> {
-        todo!()
-    }
-
-    fn read(&self, file: &File, buffer: &mut [u8], offset: u64) -> EResult<u64> {
-        let inode = file.inode.as_ref().unwrap();
-
-        match &inode.node_ops {
-            NodeOps::Regular(regular_ops) => regular_ops.read(inode, buffer, offset),
-            _ => todo!(),
-        }
-    }
-
-    fn write(&self, file: &File, buffer: &[u8], offset: u64) -> EResult<u64> {
-        let inode = file.inode.as_ref().unwrap();
-
-        match &inode.node_ops {
-            NodeOps::Regular(regular_ops) => regular_ops.write(inode, buffer, offset),
-            _ => todo!(),
-        }
-    }
-
-    fn mmap(
-        &self,
-        file: &File,
-        space: &AddressSpace,
-        offset: u64,
-        hint: VirtAddr,
-        size: usize,
-    ) -> EResult<VirtAddr> {
-        todo!()
-    }
-
-    fn poll(&self, file: &File, mask: u16) -> EResult<u16> {
-        todo!()
-    }
-}
+struct TmpFile;
+impl FileOps for TmpFile {}
 
 init_stage! {
     #[depends(crate::generic::memory::MEMORY_STAGE)]

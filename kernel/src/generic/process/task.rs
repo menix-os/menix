@@ -12,7 +12,7 @@ use core::{
     alloc::Layout,
     panic,
     ptr::NonNull,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -53,6 +53,8 @@ pub struct Task {
     pub ticks: usize,
     /// A value between -20 and 19, where -20 is the highest priority and 0 is a neutral priority.
     pub priority: i8,
+    /// Whether the current task is in the process of being execve'd.
+    pub in_execve: AtomicBool,
 }
 
 impl Task {
@@ -80,6 +82,7 @@ impl Task {
             state: Mutex::new(TaskState::Ready),
             process: parent,
             is_user,
+            in_execve: AtomicBool::new(false),
         };
 
         arch::sched::init_task(
