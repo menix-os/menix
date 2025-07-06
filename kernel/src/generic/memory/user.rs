@@ -6,7 +6,30 @@ use alloc::sync::Arc;
 use bytemuck::AnyBitPattern;
 use core::marker::PhantomData;
 
-/// Provides safe access to memory from userland.
+/// Provides safe access to a single structure from userland.
+pub struct UserPtr<'a, T: AnyBitPattern> {
+    addr: VirtAddr,
+    _p: PhantomData<&'a T>,
+}
+
+impl<'a, T: AnyBitPattern> UserPtr<'a, T> {
+    pub const fn new(addr: VirtAddr) -> Self {
+        Self {
+            addr,
+            _p: PhantomData,
+        }
+    }
+
+    pub fn read(&self) -> Option<T> {
+        todo!()
+    }
+
+    pub fn write(&mut self) -> Option<T> {
+        todo!()
+    }
+}
+
+/// Provides safe access to a memory buffer from userland.
 pub struct UserSlice<'a, T: AnyBitPattern> {
     map: Arc<AddressSpace>,
     addr: VirtAddr,

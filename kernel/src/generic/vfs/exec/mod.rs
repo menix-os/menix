@@ -12,12 +12,16 @@ use alloc::{
 
 /// Information passed to [`ExecFormat::load`].
 #[derive(Debug)]
-pub struct ExecutableInfo {
+pub struct ExecInfo {
     /// The excutable to load.
     pub executable: Arc<File>,
     /// An interpreter that's tasked with loading the given executable.
     pub interpreter: Option<Arc<File>>,
     pub address_space: AddressSpace,
+    /// How many arguments live on the stack.
+    pub argc: usize,
+    /// How many environment variables live on the stack.
+    pub envc: usize,
 }
 
 /// An executable format.
@@ -26,7 +30,7 @@ pub trait ExecFormat {
     fn identify(&self, file: &File) -> bool;
 
     /// Loads an executable and returns a ready to run process.
-    fn load(&self, info: &mut ExecutableInfo) -> EResult<Process>;
+    fn load(&self, info: &mut ExecInfo) -> EResult<Process>;
 }
 
 static KNOWN_FORMATS: Mutex<BTreeMap<String, Arc<dyn ExecFormat>>> = Mutex::new(BTreeMap::new());

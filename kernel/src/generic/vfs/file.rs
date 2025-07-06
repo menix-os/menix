@@ -2,7 +2,7 @@ use super::inode::{INode, NodeType};
 use crate::generic::{
     memory::{
         VirtAddr,
-        virt::{VmFlags, AddressSpace},
+        virt::{AddressSpace, VmFlags},
     },
     posix::errno::{EResult, Errno},
     process::Identity,
@@ -14,7 +14,7 @@ use crate::generic::{
 use alloc::sync::Arc;
 use core::{
     fmt::Debug,
-    sync::atomic::{AtomicU64, Ordering},
+    sync::atomic::{AtomicUsize, Ordering},
 };
 
 bitflags::bitflags! {
@@ -76,28 +76,38 @@ pub struct File {
     /// File open flags.
     pub flags: OpenFlags,
     /// The cursor of this file.
-    pub position: AtomicU64,
+    pub position: AtomicUsize,
 }
 
-/// Operations that can be performed on a file.
+/// Operations that can be performed on a file. Every trait function has a
+/// generic implementation, which should be used unless the FS requires it.
+/// Inputs have been sanitized when these functions are called.
 pub trait FileOps: Debug {
-    /// Reads directory entries into a buffer.
-    /// Returns actual bytes read.
-    fn read_dir(&self, file: &File, buffer: &mut [u8]) -> EResult<u64> {
-        _ = (file, buffer);
-        Err(Errno::EBADF)
-    }
-
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
-    fn read(&self, file: &File, buffer: &mut [u8], offset: u64) -> EResult<u64>;
+    fn read(&self, file: &File, buffer: &mut [u8], offset: uapi::off_t) -> EResult<isize> {
+        let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
+
+        if offset as usize >= inode.len() {
+            return Ok(0);
+        }
+
+        let copy_size = buffer.len().min(inode.len() - offset as usize);
+        let actual = inode.cache.read(&mut buffer[0..copy_size], offset as usize);
+        Ok(actual as _)
+    }
 
     /// Writes a buffer to the file.
     /// Returns actual bytes written.
-    fn write(&self, file: &File, buffer: &[u8], offset: u64) -> EResult<u64>;
+    fn write(&self, file: &File, buffer: &[u8], offset: uapi::off_t) -> EResult<isize> {
+        let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
+        let actual = inode.cache.write(buffer, offset as usize);
+        inode.size.store(actual, Ordering::Release);
+        Ok(actual as _)
+    }
 
     /// Performs a generic ioctl operation on the file.
-    /// Returns a status code.
+    /// Returns a driver specific status code if it was successful.
     fn ioctl(&self, file: &File, request: usize, arg: usize) -> EResult<usize> {
         _ = (arg, request, file);
         Err(Errno::ENOTTY)
@@ -108,16 +118,6 @@ pub trait FileOps: Debug {
         _ = (file, mask);
         Ok(mask)
     }
-
-    /// Maps a file from an `offset` into the given address space.
-    fn mmap(
-        &self,
-        file: &File,
-        space: &AddressSpace,
-        offset: u64,
-        hint: VirtAddr,
-        size: usize,
-    ) -> EResult<VirtAddr>;
 }
 
 impl File {
@@ -178,7 +178,7 @@ impl File {
                     ops: file_node.file_ops.clone(),
                     inode: Some(file_node),
                     flags,
-                    position: AtomicU64::new(0),
+                    position: AtomicUsize::new(0),
                 };
 
                 Ok(Arc::try_new(result)?)
@@ -220,7 +220,7 @@ impl File {
                     ops: inode.file_ops.clone(),
                     inode: Some(inode.clone()),
                     flags,
-                    position: AtomicU64::new(0),
+                    position: AtomicUsize::new(0),
                 };
 
                 Ok(Arc::try_new(result)?)
@@ -237,67 +237,69 @@ impl File {
 
     /// Reads directory entries into a buffer.
     /// Returns actual bytes read.
-    pub fn read_dir(&self, buf: &mut [u8]) -> EResult<u64> {
+    pub fn read_dir(&self, buf: &mut [u8]) -> EResult<isize> {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops.read_dir(self, buf)
+        self.ops.read(self, buf, 0)
     }
 
     /// Reads into a buffer from a file.
     /// Returns actual bytes read.
-    pub fn read(&self, buf: &mut [u8]) -> EResult<u64> {
+    pub fn read(&self, buf: &mut [u8]) -> EResult<isize> {
         if buf.is_empty() {
             return Ok(0);
         }
         self.ops
-            .read(self, buf, self.position.load(Ordering::Acquire))
+            .read(self, buf, self.position.load(Ordering::Acquire) as _)
     }
 
     /// Reads into a buffer from a file at a specified offset.
     /// Returns actual bytes read.
-    pub fn pread(&self, buf: &mut [u8], offset: u64) -> EResult<u64> {
+    pub fn pread(&self, buf: &mut [u8], offset: u64) -> EResult<isize> {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops.read(self, buf, offset)
+        self.ops.read(self, buf, offset as _)
     }
 
     /// Writes a buffer to a file.
     /// Returns actual bytes written.
-    pub fn write(&self, buf: &[u8]) -> EResult<u64> {
+    pub fn write(&self, buf: &[u8]) -> EResult<isize> {
         if buf.is_empty() {
             return Ok(0);
         }
         self.ops
-            .write(self, buf, self.position.load(Ordering::Acquire))
+            .write(self, buf, self.position.load(Ordering::Acquire) as _)
     }
 
     /// Writes a buffer to a file at a specified offset.
     /// Returns actual bytes written.
-    pub fn pwrite(&self, buf: &[u8], offset: u64) -> EResult<u64> {
+    pub fn pwrite(&self, buf: &[u8], offset: u64) -> EResult<isize> {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops.write(self, buf, offset)
+        self.ops.write(self, buf, offset as _)
     }
 
     pub fn poll(&self, mask: u16) -> EResult<u16> {
         self.ops.poll(self, mask)
     }
 
-    pub fn seek(&self, offset: SeekAnchor) -> EResult<u64> {
+    pub fn seek(&self, offset: SeekAnchor) -> EResult<uapi::off_t> {
         match offset {
-            SeekAnchor::Start(x) => Ok(self.position.swap(x, Ordering::AcqRel)),
+            SeekAnchor::Start(x) => Ok(self.position.swap(x as usize, Ordering::AcqRel) as _),
             SeekAnchor::Current(x) => {
+                let x = x as isize;
                 let old = if x.is_negative() {
                     self.position.fetch_sub(x.unsigned_abs(), Ordering::AcqRel)
                 } else {
-                    self.position.fetch_add(x as u64, Ordering::AcqRel)
+                    self.position.fetch_add(x as _, Ordering::AcqRel)
                 };
-                Ok(old + x as u64)
+                Ok((old + x as usize) as _)
             }
             SeekAnchor::End(x) => {
+                let x = x as isize;
                 let size = self
                     .inode
                     .as_ref()
@@ -312,7 +314,7 @@ impl File {
                 };
 
                 self.position.store(new, Ordering::Release);
-                Ok(new)
+                Ok(new as _)
             }
         }
     }
@@ -321,15 +323,40 @@ impl File {
         self.ops.ioctl(self, request, arg)
     }
 
+    /// Maps a file into a given address space.
     pub fn mmap(
         &self,
         space: &AddressSpace,
-        offset: u64,
-        hint: VirtAddr,
-        size: usize,
+        address: VirtAddr,
+        length: usize,
         prot: VmFlags,
         flags: MmapFlags,
-    ) -> EResult<VirtAddr> {
-        self.ops.mmap(self, space, offset, hint, size)
+        offset: uapi::off_t,
+    ) -> EResult<()> {
+        // Zero-length mappings are not valid.
+        if length == 0 {
+            return Err(Errno::EINVAL);
+        }
+        // Either `Shared` or `Private` has to be specified.
+        if !flags.intersects(MmapFlags::Shared | MmapFlags::Private) {
+            return Err(Errno::EINVAL);
+        }
+        // `addr + len` may not overflow if the mapping is fixed.
+        if flags.contains(MmapFlags::Fixed) && address.value().checked_add(length).is_none() {
+            return Err(Errno::ENOMEM);
+        }
+
+        // Map the inode into the address space.
+        space.map_object(
+            self.inode
+                .as_ref()
+                .ok_or(Errno::ENOENT)
+                .and_then(|x| Ok(x.cache.clone()))?,
+            address,
+            length,
+            prot,
+            flags,
+            offset,
+        )
     }
 }

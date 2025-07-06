@@ -1,5 +1,4 @@
 use crate::generic::{
-    memory::cache::Object,
     posix::errno::{EResult, Errno},
     vfs::{file::FileOps, inode::Mode},
 };
@@ -38,7 +37,6 @@ pub struct BlockDevice {
     pub id: uapi::dev_t,
     pub path: Vec<u8>,
     pub mode: Mode,
-    pub cache: Object,
     pub ops: Box<dyn BlockDeviceOps>,
 }
 

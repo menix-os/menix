@@ -112,10 +112,14 @@ pub(in crate::arch) const fn get_page_bits() -> usize {
     12
 }
 
-pub(in crate::arch) const fn get_max_level() -> VmLevel {
+pub(in crate::arch) const fn get_max_leaf_level() -> VmLevel {
     VmLevel::L3
 }
 
 pub(in crate::arch) const fn get_level_bits() -> usize {
     9
+}
+
+pub(in crate::arch) const fn get_num_levels() -> usize {
+    4
 }

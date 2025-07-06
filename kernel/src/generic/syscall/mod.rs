@@ -154,7 +154,7 @@ pub fn dispatch(
 ) -> (usize, usize) {
     let result: EResult<usize> = match num {
         _ => {
-            log!("Unknown syscall {:#x} requested by user program", num);
+            warn!("Unknown syscall {:#x} requested by user program", num);
             Err(Errno::ENOSYS)
         }
     };

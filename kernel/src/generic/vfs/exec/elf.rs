@@ -1,5 +1,6 @@
-use super::ExecutableInfo;
+use super::ExecInfo;
 use crate::generic::{
+    self,
     memory::virt::VmFlags,
     posix::errno::{EResult, Errno},
     process::Process,
@@ -322,14 +323,14 @@ pub struct ElfHdr {
 static_assert!(size_of::<ElfHdr>() == 64);
 
 // Yes I know ELF already has "Format" in the name.
-pub struct ElfFormat;
+struct ElfFormat;
 
 impl ExecFormat for ElfFormat {
     fn identify(&self, file: &File) -> bool {
         let mut buffer = [0u8; size_of::<ElfHdr>()];
         match file.pread(&mut buffer, 0) {
             Ok(x) => {
-                if x != buffer.len() as u64 {
+                if x != buffer.len() as _ {
                     return false;
                 }
             }
@@ -344,7 +345,7 @@ impl ExecFormat for ElfFormat {
         return true;
     }
 
-    fn load(&self, info: &mut ExecutableInfo) -> EResult<Process> {
+    fn load(&self, info: &mut ExecInfo) -> EResult<Process> {
         let base = 0x40000; // Start mapping a relocatable ELF at this address.
 
         // Read the header.
@@ -353,7 +354,7 @@ impl ExecFormat for ElfFormat {
         let elf_hdr = bytemuck::pod_read_unaligned::<ElfHdr>(&hdr_data);
 
         // TODO: Do the rest of IDENT checks.
-        if elf_hdr.e_ident[EI_OSABI] != ELFOSABI_SYSV || elf_hdr.e_ident[EI_VERSION] != EV_CURRENT {
+        if elf_hdr.e_ident[EI_VERSION] != EV_CURRENT {
             return Err(Errno::ENOEXEC);
         }
         if elf_hdr.e_machine != EM_CURRENT {
@@ -384,11 +385,11 @@ impl ExecFormat for ElfFormat {
 
                     info.executable.mmap(
                         &info.address_space,
-                        phdr.p_offset,
                         (phdr.p_vaddr + base).into(),
-                        phdr.p_filesz as usize,
+                        phdr.p_filesz as _,
                         prot,
-                        MmapFlags::Anonymous | MmapFlags::Fixed,
+                        MmapFlags::Fixed | MmapFlags::Private,
+                        phdr.p_offset as _,
                     )?;
                 }
                 PT_PHDR => {}
@@ -400,7 +401,13 @@ impl ExecFormat for ElfFormat {
             }
         }
 
-        todo!();
+        // Setup the stack according to the SYSV ABI.
+        match elf_hdr.e_ident[EI_OSABI] {
+            ELFOSABI_SYSV => {
+                todo!("setup stack")
+            }
+            _ => return Err(Errno::ENOEXEC),
+        }
     }
 }
 

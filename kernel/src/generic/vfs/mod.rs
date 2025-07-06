@@ -10,10 +10,13 @@ pub use file::File;
 pub use fs::Mount;
 pub use fs::MountFlags;
 
-use crate::generic::memory::virt::AddressSpace;
+use super::memory::virt::VmLevel;
 use crate::generic::{
     device::Device,
-    memory::{VirtAddr, virt::VmFlags},
+    memory::{
+        VirtAddr,
+        virt::{AddressSpace, VmFlags},
+    },
     posix::errno::{EResult, Errno},
     process::Identity,
     util::once::Once,
@@ -23,6 +26,7 @@ use crate::generic::{
         inode::{Mode, NodeOps, NodeType},
     },
 };
+use crate::{arch, generic::memory::cache::MemoryObject};
 use alloc::sync::Arc;
 
 /// The root directory entry.
@@ -42,8 +46,8 @@ pub fn mknod(
     device: Option<Arc<dyn Device>>,
     identity: &Identity,
 ) -> EResult<()> {
-    // POSIX only allows these types of nodes to be created.
     match file_type {
+        // POSIX only allows these types of nodes to be created.
         NodeType::Regular
         | NodeType::Directory
         | NodeType::BlockDevice
@@ -92,6 +96,7 @@ pub fn symlink(
     }
 }
 
+/// Maps a file in the address space of a process.
 pub fn mmap(
     file: Option<Arc<File>>,
     space: &AddressSpace,
@@ -101,7 +106,18 @@ pub fn mmap(
     flags: MmapFlags,
     offset: uapi::off_t,
 ) -> EResult<VirtAddr> {
-    todo!()
+    if let Some(f) = file {
+        f.mmap(space, addr, len, prot, flags, offset)?;
+    } else {
+        // No file given, create an anonymous mapping.
+        if !flags.contains(MmapFlags::Anonymous) {
+            return Err(Errno::EINVAL);
+        }
+        let anon = Arc::new(MemoryObject::new_phys());
+        space.map_object(anon, addr, len, prot, flags, offset)?;
+    }
+
+    return Ok(addr);
 }
 
 init_stage! {

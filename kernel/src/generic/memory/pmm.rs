@@ -3,8 +3,9 @@ use crate::{
     arch,
     generic::{
         boot::PhysMemory,
-        memory::{cache::Object, virt::VmLevel},
+        memory::virt::VmLevel,
         util::{align_up, mutex::Mutex},
+        vfs::inode::INode,
     },
 };
 use alloc::{alloc::AllocError, sync::Arc};
@@ -52,8 +53,8 @@ pub trait PageAllocator {
 pub struct Page {
     pub next: Option<NonNull<Page>>,
     pub count: usize,
-    /// The object owning this page.
-    pub parent_object: Option<Arc<Object>>,
+    /// The object where this page is cached in.
+    pub parent_object: Option<Arc<INode>>,
     pad: usize, // TODO
 }
 

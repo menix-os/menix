@@ -18,9 +18,15 @@ pub fn get_level_bits() -> usize {
     internal::virt::get_level_bits()
 }
 
-/// Gets the maximum amount of pages supported.
-pub fn get_max_level() -> VmLevel {
-    internal::virt::get_max_level()
+/// Gets the highest supported mappable page level.
+/// This is different from [`get_num_levels`], because not all levels can be PTE leaves.
+pub fn get_max_leaf_level() -> VmLevel {
+    internal::virt::get_max_leaf_level()
+}
+
+/// Gets the amount of
+pub fn get_num_levels() -> usize {
+    internal::virt::get_num_levels()
 }
 
 /// Sets a given page table as the active one on this CPU.
