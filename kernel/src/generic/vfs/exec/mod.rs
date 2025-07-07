@@ -1,13 +1,17 @@
 pub mod elf;
 
 use crate::generic::{
-    memory::virt::AddressSpace, posix::errno::EResult, process::Process, util::mutex::Mutex,
+    memory::virt::AddressSpace,
+    posix::errno::EResult,
+    process::{Process, task::Task},
+    util::mutex::Mutex,
     vfs::file::File,
 };
 use alloc::{
     collections::btree_map::BTreeMap,
     string::{String, ToString},
     sync::Arc,
+    vec::Vec,
 };
 
 /// Information passed to [`ExecFormat::load`].
@@ -17,20 +21,23 @@ pub struct ExecInfo {
     pub executable: Arc<File>,
     /// An interpreter that's tasked with loading the given executable.
     pub interpreter: Option<Arc<File>>,
-    pub address_space: AddressSpace,
-    /// How many arguments live on the stack.
+    /// An address space for the new process.
+    pub space: AddressSpace,
+    /// How many arguments are living on the stack.
     pub argc: usize,
-    /// How many environment variables live on the stack.
+    /// How many environment variables are living on the stack.
     pub envc: usize,
+    /// A list of tasks to create.
+    pub tasks: Vec<Task>,
 }
 
 /// An executable format.
 pub trait ExecFormat {
-    /// Attempts to identify whether a file is a valid executable of this format.
+    /// Identifies whether a file is a valid executable of this format.
     fn identify(&self, file: &File) -> bool;
 
-    /// Loads an executable and returns a ready to run process.
-    fn load(&self, info: &mut ExecInfo) -> EResult<Process>;
+    /// Loads the executable and returns a new process.
+    fn load(&self, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<()>;
 }
 
 static KNOWN_FORMATS: Mutex<BTreeMap<String, Arc<dyn ExecFormat>>> = Mutex::new(BTreeMap::new());

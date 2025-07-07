@@ -49,7 +49,7 @@ impl INode {
     pub fn try_access(&self, ident: &Identity, flags: OpenFlags, use_real: bool) -> EResult<()> {
         if ident.effective_user_id == 0 {
             // If this file is not able to be executed, always fail.
-            if flags.contains(OpenFlags::Executeable)
+            if flags.contains(OpenFlags::Executable)
                 && !self
                     .get_mode()
                     .contains(Mode::UserExec | Mode::GroupExec | Mode::OtherExec)

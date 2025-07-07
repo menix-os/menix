@@ -24,7 +24,8 @@ pub mod system;
 
 use crate::generic::{
     percpu::CpuData,
-    process::{Process, sched::Scheduler, task::Task},
+    process::{Identity, Process, sched::Scheduler, task::Task},
+    vfs::{File, file::OpenFlags, inode::Mode},
 };
 use alloc::{string::String, sync::Arc};
 use core::hint;
@@ -71,9 +72,19 @@ pub extern "C" fn main(_: usize, _: usize) {
 
     log!("Starting init \"{}\"", String::from_utf8_lossy(path));
 
+    let init_file = File::open(
+        None,
+        path,
+        OpenFlags::ReadOnly | OpenFlags::Executable,
+        Mode::empty(),
+        &Identity::get_kernel(),
+    )
+    .expect("Unable to read the init executable");
+
     let kernel_proc = Scheduler::get_current().get_process();
-    let init_proc = Process::from_file(None, path).expect("Unable to create init process");
-    // TODO: Add to run queue.
+    kernel_proc
+        .fexecve(init_file, &[path], &[])
+        .expect("Unable to create init process");
 
     loop {
         // TODO: For some reason going past this triggers a #UD.

@@ -1,12 +1,15 @@
 use super::ExecInfo;
-use crate::generic::{
-    self,
-    memory::virt::VmFlags,
-    posix::errno::{EResult, Errno},
-    process::Process,
-    vfs::{
-        exec::ExecFormat,
-        file::{File, MmapFlags},
+use crate::{
+    arch::sched::jump_to_user,
+    generic::{
+        self,
+        memory::{VirtAddr, virt::VmFlags},
+        posix::errno::{EResult, Errno},
+        process::{Process, sched::Scheduler, task::Task, to_user},
+        vfs::{
+            exec::ExecFormat,
+            file::{File, MmapFlags},
+        },
     },
 };
 use alloc::sync::Arc;
@@ -345,7 +348,7 @@ impl ExecFormat for ElfFormat {
         return true;
     }
 
-    fn load(&self, info: &mut ExecInfo) -> EResult<Process> {
+    fn load(&self, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<()> {
         let base = 0x40000; // Start mapping a relocatable ELF at this address.
 
         // Read the header.
@@ -384,7 +387,7 @@ impl ExecFormat for ElfFormat {
                     }
 
                     info.executable.mmap(
-                        &info.address_space,
+                        &info.space,
                         (phdr.p_vaddr + base).into(),
                         phdr.p_filesz as _,
                         prot,
@@ -404,10 +407,21 @@ impl ExecFormat for ElfFormat {
         // Setup the stack according to the SYSV ABI.
         match elf_hdr.e_ident[EI_OSABI] {
             ELFOSABI_SYSV => {
-                todo!("setup stack")
+                // TODO: Setup stack.
             }
             _ => return Err(Errno::ENOEXEC),
         }
+
+        // Create the main thread.
+        info.tasks.push(Task::new(
+            to_user,
+            elf_hdr.e_entry as usize,
+            0,
+            old.clone(),
+            true,
+        )?);
+
+        Ok(())
     }
 }
 
