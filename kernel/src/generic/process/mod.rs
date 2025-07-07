@@ -2,21 +2,11 @@ pub mod sched;
 pub mod task;
 
 use crate::generic::{
-    memory::{
-        VirtAddr,
-        pmm::{AllocFlags, KernelAlloc},
-        virt::{AddressSpace, PageTable},
-    },
+    memory::{VirtAddr, virt::AddressSpace},
     posix::errno::{EResult, Errno},
     process::task::Tid,
     util::{mutex::Mutex, once::Once},
-    vfs::{
-        self,
-        cache::PathNode,
-        exec::ExecInfo,
-        file::{File, OpenFlags},
-        inode::Mode,
-    },
+    vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
 };
 use alloc::{
     string::{String, ToString},
@@ -24,7 +14,6 @@ use alloc::{
     vec::Vec,
 };
 use core::sync::atomic::{AtomicUsize, Ordering};
-use task::Task;
 
 /// A unique process ID.
 pub type Pid = usize;
@@ -97,43 +86,38 @@ impl Process {
         KERNEL_PROCESS.get().clone()
     }
 
-    /// Creates a new user process from a file path. It determines the execution format by reading the first few bytes.
-    pub fn from_file(parent: Option<Arc<Self>>, path: &[u8]) -> EResult<Arc<Self>> {
-        let file = File::open(
-            None,
-            path,
-            OpenFlags::ReadOnly | OpenFlags::Executeable,
-            Mode::empty(),
-            Identity::get_kernel(),
-        )?;
+    /// Forks a process into a new one.
+    pub fn fork(self: Arc<Self>) -> Self {
+        todo!()
+    }
 
+    /// Replaces a process with a new executable image.
+    /// The given file must be opened with [`OpenFlags::ReadOnly`] and [`OpenFlags::Executable`].
+    /// Any existing threads of the current process are destroyed upon a successful execve.
+    pub fn fexecve(
+        self: Arc<Self>,
+        file: Arc<File>,
+        argv: &[&[u8]],
+        envp: &[&[u8]],
+    ) -> EResult<()> {
         let mut info = ExecInfo {
-            address_space: AddressSpace {
-                table: PageTable::new_user::<KernelAlloc>(
-                    PageTable::get_kernel().root_level(),
-                    AllocFlags::empty(),
-                ),
-                mappings: Mutex::default(),
-            },
             executable: file.clone(),
             interpreter: None,
-            argc: 0,
-            envc: 0,
+            space: AddressSpace::new(),
+            argc: argv.len(),
+            envc: envp.len(),
+            tasks: Vec::new(),
         };
 
         let format = vfs::exec::identify(&file).ok_or(Errno::ENOEXEC)?;
-        format.load(&mut info)?;
+        format.load(&self, &mut info)?;
 
-        // TODO: Give this a name.
-        let result = Arc::new(Self::new("", parent, true)?);
+        // If we get here, then the loading of the executable was successful.
 
-        let ip = 0;
-        let sp = 0;
+        // Replace the old address space.
+        self.address_space.clear();
 
-        let main_thread = Task::new(to_user, ip, sp, result.clone(), true)?;
-        result.threads.lock().push(main_thread.get_id());
-
-        return Ok(result);
+        Ok(())
     }
 }
 

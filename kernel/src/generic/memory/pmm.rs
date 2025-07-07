@@ -3,9 +3,8 @@ use crate::{
     arch,
     generic::{
         boot::PhysMemory,
-        memory::virt::VmLevel,
+        memory::{cache::MemoryObject, virt::VmLevel},
         util::{align_up, mutex::Mutex},
-        vfs::inode::INode,
     },
 };
 use alloc::{alloc::AllocError, sync::Arc};
@@ -54,8 +53,9 @@ pub struct Page {
     pub next: Option<NonNull<Page>>,
     pub count: usize,
     /// The object where this page is cached in.
-    pub parent_object: Option<Arc<INode>>,
-    pad: usize, // TODO
+    pub object: Option<Arc<MemoryObject>>,
+    /// The offset of this page into the object.
+    pub page_offset: usize,
 }
 
 // If this assert fails, the PFNDB can't properly allocate data.

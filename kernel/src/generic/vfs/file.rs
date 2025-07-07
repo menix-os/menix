@@ -43,7 +43,7 @@ bitflags::bitflags! {
         const ReadOnly = uapi::O_RDONLY as _;
         const WriteOnly = uapi::O_WRONLY as _;
         const ReadWrite = uapi::O_RDWR as _;
-        const Executeable = uapi::O_EXEC as _;
+        const Executable = uapi::O_EXEC as _;
     }
 
     #[derive(Debug, Clone, Copy)]

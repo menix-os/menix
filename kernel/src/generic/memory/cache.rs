@@ -36,11 +36,18 @@ impl MemoryObject {
     /// Attempts to get the physical address of a page with a relative index into this object.
     /// Returns [`None`] if the page is out of bounds for this object.
     pub fn try_get_page(&self, page_index: usize) -> Option<PhysAddr> {
-        match self.pages.lock().get(&page_index) {
+        let mut pages = self.pages.lock();
+        match pages.get(&page_index) {
             // If the page already exists, we can return it.
             Some(page) => Some(*page),
             // If it does not, we need to check if it's actually available.
-            None => self.source.try_get_page(page_index).ok(),
+            None => match self.source.try_get_page(page_index) {
+                Ok(x) => {
+                    pages.insert(page_index, x);
+                    Some(x)
+                }
+                Err(_) => None,
+            },
         }
     }
 
@@ -48,25 +55,18 @@ impl MemoryObject {
     /// Reading out of bounds will return 0.
     pub fn read(&self, buffer: &mut [u8], offset: usize) -> usize {
         let page_size = get_page_size(VmLevel::L1);
-        let mut pages = self.pages.lock();
-
         let mut progress = 0;
+
         while progress < buffer.len() {
             let misalign = (progress + offset) % page_size;
             let page_index = (progress + offset) / page_size;
             let copy_size = (page_size - misalign).min(buffer.len() - progress);
 
-            // If we have cached the page before, use it. If not, get it from the pager.
-            let page_addr = match pages.get(&page_index) {
-                Some(x) => *x,
-                None => match self.source.try_get_page(page_index) {
-                    Ok(x) => {
-                        pages.insert(page_index, x);
-                        x
-                    }
-                    Err(_) => break,
-                },
+            let page_addr = match self.try_get_page(page_index) {
+                Some(x) => x,
+                None => break,
             };
+
             let page_slice: &[u8] =
                 unsafe { slice::from_raw_parts(page_addr.as_hhdm(), page_size) };
             buffer[progress..][..copy_size].copy_from_slice(&page_slice[misalign..][..copy_size]);
@@ -80,25 +80,18 @@ impl MemoryObject {
     /// Writing out of bounds will return 0.
     pub fn write(&self, buffer: &[u8], offset: usize) -> usize {
         let page_size = get_page_size(VmLevel::L1);
-        let mut pages = self.pages.lock();
-
         let mut progress = 0;
+
         while progress < buffer.len() {
             let misalign = (progress + offset) % page_size;
             let page_index = (progress + offset) / page_size;
             let copy_size = (page_size - misalign).min(buffer.len() - progress);
 
-            // If we have cached the page before, use it. If not, get it from the pager.
-            let page_addr = match pages.get(&page_index) {
-                Some(x) => *x,
-                None => match self.source.try_get_page(page_index) {
-                    Ok(x) => {
-                        pages.insert(page_index, x);
-                        x
-                    }
-                    Err(_) => break,
-                },
+            let page_addr = match self.try_get_page(page_index) {
+                Some(x) => x,
+                None => break,
             };
+
             let page_slice: &mut [u8] =
                 unsafe { slice::from_raw_parts_mut(page_addr.as_hhdm(), page_size) };
             page_slice[misalign..][..copy_size].copy_from_slice(&buffer[progress..][..copy_size]);

@@ -5,7 +5,10 @@ use super::{
 use crate::{
     arch::{self, virt::PageTableEntry},
     generic::{
-        memory::{cache::MemoryObject, pmm::KernelAlloc},
+        memory::{
+            cache::MemoryObject,
+            pmm::{KernelAlloc, Page},
+        },
         posix::errno::{EResult, Errno},
         process::{sched::Scheduler, task::Task},
         util::{align_up, divide_up, mutex::Mutex, once::Once},
@@ -373,18 +376,18 @@ impl PageTable {
 
 #[derive(Debug)]
 pub struct AddressSpace {
-    pub table: PageTable,
-    /// A map that translates global page offsets (virt / page size) to mapped inodes with the mapping length in pages.
-    pub mappings: Mutex<BTreeMap<usize, (usize, VmFlags, Arc<MemoryObject>)>>,
+    pub table: Arc<PageTable>,
+    /// A map that translates global page offsets (virt / page_size) to a physical page and the flags of the mapping.
+    pub mappings: Mutex<BTreeMap<usize, (PhysAddr, VmFlags)>>,
 }
 
 impl AddressSpace {
     pub fn new() -> Self {
         Self {
-            table: PageTable::new_user::<KernelAlloc>(
+            table: Arc::new(PageTable::new_user::<KernelAlloc>(
                 KERNEL_PAGE_TABLE.get().root_level(),
                 AllocFlags::empty(),
-            ),
+            )),
             mappings: Mutex::default(),
         }
     }
@@ -412,20 +415,32 @@ impl AddressSpace {
         };
 
         let mut mappings = self.mappings.lock();
+        let mut pfndb = super::pmm::PAGE_DB.lock();
+
         // We need enough pages to fit all bytes.
         let num_pages = divide_up(len, page_size);
         let start_page = addr.value() / page_size;
         let offset_page = off as usize / page_size;
 
-        for page in 0..num_pages {
-            let current_page = page + offset_page;
-            mappings.insert(
-                start_page + current_page,
-                (current_page, prot, object.clone()),
-            );
+        for p in 0..num_pages {
+            let current_page = p + offset_page;
+            let phys_addr = object.try_get_page(current_page).ok_or(Errno::EINVAL)?;
+            let phys_page_idx = Page::idx_from_addr(phys_addr);
+            let page = pfndb.get_mut(phys_page_idx).ok_or(Errno::EINVAL)?;
+
+            // Save the object in the pfndb.
+            page.object = Some(object.clone());
+            page.page_offset = p;
+
+            // Create a mapping for this address space.
+            mappings.insert(start_page + current_page, (phys_addr, prot));
         }
 
         Ok(())
+    }
+
+    pub fn clear(&self) {
+        self.mappings.lock().clear();
     }
 }
 
@@ -447,8 +462,15 @@ pub struct PageFaultInfo {
 
 /// Generic page fault handler. May reschedule and return a different task to run.
 pub fn page_fault_handler(info: &PageFaultInfo) -> *mut Task {
-    // TODO
+    // Check if the current address space has a mapping at the faulting address.
     let space = &Scheduler::get_current().get_process().address_space;
+    if let Some(&(phys, flags)) = space
+        .mappings
+        .lock()
+        .get(&(info.ip.value() / arch::virt::get_page_size(VmLevel::L1)))
+    {
+        todo!()
+    }
 
     if info.caused_by_user {
         // TODO: Send SIGSEGV and reschedule.
