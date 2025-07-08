@@ -6,7 +6,7 @@ use crate::generic::{
     vfs::{File, file::OpenFlags, fs::Mount, inode::NodeOps},
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};
-use core::hint::unlikely;
+use core::{fmt::Debug, hint::unlikely};
 
 #[derive(Debug, Default)]
 pub enum EntryState {
@@ -20,7 +20,6 @@ pub enum EntryState {
 }
 
 /// This struct represents an entry in the VFS.
-#[derive(Debug)]
 pub struct Entry {
     /// The name of this entry.
     pub name: Vec<u8>,
@@ -65,6 +64,15 @@ impl Entry {
 
     pub fn set_inode(&self, inode: Arc<INode>) {
         *self.inode.lock() = EntryState::Present(inode);
+    }
+}
+
+impl Debug for Entry {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("Entry")
+            .field("name", &self.name)
+            .field("inode", &self.inode)
+            .finish()
     }
 }
 
