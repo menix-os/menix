@@ -1,13 +1,18 @@
-use super::task::{Task, Tid};
 use crate::{
     arch::{self},
     generic::{
-        percpu::CpuData,
-        process::{Process, task::TaskState},
+        percpu::{CPU_DATA, CpuData},
+        process::{
+            Process,
+            task::{Task, TaskState, Tid},
+        },
         util::mutex::Mutex,
     },
 };
-use alloc::{collections::btree_map::BTreeMap, sync::Arc};
+use alloc::{
+    collections::btree_map::BTreeMap,
+    sync::{Arc, Weak},
+};
 use core::{
     mem,
     ptr::null_mut,
@@ -20,6 +25,7 @@ pub struct Scheduler {
     /// The currently running task on this scheduler instance. Use [`Self::get_current`] instead.
     pub(crate) current: AtomicPtr<Task>,
     pub(crate) preempt_level: usize,
+    // TODO: Don't make this a part of the per-CPU struct. This should be a global variable so it can properly do rebalancing.
     run_queue: Mutex<BTreeMap<Tid, Arc<Task>>>,
 }
 
@@ -47,7 +53,15 @@ impl Scheduler {
             let result = task.clone();
             mem::forget(task);
 
-            result
+            return result;
+
+            // Try to upgrade the weak pointer. If this doesn't work,
+            // the parent is dead and we need to reschedule.
+            //if let Some(x) = result.upgrade() {
+            //    x
+            //} else {
+            //    todo!()
+            //}
         }
     }
 
@@ -86,6 +100,17 @@ impl Scheduler {
             arch::irq::set_irq_state(old);
         }
     }
+
+    /// Kills the currently running task.
+    pub fn kill_current() -> ! {
+        let task = Scheduler::get_current();
+        let mut state = task.state.lock();
+        *state = TaskState::Dead;
+        drop(state);
+
+        CPU_DATA.get().scheduler.reschedule();
+        unreachable!("The scheduler did not kill this task");
+    }
 }
 
 /// Generic task entry point. This is to be called by an implementing [`crate::arch::sched::init_task`].
@@ -93,28 +118,19 @@ pub extern "C" fn task_entry(entry: extern "C" fn(usize, usize), arg1: usize, ar
     (entry)(arg1, arg2);
 
     // The task function is over, kill the task.
-    let task = Scheduler::get_current();
-    let mut state = task.state.lock();
-    *state = TaskState::Dead;
-    drop(state);
-
-    unsafe {
-        arch::sched::force_reschedule();
-    }
-
-    unreachable!("The scheduler did not kill this task");
+    Scheduler::kill_current();
 }
 
 /// Function used for waiting.
 pub extern "C" fn idle_fn(_: usize, _: usize) {
-    unsafe { crate::arch::irq::set_irq_state(true) };
     loop {
+        unsafe { crate::arch::irq::set_irq_state(true) };
         crate::arch::irq::wait_for_irq();
     }
 }
 
 init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE, super::PROCESS_STAGE)]
+    #[depends(crate::generic::memory::MEMORY_STAGE, super::process::PROCESS_STAGE)]
     pub SCHEDULER_STAGE: "generic.scheduler" => init;
 }
 

@@ -7,7 +7,7 @@ use crate::{
         util::mutex::Mutex,
     },
 };
-use alloc::sync::Arc;
+use alloc::sync::{Arc, Weak};
 use core::{
     alloc::Layout,
     panic,
@@ -37,7 +37,7 @@ pub struct Task {
     /// The unique identifier of this task.
     id: Tid,
     /// The process which this task belongs to.
-    process: Arc<Process>,
+    process: Weak<Process>,
     /// If this task is a user task. `false` forbids this task to ever enter user mode.
     is_user: bool,
     /// The current state of the thread.
@@ -80,7 +80,7 @@ impl Task {
             stack: unsafe { alloc::alloc::alloc_zeroed(STACK_LAYOUT).into() },
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Acquire),
             state: Mutex::new(TaskState::Ready),
-            process: parent,
+            process: Arc::downgrade(&parent),
             is_user,
             in_execve: AtomicBool::new(false),
         };
@@ -112,7 +112,11 @@ impl Task {
     /// Returns the process which this task belongs to.
     #[inline]
     pub fn get_process(&self) -> Arc<Process> {
-        self.process.clone()
+        if let Some(x) = self.process.upgrade() {
+            x
+        } else {
+            todo!()
+        }
     }
 }
 

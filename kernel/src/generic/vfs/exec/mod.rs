@@ -11,7 +11,6 @@ use alloc::{
     collections::btree_map::BTreeMap,
     string::{String, ToString},
     sync::Arc,
-    vec::Vec,
 };
 
 /// Information passed to [`ExecFormat::load`].
@@ -27,8 +26,6 @@ pub struct ExecInfo {
     pub argc: usize,
     /// How many environment variables are living on the stack.
     pub envc: usize,
-    /// A list of tasks to create.
-    pub tasks: Vec<Task>,
 }
 
 /// An executable format.
@@ -36,8 +33,9 @@ pub trait ExecFormat {
     /// Identifies whether a file is a valid executable of this format.
     fn identify(&self, file: &File) -> bool;
 
-    /// Loads the executable and returns a new process.
-    fn load(&self, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<()>;
+    /// Loads the executable and returns a new initial thread.
+    /// The implementation should not modify `old` at all.
+    fn load(&self, proc: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task>;
 }
 
 static KNOWN_FORMATS: Mutex<BTreeMap<String, Arc<dyn ExecFormat>>> = Mutex::new(BTreeMap::new());

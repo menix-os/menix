@@ -7,10 +7,10 @@ use crate::{
     generic::{
         memory::{
             cache::MemoryObject,
-            pmm::{KernelAlloc, Page},
+            pmm::{KernelAlloc, PAGE_DB, Page},
         },
         posix::errno::{EResult, Errno},
-        process::{sched::Scheduler, task::Task},
+        sched::Scheduler,
         util::{align_up, divide_up, mutex::Mutex, once::Once},
         vfs::file::MmapFlags,
     },
@@ -461,23 +461,42 @@ pub struct PageFaultInfo {
 }
 
 /// Generic page fault handler. May reschedule and return a different task to run.
-pub fn page_fault_handler(info: &PageFaultInfo) -> *mut Task {
-    // Check if the current address space has a mapping at the faulting address.
-    let space = &Scheduler::get_current().get_process().address_space;
-    if let Some(&(phys, flags)) = space
+pub fn page_fault_handler(info: &PageFaultInfo) {
+    // Check if the current address space has a theoretical mapping at the faulting address.
+    let proc = Scheduler::get_current().get_process();
+    let inner = proc.inner.lock();
+    let space = &inner.address_space;
+    if let Some(&(phys, flags)) = inner
+        .address_space
         .mappings
         .lock()
         .get(&(info.ip.value() / arch::virt::get_page_size(VmLevel::L1)))
     {
-        todo!()
+        let db = PAGE_DB.lock();
+        let page = db
+            .get(Page::idx_from_addr(phys))
+            .expect("Mapping table contains an out of bounds address");
+
+        if let Some(object) = &page.object
+            && let Some(phys) = object.try_get_page(page.page_offset)
+        {
+            // If we get here, the accessed address is valid. Map it in the actual page table and return.
+            space
+                .table
+                .map_single::<KernelAlloc>(info.addr, phys, flags, VmLevel::L1)
+                .expect("Failed to map a demand-loaded page");
+            return;
+        }
     }
 
     if info.caused_by_user {
         // TODO: Send SIGSEGV and reschedule.
         // Kill process.
         // Force immediate reschedule.
+        todo!();
     }
 
+    // If any other attempt to recover has failed, we made a mistake.
     panic!(
         "Kernel caused an unrecoverable page fault. Attempted to {} a {} page at {:#x} (IP: {:#x})",
         if info.caused_by_write {

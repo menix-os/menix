@@ -1,6 +1,6 @@
 //! Per-CPU data structures.
 
-use super::{memory::VirtAddr, process::sched::Scheduler};
+use super::{memory::VirtAddr, sched::Scheduler};
 use crate::{
     arch,
     generic::{

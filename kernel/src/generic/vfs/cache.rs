@@ -1,7 +1,8 @@
 use super::inode::INode;
 use crate::generic::{
     posix::errno::{EResult, Errno},
-    process::{Identity, sched::Scheduler},
+    process::Identity,
+    sched::Scheduler,
     util::mutex::Mutex,
     vfs::{File, file::OpenFlags, fs::Mount, inode::NodeOps},
 };
@@ -114,9 +115,9 @@ impl PathNode {
         // If a path starts with '/', it's an absolute path.
         // In that case, skip the first character and use the current root as a starting point.
         let (mut current_node, path) = if path.first().is_some_and(|&x| x == b'/') {
-            (proc.root_dir.lock().clone(), &path[1..])
+            (proc.inner.lock().root_dir.clone(), &path[1..])
         } else {
-            (start.unwrap_or(proc.working_dir.lock().clone()), path)
+            (start.unwrap_or(proc.inner.lock().working_dir.clone()), path)
         };
 
         // Parse each component.

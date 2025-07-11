@@ -24,7 +24,7 @@ pub mod system;
 
 use crate::generic::{
     percpu::CpuData,
-    process::{Identity, Process, sched::Scheduler, task::Task},
+    process::{Identity, Process, task::Task},
     vfs::{File, file::OpenFlags, inode::Mode},
 };
 use alloc::{string::String, sync::Arc};
@@ -81,12 +81,12 @@ pub extern "C" fn main(_: usize, _: usize) {
     )
     .expect("Unable to read the init executable");
 
-    let kernel_proc = Scheduler::get_current().get_process();
-    kernel_proc
+    let init_proc =
+        Arc::new(Process::new("init".into(), None).expect("Unable to create init process"));
+    init_proc
         .fexecve(init_file, &[path], &[])
         .expect("Unable to create init process");
 
-    loop {
-        // TODO: For some reason going past this triggers a #UD.
-    }
+    panic!("Failed to start init");
+    // TODO: For some reason going past this triggers a #UD.
 }
