@@ -1,8 +1,11 @@
-#![allow(unused)]
+mod process;
 
 use super::posix::errno::{EResult, Errno};
+use crate::arch;
+use alloc::string::String;
 
 mod numbers {
+    #![allow(unused)]
     pub const EXIT: usize = 0;
     pub const SYSLOG: usize = 1;
     pub const UNAME: usize = 2;
@@ -140,6 +143,28 @@ mod numbers {
     pub const PTRACE: usize = 134;
 }
 
+type SyscallHandler = fn(usize, usize, usize, usize, usize, usize) -> EResult<usize>;
+
+static DISPATCH_TABLE: [Option<SyscallHandler>; 135] = {
+    let mut table = [None as Option<SyscallHandler>; _];
+    table[numbers::EXIT] = Some(process::exit);
+    table[numbers::ARCHCTL] = Some(|cmd, arg, _, _, _, _| arch::core::archctl(cmd, arg));
+    table[numbers::GETTID] = Some(process::gettid);
+
+    // TODO: TTY stuff
+    table[numbers::WRITE] = Some(|fd, buf, len, _, _, _| {
+        let buf = unsafe { core::slice::from_raw_parts(buf as *const u8, len) };
+        use core::fmt::Write;
+        {
+            let mut writer = crate::generic::log::GLOBAL_LOGGERS.lock();
+            _ = writer.write_fmt(format_args!("{}", String::from_utf8_lossy(buf)));
+        }
+        Ok(len)
+    });
+
+    table
+};
+
 /// Executes the syscall as identified by `num`.
 /// Returns a tuple of (value, error) to the user. An error code of 0 inidcates success.
 /// If the error code is not 0, `value` is not valid and indicates failure.
@@ -152,9 +177,10 @@ pub fn dispatch(
     a4: usize,
     a5: usize,
 ) -> (usize, usize) {
-    let result: EResult<usize> = match num {
-        _ => {
-            warn!("Unknown syscall {:#x} requested by user program", num);
+    let result = match DISPATCH_TABLE.get(num).and_then(|&x| x) {
+        Some(x) => x(a0, a1, a2, a3, a4, a5),
+        None => {
+            warn!("kanker {num}");
             Err(Errno::ENOSYS)
         }
     };

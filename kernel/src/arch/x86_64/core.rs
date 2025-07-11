@@ -1,12 +1,18 @@
 use crate::{
     arch::x86_64::{
-        ARCH_DATA, consts, irq,
+        ARCH_DATA,
+        asm::wrmsr,
+        consts::{self, MSR_FS_BASE},
+        irq,
         system::{
             apic::{self, LocalApic},
             gdt, idt,
         },
     },
-    generic::percpu::{CpuData, LD_PERCPU_START},
+    generic::{
+        percpu::{CpuData, LD_PERCPU_START},
+        posix::errno::{EResult, Errno},
+    },
 };
 use core::{arch::asm, mem::offset_of, ptr::null_mut, sync::atomic::Ordering};
 
@@ -141,18 +147,19 @@ pub(super) fn setup_core(context: &'static CpuData) {
         }
     }
 
-    if cpuid7.ecx & consts::CPUID_7C_UMIP != 0 {
-        cr4 |= consts::CR4_UMIP;
-    }
+    // TODO
+    // if cpuid7.ecx & consts::CPUID_7C_UMIP != 0 {
+    //     cr4 |= consts::CR4_UMIP;
+    // }
 
-    if cpuid7.ebx & consts::CPUID_7B_SMEP != 0 {
-        cr4 |= consts::CR4_SMEP;
-    }
+    // if cpuid7.ebx & consts::CPUID_7B_SMEP != 0 {
+    //     cr4 |= consts::CR4_SMEP;
+    // }
 
-    if cpuid7.ebx & consts::CPUID_7B_SMAP != 0 {
-        cr4 |= consts::CR4_SMAP;
-        cpu.can_smap.store(true, Ordering::Relaxed);
-    }
+    // if cpuid7.ebx & consts::CPUID_7B_SMAP != 0 {
+    //     cr4 |= consts::CR4_SMAP;
+    //     cpu.can_smap.store(true, Ordering::Relaxed);
+    // }
 
     if cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0 {
         cr4 |= consts::CR4_FSGSBASE;
@@ -177,4 +184,13 @@ pub(in crate::arch) fn halt() -> ! {
             core::arch::asm!("cli; hlt");
         }
     }
+}
+
+pub(in crate::arch) fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
+    match cmd {
+        0 => unsafe { wrmsr(MSR_FS_BASE, arg as u64) },
+        _ => return Err(Errno::ENOSYS),
+    }
+
+    Ok(0)
 }

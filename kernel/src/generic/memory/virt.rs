@@ -494,7 +494,6 @@ pub fn page_fault_handler(info: &PageFaultInfo) {
         .lock()
         .get(&(info.addr.value() / arch::virt::get_page_size(VmLevel::L1)))
     {
-        warn!("page does exist!");
         let db = PAGE_DB.lock();
         let page = db
             .get(Page::idx_from_addr(phys))
@@ -503,13 +502,11 @@ pub fn page_fault_handler(info: &PageFaultInfo) {
         if let Some(object) = &page.object
             && let Some(phys) = object.try_get_page(page.page_offset)
         {
-            warn!("Page mapping is valid with flags {:?}", flags);
             // If we get here, the accessed address is valid. Map it in the actual page table and return.
             space
                 .table
                 .map_single::<KernelAlloc>(info.addr, phys, flags, VmLevel::L1)
                 .expect("Failed to map a demand-loaded page");
-            warn!("Page was mapped");
             return;
         }
     }
