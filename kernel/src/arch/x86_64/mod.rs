@@ -6,8 +6,11 @@ pub mod sched;
 pub mod system;
 pub mod virt;
 
-use crate::generic::{irq::IrqHandlerKind, util::mutex::Mutex};
-use ::core::sync::atomic::{AtomicBool, AtomicUsize};
+use crate::generic::{
+    irq::IrqHandlerKind,
+    util::{mutex::Mutex, once::Once},
+};
+use ::core::sync::atomic::AtomicBool;
 use system::gdt::{Gdt, TaskStateSegment};
 
 #[derive(Debug)]
@@ -20,11 +23,11 @@ pub struct ArchPerCpu {
     /// IRQ mappings.
     pub irq_handlers: Mutex<[IrqHandlerKind; 256]>,
     /// Size of the FPU.
-    pub fpu_size: AtomicUsize,
+    pub fpu_size: Once<usize>,
     /// Function called to save the FPU context.
-    fpu_save: AtomicUsize,
+    pub fpu_save: Once<unsafe fn(*mut u8)>,
     /// Function called to restore the FPU context.
-    fpu_restore: AtomicUsize,
+    pub fpu_restore: Once<unsafe fn(*const u8)>,
     /// If this CPU supports the STAC/CLAC instructions.
     pub can_smap: AtomicBool,
 }
@@ -34,9 +37,9 @@ per_cpu!(
         gdt: Mutex::new(Gdt::new()),
         tss: Mutex::new(TaskStateSegment::new()),
         irq_handlers: Mutex::new([const { IrqHandlerKind::None }; 256]),
-        fpu_size: AtomicUsize::new(512),
-        fpu_save: AtomicUsize::new(0),
-        fpu_restore: AtomicUsize::new(0),
+        fpu_size: Once::new(),
+        fpu_save: Once::new(),
+        fpu_restore: Once::new(),
         can_smap: AtomicBool::new(false),
     };
 );

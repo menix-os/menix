@@ -126,19 +126,19 @@ pub(super) fn setup_core(context: &'static CpuData) {
             xcr0 |= 1 << 7;
         }
 
-        unsafe { super::asm::wrxcr(0, xcr0) };
+        unsafe {
+            super::asm::wrxcr(0, xcr0);
 
-        // Change callbacks from FXSAVE to XSAVE.
-        cpu.fpu_size.store(cpuid13.ecx as usize, Ordering::Relaxed); // ECX contains the size of the FPU block to save.
-        cpu.fpu_save
-            .store(&super::asm::xsave as *const _ as _, Ordering::Relaxed);
-        cpu.fpu_restore
-            .store(&super::asm::xrstor as *const _ as _, Ordering::Relaxed);
+            // Change callbacks from FXSAVE to XSAVE.
+            cpu.fpu_size.init(cpuid13.ecx as usize); // ECX contains the size of the FPU block to save.
+            cpu.fpu_save.init(super::asm::xsave);
+            cpu.fpu_restore.init(super::asm::xrstor);
+        }
     } else {
-        cpu.fpu_save
-            .store(&super::asm::fxsave as *const _ as _, Ordering::Relaxed);
-        cpu.fpu_restore
-            .store(&super::asm::fxrstor as *const _ as _, Ordering::Relaxed);
+        unsafe {
+            cpu.fpu_save.init(super::asm::fxsave);
+            cpu.fpu_restore.init(super::asm::fxrstor);
+        }
     }
 
     if cpuid7.ecx & consts::CPUID_7C_UMIP != 0 {
