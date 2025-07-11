@@ -321,7 +321,7 @@ pub static GDT: Gdt = Gdt {
         GdtFlags::Granularity.union(GdtFlags::LongMode),
     ),
     tss: GdtLongDesc::new(
-        size_of::<TaskStateSegment>() as u32,
+        size_of::<TaskStateSegment>() as u32 - 1,
         0,
         GdtAccess::Present.union(GdtAccess::Kernel),
         GdtLongType::TssAvailable,
@@ -336,10 +336,11 @@ pub fn init(cpu: &ArchPerCpu) {
     // Allocate an initial stack for the TSS.
     // TODO: Use kernel stack struct.
     let stack = unsafe { Box::new_zeroed_slice(KERNEL_STACK_SIZE).assume_init() };
-    tss.rsp0 = Box::leak(stack).as_mut_ptr() as *mut u8 as u64 + KERNEL_STACK_SIZE as u64;
+    let val = Box::leak(stack).as_mut_ptr() as *mut u8 as u64 + KERNEL_STACK_SIZE as u64;
+    tss.rsp0 = val;
 
     *gdt = GDT;
-    gdt.tss.set_base(&raw const tss as u64);
+    gdt.tss.set_base(unsafe { cpu.tss.raw_inner() } as u64);
 
     // Construct a register to hold the GDT base and limit.
     let gdtr = GdtRegister {

@@ -23,8 +23,9 @@ pub mod generic;
 pub mod system;
 
 use crate::generic::{
-    percpu::CpuData,
+    percpu::{CPU_DATA, CpuData},
     process::{Identity, Process, task::Task},
+    util::once::Once,
     vfs::{File, file::OpenFlags, inode::Mode},
 };
 use alloc::{string::String, sync::Arc};
@@ -49,6 +50,8 @@ pub fn init() -> ! {
         hint::spin_loop();
     }
 }
+
+static INIT: Once<Arc<Process>> = Once::new();
 
 /// The high-level kernel entry point.
 pub extern "C" fn main(_: usize, _: usize) {
@@ -81,12 +84,17 @@ pub extern "C" fn main(_: usize, _: usize) {
     )
     .expect("Unable to read the init executable");
 
-    let init_proc =
-        Arc::new(Process::new("init".into(), None).expect("Unable to create init process"));
-    init_proc
+    unsafe {
+        INIT.init(Arc::new(
+            Process::new("init".into(), None).expect("Unable to create init process"),
+        ))
+    };
+    INIT.get()
+        .clone()
         .fexecve(init_file, &[path], &[])
         .expect("Unable to create init process");
 
-    panic!("Failed to start init");
-    // TODO: For some reason going past this triggers a #UD.
+    loop {
+        CPU_DATA.get().scheduler.reschedule();
+    }
 }

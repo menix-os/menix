@@ -15,7 +15,7 @@ use crate::{
         vfs::file::MmapFlags,
     },
 };
-use alloc::{alloc::AllocError, collections::btree_map::BTreeMap, sync::Arc};
+use alloc::{alloc::AllocError, collections::btree_map::BTreeMap, slice, sync::Arc};
 use bitflags::bitflags;
 use core::sync::atomic::{AtomicUsize, Ordering};
 
@@ -50,7 +50,7 @@ pub enum PageTableError {
     NeedAllocation,
 }
 
-pub(super) static KERNEL_PAGE_TABLE: Once<Arc<PageTable>> = Once::new();
+pub(crate) static KERNEL_PAGE_TABLE: Once<Arc<PageTable>> = Once::new();
 
 // TODO: Replace with allocator.
 pub static KERNEL_MMAP_BASE_ADDR: AtomicUsize = AtomicUsize::new(0);
@@ -79,10 +79,23 @@ pub struct PageTable {
 
 impl PageTable {
     /// Creates a new page table for a user process.
-    pub fn new_user<P: PageAllocator>(root_level: usize, flags: AllocFlags) -> Self {
+    pub fn new_user<P: PageAllocator>(flags: AllocFlags) -> Self {
+        // We need to have the higher half mapped in every user map for this to work.
+        let user_l1 = P::alloc(1, flags | AllocFlags::Zeroed).unwrap();
+        unsafe {
+            let user_l1_slice: &mut [u8] = slice::from_raw_parts_mut(
+                user_l1.as_hhdm(),
+                arch::virt::get_page_size(VmLevel::L1),
+            );
+            let kernel_l1_slice: &mut [u8] = slice::from_raw_parts_mut(
+                KERNEL_PAGE_TABLE.get().head.lock().as_hhdm(),
+                arch::virt::get_page_size(VmLevel::L1),
+            );
+            user_l1_slice.copy_from_slice(&kernel_l1_slice);
+        }
         Self {
-            head: Mutex::new(P::alloc(1, flags | AllocFlags::Zeroed).unwrap()),
-            root_level,
+            head: Mutex::new(user_l1),
+            root_level: KERNEL_PAGE_TABLE.get().root_level,
             is_user: true,
         }
     }
@@ -240,6 +253,11 @@ impl PageTable {
             *pte = PageTableEntry::new(
                 phys,
                 flags
+                    | if self.is_user {
+                        VmFlags::User
+                    } else {
+                        VmFlags::empty()
+                    }
                     | if level != VmLevel::L1 {
                         VmFlags::Large
                     } else {
@@ -384,10 +402,7 @@ pub struct AddressSpace {
 impl AddressSpace {
     pub fn new() -> Self {
         Self {
-            table: Arc::new(PageTable::new_user::<KernelAlloc>(
-                KERNEL_PAGE_TABLE.get().root_level(),
-                AllocFlags::empty(),
-            )),
+            table: Arc::new(PageTable::new_user::<KernelAlloc>(AllocFlags::empty())),
             mappings: Mutex::default(),
         }
     }
@@ -423,18 +438,25 @@ impl AddressSpace {
         let offset_page = off as usize / page_size;
 
         for p in 0..num_pages {
-            let current_page = p + offset_page;
-            let phys_addr = object.try_get_page(current_page).ok_or(Errno::EINVAL)?;
-            let phys_page_idx = Page::idx_from_addr(phys_addr);
-            let page = pfndb.get_mut(phys_page_idx).ok_or(Errno::EINVAL)?;
+            let phys_addr = object.try_get_page(p + offset_page).ok_or(Errno::EINVAL)?;
+            let page = pfndb
+                .get_mut(Page::idx_from_addr(phys_addr))
+                .ok_or(Errno::EINVAL)?;
 
             // Save the object in the pfndb.
             page.object = Some(object.clone());
-            page.page_offset = p;
+            page.page_offset = p + offset_page;
 
             // Create a mapping for this address space.
-            mappings.insert(start_page + current_page, (phys_addr, prot));
+            mappings.insert(start_page + p, (phys_addr, prot));
         }
+
+        warn!(
+            "Mapped {:x} at offset {:x} with prot {:?}",
+            addr.value(),
+            off,
+            prot
+        );
 
         Ok(())
     }
@@ -470,8 +492,9 @@ pub fn page_fault_handler(info: &PageFaultInfo) {
         .address_space
         .mappings
         .lock()
-        .get(&(info.ip.value() / arch::virt::get_page_size(VmLevel::L1)))
+        .get(&(info.addr.value() / arch::virt::get_page_size(VmLevel::L1)))
     {
+        warn!("page does exist!");
         let db = PAGE_DB.lock();
         let page = db
             .get(Page::idx_from_addr(phys))
@@ -480,11 +503,13 @@ pub fn page_fault_handler(info: &PageFaultInfo) {
         if let Some(object) = &page.object
             && let Some(phys) = object.try_get_page(page.page_offset)
         {
+            warn!("Page mapping is valid with flags {:?}", flags);
             // If we get here, the accessed address is valid. Map it in the actual page table and return.
             space
                 .table
                 .map_single::<KernelAlloc>(info.addr, phys, flags, VmLevel::L1)
                 .expect("Failed to map a demand-loaded page");
+            warn!("Page was mapped");
             return;
         }
     }
@@ -493,7 +518,7 @@ pub fn page_fault_handler(info: &PageFaultInfo) {
         // TODO: Send SIGSEGV and reschedule.
         // Kill process.
         // Force immediate reschedule.
-        todo!();
+        todo!("User process did a segfault");
     }
 
     // If any other attempt to recover has failed, we made a mistake.

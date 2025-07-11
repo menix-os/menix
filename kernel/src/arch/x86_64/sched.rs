@@ -1,3 +1,5 @@
+use alloc::sync::Arc;
+
 use super::{
     ARCH_DATA,
     core::get_per_cpu,
@@ -27,6 +29,7 @@ use core::{
     arch::{asm, naked_asm},
     fmt::Write,
     mem::offset_of,
+    sync::atomic::Ordering,
 };
 
 #[repr(C)]
@@ -131,7 +134,8 @@ struct TaskFrame {
 pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe {
         let cpu = ARCH_DATA.get();
-        cpu.tss.lock().rsp0 = (*to).stack.value() as u64 + KERNEL_STACK_SIZE as u64;
+        cpu.tss.lock().rsp0 =
+            (*to).kernel_stack.load(Ordering::Acquire) as u64 + KERNEL_STACK_SIZE as u64;
 
         if (*from).is_user() {
             let mut from_context = (*from).task_context.lock();

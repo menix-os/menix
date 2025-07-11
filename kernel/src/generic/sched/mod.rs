@@ -51,14 +51,6 @@ impl Scheduler {
             mem::forget(task);
 
             return result;
-
-            // Try to upgrade the weak pointer. If this doesn't work,
-            // the parent is dead and we need to reschedule.
-            //if let Some(x) = result.upgrade() {
-            //    x
-            //} else {
-            //    todo!()
-            //}
         }
     }
 
@@ -79,8 +71,8 @@ impl Scheduler {
             .map(|(_, task)| task.clone())
     }
 
-    /// Runs the scheduler. `preempt` tells the scheduler if it's supposed to handle preemption or not.
-    pub(crate) fn reschedule(&self) {
+    /// Runs the scheduler.
+    pub fn reschedule(&self) {
         let old = unsafe { arch::irq::set_irq_state(false) };
         let from = self.current.load(Ordering::Relaxed);
         let to = Arc::into_raw(self.next().expect("No more tasks to run!")) as *mut Task;
@@ -93,8 +85,34 @@ impl Scheduler {
         self.current.store(to, Ordering::Relaxed);
 
         unsafe {
-            arch::sched::switch(from, to);
+            // If we are switching to a task from another process, we need to update the page table.
+            {
+                let from_proc = (*from).get_process();
+                let to_proc = (*to).get_process();
+                if !Arc::ptr_eq(&from_proc, &to_proc) {
+                    arch::virt::set_page_table(
+                        to_proc.inner.lock().address_space.table.get_head_addr(),
+                    );
+                }
+            }
+
+            let cpu = CPU_DATA.get();
+            (*from)
+                .kernel_stack
+                .store(cpu.kernel_stack.load(Ordering::Acquire), Ordering::Release);
+            (*from)
+                .user_stack
+                .store(cpu.user_stack.load(Ordering::Acquire), Ordering::Release);
+
+            cpu.kernel_stack.store(
+                (*to).kernel_stack.load(Ordering::Acquire),
+                Ordering::Release,
+            );
+            cpu.user_stack
+                .store((*to).user_stack.load(Ordering::Acquire), Ordering::Release);
+
             arch::irq::set_irq_state(old);
+            arch::sched::switch(from, to);
         }
     }
 
@@ -134,7 +152,7 @@ init_stage! {
 fn init() {
     // Set up scheduler.
     let bsp_scheduler = &CpuData::get().scheduler;
-    let initial = Arc::new(Task::new(idle_fn, 0, 0, Process::get_kernel(), false).unwrap());
+    let initial = Arc::new(Task::new(idle_fn, 0, 0, &Process::get_kernel(), false).unwrap());
     bsp_scheduler.add_task(initial.clone());
 
     let to = Arc::into_raw(initial);

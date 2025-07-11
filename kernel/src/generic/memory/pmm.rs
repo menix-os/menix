@@ -143,10 +143,7 @@ impl PageAllocator for KernelAlloc {
 impl Page {
     #[inline]
     pub fn idx_from_addr(address: PhysAddr) -> usize {
-        debug_assert!(address.0 % arch::virt::get_page_size(VmLevel::L1) == 0);
-
-        let pn = address.0 >> arch::virt::get_page_bits();
-        return pn;
+        address.0 / arch::virt::get_page_size(VmLevel::L1)
     }
 
     /// Returns the page number of this page.
