@@ -50,7 +50,7 @@ pub enum PageTableError {
     NeedAllocation,
 }
 
-pub(super) static KERNEL_PAGE_TABLE: Once<PageTable> = Once::new();
+pub(super) static KERNEL_PAGE_TABLE: Once<Arc<PageTable>> = Once::new();
 
 // TODO: Replace with allocator.
 pub static KERNEL_MMAP_BASE_ADDR: AtomicUsize = AtomicUsize::new(0);
