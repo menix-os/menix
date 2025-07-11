@@ -12,6 +12,7 @@ pub mod panic;
 pub mod percpu;
 pub mod posix;
 pub mod process;
+pub mod sched;
 pub mod syscall;
 pub mod util;
 pub mod vfs;

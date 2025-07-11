@@ -1,8 +1,16 @@
-use super::{ARCH_DATA, core::get_per_cpu, system::gdt::Gdt};
+use super::{
+    ARCH_DATA,
+    core::get_per_cpu,
+    system::{apic, gdt::Gdt},
+};
 use crate::{
     arch::{
         self,
-        x86_64::{asm::wrmsr, consts},
+        x86_64::{
+            asm::wrmsr,
+            consts::{self, IDT_RESCHED},
+            system::apic::LAPIC,
+        },
     },
     generic::{
         memory::{
@@ -235,7 +243,7 @@ unsafe extern "C" fn task_entry_thunk() -> ! {
         "mov rdx, r13",
         "push 0", // Make sure to zero this so stack tracing stops here.
         "jmp {task_thunk}",
-        task_thunk = sym crate::generic::process::sched::task_entry,
+        task_thunk = sym crate::generic::sched::task_entry,
     );
 }
 
@@ -262,8 +270,17 @@ pub(in crate::arch) unsafe fn preempt_enable() -> bool {
     return r;
 }
 
-pub unsafe fn force_reschedule() {
-    unsafe { asm!("int 0x20") }; // TODO: Don't hard code this.
+pub unsafe fn remote_reschedule(cpu: u32) {
+    let lapic = LAPIC.get();
+    lapic.send_ipi(
+        apic::IpiTarget::Specific(cpu as u32),
+        consts::IDT_RESCHED,
+        apic::DeliveryMode::Fixed,
+        apic::DestinationMode::Logical,
+        apic::DeliveryStatus::Pending,
+        apic::Level::Assert,
+        apic::TriggerMode::Edge,
+    );
 }
 
 pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {

@@ -1,7 +1,10 @@
 use crate::{
     arch::{
         self,
-        x86_64::{asm, consts},
+        x86_64::{
+            asm,
+            consts::{self, IDT_RESCHED},
+        },
     },
     generic::{
         clock,
@@ -145,8 +148,8 @@ impl LocalApic {
             Ordering::Relaxed,
         );
 
-        // Finally, run the periodic timer interrupt on irq0.
-        lapic.write_reg(regs::LVT_TR, 0x20 | 0x20000);
+        // Finally, run the periodic timer interrupt.
+        lapic.write_reg(regs::LVT_TR, IDT_RESCHED as u64 | 0x20000);
         lapic.write_reg(regs::DCR, 3);
         lapic.write_reg(
             regs::ICR_TIMER,

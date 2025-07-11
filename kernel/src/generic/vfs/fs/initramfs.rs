@@ -163,7 +163,7 @@ pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
 }
 
 init_stage! {
-    #[depends(super::super::VFS_STAGE, crate::generic::process::sched::SCHEDULER_STAGE)]
+    #[depends(super::super::VFS_STAGE, crate::generic::sched::SCHEDULER_STAGE)]
     INITRAMFS_STAGE: "generic.vfs.initramfs" => init;
 }
 

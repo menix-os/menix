@@ -132,7 +132,17 @@ unsafe extern "C" fn idt_handler(context: *const Context) {
     let isr = context.isr;
 
     match isr as u8 {
-        0x20 => {
+        // Exceptions.
+        consts::IDT_PF => {
+            page_fault_handler(context);
+        }
+        // Unhandled exceptions.
+        0x00..0x20 => {
+            error!("{:?}", context);
+            panic!("Got an exception {} on CPU {}", isr, CpuData::get().id);
+        }
+        // IPIs
+        consts::IDT_RESCHED => {
             unsafe { crate::arch::sched::preempt_disable() };
             let cpu = CpuData::get();
             //log!("resched on {}, now {:?}", cpu.id, Scheduler::get_current());
@@ -141,22 +151,13 @@ unsafe extern "C" fn idt_handler(context: *const Context) {
                 cpu.scheduler.reschedule();
             }
         }
-        // Exceptions.
-        0x0E => {
-            page_fault_handler(context);
-        }
-        // Unhandled exceptions.
-        0x00..0x20 => {
-            unsafe { print_context(context) };
-            panic!("Got an exception {} on CPU {}", isr, CpuData::get().id);
-        }
         // Any other ISR is an IRQ with a dynamic handler.
         _ => {
             match &ARCH_DATA.get().irq_handlers.lock()[isr as usize] {
                 IrqHandlerKind::Static(x) => x.handle_immediate(),
                 IrqHandlerKind::Dynamic(x) => x.handle_immediate(),
                 IrqHandlerKind::None => {
-                    panic!("Got an unhandled interrupt {}!", isr);
+                    panic!("Got an unhandled interrupt {:#x}!", isr);
                 }
             };
         }
@@ -181,12 +182,6 @@ fn page_fault_handler(context: &Context) {
     };
 
     generic::memory::virt::page_fault_handler(&info);
-}
-
-unsafe fn print_context(context: *const Context) {
-    unsafe {
-        error!("{:?}", *context);
-    }
 }
 
 // There are some interrupts which generate an error code on the stack, while others do not.

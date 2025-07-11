@@ -1,15 +1,11 @@
 use super::ExecInfo;
-use crate::{
-    arch::sched::jump_to_user,
-    generic::{
-        self,
-        memory::{VirtAddr, virt::VmFlags},
-        posix::errno::{EResult, Errno},
-        process::{Process, sched::Scheduler, task::Task, to_user},
-        vfs::{
-            exec::ExecFormat,
-            file::{File, MmapFlags},
-        },
+use crate::generic::{
+    memory::virt::VmFlags,
+    posix::errno::{EResult, Errno},
+    process::{Process, task::Task, to_user},
+    vfs::{
+        exec::ExecFormat,
+        file::{File, MmapFlags},
     },
 };
 use alloc::sync::Arc;
@@ -348,7 +344,7 @@ impl ExecFormat for ElfFormat {
         return true;
     }
 
-    fn load(&self, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<()> {
+    fn load(&self, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task> {
         let base = 0x40000; // Start mapping a relocatable ELF at this address.
 
         // Read the header.
@@ -404,7 +400,6 @@ impl ExecFormat for ElfFormat {
             }
         }
 
-        // Setup the stack according to the SYSV ABI.
         match elf_hdr.e_ident[EI_OSABI] {
             ELFOSABI_SYSV => {
                 // TODO: Setup stack.
@@ -413,15 +408,7 @@ impl ExecFormat for ElfFormat {
         }
 
         // Create the main thread.
-        info.tasks.push(Task::new(
-            to_user,
-            elf_hdr.e_entry as usize,
-            0,
-            old.clone(),
-            true,
-        )?);
-
-        Ok(())
+        Task::new(to_user, elf_hdr.e_entry as usize, 0, old.clone(), true)
     }
 }
 
