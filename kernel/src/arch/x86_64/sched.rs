@@ -8,7 +8,7 @@ use crate::{
         self,
         x86_64::{
             asm::wrmsr,
-            consts::{self, IDT_RESCHED},
+            consts::{self},
             system::apic::LAPIC,
         },
     },
@@ -19,7 +19,7 @@ use crate::{
             virt::KERNEL_STACK_SIZE,
         },
         percpu::CpuData,
-        posix::errno::{EResult, Errno},
+        posix::errno::EResult,
         process::task::Task,
     },
 };
@@ -27,7 +27,6 @@ use core::{
     arch::{asm, naked_asm},
     fmt::Write,
     mem::offset_of,
-    sync::atomic::Ordering,
 };
 
 #[repr(C)]
@@ -136,8 +135,7 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
 
         if (*from).is_user() {
             let mut from_context = (*from).task_context.lock();
-            let save = cpu.fpu_save.load(Ordering::Relaxed) as *const fn(*mut u8);
-            (*save)(from_context.fpu_region);
+            cpu.fpu_save.get()(from_context.fpu_region);
             from_context.ds = super::asm::read_ds();
             from_context.es = super::asm::read_es();
             from_context.fs = super::asm::read_fs();
@@ -146,8 +144,7 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
 
         if (*to).is_user() {
             let mut to_context = (*to).task_context.lock();
-            let restore = cpu.fpu_restore.load(Ordering::Relaxed) as *const fn(*const u8);
-            (*restore)(to_context.fpu_region);
+            cpu.fpu_restore.get()(to_context.fpu_region);
             to_context.ds = super::asm::read_ds();
             to_context.es = super::asm::read_es();
             to_context.fs = super::asm::read_fs();
@@ -219,9 +216,7 @@ pub(in crate::arch) fn init_task(
 
         if is_user {
             context.fpu_region =
-                KernelAlloc::alloc_bytes(cpu.fpu_size.load(Ordering::Relaxed), AllocFlags::Zeroed)
-                    .map_err(|_| Errno::ENOMEM)?
-                    .as_hhdm();
+                KernelAlloc::alloc_bytes(*cpu.fpu_size.get(), AllocFlags::Zeroed)?.as_hhdm();
             context.ds = super::asm::read_ds();
             context.es = super::asm::read_es();
             context.fs = super::asm::read_fs();

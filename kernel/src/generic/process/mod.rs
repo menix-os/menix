@@ -5,7 +5,6 @@ use crate::generic::{
     percpu::CPU_DATA,
     posix::errno::{EResult, Errno},
     process::task::Task,
-    sched::Scheduler,
     util::{mutex::Mutex, once::Once},
     vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
 };
@@ -49,6 +48,10 @@ impl Process {
 
     pub fn get_name(&self) -> &str {
         &self.name
+    }
+
+    pub fn get_parent(&self) -> Option<Arc<Self>> {
+        self.parent.clone()
     }
 
     pub fn new(name: String, parent: Option<Arc<Self>>) -> EResult<Self> {
@@ -122,6 +125,7 @@ impl Process {
     }
 }
 
+/// Entry point for tasks wanting to jump to user space.
 pub extern "C" fn to_user(ip: usize, sp: usize) {
     unsafe { crate::arch::sched::jump_to_user(VirtAddr::from(ip), VirtAddr::from(sp)) };
 }

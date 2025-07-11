@@ -9,10 +9,7 @@ use crate::{
         util::mutex::Mutex,
     },
 };
-use alloc::{
-    collections::btree_map::BTreeMap,
-    sync::{Arc, Weak},
-};
+use alloc::{collections::btree_map::BTreeMap, sync::Arc};
 use core::{
     mem,
     ptr::null_mut,
