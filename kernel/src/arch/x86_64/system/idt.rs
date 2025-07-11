@@ -89,7 +89,7 @@ pub struct IdtEntry {
 }
 
 #[repr(u8)]
-pub enum GateType {
+enum GateType {
     Interrupt = 0xE,
     Trap = 0xF,
 }
@@ -235,7 +235,7 @@ unsafe extern "C" fn interrupt_stub_internal() {
         "push r15",
         "cld",
         // Zero out the base pointer since we can't trust it.
-        //"xor rbp, rbp",
+        "xor rbp, rbp",
         // Load the frame as first argument.
         "mov rdi, rsp",
         "call {interrupt_handler}",

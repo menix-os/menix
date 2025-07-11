@@ -22,9 +22,9 @@ pub struct CpuData {
     /// The ID of this CPU.
     pub id: usize,
     /// Stack pointer for kernel mode. Only used for task switching.
-    pub kernel_stack: VirtAddr,
+    pub kernel_stack: AtomicUsize,
     /// Stack pointer for user mode.
-    pub user_stack: VirtAddr,
+    pub user_stack: AtomicUsize,
     /// Whether this CPU is online.
     pub online: AtomicBool,
     /// Whether this CPU is present.
@@ -123,8 +123,8 @@ impl<T> PerCpuData<T> {
 pub static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
     this: &raw const LD_PERCPU_START as *mut CpuData,
     id: 0,
-    kernel_stack: VirtAddr::null(),
-    user_stack: VirtAddr::null(),
+    kernel_stack: AtomicUsize::new(0),
+    user_stack: AtomicUsize::new(0),
     online: AtomicBool::new(false),
     present: AtomicBool::new(false),
     scheduler: Scheduler::new(),

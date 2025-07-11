@@ -8,7 +8,7 @@ use crate::generic::{
     util::{mutex::Mutex, once::Once},
     vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
 };
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// A unique process ID.
@@ -55,6 +55,14 @@ impl Process {
     }
 
     pub fn new(name: String, parent: Option<Arc<Self>>) -> EResult<Self> {
+        Self::new_with_space(name, parent, Arc::new(AddressSpace::new()))
+    }
+
+    fn new_with_space(
+        name: String,
+        parent: Option<Arc<Self>>,
+        space: Arc<AddressSpace>,
+    ) -> EResult<Self> {
         let (root, cwd, identity) = match &parent {
             Some(x) => {
                 let inner = x.inner.lock();
@@ -73,7 +81,7 @@ impl Process {
             parent,
             inner: Mutex::new(InnerProcess {
                 threads: Vec::new(),
-                address_space: Arc::new(AddressSpace::new()),
+                address_space: space,
                 root_dir: root,
                 working_dir: cwd,
                 identity,
@@ -82,8 +90,8 @@ impl Process {
     }
 
     /// Returns the kernel process.
-    pub fn get_kernel() -> Arc<Self> {
-        KERNEL_PROCESS.get().clone()
+    pub fn get_kernel() -> &'static Arc<Self> {
+        KERNEL_PROCESS.get()
     }
 
     /// Forks a process into a new one.
@@ -117,6 +125,7 @@ impl Process {
         inner.threads.clear();
         inner.threads.push(init.clone());
         inner.address_space = Arc::new(info.space);
+        drop(inner);
 
         CPU_DATA.get().scheduler.add_task(init);
         CPU_DATA.get().scheduler.reschedule();
@@ -172,7 +181,15 @@ fn init() {
     // Create the kernel process and task.
     unsafe {
         KERNEL_PROCESS.init(Arc::new(
-            Process::new("kernel".into(), None).expect("Unable to create the main kernel process"),
+            Process::new_with_space(
+                "kernel".into(),
+                None,
+                Arc::new(AddressSpace {
+                    table: super::memory::virt::KERNEL_PAGE_TABLE.get().clone(),
+                    mappings: Mutex::new(BTreeMap::new()),
+                }),
+            )
+            .expect("Unable to create the main kernel process"),
         ))
     };
 }

@@ -2,16 +2,21 @@ use super::ExecInfo;
 use crate::{
     arch,
     generic::{
-        memory::{cache::MemoryObject, virt::VmFlags},
+        memory::{
+            VirtAddr,
+            cache::MemoryObject,
+            virt::{AddressSpace, VmFlags, VmLevel},
+        },
         posix::errno::{EResult, Errno},
         process::{Process, task::Task, to_user},
         vfs::{
             exec::ExecFormat,
-            file::{File, MmapFlags},
+            file::{File, MmapFlags, OpenFlags},
+            inode::Mode,
         },
     },
 };
-use alloc::sync::Arc;
+use alloc::{string::String, sync::Arc};
 use bytemuck::{Pod, Zeroable};
 
 // ELF Header Identification
@@ -327,6 +332,102 @@ static_assert!(size_of::<ElfHdr>() == 64);
 // Yes I know ELF already has "Format" in the name.
 struct ElfFormat;
 
+impl ElfFormat {
+    // Loads an ELF file into an address space. Returns the entry point address.
+    fn load_file(file: &Arc<File>, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<VirtAddr> {
+        // Read the header.
+        let mut hdr_data = [0u8; size_of::<ElfHdr>()];
+        file.pread(&mut hdr_data, 0)?;
+        let elf_hdr = bytemuck::pod_read_unaligned::<ElfHdr>(&hdr_data);
+
+        // TODO: Do the rest of IDENT checks.
+        if elf_hdr.e_ident[EI_VERSION] != EV_CURRENT {
+            return Err(Errno::ENOEXEC);
+        }
+        if elf_hdr.e_machine != EM_CURRENT {
+            return Err(Errno::ENOEXEC);
+        }
+
+        // Start mapping a relocatable ELF at this address.
+        let base = if elf_hdr.e_type == ET_EXEC {
+            0
+        } else {
+            0x600000
+        };
+
+        let page_size = arch::virt::get_page_size(VmLevel::L1);
+
+        // Iterate all PHDRs.
+        for i in 0..elf_hdr.e_phnum {
+            let mut phdr_data = vec![0u8; elf_hdr.e_phentsize as usize];
+            file.pread(
+                &mut phdr_data,
+                elf_hdr.e_phoff as u64 + elf_hdr.e_phentsize as u64 * i as u64,
+            )?;
+            let phdr = bytemuck::pod_read_unaligned::<ElfPhdr>(&phdr_data);
+
+            match phdr.p_type {
+                PT_LOAD => {
+                    let mut prot = VmFlags::empty();
+                    if phdr.p_flags & PF_READ != 0 {
+                        prot |= VmFlags::Read;
+                    }
+                    if phdr.p_flags & PF_WRITE != 0 {
+                        prot |= VmFlags::Write;
+                    }
+                    if phdr.p_flags & PF_EXECUTE != 0 {
+                        prot |= VmFlags::Exec;
+                    }
+
+                    let misalign = phdr.p_vaddr as usize & (page_size - 1);
+                    let map_address = base + phdr.p_vaddr as usize - misalign;
+                    let backed_map_size =
+                        (phdr.p_filesz as usize + misalign + page_size - 1) & !(page_size - 1);
+                    let total_map_size =
+                        (phdr.p_memsz as usize + misalign + page_size - 1) & !(page_size - 1);
+
+                    file.mmap(
+                        &info.space,
+                        (map_address).into(),
+                        backed_map_size,
+                        prot,
+                        MmapFlags::Fixed | MmapFlags::Private,
+                        (phdr.p_offset as usize - misalign) as _,
+                    )?;
+
+                    if total_map_size > backed_map_size {
+                        let private_map = Arc::new(MemoryObject::new_phys());
+                        info.space.map_object(
+                            private_map,
+                            (map_address + backed_map_size).into(),
+                            total_map_size - backed_map_size,
+                            prot,
+                            MmapFlags::Fixed | MmapFlags::Private | MmapFlags::Anonymous,
+                            0,
+                        )?;
+                    }
+                }
+                PT_PHDR => {}
+                PT_INTERP => {
+                    let mut interp_name = vec![0u8; phdr.p_filesz as usize - 1]; // Minus the trailing NUL.
+                    file.pread(&mut interp_name, phdr.p_offset)?;
+                    // Open the interpreter and save it in the info.
+                    info.interpreter = Some(File::open(
+                        Some(file.clone()),
+                        &interp_name,
+                        OpenFlags::ReadOnly | OpenFlags::Executable,
+                        Mode::empty(),
+                        &old.inner.lock().identity,
+                    )?)
+                }
+                _ => (),
+            }
+        }
+
+        Ok((elf_hdr.e_entry as usize + base).into())
+    }
+}
+
 impl ExecFormat for ElfFormat {
     fn identify(&self, file: &File) -> bool {
         let mut buffer = [0u8; size_of::<ElfHdr>()];
@@ -348,97 +449,34 @@ impl ExecFormat for ElfFormat {
     }
 
     fn load(&self, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task> {
-        // Read the header.
-        let mut hdr_data = [0u8; size_of::<ElfHdr>()];
-        info.executable.pread(&mut hdr_data, 0)?;
-        let elf_hdr = bytemuck::pod_read_unaligned::<ElfHdr>(&hdr_data);
+        let page_size = arch::virt::get_page_size(VmLevel::L1);
 
-        // TODO: Do the rest of IDENT checks.
-        if elf_hdr.e_ident[EI_VERSION] != EV_CURRENT {
-            return Err(Errno::ENOEXEC);
-        }
-        if elf_hdr.e_machine != EM_CURRENT {
-            return Err(Errno::ENOEXEC);
-        }
-
-        // Start mapping a relocatable ELF at this address.
-        let base = if elf_hdr.e_type == ET_EXEC {
-            0
-        } else {
-            todo!()
-        };
-
-        // Iterate all PHDRs.
-        for i in 0..elf_hdr.e_phnum {
-            let mut phdr_data = vec![0u8; elf_hdr.e_phentsize as usize];
-            info.executable.pread(
-                &mut phdr_data,
-                elf_hdr.e_phoff as u64 + elf_hdr.e_phentsize as u64 * i as u64,
-            )?;
-            let phdr = bytemuck::pod_read_unaligned::<ElfPhdr>(&phdr_data);
-
-            match phdr.p_type {
-                PT_LOAD => {
-                    let mut prot = VmFlags::empty();
-                    if phdr.p_flags & PF_READ != 0 {
-                        prot |= VmFlags::Read;
-                    }
-                    if phdr.p_flags & PF_WRITE != 0 {
-                        prot |= VmFlags::Write;
-                    }
-                    if phdr.p_flags & PF_EXECUTE != 0 {
-                        prot |= VmFlags::Exec;
-                    }
-
-                    info.executable.mmap(
-                        &info.space,
-                        (phdr.p_vaddr + base).into(),
-                        phdr.p_filesz as _,
-                        prot,
-                        MmapFlags::Fixed | MmapFlags::Private,
-                        phdr.p_offset as _,
-                    )?;
-                }
-                PT_PHDR => {}
-                PT_INTERP => {
-                    let mut interp_name = vec![0u8; phdr.p_filesz as usize - 1]; // Minus the trailing NUL.
-                    info.executable.pread(&mut interp_name, phdr.p_offset)?;
-                }
-                _ => (),
-            }
+        let mut entry = Self::load_file(&info.executable.clone(), old, info)?;
+        if let Some(x) = &info.interpreter {
+            entry = Self::load_file(&x.clone(), old, info)?;
         }
 
         // Setup stack.
 
         // Calculate the start of the user address.
-        let highest = 1usize
-            << (arch::virt::get_level_bits() * arch::virt::get_num_levels()
+        let highest = (1usize
+            << arch::virt::get_level_bits() * arch::virt::get_num_levels()
                 + arch::virt::get_page_bits()
-                - 1);
+                - 1)
+            - page_size;
 
         let stack = Arc::new(MemoryObject::new_phys());
         info.space.map_object(
             stack,
-            (highest - (1024 * 1024)).into(), // 1MiB stack.
-            1024 * 1024,
+            (highest - (1024 * 1024)).into(),
+            1024 * 1024, // 1MiB stack.
             VmFlags::Read | VmFlags::Write,
             MmapFlags::Fixed | MmapFlags::Private,
             0,
         )?;
 
-        match elf_hdr.e_ident[EI_OSABI] {
-            ELFOSABI_SYSV => {}
-            _ => return Err(Errno::ENOEXEC),
-        }
-
         // Create the main thread.
-        Task::new(
-            to_user,
-            elf_hdr.e_entry as usize,
-            highest - 0x10,
-            old.clone(),
-            true,
-        )
+        Task::new(to_user, entry.value(), highest - 0x10, &old, true)
     }
 }
 
