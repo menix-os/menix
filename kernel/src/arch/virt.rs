@@ -24,7 +24,7 @@ pub fn get_max_leaf_level() -> VmLevel {
     internal::virt::get_max_leaf_level()
 }
 
-/// Gets the amount of
+/// Gets the amount of page levels in a virtual address.
 pub fn get_num_levels() -> usize {
     internal::virt::get_num_levels()
 }

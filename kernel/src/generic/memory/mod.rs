@@ -15,6 +15,7 @@ use crate::{
         util::{align_down, align_up},
     },
 };
+use alloc::sync::Arc;
 use bump::BumpAllocator;
 use bytemuck::AnyBitPattern;
 use core::{
@@ -234,7 +235,7 @@ fn init() {
     // ------------------------------------
 
     // Remap the kernel in our own page table.
-    unsafe {
+    let table = unsafe {
         log!("Using {}-level paging for page table", paging_level);
         let table = PageTable::new_kernel::<BumpAllocator>(paging_level, AllocFlags::empty());
 
@@ -294,11 +295,9 @@ fn init() {
         // Activate the new page table.
         table.set_active();
 
-        // Save the page table.
-        virt::KERNEL_PAGE_TABLE.init(table);
-
         log!("Kernel map is now active");
-    }
+        table
+    };
 
     // We record metadata for every single page of available memory in a large array.
     // This array is contiguous in virtual memory, but is sparsely populated.
@@ -319,14 +318,13 @@ fn init() {
             page_size,
         );
 
-        let kernel_table = PageTable::get_kernel();
         for page in (0..=length).step_by(page_size) {
             // We can't free any memory at this point, so we have to make sure we need every single one.
-            if kernel_table.is_mapped((virt + page).into()) {
+            if table.is_mapped((virt + page).into()) {
                 continue;
             }
 
-            kernel_table
+            table
                 .map_single::<BumpAllocator>(
                     (virt + page).into(),
                     BumpAllocator::alloc(1, AllocFlags::Zeroed).unwrap(),
@@ -358,6 +356,9 @@ fn init() {
 
     // Initialize the physical memory allocator.
     pmm::init(&memory_map, (page_base as *mut Page, page_length));
+
+    // Save the page table.
+    unsafe { virt::KERNEL_PAGE_TABLE.init(Arc::new(table)) };
 
     // Set the MMAP base to right after the page table. Make sure this lands on a new PTE so we can map regular pages.
     // TODO: Use a virtual memory allocator instead.

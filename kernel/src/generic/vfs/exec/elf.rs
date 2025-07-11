@@ -1,11 +1,14 @@
 use super::ExecInfo;
-use crate::generic::{
-    memory::virt::VmFlags,
-    posix::errno::{EResult, Errno},
-    process::{Process, task::Task, to_user},
-    vfs::{
-        exec::ExecFormat,
-        file::{File, MmapFlags},
+use crate::{
+    arch,
+    generic::{
+        memory::{cache::MemoryObject, virt::VmFlags},
+        posix::errno::{EResult, Errno},
+        process::{Process, task::Task, to_user},
+        vfs::{
+            exec::ExecFormat,
+            file::{File, MmapFlags},
+        },
     },
 };
 use alloc::sync::Arc;
@@ -47,11 +50,11 @@ pub const ELFOSABI_HPUX: u8 = 1; // HP-UX operating system
 pub const ELFOSABI_STANDALONE: u8 = 255; // Standalone (embedded) application
 
 // ELF Header Type
-pub const ET_NONE: u8 = 0;
-pub const ET_REL: u8 = 1;
-pub const ET_EXEC: u8 = 2;
-pub const ET_DYN: u8 = 3;
-pub const ET_CORE: u8 = 4;
+pub const ET_NONE: u16 = 0;
+pub const ET_REL: u16 = 1;
+pub const ET_EXEC: u16 = 2;
+pub const ET_DYN: u16 = 3;
+pub const ET_CORE: u16 = 4;
 
 // Program Header Types
 pub const PT_NULL: u32 = 0x00000000;
@@ -345,8 +348,6 @@ impl ExecFormat for ElfFormat {
     }
 
     fn load(&self, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task> {
-        let base = 0x40000; // Start mapping a relocatable ELF at this address.
-
         // Read the header.
         let mut hdr_data = [0u8; size_of::<ElfHdr>()];
         info.executable.pread(&mut hdr_data, 0)?;
@@ -359,6 +360,13 @@ impl ExecFormat for ElfFormat {
         if elf_hdr.e_machine != EM_CURRENT {
             return Err(Errno::ENOEXEC);
         }
+
+        // Start mapping a relocatable ELF at this address.
+        let base = if elf_hdr.e_type == ET_EXEC {
+            0
+        } else {
+            todo!()
+        };
 
         // Iterate all PHDRs.
         for i in 0..elf_hdr.e_phnum {
@@ -400,15 +408,37 @@ impl ExecFormat for ElfFormat {
             }
         }
 
+        // Setup stack.
+
+        // Calculate the start of the user address.
+        let highest = 1usize
+            << (arch::virt::get_level_bits() * arch::virt::get_num_levels()
+                + arch::virt::get_page_bits()
+                - 1);
+
+        let stack = Arc::new(MemoryObject::new_phys());
+        info.space.map_object(
+            stack,
+            (highest - (1024 * 1024)).into(), // 1MiB stack.
+            1024 * 1024,
+            VmFlags::Read | VmFlags::Write,
+            MmapFlags::Fixed | MmapFlags::Private,
+            0,
+        )?;
+
         match elf_hdr.e_ident[EI_OSABI] {
-            ELFOSABI_SYSV => {
-                // TODO: Setup stack.
-            }
+            ELFOSABI_SYSV => {}
             _ => return Err(Errno::ENOEXEC),
         }
 
         // Create the main thread.
-        Task::new(to_user, elf_hdr.e_entry as usize, 0, old.clone(), true)
+        Task::new(
+            to_user,
+            elf_hdr.e_entry as usize,
+            highest - 0x10,
+            old.clone(),
+            true,
+        )
     }
 }
 
