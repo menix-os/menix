@@ -2,6 +2,7 @@ fn main() {
     let bindings = bindgen::builder()
         .use_core()
         .wrap_unsafe_ops(true)
+        .derive_copy(true)
         .derive_default(true)
         .derive_debug(true)
         .prepend_enum_name(false)

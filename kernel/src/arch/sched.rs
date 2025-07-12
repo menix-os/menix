@@ -14,6 +14,7 @@ assert_trait_impl!(TaskContext, Clone);
 assert_trait_impl!(TaskContext, Copy);
 
 /// Returns the current task running on this CPU.
+/// DO NOT USE THIS DIRECTLY. Use [`crate::generic::process::sched::Scheduler::get_current`] instead.
 /// # Safety
 /// The implementation of this function must be an atomic operation for this to be memory safe!
 #[inline]
@@ -38,15 +39,17 @@ pub unsafe fn preempt_enable() -> bool {
 }
 
 /// Switches the current CPU context from one task to another.
+///
+/// # Safety
+/// The caller must ensure that `from` and `to` are both valid tasks and
+/// that both arguments do not point to the same task.
 pub unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe { internal::sched::switch(from, to) }
 }
 
-/// Forces a rescheduling interrupt.
-/// # Safety
-/// Rescheduling must be safe at the point of this call.
-pub unsafe fn force_reschedule() {
-    unsafe { internal::sched::force_reschedule() }
+/// Performs a reschedule on a given CPU.
+pub unsafe fn remote_reschedule(cpu: u32) {
+    unsafe { internal::sched::remote_reschedule(cpu) }
 }
 
 /// Initializes a new task.

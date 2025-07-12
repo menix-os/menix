@@ -1,18 +1,14 @@
-use super::{Pid, Process};
+use super::Process;
 use crate::{
     arch::{self},
-    generic::{
-        memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
-        posix::errno::EResult,
-        util::mutex::Mutex,
-    },
+    generic::{memory::virt::KERNEL_STACK_SIZE, posix::errno::EResult, util::mutex::Mutex},
 };
-use alloc::sync::Arc;
+use alloc::sync::{Arc, Weak};
 use core::{
     alloc::Layout,
     panic,
     ptr::NonNull,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -37,7 +33,7 @@ pub struct Task {
     /// The unique identifier of this task.
     id: Tid,
     /// The process which this task belongs to.
-    process: Option<Arc<Process>>,
+    process: Weak<Process>,
     /// If this task is a user task. `false` forbids this task to ever enter user mode.
     is_user: bool,
     /// The current state of the thread.
@@ -47,12 +43,15 @@ pub struct Task {
     /// The saved context of a task while it is not running.
     pub task_context: Mutex<arch::sched::TaskContext>,
     /// The kernel stack for this task.
-    // TODO: Use kernel stack structure that handles memory management.
-    pub stack: VirtAddr,
+    pub kernel_stack: AtomicUsize,
+    /// The kernel stack for this task.
+    pub user_stack: AtomicUsize,
     /// The amount of time that this task can live on.
     pub ticks: usize,
     /// A value between -20 and 19, where -20 is the highest priority and 0 is a neutral priority.
     pub priority: i8,
+    /// Whether the current task is in the process of being execve'd.
+    pub in_execve: AtomicBool,
 }
 
 impl Task {
@@ -61,7 +60,7 @@ impl Task {
         entry: extern "C" fn(usize, usize),
         arg1: usize,
         arg2: usize,
-        parent: Option<Arc<Process>>,
+        parent: &Arc<Process>,
         is_user: bool,
     ) -> EResult<Self> {
         // TODO: see above
@@ -75,11 +74,15 @@ impl Task {
             task_context: Mutex::new(arch::sched::TaskContext::default()),
             ticks: 0,
             priority: 0,
-            stack: unsafe { alloc::alloc::alloc_zeroed(STACK_LAYOUT).into() },
+            kernel_stack: AtomicUsize::new(
+                unsafe { alloc::alloc::alloc_zeroed(STACK_LAYOUT) } as usize
+            ),
+            user_stack: AtomicUsize::new(0),
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Acquire),
             state: Mutex::new(TaskState::Ready),
-            process: parent,
+            process: Arc::downgrade(parent),
             is_user,
+            in_execve: AtomicBool::new(false),
         };
 
         arch::sched::init_task(
@@ -87,7 +90,7 @@ impl Task {
             entry,
             arg1,
             arg2,
-            result.stack,
+            result.kernel_stack.load(Ordering::Acquire).into(),
             is_user,
         )?;
 
@@ -106,10 +109,14 @@ impl Task {
         self.id
     }
 
-    /// Returns the process which this task belongs to. If it doesn't belong to any, [`None`] is returned.
+    /// Returns the process which this task belongs to.
     #[inline]
-    pub fn get_process(&self) -> Option<Pid> {
-        self.process.as_ref().map(|x| x.get_pid())
+    pub fn get_process(&self) -> Arc<Process> {
+        if let Some(x) = self.process.upgrade() {
+            x
+        } else {
+            todo!()
+        }
     }
 }
 

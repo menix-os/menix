@@ -1,5 +1,6 @@
 // We don't want to use the bump allocator anywhere after initial setup.
 mod bump;
+pub mod cache;
 pub mod mmio;
 pub mod pmm;
 pub mod slab;
@@ -14,6 +15,7 @@ use crate::{
         util::{align_down, align_up},
     },
 };
+use alloc::sync::Arc;
 use bump::BumpAllocator;
 use bytemuck::AnyBitPattern;
 use core::{
@@ -24,7 +26,7 @@ use core::{
 };
 use pmm::{AllocFlags, Page, PageAllocator};
 use slab::ALLOCATOR;
-use virt::{KERNEL_PAGE_TABLE, PageTable, VmFlags, VmLevel};
+use virt::{PageTable, VmFlags, VmLevel};
 
 static HHDM_START: Once<VirtAddr> = Once::new();
 
@@ -172,13 +174,13 @@ pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
     };
 }
 
+init_stage! {
+    #[depends(crate::arch::EARLY_INIT_STAGE)]
+    pub MEMORY_STAGE: "generic.memory" => init;
+}
+
 /// Bootstraps the memory allocators and kernel virtual page table.
-///
-/// # Safety
-///
-/// Must be called as soon as control is handed to [`crate::main`] or the system won't function!
-#[deny(dead_code)]
-pub unsafe fn init() {
+fn init() {
     let info = BootInfo::get();
 
     let kernel_phys = info
@@ -199,32 +201,15 @@ pub unsafe fn init() {
 
     // Print the memory map.
     memory_map.iter().for_each(|x| {
+        if x.length == 0 {
+            return;
+        }
         log!(
             "[{:#018x} - {:#018x}]",
             x.address.0,
             x.address.0 + x.length - 1
         )
     });
-
-    // Ignore 16-bit memory. This is 64KiB at most, and is required on some architectures like x86.
-    for entry in memory_map.iter_mut() {
-        if entry.address.value() >= 1 << 16 {
-            continue;
-        }
-
-        warn!(
-            "Dropping 16-bit memory starting at {:#018x}",
-            entry.address.value()
-        );
-
-        // If the entry is longer than 64KiB, shrink it in place. If it's not, completely ignore the entry.
-        if entry.address + entry.length >= PhysAddr(1 << 16) {
-            entry.length -= (1 << 16) - entry.address.value();
-            entry.address = PhysAddr(1 << 16);
-        } else {
-            entry.length = 0;
-        }
-    }
 
     let highest_addr = memory_map
         .iter()
@@ -250,9 +235,9 @@ pub unsafe fn init() {
     // ------------------------------------
 
     // Remap the kernel in our own page table.
-    unsafe {
+    let table = unsafe {
         log!("Using {}-level paging for page table", paging_level);
-        let mut table = PageTable::new_kernel::<BumpAllocator>(paging_level);
+        let table = PageTable::new_kernel::<BumpAllocator>(paging_level, AllocFlags::empty());
 
         let text_start = VirtAddr(&raw const virt::LD_TEXT_START as usize);
         let text_end = VirtAddr(&raw const virt::LD_TEXT_END as usize);
@@ -310,12 +295,9 @@ pub unsafe fn init() {
         // Activate the new page table.
         table.set_active();
 
-        // Save the page table.
-        let mut kernel_table = virt::KERNEL_PAGE_TABLE.lock();
-        *kernel_table = table;
-
         log!("Kernel map is now active");
-    }
+        table
+    };
 
     // We record metadata for every single page of available memory in a large array.
     // This array is contiguous in virtual memory, but is sparsely populated.
@@ -336,14 +318,13 @@ pub unsafe fn init() {
             page_size,
         );
 
-        let mut kernel_table = KERNEL_PAGE_TABLE.lock();
         for page in (0..=length).step_by(page_size) {
             // We can't free any memory at this point, so we have to make sure we need every single one.
-            if kernel_table.is_mapped((virt + page).into()) {
+            if table.is_mapped((virt + page).into()) {
                 continue;
             }
 
-            kernel_table
+            table
                 .map_single::<BumpAllocator>(
                     (virt + page).into(),
                     BumpAllocator::alloc(1, AllocFlags::Zeroed).unwrap(),
@@ -375,6 +356,9 @@ pub unsafe fn init() {
 
     // Initialize the physical memory allocator.
     pmm::init(&memory_map, (page_base as *mut Page, page_length));
+
+    // Save the page table.
+    unsafe { virt::KERNEL_PAGE_TABLE.init(Arc::new(table)) };
 
     // Set the MMAP base to right after the page table. Make sure this lands on a new PTE so we can map regular pages.
     // TODO: Use a virtual memory allocator instead.

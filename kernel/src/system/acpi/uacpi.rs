@@ -8,8 +8,8 @@ use crate::{
         clock,
         memory::{
             free, malloc,
-            pmm::FreeList,
-            virt::{KERNEL_PAGE_TABLE, VmFlags, VmLevel},
+            pmm::KernelAlloc,
+            virt::{PageTable, VmFlags, VmLevel},
         },
         util::{self, spin::SpinLock},
     },
@@ -34,9 +34,8 @@ extern "C" fn uacpi_kernel_map(addr: uacpi_phys_addr, len: uacpi_size) -> *mut c
     let difference = (addr as usize - aligned_addr);
     let aligned_len = util::align_up(len + difference, arch::virt::get_page_size(VmLevel::L1));
     return unsafe {
-        KERNEL_PAGE_TABLE
-            .lock()
-            .map_memory::<FreeList>(
+        PageTable::get_kernel()
+            .map_memory::<KernelAlloc>(
                 aligned_addr.into(),
                 VmFlags::Read | VmFlags::Write,
                 VmLevel::L1,
@@ -157,7 +156,7 @@ extern "C" fn uacpi_kernel_get_nanoseconds_since_boot() -> uacpi_u64 {
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_stall(usec: uacpi_u8) {
-    clock::wait_ns(usec as usize);
+    clock::block_ns(usec as usize);
 }
 
 #[unsafe(no_mangle)]

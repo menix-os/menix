@@ -1,10 +1,7 @@
-use super::internal;
-use crate::generic::percpu::CpuData;
+use menix_proc::syscall;
 
-/// Sets up the Bootstrap Processor.
-pub unsafe fn setup_bsp() {
-    unsafe { internal::core::setup_bsp() };
-}
+use super::internal;
+use crate::generic::{percpu::CpuData, posix::errno::EResult};
 
 /// Returns the value of the frame pointer register.
 pub fn get_frame_pointer() -> usize {
@@ -16,12 +13,14 @@ pub fn get_per_cpu() -> *mut CpuData {
     internal::core::get_per_cpu()
 }
 
-/// Tests and enables all supported features on the current CPU.
-pub fn perpare_cpu(context: &mut CpuData) {
-    internal::core::perpare_cpu(context);
+/// Performs some CPU-dependent operation.
+#[syscall]
+pub fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
+    log!("archctl {cmd} {arg:x}");
+    internal::core::archctl(cmd, arg)
 }
 
-/// Stop execution on this CPU.
+/// Stops execution on all CPUs.
 pub fn halt() -> ! {
     internal::core::halt()
 }

@@ -1,23 +1,8 @@
-pub mod apic;
-pub mod gdt;
-mod hpet;
-pub mod idt;
-pub mod serial;
-pub mod tsc;
-
-use super::asm;
-use crate::generic::clock::{self};
-use alloc::boxed::Box;
+use super::super::asm;
 use uacpi_sys::{
     UACPI_STATUS_OK, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_u8, uacpi_u16,
     uacpi_u32,
 };
-
-pub fn init() {
-    if let Ok(x) = hpet::Hpet::new() {
-        _ = clock::switch(Box::new(x));
-    }
-}
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_io_read8(

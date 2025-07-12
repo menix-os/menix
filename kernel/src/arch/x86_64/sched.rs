@@ -1,17 +1,27 @@
-use super::{ARCH_DATA, core::get_per_cpu, platform::gdt::Gdt};
+use alloc::sync::Arc;
+
+use super::{
+    ARCH_DATA,
+    core::get_per_cpu,
+    system::{apic, gdt::Gdt},
+};
 use crate::{
     arch::{
         self,
-        x86_64::{asm::wrmsr, consts},
+        x86_64::{
+            asm::wrmsr,
+            consts::{self},
+            system::apic::LAPIC,
+        },
     },
     generic::{
         memory::{
             VirtAddr,
-            pmm::{AllocFlags, FreeList, PageAllocator},
+            pmm::{AllocFlags, KernelAlloc, PageAllocator},
             virt::KERNEL_STACK_SIZE,
         },
         percpu::CpuData,
-        posix::errno::{EResult, Errno},
+        posix::errno::EResult,
         process::task::Task,
     },
 };
@@ -19,6 +29,7 @@ use core::{
     arch::{asm, naked_asm},
     fmt::Write,
     mem::offset_of,
+    sync::atomic::Ordering,
 };
 
 #[repr(C)]
@@ -93,9 +104,9 @@ impl core::fmt::Debug for Context {
     }
 }
 
-pub fn get_task() -> *mut Task {
+pub fn get_task() -> *const Task {
     unsafe {
-        let task: *mut Task;
+        let task: *const Task;
         asm!(
             "mov {cpu}, gs:[{this}]",
             cpu = out(reg) task,
@@ -123,11 +134,12 @@ struct TaskFrame {
 pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe {
         let cpu = ARCH_DATA.get();
-        cpu.tss.rsp0 = (*to).stack.value() as u64 + KERNEL_STACK_SIZE as u64;
+        cpu.tss.lock().rsp0 =
+            (*to).kernel_stack.load(Ordering::Acquire) as u64 + KERNEL_STACK_SIZE as u64;
 
         if (*from).is_user() {
             let mut from_context = (*from).task_context.lock();
-            (cpu.fpu_save)(from_context.fpu_region);
+            cpu.fpu_save.get()(from_context.fpu_region);
             from_context.ds = super::asm::read_ds();
             from_context.es = super::asm::read_es();
             from_context.fs = super::asm::read_fs();
@@ -136,7 +148,7 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
 
         if (*to).is_user() {
             let mut to_context = (*to).task_context.lock();
-            (cpu.fpu_restore)(to_context.fpu_region);
+            cpu.fpu_restore.get()(to_context.fpu_region);
             to_context.ds = super::asm::read_ds();
             to_context.es = super::asm::read_es();
             to_context.fs = super::asm::read_fs();
@@ -152,8 +164,8 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
             wrmsr(consts::MSR_KERNEL_GS_BASE, to_context.gsbase);
         }
 
-        let old_rsp = &raw mut (*from).task_context.inner().rsp;
-        let new_rsp = &raw mut (*to).task_context.inner().rsp;
+        let old_rsp = &raw mut (*(*from).task_context.raw_inner()).rsp;
+        let new_rsp = &raw mut (*(*to).task_context.raw_inner()).rsp;
 
         perform_switch(old_rsp, new_rsp);
     }
@@ -207,9 +219,8 @@ pub(in crate::arch) fn init_task(
         context.rsp = frame as u64;
 
         if is_user {
-            context.fpu_region = FreeList::alloc_bytes(cpu.fpu_size, AllocFlags::Zeroed)
-                .map_err(|_| Errno::ENOMEM)?
-                .as_hhdm();
+            context.fpu_region =
+                KernelAlloc::alloc_bytes(*cpu.fpu_size.get(), AllocFlags::Zeroed)?.as_hhdm();
             context.ds = super::asm::read_ds();
             context.es = super::asm::read_es();
             context.fs = super::asm::read_fs();
@@ -222,7 +233,7 @@ pub(in crate::arch) fn init_task(
     Ok(())
 }
 
-/// This function only calls [`task_entry`] by moving values from callee saved regs to use the C ABI.
+/// This function only calls [`crate::generic::process::sched::task_entry`] by moving values from callee saved regs to use the C ABI.
 #[unsafe(naked)]
 unsafe extern "C" fn task_entry_thunk() -> ! {
     naked_asm!(
@@ -231,14 +242,14 @@ unsafe extern "C" fn task_entry_thunk() -> ! {
         "mov rdx, r13",
         "push 0", // Make sure to zero this so stack tracing stops here.
         "jmp {task_thunk}",
-        task_thunk = sym crate::generic::process::sched::task_entry,
+        task_thunk = sym crate::generic::sched::task_entry,
     );
 }
 
 #[inline]
 pub(in crate::arch) unsafe fn preempt_disable() {
     unsafe {
-        asm!("inc qword ptr gs:{offset}", offset = const offset_of!(CpuData, scheduler.preempt_level));
+        asm!("inc qword ptr gs:{offset}", offset = const offset_of!(CpuData, scheduler.preempt_level), options(nostack));
     }
 }
 
@@ -252,13 +263,23 @@ pub(in crate::arch) unsafe fn preempt_enable() -> bool {
             label = label {
                 r = true;
             },
-            offset = const offset_of!(CpuData, scheduler.preempt_level));
+            offset = const offset_of!(CpuData, scheduler.preempt_level),
+            options(nostack));
     }
     return r;
 }
 
-pub unsafe fn force_reschedule() {
-    unsafe { asm!("int 0x20") }; // TODO: Don't hard code this.
+pub unsafe fn remote_reschedule(cpu: u32) {
+    let lapic = LAPIC.get();
+    lapic.send_ipi(
+        apic::IpiTarget::Specific(cpu as u32),
+        consts::IDT_RESCHED,
+        apic::DeliveryMode::Fixed,
+        apic::DestinationMode::Logical,
+        apic::DeliveryStatus::Pending,
+        apic::Level::Assert,
+        apic::TriggerMode::Edge,
+    );
 }
 
 pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
@@ -305,7 +326,7 @@ pub(in crate::arch) unsafe fn jump_to_user_context(context: *mut Context) -> ! {
             "mov rsp, {context}",
             "jmp {interrupt_return}",
             context = in(reg) context,
-            interrupt_return = sym super::irq::interrupt_return
+            interrupt_return = sym arch::x86_64::system::idt::interrupt_return
         );
 
         unreachable!();

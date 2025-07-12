@@ -1,35 +1,145 @@
-pub mod sched;
 pub mod task;
 
 use crate::generic::{
-    memory::{
-        VirtAddr,
-        pmm::FreeList,
-        virt::{KERNEL_PAGE_TABLE, PageTable},
-    },
+    memory::{VirtAddr, virt::AddressSpace},
+    percpu::CPU_DATA,
     posix::errno::{EResult, Errno},
-    resource::Resource,
-    vfs::{exec::ExecutableInfo, path::PathBuf},
+    process::task::Task,
+    util::{mutex::Mutex, once::Once},
+    vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
 };
-use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
+use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
 use core::sync::atomic::{AtomicUsize, Ordering};
-use task::Task;
 
 /// A unique process ID.
 pub type Pid = usize;
 
-/// Represents a process and address space.
-#[derive(Debug)]
 pub struct Process {
     /// The unique identifier of this process.
     id: Pid,
+    /// The display name of this process.
     name: String,
-    pub page_table: PageTable,
-    threads: Vec<Task>,
-    is_user: bool,
+    /// The parent of this process.
+    parent: Option<Arc<Process>>,
+    /// Mutable fields of the process.
+    pub inner: Mutex<InnerProcess>,
 }
 
 #[derive(Debug)]
+pub struct InnerProcess {
+    /// A list of associated tasks.
+    threads: Vec<Arc<Task>>,
+    /// The address space for this process.
+    pub address_space: Arc<AddressSpace>,
+    /// The root directory for this process.
+    pub root_dir: PathNode,
+    /// Current working directory.
+    pub working_dir: PathNode,
+    /// The user identity of this process.
+    pub identity: Identity,
+}
+
+impl Process {
+    /// Returns the unique identifier of this process.
+    #[inline]
+    pub const fn get_pid(&self) -> Pid {
+        self.id
+    }
+
+    pub fn get_name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn get_parent(&self) -> Option<Arc<Self>> {
+        self.parent.clone()
+    }
+
+    pub fn new(name: String, parent: Option<Arc<Self>>) -> EResult<Self> {
+        Self::new_with_space(name, parent, Arc::new(AddressSpace::new()))
+    }
+
+    fn new_with_space(
+        name: String,
+        parent: Option<Arc<Self>>,
+        space: Arc<AddressSpace>,
+    ) -> EResult<Self> {
+        let (root, cwd, identity) = match &parent {
+            Some(x) => {
+                let inner = x.inner.lock();
+                (
+                    inner.root_dir.clone(),
+                    inner.working_dir.clone(),
+                    inner.identity.clone(),
+                )
+            }
+            None => (vfs::get_root(), vfs::get_root(), Identity::default()),
+        };
+
+        Ok(Self {
+            id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
+            name,
+            parent,
+            inner: Mutex::new(InnerProcess {
+                threads: Vec::new(),
+                address_space: space,
+                root_dir: root,
+                working_dir: cwd,
+                identity,
+            }),
+        })
+    }
+
+    /// Returns the kernel process.
+    pub fn get_kernel() -> &'static Arc<Self> {
+        KERNEL_PROCESS.get()
+    }
+
+    /// Forks a process into a new one.
+    pub fn fork(self: Arc<Self>) -> Self {
+        todo!()
+    }
+
+    /// Replaces a process with a new executable image, given some arguments and an environment.
+    /// The given file must be opened with ReadOnly and Executable.
+    /// Any existing threads of the current process are destroyed upon a successful execve.
+    /// This also means that a successful execve will never return.
+    pub fn fexecve(
+        self: Arc<Self>,
+        file: Arc<File>,
+        argv: &[&[u8]],
+        envp: &[&[u8]],
+    ) -> EResult<()> {
+        let mut info = ExecInfo {
+            executable: file.clone(),
+            interpreter: None,
+            space: AddressSpace::new(),
+            argv,
+            envp,
+        };
+
+        let format = vfs::exec::identify(&file).ok_or(Errno::ENOEXEC)?;
+        let init = Arc::new(format.load(&self, &mut info)?);
+
+        // If we get here, then the loading of the executable was successful.
+        let mut inner = self.inner.lock();
+        inner.threads.clear();
+        inner.threads.push(init.clone());
+        inner.address_space = Arc::new(info.space);
+        drop(inner);
+
+        CPU_DATA.get().scheduler.add_task(init);
+        CPU_DATA.get().scheduler.reschedule();
+
+        Ok(())
+    }
+}
+
+/// Entry point for tasks wanting to jump to user space.
+pub extern "C" fn to_user(ip: usize, sp: usize) {
+    unsafe { crate::arch::sched::jump_to_user(VirtAddr::from(ip), VirtAddr::from(sp)) };
+}
+
+#[derive(Debug, Clone, Default)]
 pub struct Identity {
     pub user_id: uapi::uid_t,
     pub group_id: uapi::gid_t,
@@ -43,65 +153,43 @@ pub struct Identity {
     pub groups: Vec<uapi::gid_t>,
 }
 
-static PID_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-impl Process {
-    /// Returns the unique identifier of this process.
-    #[inline]
-    pub const fn get_pid(&self) -> Pid {
-        self.id
-    }
-
-    /// Returns true if this is a user process.
-    #[inline]
-    pub const fn is_user(&self) -> bool {
-        self.is_user
-    }
-
-    pub fn new(name: String, is_user: bool) -> Self {
-        Self {
-            id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
-            name,
-            page_table: PageTable::new_user::<FreeList>(KERNEL_PAGE_TABLE.lock().root_level()),
-            threads: Vec::new(),
-            is_user,
-        }
-    }
-
-    /// Creates a new user process from a resource. It determines the execution format by reading the first few bytes.
-    pub fn from_file(path: &PathBuf) -> EResult<Self> {
-        let res: Box<dyn Resource> = todo!();
-
-        // Peek into the resource and read the magic. 4 bytes are enough to fit the longest magic.
-        let mut magic = [0u8; 4];
-        res.read(0, &mut magic).unwrap();
-
-        let info = ExecutableInfo {
-            executable: res,
-            interpreter: None,
+impl Identity {
+    /// Returns an identity suitable for kernel accesses, with absolute privileges for everything.
+    pub fn get_kernel() -> &'static Identity {
+        static KERNEL_IDENTITY: Identity = Identity {
+            user_id: 0,
+            group_id: 0,
+            effective_user_id: 0,
+            effective_group_id: 0,
+            set_user_id: 0,
+            set_group_id: 0,
+            groups: vec![],
         };
-
-        match &magic[0..] {
-            // This is an ELF executable.
-            b"\x7fELF" => {
-                log!("It's an elf!")
-            }
-            // This is a script.
-            b"#!" => {}
-            // No idea what this format is.
-            _ => {
-                error!("Unknown binary format in file \"{}\"", path);
-                return Err(Errno::ENOEXEC);
-            }
-        }
-        let mut result = Self::new(todo!(), true);
-
-        let main_thread = Task::new(to_user, todo!(), todo!(), Some(Arc::new(result)), true);
-
-        return Ok(result);
+        &KERNEL_IDENTITY
     }
 }
 
-pub extern "C" fn to_user(ip: usize, sp: usize) {
-    unsafe { crate::arch::sched::jump_to_user(VirtAddr::from(ip), VirtAddr::from(sp)) };
+static PID_COUNTER: AtomicUsize = AtomicUsize::new(0);
+static KERNEL_PROCESS: Once<Arc<Process>> = Once::new();
+
+init_stage! {
+    #[depends(crate::generic::memory::MEMORY_STAGE, crate::generic::vfs::VFS_STAGE)]
+    pub PROCESS_STAGE: "generic.process" => init;
+}
+
+fn init() {
+    // Create the kernel process and task.
+    unsafe {
+        KERNEL_PROCESS.init(Arc::new(
+            Process::new_with_space(
+                "kernel".into(),
+                None,
+                Arc::new(AddressSpace {
+                    table: super::memory::virt::KERNEL_PAGE_TABLE.get().clone(),
+                    mappings: Mutex::new(BTreeMap::new()),
+                }),
+            )
+            .expect("Unable to create the main kernel process"),
+        ))
+    };
 }

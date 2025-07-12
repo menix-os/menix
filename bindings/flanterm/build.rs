@@ -1,10 +1,13 @@
 fn main() {
     let mut b = cc::Build::new();
-    b.files(["flanterm/flanterm.c", "flanterm/backends/fb.c"])
-        .includes(["flanterm"])
-        .pic(true)
-        .flag("-ffreestanding")
-        .flag("-nostdlib");
+    b.files([
+        "flanterm/src/flanterm.c",
+        "flanterm/src/flanterm_backends/fb.c",
+    ])
+    .includes(["flanterm"])
+    .pic(true)
+    .flag("-ffreestanding")
+    .flag("-nostdlib");
 
     if std::env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "x86_64" {
         b.flag("-mgeneral-regs-only");
@@ -19,7 +22,7 @@ fn main() {
         .derive_default(true)
         .derive_debug(true)
         .prepend_enum_name(false)
-        .clang_args(["-I", "flanterm"])
+        .clang_args(["-I", "flanterm/src"])
         .header("src/wrapper.h")
         .generate()
         .expect("Unable to generate bindings!");

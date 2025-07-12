@@ -4,7 +4,10 @@
 use super::log::GLOBAL_LOGGERS;
 use crate::{
     arch,
-    generic::{memory::VirtAddr, vfs::exec::elf::ElfAddr},
+    generic::{
+        memory::{VirtAddr, virt::PageTable},
+        vfs::exec::elf::ElfAddr,
+    },
 };
 use core::panic::PanicInfo;
 
@@ -32,7 +35,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
     unsafe { arch::irq::set_irq_state(false) };
 
     // Force unlock output in cases like panics during printing.
-    unsafe { GLOBAL_LOGGERS.force_unlock(false) };
+    unsafe { GLOBAL_LOGGERS.force_unlock() };
 
     // We write directly to the loggers because something might've happened to the timers.
     log_panic!("Kernel panic - Environment is unsound!");
@@ -65,16 +68,16 @@ fn panic_handler(info: &PanicInfo) -> ! {
 
     // Do a stack trace.
     unsafe {
-        super::module::SYMBOL_TABLE.force_unlock(false);
-        super::memory::virt::KERNEL_PAGE_TABLE.force_unlock(false);
+        super::module::SYMBOL_TABLE.force_unlock();
 
         let table = &*super::module::SYMBOL_TABLE.lock();
-        let kernel_map = super::memory::virt::KERNEL_PAGE_TABLE.lock();
 
         log_panic!("----------");
         log_panic!("Stack trace (most recent call first):");
 
         let mut fp = arch::core::get_frame_pointer() as *const StackFrame;
+        let kernel_map = PageTable::get_kernel();
+
         while kernel_map.is_mapped(VirtAddr::from(fp)) {
             let addr = (*fp).return_addr as ElfAddr;
             let symbol = table.iter().find(|(_, (sym, _))| {
@@ -99,10 +102,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
     }
 
     log_panic!("----------");
-    log_panic!("End of panic message.");
+    log_panic!("End of panic message");
 
-    loop {
-        unsafe { arch::irq::set_irq_state(false) };
-        arch::irq::wait_for_irq();
-    }
+    arch::core::halt();
 }

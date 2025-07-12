@@ -1,22 +1,22 @@
 use crate::{
     arch::x86_64::{
-        ARCH_DATA, consts, irq,
-        platform::{
+        ARCH_DATA,
+        asm::wrmsr,
+        consts::{self, MSR_FS_BASE},
+        irq,
+        system::{
             apic::{self, LocalApic},
             gdt, idt,
-            tsc::{self, TscClock},
         },
     },
     generic::{
-        boot::BootInfo,
-        clock,
         percpu::{CpuData, LD_PERCPU_START},
+        posix::errno::{EResult, Errno},
     },
 };
-use alloc::boxed::Box;
-use core::{arch::asm, mem::offset_of};
+use core::{arch::asm, mem::offset_of, ptr::null_mut, sync::atomic::Ordering};
 
-pub(in crate::arch) unsafe fn setup_bsp() {
+fn early_init() {
     apic::disable_legacy_pic();
     idt::init();
     idt::set_idt();
@@ -28,13 +28,18 @@ pub(in crate::arch) unsafe fn setup_bsp() {
         super::asm::wrmsr(consts::MSR_FS_BASE, 0);
     }
 
-    CpuData::get().present = true;
+    CpuData::get().present.store(true, Ordering::Relaxed);
+}
+
+init_stage! {
+    #[entails(crate::arch::EARLY_INIT_STAGE)]
+    EARLY_INIT_STAGE: "arch.x86_64.early-init" => early_init;
 }
 
 pub(in crate::arch) fn get_frame_pointer() -> usize {
     let mut fp: usize;
     unsafe {
-        asm!("mov {fp}, rbp", fp = out(reg) fp);
+        asm!("mov {fp}, rbp", fp = out(reg) fp, options(nostack));
     }
     return fp;
 }
@@ -48,18 +53,28 @@ pub(in crate::arch) fn get_per_cpu() -> *mut CpuData {
             this = const offset_of!(CpuData, this),
             options(nostack, preserves_flags),
         );
+        assert_ne!(cpu, null_mut());
         return cpu;
     }
 }
 
-pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
+pub(super) fn setup_core(context: &'static CpuData) {
     let mut cr0: usize;
     let mut cr4: usize;
+
+    unsafe {
+        // Set FSGSBASE contents.
+        // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
+        super::asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
+        // We will save a reference to this struct in GS_BASE.
+        super::asm::wrmsr(consts::MSR_GS_BASE, context.this as u64);
+        super::asm::wrmsr(consts::MSR_FS_BASE, 0);
+    }
 
     let cpu = ARCH_DATA.get();
 
     // Load a GDT and TSS.
-    gdt::init(&mut cpu.gdt, &mut cpu.tss);
+    gdt::init(cpu);
 
     // Load the IDT.
     // Note: The IDT itself is global, but still needs to be loaded for each CPU.
@@ -73,7 +88,7 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
         super::asm::wrmsr(
             consts::MSR_STAR,
             ((offset_of!(gdt::Gdt, user_code) | consts::CPL_USER as usize) as u64) << 48
-                | (offset_of!(gdt::Gdt, kernel_code) as u64) << 32,
+                | (offset_of!(gdt::Gdt, kernel64_code) as u64) << 32,
         );
         // Set syscall entry point.
         super::asm::wrmsr(consts::MSR_LSTAR, irq::amd64_syscall_stub as u64);
@@ -82,16 +97,15 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
             (consts::RFLAGS_AC | consts::RFLAGS_DF | consts::RFLAGS_IF) as u64,
         );
 
-        asm!("mov {cr0}, cr0", cr0 = out(reg) cr0);
-        asm!("mov {cr4}, cr4", cr4 = out(reg) cr4);
+        asm!("mov {cr0}, cr0", cr0 = out(reg) cr0, options(nostack));
+        asm!("mov {cr4}, cr4", cr4 = out(reg) cr4, options(nostack));
     }
 
     // Collect all relevant CPUIDs.
-    let (cpuid1, cpuid7, cpuid13, cpuid8000_0007) = (
+    let (cpuid1, cpuid7, cpuid13) = (
         super::asm::cpuid(1, 0),
         super::asm::cpuid(7, 0),
         super::asm::cpuid(13, 0),
-        super::asm::cpuid(0x8000_0007, 0),
     );
 
     // Enable SSE.
@@ -102,7 +116,7 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
     // XSAVE
     if cpuid1.ecx & consts::CPUID_1C_XSAVE != 0 {
         cr4 |= consts::CR4_OSXSAVE | consts::CR4_OSFXSR | consts::CR4_OSXMMEXCPT;
-        unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4) };
+        unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4, options(nostack)) };
         let mut xcr0 = 0u64;
         xcr0 |= 3;
 
@@ -118,38 +132,34 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
             xcr0 |= 1 << 7;
         }
 
-        unsafe { super::asm::wrxcr(0, xcr0) };
+        unsafe {
+            super::asm::wrxcr(0, xcr0);
 
-        // Change callbacks from FXSAVE to XSAVE.
-        cpu.fpu_size = cpuid13.ecx as usize; // ECX contains the size of the FPU block to save.
-        cpu.fpu_save = super::asm::xsave;
-        cpu.fpu_restore = super::asm::xrstor;
-    }
-
-    if cpuid7.ecx & consts::CPUID_7C_UMIP != 0 {
-        cr4 |= consts::CR4_UMIP;
-    }
-
-    if cpuid7.ebx & consts::CPUID_7B_SMEP != 0 {
-        cr4 |= consts::CR4_SMEP;
-    }
-
-    if cpuid7.ebx & consts::CPUID_7B_SMAP != 0 {
-        cr4 |= consts::CR4_SMAP;
-        cpu.can_smap = true;
-    }
-
-    // Check if the TSC exists and is also invariant.
-    if cpuid1.edx & consts::CPUID_1D_TSC != 0 && cpuid8000_0007.edx & (1 << 8) != 0 {
-        // TODO: This will break when called more than once.
-        // TODO: Make sure to only switch if it's not already the current source.
-        if BootInfo::get().command_line.get_bool("tsc").unwrap_or(true) {
-            if tsc::init().is_ok() {
-                cr4 |= consts::CR4_TSD;
-                _ = clock::switch(Box::new(TscClock));
-            }
+            // Change callbacks from FXSAVE to XSAVE.
+            cpu.fpu_size.init(cpuid13.ecx as usize); // ECX contains the size of the FPU block to save.
+            cpu.fpu_save.init(super::asm::xsave);
+            cpu.fpu_restore.init(super::asm::xrstor);
+        }
+    } else {
+        unsafe {
+            cpu.fpu_save.init(super::asm::fxsave);
+            cpu.fpu_restore.init(super::asm::fxrstor);
         }
     }
+
+    // TODO
+    // if cpuid7.ecx & consts::CPUID_7C_UMIP != 0 {
+    //     cr4 |= consts::CR4_UMIP;
+    // }
+
+    // if cpuid7.ebx & consts::CPUID_7B_SMEP != 0 {
+    //     cr4 |= consts::CR4_SMEP;
+    // }
+
+    // if cpuid7.ebx & consts::CPUID_7B_SMAP != 0 {
+    //     cr4 |= consts::CR4_SMAP;
+    //     cpu.can_smap.store(true, Ordering::Relaxed);
+    // }
 
     if cpuid7.ebx & consts::CPUID_7B_FSGSBASE != 0 {
         cr4 |= consts::CR4_FSGSBASE;
@@ -157,24 +167,30 @@ pub(in crate::arch) fn perpare_cpu(context: &mut CpuData) {
 
     unsafe {
         // Write back the modified control register values.
-        asm!("mov cr0, {cr0}", cr0 = in(reg) cr0);
-        asm!("mov cr4, {cr4}", cr4 = in(reg) cr4);
-
-        // Set FSGSBASE contents.
-        // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
-        super::asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
-        // We will save a reference to this struct in GS_BASE.
-        super::asm::wrmsr(consts::MSR_GS_BASE, context.this as u64);
-        super::asm::wrmsr(consts::MSR_FS_BASE, 0);
+        asm!("mov cr0, {cr0}", cr0 = in(reg) cr0, options(nostack));
+        asm!("mov cr4, {cr4}", cr4 = in(reg) cr4, options(nostack));
     }
 
-    LocalApic::init(context);
+    LocalApic::init();
+
+    context.present.store(true, Ordering::Release);
+    context.online.store(true, Ordering::Release);
 }
 
 pub(in crate::arch) fn halt() -> ! {
+    // TODO: Send panic IPI to actually store all CPUs.
     loop {
         unsafe {
             core::arch::asm!("cli; hlt");
         }
     }
+}
+
+pub(in crate::arch) fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
+    match cmd {
+        0 => unsafe { wrmsr(MSR_FS_BASE, arg as u64) },
+        _ => return Err(Errno::ENOSYS),
+    }
+
+    Ok(0)
 }
