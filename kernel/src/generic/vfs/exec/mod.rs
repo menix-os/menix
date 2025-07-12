@@ -15,17 +15,17 @@ use alloc::{
 
 /// Information passed to [`ExecFormat::load`].
 #[derive(Debug)]
-pub struct ExecInfo {
+pub struct ExecInfo<'a> {
     /// The excutable to load.
     pub executable: Arc<File>,
     /// An interpreter that's tasked with loading the given executable.
     pub interpreter: Option<Arc<File>>,
     /// An address space for the new process.
     pub space: AddressSpace,
-    /// How many arguments are living on the stack.
-    pub argc: usize,
-    /// How many environment variables are living on the stack.
-    pub envc: usize,
+    /// Arguments.
+    pub argv: &'a [&'a [u8]],
+    /// Environment variables.
+    pub envp: &'a [&'a [u8]],
 }
 
 /// An executable format.

@@ -9,6 +9,7 @@ use crate::{
         },
         posix::errno::{EResult, Errno},
         process::{Process, task::Task, to_user},
+        util::align_down,
         vfs::{
             exec::ExecFormat,
             file::{File, MmapFlags, OpenFlags},
@@ -16,7 +17,7 @@ use crate::{
         },
     },
 };
-use alloc::{string::String, sync::Arc};
+use alloc::{string::String, sync::Arc, vec::Vec};
 use bytemuck::{Pod, Zeroable};
 
 // ELF Header Identification
@@ -150,6 +151,7 @@ pub const AT_UID: u32 = 11;
 pub const AT_EUID: u32 = 12;
 pub const AT_GID: u32 = 13;
 pub const AT_EGID: u32 = 14;
+pub const AT_SECURE: u32 = 23;
 pub const AT_L4_AUX: u32 = 0xf0;
 pub const AT_L4_ENV: u32 = 0xf1;
 
@@ -332,9 +334,16 @@ static_assert!(size_of::<ElfHdr>() == 64);
 // Yes I know ELF already has "Format" in the name.
 struct ElfFormat;
 
+struct ElfInfo {
+    at_phdr: usize,
+    at_phnum: usize,
+    at_phent: usize,
+    at_entry: usize,
+}
+
 impl ElfFormat {
     // Loads an ELF file into an address space. Returns the entry point address.
-    fn load_file(file: &Arc<File>, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<VirtAddr> {
+    fn load_file(file: &Arc<File>, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<ElfInfo> {
         // Read the header.
         let mut hdr_data = [0u8; size_of::<ElfHdr>()];
         file.pread(&mut hdr_data, 0)?;
@@ -352,10 +361,11 @@ impl ElfFormat {
         let base = if elf_hdr.e_type == ET_EXEC {
             0
         } else {
-            0x600000
+            0x600_0000
         };
 
         let page_size = arch::virt::get_page_size(VmLevel::L1);
+        let mut phdr_addr = 0usize;
 
         // Iterate all PHDRs.
         for i in 0..elf_hdr.e_phnum {
@@ -407,7 +417,9 @@ impl ElfFormat {
                         )?;
                     }
                 }
-                PT_PHDR => {}
+                PT_PHDR => {
+                    phdr_addr = phdr.p_vaddr as usize;
+                }
                 PT_INTERP => {
                     let mut interp_name = vec![0u8; phdr.p_filesz as usize - 1]; // Minus the trailing NUL.
                     file.pread(&mut interp_name, phdr.p_offset)?;
@@ -424,7 +436,12 @@ impl ElfFormat {
             }
         }
 
-        Ok((elf_hdr.e_entry as usize + base).into())
+        Ok(ElfInfo {
+            at_phdr: phdr_addr + base,
+            at_phnum: elf_hdr.e_phnum as usize,
+            at_phent: elf_hdr.e_phentsize as usize,
+            at_entry: elf_hdr.e_entry as usize + base,
+        })
     }
 }
 
@@ -451,32 +468,98 @@ impl ExecFormat for ElfFormat {
     fn load(&self, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task> {
         let page_size = arch::virt::get_page_size(VmLevel::L1);
 
-        let mut entry = Self::load_file(&info.executable.clone(), old, info)?;
-        if let Some(x) = &info.interpreter {
-            entry = Self::load_file(&x.clone(), old, info)?;
-        }
+        let elf = Self::load_file(&info.executable.clone(), old, info)?;
+        let entry = if let Some(x) = &info.interpreter {
+            let interp = Self::load_file(&x.clone(), old, info)?;
+            interp.at_entry
+        } else {
+            elf.at_entry
+        };
 
         // Setup stack.
-
         // Calculate the start of the user address.
         let highest = (1usize
             << arch::virt::get_level_bits() * arch::virt::get_num_levels()
                 + arch::virt::get_page_bits()
                 - 1)
             - page_size;
+        let stack_size = 2 * 1024 * 1024; // 2MiB stack.
 
         let stack = Arc::new(MemoryObject::new_phys());
         info.space.map_object(
-            stack,
-            (highest - (1024 * 1024)).into(),
-            1024 * 1024, // 1MiB stack.
+            stack.clone(),
+            (highest - stack_size).into(),
+            stack_size,
             VmFlags::Read | VmFlags::Write,
             MmapFlags::Fixed | MmapFlags::Private,
             0,
         )?;
 
+        let mut stack_off = stack_size;
+        let mut envp_offsets = Vec::with_capacity(info.envp.len());
+        let mut argv_offsets = Vec::with_capacity(info.argv.len());
+
+        for env in info.envp {
+            stack_off -= 1;
+            stack.write(&[0u8], stack_off);
+            stack_off -= env.len();
+            stack.write(env, stack_off);
+            envp_offsets.push(stack_off);
+        }
+
+        for arg in info.argv {
+            stack_off -= 1;
+            stack.write(&[0u8], stack_off);
+            stack_off -= arg.len();
+            stack.write(arg, stack_off);
+            argv_offsets.push(stack_off);
+        }
+
+        stack_off = align_down(stack_off, 16);
+        // Align the stack if argc + argv + envp does not add up to 16 byte alignment.
+        if (1 + info.argv.len() + info.envp.len()) % 2 == 1 {
+            stack_off -= size_of::<usize>();
+            stack.write(&0usize.to_ne_bytes(), stack_off);
+        }
+
+        // Write auxiliary values.
+        let mut write_auxv = |auxv: u32, value: usize| {
+            stack_off -= size_of::<usize>();
+            stack.write(&value.to_ne_bytes(), stack_off);
+            stack_off -= size_of::<usize>();
+            stack.write(&(auxv as usize).to_ne_bytes(), stack_off);
+        };
+
+        write_auxv(AT_NULL, 0); // Terminator.
+        write_auxv(AT_SECURE, 0);
+        write_auxv(AT_PHDR, elf.at_phdr);
+        write_auxv(AT_PHNUM, elf.at_phnum);
+        write_auxv(AT_PHENT, elf.at_phent);
+        write_auxv(AT_ENTRY, elf.at_entry);
+
+        // envp pointers
+        stack_off -= size_of::<usize>();
+        stack.write(&0usize.to_ne_bytes(), stack_off);
+        for env in envp_offsets.iter().rev() {
+            stack_off -= size_of::<usize>();
+            stack.write(&env.to_ne_bytes(), stack_off);
+        }
+
+        // argv pointers
+        stack_off -= size_of::<usize>();
+        stack.write(&0usize.to_ne_bytes(), stack_off);
+        for arg in argv_offsets.iter().rev() {
+            stack_off -= size_of::<usize>();
+            stack.write(&arg.to_ne_bytes(), stack_off);
+        }
+
+        stack_off -= size_of::<usize>();
+        stack.write(&info.argv.len().to_ne_bytes(), stack_off);
+
+        assert!(stack_off % 16 == 0);
+
         // Create the main thread.
-        Task::new(to_user, entry.value(), highest - 0x10, &old, true)
+        Task::new(to_user, entry, highest - stack_size + stack_off, &old, true)
     }
 }
 
