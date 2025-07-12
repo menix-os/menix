@@ -452,8 +452,9 @@ impl AddressSpace {
         }
 
         warn!(
-            "Mapped {:x} at offset {:x} with prot {:?}",
+            "Mapped {:x} - {:x} at offset {:x} with prot {:?}",
             addr.value(),
+            addr.value() + len,
             off,
             prot
         );

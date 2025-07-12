@@ -1,18 +1,18 @@
 //! Safe user memory reading/writing.
 
 use super::VirtAddr;
-use crate::generic::memory::virt::AddressSpace;
+use crate::generic::memory::virt::{AddressSpace, PageTable};
 use alloc::sync::Arc;
 use bytemuck::AnyBitPattern;
 use core::marker::PhantomData;
 
 /// Provides safe access to a single structure from userland.
-pub struct UserPtr<'a, T: AnyBitPattern> {
+pub struct UserPtr<'a, T: Sized + Copy> {
     addr: VirtAddr,
     _p: PhantomData<&'a T>,
 }
 
-impl<'a, T: AnyBitPattern> UserPtr<'a, T> {
+impl<'a, T: Sized + Copy> UserPtr<'a, T> {
     pub const fn new(addr: VirtAddr) -> Self {
         Self {
             addr,
@@ -21,11 +21,25 @@ impl<'a, T: AnyBitPattern> UserPtr<'a, T> {
     }
 
     pub fn read(&self) -> Option<T> {
-        todo!()
+        if !PageTable::get_kernel().is_mapped(self.addr) {
+            return None;
+        }
+
+        return Some(unsafe { self.addr.as_ptr::<T>().read_unaligned() });
     }
 
-    pub fn write(&mut self) -> Option<T> {
-        todo!()
+    pub fn write(&self, value: T) {
+        if !PageTable::get_kernel().is_mapped(self.addr) {
+            return;
+        }
+
+        unsafe { self.addr.as_ptr::<T>().write_unaligned(value) };
+    }
+}
+
+impl<'a, T: Sized + Copy> From<usize> for UserPtr<'a, T> {
+    fn from(value: usize) -> Self {
+        Self::new(value.into())
     }
 }
 

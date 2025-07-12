@@ -10,6 +10,7 @@ crate-type = ["dylib"]
 bindgen = "0.72.0"
 
 [dependencies]
+menix_proc = { path = "../kernel_proc" }
 uapi = { path = "../bindings/uapi" }
 uacpi-sys = { path = "../bindings/uacpi" }
 flanterm-sys = { path = "../bindings/flanterm" }

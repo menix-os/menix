@@ -113,8 +113,8 @@ impl Process {
             executable: file.clone(),
             interpreter: None,
             space: AddressSpace::new(),
-            argc: argv.len(),
-            envc: envp.len(),
+            argv,
+            envp,
         };
 
         let format = vfs::exec::identify(&file).ok_or(Errno::ENOEXEC)?;

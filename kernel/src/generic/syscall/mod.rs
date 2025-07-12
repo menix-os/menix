@@ -1,169 +1,8 @@
+mod numbers;
 mod process;
 
 use super::posix::errno::{EResult, Errno};
-use crate::arch;
 use alloc::string::String;
-
-mod numbers {
-    #![allow(unused)]
-    pub const EXIT: usize = 0;
-    pub const SYSLOG: usize = 1;
-    pub const UNAME: usize = 2;
-    pub const ARCHCTL: usize = 3;
-    pub const REBOOT: usize = 4;
-    pub const MMAP: usize = 5;
-    pub const MUNMAP: usize = 6;
-    pub const MPROTECT: usize = 7;
-    pub const MADVISE: usize = 8;
-    pub const SIGPROCMASK: usize = 9;
-    pub const SIGSUSPEND: usize = 10;
-    pub const SIGPENDING: usize = 11;
-    pub const SIGACTION: usize = 12;
-    pub const SIGTIMEDWAIT: usize = 13;
-    pub const SIGALTSTACK: usize = 14;
-    pub const EXECVE: usize = 15;
-    pub const FORK: usize = 16;
-    pub const KILL: usize = 17;
-    pub const GETTID: usize = 18;
-    pub const GETPID: usize = 19;
-    pub const GETPPID: usize = 20;
-    pub const WAITID: usize = 21;
-    pub const WAITPID: usize = 22;
-    pub const READ: usize = 23;
-    pub const PREAD: usize = 24;
-    pub const WRITE: usize = 25;
-    pub const PWRITE: usize = 26;
-    pub const SEEK: usize = 27;
-    pub const IOCTL: usize = 28;
-    pub const OPENAT: usize = 29;
-    pub const CLOSE: usize = 30;
-    pub const STAT: usize = 31;
-    pub const FSTAT: usize = 32;
-    pub const STATVFS: usize = 33;
-    pub const FSTATVFS: usize = 34;
-    pub const FACCESSAT: usize = 35;
-    pub const FCNTL: usize = 36;
-    pub const FTRUNCATE: usize = 37;
-    pub const FALLOCATE: usize = 38;
-    pub const UTIMENSAT: usize = 39;
-    pub const PSELECT: usize = 40;
-    pub const MKNODAT: usize = 41;
-    pub const READDIR: usize = 42;
-    pub const GETCWD: usize = 43;
-    pub const CHDIR: usize = 44;
-    pub const FCHDIR: usize = 45;
-    pub const MKDIRAT: usize = 46;
-    pub const RMDIRAT: usize = 47;
-    pub const GETDENTS: usize = 48;
-    pub const RENAMEAT: usize = 49;
-    pub const FCHMOD: usize = 50;
-    pub const FCHMODAT: usize = 51;
-    pub const FCHOWNAT: usize = 52;
-    pub const LINKAT: usize = 53;
-    pub const SYMLINKAT: usize = 54;
-    pub const UNLINKAT: usize = 55;
-    pub const READLINKAT: usize = 56;
-    pub const FLOCK: usize = 57;
-    pub const POLL: usize = 58;
-    pub const DUP: usize = 59;
-    pub const DUP3: usize = 60;
-    pub const SYNC: usize = 61;
-    pub const FSYNC: usize = 62;
-    pub const FDATASYNC: usize = 63;
-    pub const GETGROUPS: usize = 64;
-    pub const SETGROUPS: usize = 65;
-    pub const GETSID: usize = 66;
-    pub const SETSID: usize = 67;
-    pub const SETUID: usize = 68;
-    pub const GETUID: usize = 69;
-    pub const SETGID: usize = 70;
-    pub const GETGID: usize = 71;
-    pub const GETEUID: usize = 72;
-    pub const SETEUID: usize = 73;
-    pub const GETEGID: usize = 74;
-    pub const SETEGID: usize = 75;
-    pub const GETPGID: usize = 76;
-    pub const SETPGID: usize = 77;
-    pub const GETRESUID: usize = 78;
-    pub const SETRESUID: usize = 79;
-    pub const GETRESGID: usize = 80;
-    pub const SETRESGID: usize = 81;
-    pub const SETREUID: usize = 82;
-    pub const SETREGID: usize = 83;
-    pub const UMASK: usize = 84;
-    pub const PIPE: usize = 85;
-    pub const FUTEX_WAIT: usize = 86;
-    pub const FUTEX_WAKE: usize = 87;
-    pub const THREAD_CREATE: usize = 88;
-    pub const THREAD_KILL: usize = 89;
-    pub const THREAD_EXIT: usize = 90;
-    pub const THREAD_SETNAME: usize = 91;
-    pub const THREAD_GETNAME: usize = 92;
-    pub const TIMER_CREATE: usize = 93;
-    pub const TIMER_SET: usize = 94;
-    pub const TIMER_DELETE: usize = 95;
-    pub const ITIMER_GET: usize = 96;
-    pub const ITIMER_SET: usize = 97;
-    pub const CLOCK_GET: usize = 98;
-    pub const CLOCK_GETRES: usize = 99;
-    pub const SLEEP: usize = 100;
-    pub const YIELD: usize = 101;
-    pub const CHROOT: usize = 102;
-    pub const MOUNT: usize = 103;
-    pub const UMOUNT: usize = 104;
-    pub const SWAPON: usize = 105;
-    pub const SWAPOFF: usize = 106;
-    pub const SOCKET: usize = 107;
-    pub const SOCKETPAIR: usize = 108;
-    pub const SHUTDOWN: usize = 109;
-    pub const BIND: usize = 110;
-    pub const CONNECT: usize = 111;
-    pub const ACCEPT: usize = 112;
-    pub const LISTEN: usize = 113;
-    pub const GETPEERNAME: usize = 114;
-    pub const GETSOCKNAME: usize = 115;
-    pub const GETSOCKOPT: usize = 116;
-    pub const SETSOCKOPT: usize = 117;
-    pub const SENDMSG: usize = 118;
-    pub const SENDTO: usize = 119;
-    pub const RECVMSG: usize = 120;
-    pub const RECVFROM: usize = 121;
-    pub const GETHOSTNAME: usize = 122;
-    pub const SETHOSTNAME: usize = 123;
-    pub const GETENTROPY: usize = 124;
-    pub const GETRUSAGE: usize = 125;
-    pub const GETRLIMIT: usize = 126;
-    pub const SETRLIMIT: usize = 127;
-    pub const GETPRIORITY: usize = 128;
-    pub const SETPRIORITY: usize = 129;
-    pub const SCHED_GETPARAM: usize = 130;
-    pub const SCHED_SETPARAM: usize = 131;
-    pub const GETCPU: usize = 132;
-    pub const SYSINFO: usize = 133;
-    pub const PTRACE: usize = 134;
-}
-
-type SyscallHandler = fn(usize, usize, usize, usize, usize, usize) -> EResult<usize>;
-
-static DISPATCH_TABLE: [Option<SyscallHandler>; 135] = {
-    let mut table = [None as Option<SyscallHandler>; _];
-    table[numbers::EXIT] = Some(process::exit);
-    table[numbers::ARCHCTL] = Some(|cmd, arg, _, _, _, _| arch::core::archctl(cmd, arg));
-    table[numbers::GETTID] = Some(process::gettid);
-
-    // TODO: TTY stuff
-    table[numbers::WRITE] = Some(|fd, buf, len, _, _, _| {
-        let buf = unsafe { core::slice::from_raw_parts(buf as *const u8, len) };
-        use core::fmt::Write;
-        {
-            let mut writer = crate::generic::log::GLOBAL_LOGGERS.lock();
-            _ = writer.write_fmt(format_args!("{}", String::from_utf8_lossy(buf)));
-        }
-        Ok(len)
-    });
-
-    table
-};
 
 /// Executes the syscall as identified by `num`.
 /// Returns a tuple of (value, error) to the user. An error code of 0 inidcates success.
@@ -177,10 +16,11 @@ pub fn dispatch(
     a4: usize,
     a5: usize,
 ) -> (usize, usize) {
+    warn!("running syscall {num} with args {a0:x}, {a1:x}");
     let result = match DISPATCH_TABLE.get(num).and_then(|&x| x) {
         Some(x) => x(a0, a1, a2, a3, a4, a5),
         None => {
-            warn!("kanker {num}");
+            warn!("Unknown syscall {num}");
             Err(Errno::ENOSYS)
         }
     };
@@ -190,3 +30,157 @@ pub fn dispatch(
         Err(x) => return (0, x as usize),
     }
 }
+
+type SyscallHandler = fn(usize, usize, usize, usize, usize, usize) -> EResult<usize>;
+
+static DISPATCH_TABLE: [Option<SyscallHandler>; 135] = {
+    let mut table = [None as Option<SyscallHandler>; _];
+    table[numbers::EXIT] = Some(process::exit);
+    table[numbers::SYSLOG] = None;
+    table[numbers::UNAME] = Some(process::uname);
+    table[numbers::ARCHCTL] = Some(crate::arch::core::archctl);
+    table[numbers::REBOOT] = None;
+    table[numbers::MMAP] = None;
+    table[numbers::MUNMAP] = None;
+    table[numbers::MPROTECT] = None;
+    table[numbers::MADVISE] = None;
+    table[numbers::SIGPROCMASK] = None;
+    table[numbers::SIGSUSPEND] = None;
+    table[numbers::SIGPENDING] = None;
+    table[numbers::SIGACTION] = None;
+    table[numbers::SIGTIMEDWAIT] = None;
+    table[numbers::SIGALTSTACK] = None;
+    table[numbers::EXECVE] = None;
+    table[numbers::FORK] = None;
+    table[numbers::KILL] = None;
+    table[numbers::GETTID] = Some(process::gettid);
+    table[numbers::GETPID] = None;
+    table[numbers::GETPPID] = None;
+    table[numbers::WAITID] = None;
+    table[numbers::WAITPID] = None;
+    table[numbers::READ] = None;
+    table[numbers::PREAD] = None;
+    table[numbers::WRITE] = None;
+    table[numbers::PWRITE] = None;
+    table[numbers::SEEK] = None;
+    table[numbers::IOCTL] = None;
+    table[numbers::OPENAT] = None;
+    table[numbers::CLOSE] = None;
+    table[numbers::STAT] = None;
+    table[numbers::FSTAT] = None;
+    table[numbers::STATVFS] = None;
+    table[numbers::FSTATVFS] = None;
+    table[numbers::FACCESSAT] = None;
+    table[numbers::FCNTL] = None;
+    table[numbers::FTRUNCATE] = None;
+    table[numbers::FALLOCATE] = None;
+    table[numbers::UTIMENSAT] = None;
+    table[numbers::PSELECT] = None;
+    table[numbers::MKNODAT] = None;
+    table[numbers::READDIR] = None;
+    table[numbers::GETCWD] = None;
+    table[numbers::CHDIR] = None;
+    table[numbers::FCHDIR] = None;
+    table[numbers::MKDIRAT] = None;
+    table[numbers::RMDIRAT] = None;
+    table[numbers::GETDENTS] = None;
+    table[numbers::RENAMEAT] = None;
+    table[numbers::FCHMOD] = None;
+    table[numbers::FCHMODAT] = None;
+    table[numbers::FCHOWNAT] = None;
+    table[numbers::LINKAT] = None;
+    table[numbers::SYMLINKAT] = None;
+    table[numbers::UNLINKAT] = None;
+    table[numbers::READLINKAT] = None;
+    table[numbers::FLOCK] = None;
+    table[numbers::POLL] = None;
+    table[numbers::DUP] = None;
+    table[numbers::DUP3] = None;
+    table[numbers::SYNC] = None;
+    table[numbers::FSYNC] = None;
+    table[numbers::FDATASYNC] = None;
+    table[numbers::GETGROUPS] = None;
+    table[numbers::SETGROUPS] = None;
+    table[numbers::GETSID] = None;
+    table[numbers::SETSID] = None;
+    table[numbers::SETUID] = None;
+    table[numbers::GETUID] = None;
+    table[numbers::SETGID] = None;
+    table[numbers::GETGID] = None;
+    table[numbers::GETEUID] = None;
+    table[numbers::SETEUID] = None;
+    table[numbers::GETEGID] = None;
+    table[numbers::SETEGID] = None;
+    table[numbers::GETPGID] = None;
+    table[numbers::SETPGID] = None;
+    table[numbers::GETRESUID] = None;
+    table[numbers::SETRESUID] = None;
+    table[numbers::GETRESGID] = None;
+    table[numbers::SETRESGID] = None;
+    table[numbers::SETREUID] = None;
+    table[numbers::SETREGID] = None;
+    table[numbers::UMASK] = None;
+    table[numbers::PIPE] = None;
+    table[numbers::FUTEX_WAIT] = None;
+    table[numbers::FUTEX_WAKE] = None;
+    table[numbers::THREAD_CREATE] = None;
+    table[numbers::THREAD_KILL] = None;
+    table[numbers::THREAD_EXIT] = None;
+    table[numbers::THREAD_SETNAME] = None;
+    table[numbers::THREAD_GETNAME] = None;
+    table[numbers::TIMER_CREATE] = None;
+    table[numbers::TIMER_SET] = None;
+    table[numbers::TIMER_DELETE] = None;
+    table[numbers::ITIMER_GET] = None;
+    table[numbers::ITIMER_SET] = None;
+    table[numbers::CLOCK_GET] = None;
+    table[numbers::CLOCK_GETRES] = None;
+    table[numbers::SLEEP] = None;
+    table[numbers::YIELD] = None;
+    table[numbers::CHROOT] = None;
+    table[numbers::MOUNT] = None;
+    table[numbers::UMOUNT] = None;
+    table[numbers::SWAPON] = None;
+    table[numbers::SWAPOFF] = None;
+    table[numbers::SOCKET] = None;
+    table[numbers::SOCKETPAIR] = None;
+    table[numbers::SHUTDOWN] = None;
+    table[numbers::BIND] = None;
+    table[numbers::CONNECT] = None;
+    table[numbers::ACCEPT] = None;
+    table[numbers::LISTEN] = None;
+    table[numbers::GETPEERNAME] = None;
+    table[numbers::GETSOCKNAME] = None;
+    table[numbers::GETSOCKOPT] = None;
+    table[numbers::SETSOCKOPT] = None;
+    table[numbers::SENDMSG] = None;
+    table[numbers::SENDTO] = None;
+    table[numbers::RECVMSG] = None;
+    table[numbers::RECVFROM] = None;
+    table[numbers::GETHOSTNAME] = None;
+    table[numbers::SETHOSTNAME] = None;
+    table[numbers::GETENTROPY] = None;
+    table[numbers::GETRUSAGE] = None;
+    table[numbers::GETRLIMIT] = None;
+    table[numbers::SETRLIMIT] = None;
+    table[numbers::GETPRIORITY] = None;
+    table[numbers::SETPRIORITY] = None;
+    table[numbers::SCHED_GETPARAM] = None;
+    table[numbers::SCHED_SETPARAM] = None;
+    table[numbers::GETCPU] = None;
+    table[numbers::SYSINFO] = None;
+    table[numbers::PTRACE] = None;
+
+    // TODO: TTY stuff
+    table[numbers::WRITE] = Some(|fd, buf, len, _, _, _| {
+        let buf = unsafe { core::slice::from_raw_parts(buf as *const u8, len) };
+        use core::fmt::Write;
+        {
+            let mut writer = crate::generic::log::GLOBAL_LOGGERS.lock();
+            _ = writer.write_str(&String::from_utf8_lossy(buf));
+        }
+        Ok(len)
+    });
+
+    table
+};
