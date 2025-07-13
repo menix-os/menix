@@ -1,12 +1,8 @@
 use super::inode::{INode, NodeType};
 use crate::generic::{
-    memory::{
-        VirtAddr,
-        cache::MemoryObject,
-        virt::{AddressSpace, VmFlags},
-    },
+    memory::cache::MemoryObject,
     posix::errno::{EResult, Errno},
-    process::Identity,
+    process::{Identity, InnerProcess},
     vfs::{
         cache::{LookupFlags, PathNode},
         inode::{Mode, NodeOps},
@@ -15,6 +11,7 @@ use crate::generic::{
 use alloc::sync::Arc;
 use core::{
     fmt::Debug,
+    num::NonZeroUsize,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -124,6 +121,7 @@ pub trait FileOps: Debug {
 impl File {
     /// Opens a file referenced by a path.
     pub fn open(
+        proc: &InnerProcess,
         at: Option<Arc<File>>,
         path: &[u8],
         flags: OpenFlags,
@@ -150,7 +148,7 @@ impl File {
             lookup_flags |= LookupFlags::FollowSymlinks;
         }
 
-        let file_path = PathNode::flookup(at, path, identity, lookup_flags)?;
+        let file_path = PathNode::flookup(proc, at, path, identity, lookup_flags)?;
         match file_path.entry.get_inode() {
             Some(x) => Self::do_open_inode(file_path, &x, flags, mode, identity),
             None => {
@@ -327,7 +325,7 @@ impl File {
     /// If a private mapping is requested, creates a new memory object and copies the data over.
     pub fn get_memory_object(
         &self,
-        length: usize,
+        length: NonZeroUsize,
         offset: uapi::off_t,
         private: bool,
     ) -> EResult<Arc<MemoryObject>> {
@@ -340,7 +338,7 @@ impl File {
         if private {
             // Private mapping means we need to do a unique allocation.
             let phys = MemoryObject::new_phys();
-            let mut buf = vec![0u8; length];
+            let mut buf = vec![0u8; length.into()];
             cache.read(&mut buf, offset as _);
             phys.write(&buf, offset as _);
             Arc::try_new(phys).map_err(|_| Errno::ENOMEM)

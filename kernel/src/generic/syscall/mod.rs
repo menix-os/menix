@@ -26,7 +26,9 @@ pub fn dispatch(
         numbers::GETTID => Ok(process::gettid()),
         numbers::GETPID => Ok(process::getpid()),
         numbers::GETPPID => Ok(process::getppid()),
-        numbers::WRITE => vfs::write(a0, a1, a2),
+        numbers::READ => vfs::read(a0, a1, a2).map(|x| x as _),
+        numbers::WRITE => vfs::write(a0, a1, a2).map(|x| x as _),
+        numbers::OPENAT => vfs::openat(a0, a1, a2),
         _ => {
             warn!("Unknown syscall {num}");
             Err(Errno::ENOSYS)

@@ -1,3 +1,5 @@
+use core::num::NonZeroUsize;
+
 use super::ExecInfo;
 use crate::{
     arch,
@@ -8,7 +10,7 @@ use crate::{
             virt::{AddressSpace, VmFlags, VmLevel},
         },
         posix::errno::{EResult, Errno},
-        process::{Process, task::Task, to_user},
+        process::{InnerProcess, Process, task::Task, to_user},
         util::align_down,
         vfs::{
             exec::ExecFormat,
@@ -343,7 +345,12 @@ struct ElfInfo {
 
 impl ElfFormat {
     // Loads an ELF file into an address space. Returns the entry point address.
-    fn load_file(file: &Arc<File>, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<ElfInfo> {
+    fn load_file(
+        file: &Arc<File>,
+        inner: &mut InnerProcess,
+        info: &mut ExecInfo,
+        base: usize,
+    ) -> EResult<ElfInfo> {
         // Read the header.
         let mut hdr_data = [0u8; size_of::<ElfHdr>()];
         file.pread(&mut hdr_data, 0)?;
@@ -358,11 +365,8 @@ impl ElfFormat {
         }
 
         // Start mapping a relocatable ELF at this address.
-        let base = if elf_hdr.e_type == ET_EXEC {
-            0
-        } else {
-            0x600_0000
-        };
+        // If it's fixed, don't account for an extra base address.
+        let base = if elf_hdr.e_type == ET_DYN { base } else { 0 };
 
         let page_size = arch::virt::get_page_size(VmLevel::L1);
         let mut phdr_addr = 0usize;
@@ -397,14 +401,16 @@ impl ElfFormat {
                         (phdr.p_memsz as usize + misalign + page_size - 1) & !(page_size - 1);
 
                     // Copy the file data into its own mapping.
-                    let backed =
-                        file.get_memory_object(phdr.p_filesz as _, phdr.p_offset as _, true)?;
+                    let backed = file.get_memory_object(
+                        NonZeroUsize::new(phdr.p_filesz as usize).unwrap(),
+                        phdr.p_offset as _,
+                        true,
+                    )?;
                     info.space.map_object(
                         backed.clone(),
                         map_address.into(),
-                        backed_map_size,
+                        NonZeroUsize::new(backed_map_size).unwrap(),
                         prot,
-                        MmapFlags::Fixed | MmapFlags::Private,
                         (phdr.p_offset as usize - misalign) as _,
                     )?;
 
@@ -413,9 +419,8 @@ impl ElfFormat {
                         info.space.map_object(
                             private_map,
                             (map_address + backed_map_size).into(),
-                            total_map_size - backed_map_size,
+                            NonZeroUsize::new(total_map_size - backed_map_size).unwrap(),
                             prot,
-                            MmapFlags::Fixed | MmapFlags::Private | MmapFlags::Anonymous,
                             0,
                         )?;
                     }
@@ -428,11 +433,12 @@ impl ElfFormat {
                     file.pread(&mut interp_name, phdr.p_offset)?;
                     // Open the interpreter and save it in the info.
                     info.interpreter = Some(File::open(
+                        inner,
                         Some(file.clone()),
                         &interp_name,
                         OpenFlags::ReadOnly | OpenFlags::Executable,
                         Mode::empty(),
-                        &old.inner.lock().identity,
+                        &inner.identity,
                     )?)
                 }
                 _ => (),
@@ -468,14 +474,22 @@ impl ExecFormat for ElfFormat {
         return true;
     }
 
-    fn load(&self, old: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task> {
+    fn load(&self, proc: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task> {
+        let mut inner = proc.inner.lock();
         let page_size = arch::virt::get_page_size(VmLevel::L1);
 
-        let elf = Self::load_file(&info.executable.clone(), old, info)?;
+        // Load the main executable. The base address only matters if the type is ET_DYN.
+        // Base could technically be 0, but we don't want to get anywhere near the NULL address.
+        let elf = Self::load_file(&info.executable.clone(), &mut inner, info, 0x10000)?;
+
         // If we have an interpreter, we need to use its entry point.
-        // This should leave AT_ENTRY untouched.
         let entry = if let Some(x) = &info.interpreter {
-            let interp = Self::load_file(&x.clone(), old, info)?;
+            let interp = Self::load_file(
+                &x.clone(),
+                &mut inner,
+                info,
+                1usize << (arch::virt::get_highest_bit_shift() - 2),
+            )?;
             interp.at_entry
         } else {
             elf.at_entry
@@ -483,20 +497,15 @@ impl ExecFormat for ElfFormat {
 
         // Setup stack.
         // Calculate the start of the user address.
-        let highest = (1usize
-            << arch::virt::get_level_bits() * arch::virt::get_num_levels()
-                + arch::virt::get_page_bits()
-                - 1)
-            - page_size;
+        let highest = (1usize << (arch::virt::get_highest_bit_shift() - 1)) - page_size;
         let stack_size = 2 * 1024 * 1024; // 2MiB stack.
 
         let stack = Arc::new(MemoryObject::new_phys());
         info.space.map_object(
             stack.clone(),
             (highest - stack_size).into(),
-            stack_size,
+            NonZeroUsize::new(stack_size).unwrap(),
             VmFlags::Read | VmFlags::Write,
-            MmapFlags::Fixed | MmapFlags::Private,
             0,
         )?;
 
@@ -564,7 +573,13 @@ impl ExecFormat for ElfFormat {
         assert!(stack_off % 16 == 0);
 
         // Create the main thread.
-        Task::new(to_user, entry, highest - stack_size + stack_off, &old, true)
+        Task::new(
+            to_user,
+            entry,
+            highest - stack_size + stack_off,
+            &proc,
+            true,
+        )
     }
 }
 

@@ -7,7 +7,7 @@
 use crate::generic::{
     boot::BootInfo,
     posix::errno::{EResult, Errno},
-    process::Identity,
+    process::{Identity, InnerProcess, Process},
     util::{self},
     vfs::{
         file::{File, OpenFlags},
@@ -63,7 +63,11 @@ fn oct2bin(str: &[u8]) -> usize {
 }
 
 /// Creates all directories in the given path and opens the last one. Also returns the final file name.
-pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
+pub fn create_dirs<'a>(
+    proc_inner: &InnerProcess,
+    at: Arc<File>,
+    path: &'a [u8],
+) -> EResult<(Arc<File>, &'a [u8])> {
     let mut current = at;
 
     // If there is a path to split off, do that. If there isn't, there are no directories to create.
@@ -74,6 +78,7 @@ pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
 
     for component in path.split(|&x| x == b'/').filter(|&x| !x.is_empty()) {
         if let Err(e) = mknod(
+            proc_inner,
             Some(current.clone()),
             component,
             NodeType::Directory,
@@ -86,6 +91,7 @@ pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
         }
 
         current = File::open(
+            proc_inner,
             Some(current.clone()),
             component,
             OpenFlags::Directory,
@@ -97,7 +103,7 @@ pub fn create_dirs(at: Arc<File>, path: &[u8]) -> EResult<(Arc<File>, &[u8])> {
     return Ok((current, file_name));
 }
 
-pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
+pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResult<()> {
     let mut offset = 0;
     let mut name_override = None;
     let mut files_loaded = 0;
@@ -121,11 +127,11 @@ pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
         let file_size = oct2bin(&current_file.size);
 
         // Create the folder structure for this file if it didn't exist already.
-        let (dir, file_name) = create_dirs(target.clone(), file_name)?;
-
+        let (dir, file_name) = create_dirs(&proc_inner, target.clone(), file_name)?;
         match current_file.typ {
             REGULAR | NORMAL | CONTIGOUS => {
                 let file = File::open(
+                    &proc_inner,
                     Some(dir),
                     file_name,
                     OpenFlags::Create,
@@ -142,6 +148,7 @@ pub fn load(target: Arc<File>, data: &[u8]) -> EResult<()> {
                     .take_while(|&x| *x != 0)
                     .count();
                 symlink(
+                    &proc_inner,
                     Some(dir),
                     file_name,
                     &current_file.linkname[0..link_len],
@@ -168,8 +175,10 @@ init_stage! {
 }
 
 fn init() {
+    let proc_inner = Process::get_kernel().inner.lock();
     // Load the initramfs into the root directory.
     let root_dir = File::open(
+        &proc_inner,
         None,
         b"/",
         OpenFlags::Directory,
@@ -179,7 +188,7 @@ fn init() {
     .expect("Unable to open root directory");
 
     for file in BootInfo::get().files {
-        load(root_dir.clone(), file.data)
+        load(&proc_inner, root_dir.clone(), file.data)
             .expect("Failed to load one of the provided initramfs archives");
     }
 }
