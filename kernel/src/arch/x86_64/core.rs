@@ -187,8 +187,10 @@ pub(in crate::arch) fn halt() -> ! {
 }
 
 pub(in crate::arch) fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
+    const SET_FS_BASE: usize = uapi::MENIX_ARCHCTL_SET_FSBASE as _;
+
     match cmd {
-        0 => unsafe { wrmsr(MSR_FS_BASE, arg as u64) },
+        SET_FS_BASE => unsafe { wrmsr(MSR_FS_BASE, arg as u64) },
         _ => return Err(Errno::ENOSYS),
     }
 

@@ -12,12 +12,14 @@ use crate::{
         posix::errno::{EResult, Errno},
         sched::Scheduler,
         util::{align_up, divide_up, mutex::Mutex, once::Once},
-        vfs::file::MmapFlags,
     },
 };
 use alloc::{alloc::AllocError, collections::btree_map::BTreeMap, slice, sync::Arc};
 use bitflags::bitflags;
-use core::sync::atomic::{AtomicUsize, Ordering};
+use core::{
+    num::NonZeroUsize,
+    sync::atomic::{AtomicUsize, Ordering},
+};
 
 pub const KERNEL_STACK_SIZE: usize = 0x20000;
 
@@ -412,43 +414,27 @@ impl AddressSpace {
         &self,
         object: Arc<MemoryObject>,
         addr: VirtAddr,
-        len: usize,
+        len: NonZeroUsize,
         prot: VmFlags,
-        flags: MmapFlags,
-        off: uapi::off_t,
+        offset: uapi::off_t,
     ) -> EResult<()> {
-        // Zero-length mappings are not valid.
-        if len == 0 {
-            return Err(Errno::EINVAL);
-        }
-        // Either `Shared` or `Private` has to be specified.
-        if !flags.intersects(MmapFlags::Shared | MmapFlags::Private) {
-            return Err(Errno::EINVAL);
-        }
         // `addr + len` may not overflow if the mapping is fixed.
-        if flags.contains(MmapFlags::Fixed) && addr.value().checked_add(len).is_none() {
+        if addr.value().checked_add(len.into()).is_none() {
             return Err(Errno::ENOMEM);
         }
 
         let page_size = arch::virt::get_page_size(VmLevel::L1);
-
-        // Find a suitable base address.
-        let addr = if flags.contains(MmapFlags::Fixed) {
-            if addr.value() % page_size != off as usize % page_size {
-                return Err(Errno::EINVAL);
-            }
-            addr
-        } else {
-            todo!("Find an address for !MAP_FIXED")
-        };
+        if addr.value() % page_size != offset as usize % page_size {
+            return Err(Errno::EINVAL);
+        }
 
         let mut mappings = self.mappings.lock();
         let mut pfndb = super::pmm::PAGE_DB.lock();
 
         // We need enough pages to fit all bytes.
-        let num_pages = divide_up(len, page_size);
+        let num_pages = divide_up(len.into(), page_size);
         let start_page = addr.value() / page_size;
-        let offset_page = off as usize / page_size;
+        let offset_page = offset as usize / page_size;
 
         for p in 0..num_pages {
             let phys_addr = object.try_get_page(p + offset_page).ok_or(Errno::EINVAL)?;
@@ -463,14 +449,6 @@ impl AddressSpace {
             // Create a mapping for this address space.
             mappings.insert(start_page + p, (phys_addr, prot));
         }
-
-        warn!(
-            "Mapped {:x} - {:x} at offset {:x} with prot {:?}",
-            addr.value(),
-            addr.value() + len,
-            off,
-            prot
-        );
 
         Ok(())
     }

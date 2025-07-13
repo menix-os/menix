@@ -8,6 +8,11 @@ pub fn get_page_size(level: VmLevel) -> usize {
     1 << (get_page_bits() + (get_level_bits() * level as usize))
 }
 
+/// Gets the highest possible shift for a canonical virtual address.
+pub fn get_highest_bit_shift() -> usize {
+    get_level_bits() * get_num_levels() + get_page_bits()
+}
+
 /// Gets the amount of bits in a page.
 pub fn get_page_bits() -> usize {
     internal::virt::get_page_bits()

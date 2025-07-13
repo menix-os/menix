@@ -8,27 +8,36 @@ use crate::generic::{
     util::{mutex::Mutex, once::Once},
     vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
 };
-use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
+use alloc::{
+    collections::btree_map::BTreeMap,
+    string::String,
+    sync::{Arc, Weak},
+    vec::Vec,
+};
 use core::sync::atomic::{AtomicUsize, Ordering};
 
 /// A unique process ID.
 pub type Pid = usize;
 
+#[derive(Debug)]
 pub struct Process {
     /// The unique identifier of this process.
     id: Pid,
     /// The display name of this process.
     name: String,
-    /// The parent of this process.
-    parent: Option<Arc<Process>>,
+    /// The parent of this process, or [`None`], if this is the init process.
+    parent: Option<Weak<Process>>,
     /// Mutable fields of the process.
     pub inner: Mutex<InnerProcess>,
 }
 
+/// The lockable, mutable part of a process.
 #[derive(Debug)]
 pub struct InnerProcess {
     /// A list of associated tasks.
     threads: Vec<Arc<Task>>,
+    /// Child processes of this process.
+    children: Vec<Arc<Process>>,
     /// The address space for this process.
     pub address_space: Arc<AddressSpace>,
     /// The root directory for this process.
@@ -37,6 +46,10 @@ pub struct InnerProcess {
     pub working_dir: PathNode,
     /// The user identity of this process.
     pub identity: Identity,
+    /// A table of open file descriptors.
+    pub open_files: [Option<Arc<File>>; uapi::OPEN_MAX as usize],
+    /// A pointer to the next free memory region.
+    pub mmap_head: VirtAddr,
 }
 
 impl Process {
@@ -50,8 +63,14 @@ impl Process {
         &self.name
     }
 
+    /// Gets the parent process of this process.
+    /// Returns [`None`], if it is the init process.
     pub fn get_parent(&self) -> Option<Arc<Self>> {
-        self.parent.clone()
+        // TODO: The upgrade should never fail. If it does, then somehow the child was alive but the parent was not.
+        self.parent.as_ref().map(|x| {
+            x.upgrade()
+                .expect("FIXME: Child process was alive for longer than the parent")
+        })
     }
 
     pub fn new(name: String, parent: Option<Arc<Self>>) -> EResult<Self> {
@@ -75,16 +94,25 @@ impl Process {
             None => (vfs::get_root(), vfs::get_root(), Identity::default()),
         };
 
+        // Save the child in the parent process.
+        if let Some(x) = &parent {
+            x.inner.lock().children.push(x.clone())
+        }
+
         Ok(Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             name,
-            parent,
+            parent: parent.map(|x| Arc::downgrade(&x)),
             inner: Mutex::new(InnerProcess {
                 threads: Vec::new(),
+                children: Vec::new(),
                 address_space: space,
                 root_dir: root,
                 working_dir: cwd,
                 identity,
+                open_files: [const { None }; _],
+                // TODO
+                mmap_head: VirtAddr::new(0x1000_0000),
             }),
         })
     }
@@ -127,10 +155,30 @@ impl Process {
         inner.address_space = Arc::new(info.space);
         drop(inner);
 
+        // TODO: Not sure if this can be done in a better way.
         CPU_DATA.get().scheduler.add_task(init);
-        CPU_DATA.get().scheduler.reschedule();
 
         Ok(())
+    }
+}
+
+impl InnerProcess {
+    /// Attempts to get the file corresponding to the given file descriptor.
+    /// Note that this does not handle special FDs like [`uapi::AT_FDCWD`].
+    pub fn get_fd(&self, fd: usize) -> Option<Arc<File>> {
+        self.open_files.get(fd).and_then(|x| x.clone())
+    }
+
+    /// Allocates a new descriptor for a file. Returns [`None`] if there are no more free FDs for this process.
+    pub fn add_file(&mut self, file: Arc<File>) -> Option<usize> {
+        self.open_files
+            .iter_mut()
+            .enumerate()
+            .find(|(_, x)| x.is_none())
+            .and_then(|(idx, x)| {
+                *x = Some(file);
+                Some(idx)
+            })
     }
 }
 

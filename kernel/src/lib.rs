@@ -75,21 +75,27 @@ pub extern "C" fn main(_: usize, _: usize) {
 
     log!("Starting init \"{}\"", String::from_utf8_lossy(path));
 
-    let init_file = File::open(
-        None,
-        path,
-        OpenFlags::ReadOnly | OpenFlags::Executable,
-        Mode::empty(),
-        &Identity::get_kernel(),
-    )
-    .expect("Unable to read the init executable");
-
     unsafe {
         INIT.init(Arc::new(
             Process::new("init".into(), None).expect("Unable to create init process"),
         ))
     };
-    INIT.get()
+
+    let init_proc = INIT.get();
+    let init_file = {
+        let init_inner = init_proc.inner.lock();
+        File::open(
+            &init_inner,
+            None,
+            path,
+            OpenFlags::ReadOnly | OpenFlags::Executable,
+            Mode::empty(),
+            &Identity::get_kernel(),
+        )
+        .expect("Unable to read the init executable")
+    };
+
+    init_proc
         .clone()
         .fexecve(init_file, &[path], &[])
         .expect("Unable to create init process");

@@ -10,7 +10,8 @@ pub use file::File;
 pub use fs::Mount;
 pub use fs::MountFlags;
 
-use super::memory::virt::VmLevel;
+use crate::generic::memory::cache::MemoryObject;
+use crate::generic::process::InnerProcess;
 use crate::generic::{
     device::Device,
     memory::{
@@ -26,8 +27,8 @@ use crate::generic::{
         inode::{Mode, NodeOps, NodeType},
     },
 };
-use crate::{arch, generic::memory::cache::MemoryObject};
 use alloc::sync::Arc;
+use core::num::NonZeroUsize;
 
 /// The root directory entry.
 static ROOT: Once<PathNode> = Once::new();
@@ -39,6 +40,7 @@ pub fn get_root() -> PathNode {
 
 /// Creates a new node in the VFS.
 pub fn mknod(
+    inner: &InnerProcess,
     at: Option<Arc<File>>,
     path: &[u8],
     file_type: NodeType,
@@ -56,7 +58,7 @@ pub fn mknod(
         _ => return Err(Errno::EINVAL),
     }
 
-    let path = PathNode::flookup(at, path, identity, LookupFlags::MustNotExist)?;
+    let path = PathNode::flookup(inner, at, path, identity, LookupFlags::MustNotExist)?;
     let parent = path
         .lookup_parent()
         .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
@@ -70,12 +72,14 @@ pub fn mknod(
 
 /// Creates a symbolic link at `path`, pointing to `target_path`.
 pub fn symlink(
+    inner: &InnerProcess,
     at: Option<Arc<File>>,
     path: &[u8],
     target_path: &[u8],
     identity: &Identity,
 ) -> EResult<()> {
     let path = PathNode::lookup(
+        inner,
         at.and_then(|x| x.path.clone()),
         path,
         identity,
@@ -101,21 +105,19 @@ pub fn mmap(
     file: Option<Arc<File>>,
     space: &AddressSpace,
     addr: VirtAddr,
-    len: usize,
+    len: NonZeroUsize,
     prot: VmFlags,
     flags: MmapFlags,
     offset: uapi::off_t,
 ) -> EResult<VirtAddr> {
-    if let Some(f) = file {
-        let object = f.get_memory_object(len, offset, flags.contains(MmapFlags::Private))?;
-        space.map_object(object, addr, len, prot, flags, offset)?;
-    } else {
-        // No file given, create an anonymous mapping.
-        if !flags.contains(MmapFlags::Anonymous) {
-            return Err(Errno::EINVAL);
-        }
+    if flags.contains(MmapFlags::Anonymous) {
         let anon = Arc::new(MemoryObject::new_phys());
-        space.map_object(anon, addr, len, prot, flags, offset)?;
+        space.map_object(anon, addr, len, prot, offset)?;
+    } else if let Some(f) = file {
+        let object = f.get_memory_object(len, offset, flags.contains(MmapFlags::Private))?;
+        space.map_object(object, addr, len, prot, offset)?;
+    } else {
+        return Err(Errno::EINVAL);
     }
 
     return Ok(addr);
