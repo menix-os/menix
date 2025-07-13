@@ -9,7 +9,7 @@ use crate::{
     arch::{
         self,
         x86_64::{
-            asm::wrmsr,
+            asm::{rdmsr, wrmsr},
             consts::{self},
             system::apic::LAPIC,
         },
@@ -144,6 +144,8 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
             from_context.es = super::asm::read_es();
             from_context.fs = super::asm::read_fs();
             from_context.gs = super::asm::read_gs();
+            from_context.fsbase = rdmsr(consts::MSR_FS_BASE);
+            from_context.gsbase = rdmsr(consts::MSR_KERNEL_GS_BASE);
         }
 
         if (*to).is_user() {

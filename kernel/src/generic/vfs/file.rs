@@ -2,6 +2,7 @@ use super::inode::{INode, NodeType};
 use crate::generic::{
     memory::{
         VirtAddr,
+        cache::MemoryObject,
         virt::{AddressSpace, VmFlags},
     },
     posix::errno::{EResult, Errno},
@@ -323,40 +324,28 @@ impl File {
         self.ops.ioctl(self, request, arg)
     }
 
-    /// Maps a file into a given address space.
-    pub fn mmap(
+    /// If a private mapping is requested, creates a new memory object and copies the data over.
+    pub fn get_memory_object(
         &self,
-        space: &AddressSpace,
-        address: VirtAddr,
         length: usize,
-        prot: VmFlags,
-        flags: MmapFlags,
         offset: uapi::off_t,
-    ) -> EResult<()> {
-        // Zero-length mappings are not valid.
-        if length == 0 {
-            return Err(Errno::EINVAL);
-        }
-        // Either `Shared` or `Private` has to be specified.
-        if !flags.intersects(MmapFlags::Shared | MmapFlags::Private) {
-            return Err(Errno::EINVAL);
-        }
-        // `addr + len` may not overflow if the mapping is fixed.
-        if flags.contains(MmapFlags::Fixed) && address.value().checked_add(length).is_none() {
-            return Err(Errno::ENOMEM);
-        }
+        private: bool,
+    ) -> EResult<Arc<MemoryObject>> {
+        let cache = self
+            .inode
+            .as_ref()
+            .ok_or(Errno::ENOENT)
+            .and_then(|x| Ok(x.cache.clone()))?;
 
-        // Map the inode into the address space.
-        space.map_object(
-            self.inode
-                .as_ref()
-                .ok_or(Errno::ENOENT)
-                .and_then(|x| Ok(x.cache.clone()))?,
-            address,
-            length,
-            prot,
-            flags,
-            offset,
-        )
+        if private {
+            // Private mapping means we need to do a unique allocation.
+            let phys = MemoryObject::new_phys();
+            let mut buf = vec![0u8; length];
+            cache.read(&mut buf, offset as _);
+            phys.write(&buf, offset as _);
+            Arc::try_new(phys).map_err(|_| Errno::ENOMEM)
+        } else {
+            Ok(cache)
+        }
     }
 }
