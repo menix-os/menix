@@ -107,7 +107,8 @@ pub fn mmap(
     offset: uapi::off_t,
 ) -> EResult<VirtAddr> {
     if let Some(f) = file {
-        f.mmap(space, addr, len, prot, flags, offset)?;
+        let object = f.get_memory_object(len, offset, flags.contains(MmapFlags::Private))?;
+        space.map_object(object, addr, len, prot, flags, offset)?;
     } else {
         // No file given, create an anonymous mapping.
         if !flags.contains(MmapFlags::Anonymous) {

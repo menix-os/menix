@@ -396,9 +396,12 @@ impl ElfFormat {
                     let total_map_size =
                         (phdr.p_memsz as usize + misalign + page_size - 1) & !(page_size - 1);
 
-                    file.mmap(
-                        &info.space,
-                        (map_address).into(),
+                    // Copy the file data into its own mapping.
+                    let backed =
+                        file.get_memory_object(phdr.p_filesz as _, phdr.p_offset as _, true)?;
+                    info.space.map_object(
+                        backed.clone(),
+                        map_address.into(),
                         backed_map_size,
                         prot,
                         MmapFlags::Fixed | MmapFlags::Private,
@@ -469,6 +472,8 @@ impl ExecFormat for ElfFormat {
         let page_size = arch::virt::get_page_size(VmLevel::L1);
 
         let elf = Self::load_file(&info.executable.clone(), old, info)?;
+        // If we have an interpreter, we need to use its entry point.
+        // This should leave AT_ENTRY untouched.
         let entry = if let Some(x) = &info.interpreter {
             let interp = Self::load_file(&x.clone(), old, info)?;
             interp.at_entry

@@ -1,5 +1,3 @@
-use menix_proc::syscall;
-
 use super::internal;
 use crate::generic::{percpu::CpuData, posix::errno::EResult};
 
@@ -14,9 +12,7 @@ pub fn get_per_cpu() -> *mut CpuData {
 }
 
 /// Performs some CPU-dependent operation.
-#[syscall]
 pub fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
-    log!("archctl {cmd} {arg:x}");
     internal::core::archctl(cmd, arg)
 }
 

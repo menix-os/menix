@@ -1,21 +1,20 @@
-use crate::generic::{
-    memory::user::UserPtr,
-    posix::{self, errno::EResult},
-    sched::Scheduler,
-};
-use menix_proc::syscall;
+use crate::generic::{posix::errno::EResult, sched::Scheduler};
 
-#[syscall]
-pub fn gettid() -> EResult<usize> {
-    Ok(Scheduler::get_current().get_id())
+pub fn gettid() -> usize {
+    Scheduler::get_current().get_id()
 }
 
-#[syscall]
-pub fn getpid() -> EResult<usize> {
-    Ok(Scheduler::get_current().get_process().get_pid())
+pub fn getpid() -> usize {
+    Scheduler::get_current().get_process().get_pid()
 }
 
-#[syscall]
+pub fn getppid() -> usize {
+    Scheduler::get_current()
+        .get_process()
+        .get_parent()
+        .map_or(0, |x| x.get_pid())
+}
+
 pub fn exit(error: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
 
@@ -24,12 +23,4 @@ pub fn exit(error: usize) -> EResult<usize> {
     }
 
     todo!()
-}
-
-#[syscall]
-pub fn uname(addr: UserPtr<uapi::utsname>) -> EResult<usize> {
-    let mut utsname = uapi::utsname::default();
-    posix::utsname::utsname(&mut utsname);
-    addr.write(utsname);
-    Ok(0)
 }

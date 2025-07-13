@@ -417,6 +417,19 @@ impl AddressSpace {
         flags: MmapFlags,
         off: uapi::off_t,
     ) -> EResult<()> {
+        // Zero-length mappings are not valid.
+        if len == 0 {
+            return Err(Errno::EINVAL);
+        }
+        // Either `Shared` or `Private` has to be specified.
+        if !flags.intersects(MmapFlags::Shared | MmapFlags::Private) {
+            return Err(Errno::EINVAL);
+        }
+        // `addr + len` may not overflow if the mapping is fixed.
+        if flags.contains(MmapFlags::Fixed) && addr.value().checked_add(len).is_none() {
+            return Err(Errno::ENOMEM);
+        }
+
         let page_size = arch::virt::get_page_size(VmLevel::L1);
 
         // Find a suitable base address.
