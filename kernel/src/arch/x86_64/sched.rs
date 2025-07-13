@@ -1,5 +1,3 @@
-use alloc::sync::Arc;
-
 use super::{
     ARCH_DATA,
     core::get_per_cpu,

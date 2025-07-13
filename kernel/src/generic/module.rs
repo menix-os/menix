@@ -371,7 +371,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
 
     // Register newly added symbols for dependencies.
     for symbol in symtab {
-        // TODO
+        // TODO: Add symbols
     }
 
     let dependencies = dt_needed

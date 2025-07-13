@@ -1,26 +1,24 @@
-use core::num::NonZeroUsize;
-
 use super::ExecInfo;
 use crate::{
     arch,
     generic::{
         memory::{
-            VirtAddr,
             cache::MemoryObject,
-            virt::{AddressSpace, VmFlags, VmLevel},
+            virt::{VmFlags, VmLevel},
         },
         posix::errno::{EResult, Errno},
         process::{InnerProcess, Process, task::Task, to_user},
         util::align_down,
         vfs::{
             exec::ExecFormat,
-            file::{File, MmapFlags, OpenFlags},
+            file::{File, OpenFlags},
             inode::Mode,
         },
     },
 };
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{sync::Arc, vec::Vec};
 use bytemuck::{Pod, Zeroable};
+use core::num::NonZeroUsize;
 
 // ELF Header Identification
 pub const ELF_MAG: [u8; 4] = [0x7F, b'E', b'L', b'F'];

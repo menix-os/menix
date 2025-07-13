@@ -2,7 +2,6 @@ use super::inode::INode;
 use crate::generic::{
     posix::errno::{EResult, Errno},
     process::{Identity, InnerProcess},
-    sched::Scheduler,
     util::mutex::Mutex,
     vfs::{File, file::OpenFlags, fs::Mount, inode::NodeOps},
 };
