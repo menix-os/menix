@@ -294,7 +294,7 @@ pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
     let mut context = Context::default();
     context.rip = ip.value() as u64;
     context.rsp = sp.value() as u64;
-    context.rflags = 0x200;
+    context.rflags = 0x202;
     context.cs = offset_of!(Gdt, user_code64) as u64 | consts::CPL_USER as u64;
     context.ss = offset_of!(Gdt, user_data) as u64 | consts::CPL_USER as u64;
 

@@ -174,6 +174,7 @@ impl InnerProcess {
         self.open_files
             .iter_mut()
             .enumerate()
+            .skip(3)
             .find(|(_, x)| x.is_none())
             .and_then(|(idx, x)| {
                 *x = Some(file);

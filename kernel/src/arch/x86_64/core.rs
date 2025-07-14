@@ -115,7 +115,7 @@ pub(super) fn setup_core(context: &'static CpuData) {
 
     // XSAVE
     if cpuid1.ecx & consts::CPUID_1C_XSAVE != 0 {
-        cr4 |= consts::CR4_OSXSAVE | consts::CR4_OSFXSR | consts::CR4_OSXMMEXCPT;
+        cr4 |= consts::CR4_OSXSAVE;
         unsafe { asm!("mov cr4, {cr4}", cr4 = in(reg) cr4, options(nostack)) };
         let mut xcr0 = 0u64;
         xcr0 |= 3;
@@ -142,6 +142,7 @@ pub(super) fn setup_core(context: &'static CpuData) {
         }
     } else {
         unsafe {
+            cpu.fpu_size.init(512);
             cpu.fpu_save.init(super::asm::fxsave);
             cpu.fpu_restore.init(super::asm::fxrstor);
         }

@@ -497,11 +497,12 @@ impl ExecFormat for ElfFormat {
         // Calculate the start of the user address.
         let highest = (1usize << (arch::virt::get_highest_bit_shift() - 1)) - page_size;
         let stack_size = 2 * 1024 * 1024; // 2MiB stack.
+        let stack_start = highest - stack_size;
 
         let stack = Arc::new(MemoryObject::new_phys());
         info.space.map_object(
             stack.clone(),
-            (highest - stack_size).into(),
+            stack_start.into(),
             NonZeroUsize::new(stack_size).unwrap(),
             VmFlags::Read | VmFlags::Write,
             0,
@@ -516,7 +517,7 @@ impl ExecFormat for ElfFormat {
             stack.write(&[0u8], stack_off);
             stack_off -= env.len();
             stack.write(env, stack_off);
-            envp_offsets.push(stack_off);
+            envp_offsets.push(stack_start + stack_off);
         }
 
         for arg in info.argv {
@@ -524,7 +525,7 @@ impl ExecFormat for ElfFormat {
             stack.write(&[0u8], stack_off);
             stack_off -= arg.len();
             stack.write(arg, stack_off);
-            argv_offsets.push(stack_off);
+            argv_offsets.push(stack_start + stack_off);
         }
 
         stack_off = align_down(stack_off, 16);

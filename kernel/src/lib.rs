@@ -97,10 +97,10 @@ pub extern "C" fn main(_: usize, _: usize) {
 
     init_proc
         .clone()
-        .fexecve(init_file, &[path], &[])
+        .fexecve(init_file, &[path], &[b"USER=root"])
         .expect("Unable to create init process");
 
     loop {
-        CPU_DATA.get().scheduler.reschedule();
+        unsafe { arch::irq::set_irq_state(true) };
     }
 }

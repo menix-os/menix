@@ -23,17 +23,24 @@ pub fn dispatch(
         numbers::UNAME => system::uname(a0.into()),
         numbers::ARCHCTL => system::archctl(a0, a1),
         numbers::MMAP => memory::mmap(a0.into(), a1, a2 as _, a3 as _, a4 as _, a5 as _),
+        numbers::MPROTECT => memory::mprotect(a0.into(), a1, a2 as _),
+        numbers::FORK => Ok(0),
         numbers::GETTID => Ok(process::gettid()),
         numbers::GETPID => Ok(process::getpid()),
         numbers::GETPPID => Ok(process::getppid()),
         numbers::READ => vfs::read(a0, a1, a2).map(|x| x as _),
         numbers::WRITE => vfs::write(a0, a1, a2).map(|x| x as _),
+        numbers::SEEK => vfs::seek(a0, a1, a2),
         numbers::OPENAT => vfs::openat(a0, a1, a2),
+        numbers::CLOSE => vfs::close(a0),
+        numbers::FCNTL => Ok(0), // todo
+        numbers::PIPE => Ok(0),  // todo
         _ => {
             warn!("Unknown syscall {num}");
             Err(Errno::ENOSYS)
         }
     };
+
     match result {
         Ok(x) => return (x, 0),
         Err(x) => return (0, x as usize),

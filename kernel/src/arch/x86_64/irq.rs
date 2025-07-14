@@ -68,6 +68,7 @@ pub unsafe extern "C" fn amd64_syscall_stub() {
         "push r13",
         "push r14",
         "push r15",
+        "xor rbp, rbp",
         "mov rdi, rsp",               // Put the trap frame struct as first argument.
         "call {syscall_handler}",     // Call syscall handler
         "cli",

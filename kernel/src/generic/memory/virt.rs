@@ -21,7 +21,7 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-pub const KERNEL_STACK_SIZE: usize = 0x20000;
+pub const KERNEL_STACK_SIZE: usize = 0x200000;
 
 bitflags! {
     /// Page protection flags.
@@ -453,6 +453,29 @@ impl AddressSpace {
         Ok(())
     }
 
+    pub fn protect(&self, addr: VirtAddr, len: NonZeroUsize, prot: VmFlags) -> EResult<()> {
+        // `addr + len` may not overflow if the mapping is fixed.
+        if addr.value().checked_add(len.into()).is_none() {
+            return Err(Errno::ENOMEM);
+        }
+
+        let page_size = arch::virt::get_page_size(VmLevel::L1);
+        if addr.value() % page_size != 0 {
+            return Err(Errno::EINVAL);
+        }
+
+        let num_pages = divide_up(len.into(), page_size);
+        let start_page = addr.value() / page_size;
+        let mut mappings = self.mappings.lock();
+
+        for p in 0..num_pages {
+            let (_, flags) = mappings.get_mut(&(start_page + p)).ok_or(Errno::EINVAL)?;
+            *flags = prot;
+        }
+
+        Ok(())
+    }
+
     pub fn clear(&self) {
         self.mappings.lock().clear();
     }
@@ -507,7 +530,6 @@ pub fn page_fault_handler(info: &PageFaultInfo) {
         // TODO: Send SIGSEGV and reschedule.
         // Kill process.
         // Force immediate reschedule.
-        todo!("User process did a segfault");
     }
 
     // If any other attempt to recover has failed, we made a mistake.

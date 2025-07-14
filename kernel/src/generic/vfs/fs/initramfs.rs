@@ -15,7 +15,7 @@ use crate::generic::{
         mknod, symlink,
     },
 };
-use alloc::sync::Arc;
+use alloc::{string::String, sync::Arc};
 use bytemuck::AnyBitPattern;
 use core::ffi::CStr;
 
@@ -160,7 +160,6 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
         }
 
         files_loaded += 1;
-
         offset += 512 + util::align_up(file_size, 512);
     }
 

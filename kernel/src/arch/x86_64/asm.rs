@@ -79,28 +79,28 @@ pub fn rdtsc() -> u64 {
 #[inline]
 pub unsafe fn fxsave(memory: *mut u8) {
     unsafe {
-        asm! ("fxsave [{0}]", in(reg) memory);
+        asm!("fxsave [{0}]", in(reg) memory);
     }
 }
 
 #[inline]
 pub unsafe fn fxrstor(memory: *const u8) {
     unsafe {
-        asm! ("fxrstor [{0}]", in(reg) memory);
+        asm!("fxrstor [{0}]", in(reg) memory);
     }
 }
 
 #[inline]
 pub unsafe fn xsave(memory: *mut u8) {
     unsafe {
-        asm! ("xsave [{0}]", in(reg) memory);
+        asm!("xsave [{0}]", in(reg) memory, in("eax")0xffff_ffffu32, in("edx")0xffff_ffffu32);
     }
 }
 
 #[inline]
 pub unsafe fn xrstor(memory: *const u8) {
     unsafe {
-        asm! ("xrstor [{0}]", in(reg) memory);
+        asm!("xrstor [{0}]", in(reg) memory, in("eax")0xffff_ffffu32, in("edx")0xffff_ffffu32);
     }
 }
 
@@ -214,4 +214,54 @@ pub unsafe fn write_gs(value: u16) {
     unsafe {
         asm!("mov gs, {0:x}", in(reg) value);
     }
+}
+
+#[repr(C, packed)]
+#[derive(Debug)]
+pub struct FxState {
+    pub fcw: u16,
+    pub fsw: u16,
+    pub ftw: u8,
+    reserved0: u8,
+    pub fop: u16,
+    pub fpu_ip: u64,
+    pub fpu_dp: u64,
+    pub mxcsr: u32,
+    pub mxcsr_mask: u32,
+    pub st0: [u8; 10],
+    reserved1: [u8; 6],
+    pub st1: [u8; 10],
+    reserved2: [u8; 6],
+    pub st2: [u8; 10],
+    reserved3: [u8; 6],
+    pub st3: [u8; 10],
+    reserved4: [u8; 6],
+    pub st4: [u8; 10],
+    reserved5: [u8; 6],
+    pub st5: [u8; 10],
+    reserved6: [u8; 6],
+    pub st6: [u8; 10],
+    reserved7: [u8; 6],
+    pub st7: [u8; 10],
+    reserved8: [u8; 6],
+    pub xmm0: [u8; 16],
+    pub xmm1: [u8; 16],
+    pub xmm2: [u8; 16],
+    pub xmm3: [u8; 16],
+    pub xmm4: [u8; 16],
+    pub xmm5: [u8; 16],
+    pub xmm6: [u8; 16],
+    pub xmm7: [u8; 16],
+    pub xmm8: [u8; 16],
+    pub xmm9: [u8; 16],
+    pub xmm10: [u8; 16],
+    pub xmm11: [u8; 16],
+    pub xmm12: [u8; 16],
+    pub xmm13: [u8; 16],
+    pub xmm14: [u8; 16],
+    pub xmm15: [u8; 16],
+    reserved9: [u8; 48],
+    pub available: [u8; 48],
+    pub xstate_bv: u64,
+    pub xcomp_bv: u64,
 }

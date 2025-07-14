@@ -75,3 +75,20 @@ pub fn mmap(
     )
     .map(|x| x.value())
 }
+
+pub fn mprotect(addr: VirtAddr, size: usize, prot: u32) -> EResult<usize> {
+    let mut vm_prot = VmFlags::empty();
+    vm_prot.set(VmFlags::Read, prot & uapi::PROT_READ != 0);
+    vm_prot.set(VmFlags::Write, prot & uapi::PROT_WRITE != 0);
+    vm_prot.set(VmFlags::Exec, prot & uapi::PROT_EXEC != 0);
+
+    let proc = Scheduler::get_current().get_process();
+    let proc_inner = proc.inner.lock();
+    proc_inner.address_space.protect(
+        addr,
+        NonZeroUsize::new(size).ok_or(Errno::EINVAL)?,
+        vm_prot,
+    )?;
+
+    Ok(0)
+}
