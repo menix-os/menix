@@ -1,0 +1,13 @@
+# IDE Files
+.vscode/*
+.idea/*
+.cache/*
+
+# Build artifacts
+*.o
+*.a
+*.so
+
+# Generated files
+.config
+include/menix/config.h

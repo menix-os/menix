@@ -1,0 +1,53 @@
+---
+AlignAfterOpenBracket: BlockIndent
+AlignArrayOfStructures: None
+IndentWidth: 4
+InsertNewlineAtEOF: true
+IntegerLiteralSeparator:
+  HexMinDigits: 8
+IndentCaseBlocks: false
+IndentCaseLabels: false
+IndentPPDirectives: None
+IndentGotoLabels: false
+UseTab: Always
+TabWidth: 4
+Standard: Latest
+Language: Cpp
+LineEnding: LF
+AttributeMacros:
+  - __init
+  - __initdata
+  - __user
+  - __io
+AlignOperands: DontAlign
+BitFieldColonSpacing: None
+ColumnLimit: 120
+IncludeBlocks: Merge
+SortIncludes: Never
+MaxEmptyLinesToKeep: 1
+PointerAlignment: Left
+QualifierAlignment: Leave
+SpaceAfterLogicalNot: false
+SpaceAfterCStyleCast: false
+AllowShortEnumsOnASingleLine: false
+AllowShortFunctionsOnASingleLine: Empty
+AllowShortBlocksOnASingleLine: Empty
+AllowAllArgumentsOnNextLine: true
+BreakAfterAttributes: Always
+BreakConstructorInitializers: BeforeComma
+BreakBeforeBraces: Attach
+AllowShortLoopsOnASingleLine: false
+SpacesInSquareBrackets: false
+AlignConsecutiveMacros:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: true
+  AlignCompound: true
+  AlignFunctionPointers: false
+AlignEscapedNewlines: DontAlign
+BreakBeforeInlineASMColon: OnlyMultiline
+AccessModifierOffset: -4
+SpacesInParens: Never
+SpaceBeforeSquareBrackets: false
+SpaceInEmptyBlock: false
+SpacesBeforeTrailingComments: 1

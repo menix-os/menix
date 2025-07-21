@@ -1,0 +1,13 @@
+option(
+    'config',
+    type: 'string',
+    value: '.config',
+    description: 'The path to an override configuration file',
+)
+
+option(
+    'install_headers',
+    type: 'boolean',
+    value: false,
+    description: 'Only install kernel headers',
+)
