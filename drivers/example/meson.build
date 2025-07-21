@@ -1,4 +1,4 @@
-build_example = config.get('CONFIG_EXAMPLE', 'm')
+build_example = get_option('example')
 example_sources = files('main.c')
 
 if build_example == 'y'

@@ -1,13 +1,24 @@
 option(
-    'config_file',
-    type: 'string',
-    value: '.config',
-    description: 'The path to an override configuration file',
+	'headers_only',
+	type: 'boolean',
+	value: false,
+	description: 'Only install kernel headers',
+)
+
+# Boot
+
+option(
+	'boot_protocol',
+	type: 'combo',
+	choices: ['limine', 'uefi'],
+	value: 'limine',
+	description: 'The protocol to use for booting',
 )
 
 option(
-    'headers_only',
-    type: 'boolean',
-    value: false,
-    description: 'Only install kernel headers',
+	'example',
+	type: 'combo',
+	choices: ['y', 'm', 'n'],
+	value: 'm',
+	description: 'An example module',
 )

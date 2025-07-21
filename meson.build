@@ -14,16 +14,6 @@ if get_option('headers_only') == true
     subdir_done()
 endif
 
-# Parse config
-fs = import('fs')
-keyval = import('keyval')
-config_path = get_option('config_file')
-if not fs.exists(config_path)
-    error('Config file ' + config_path + ' does not exist!')
-endif
-config = configuration_data(keyval.load(config_path))
-configure_file(configuration: config, output: 'config.h')
-
 common_c_args = [
     '-ffreestanding',
     '-fno-stack-protector',
