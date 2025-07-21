@@ -1,7 +1,6 @@
 #ifndef _MENIX_TYPES_H
 #define _MENIX_TYPES_H
 
-#define __EXPORTED_HEADERS__
 #include <uapi/menix/types.h>
 
 typedef __i8 i8;

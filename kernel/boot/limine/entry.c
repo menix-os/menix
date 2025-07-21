@@ -1,19 +1,22 @@
 #include <menix/acpi.h>
 #include <menix/cmdline.h>
 #include <menix/init.h>
-#include <menix/mem.h>
+#include <menix/boot/file.h>
+#include <menix/mem/init.h>
+#include <menix/mm.h>
 #include <menix/log.h>
 #include <menix/util.h>
+#include <menix/hint.h>
 #include <string.h>
 
 #include "limine.h"
 
-__initdata_named(req_0) static volatile LIMINE_REQUESTS_START_MARKER;
-__initdata_named(req_1) static volatile LIMINE_BASE_REVISION(3);
-__initdata_named(req_2) static volatile LIMINE_REQUESTS_END_MARKER;
+__initdata_prio(0) static volatile LIMINE_REQUESTS_START_MARKER;
+__initdata_prio(1) static volatile LIMINE_BASE_REVISION(3);
+__initdata_prio(2) static volatile LIMINE_REQUESTS_END_MARKER;
 
 #define LIMINE_REQUEST(request, tag, rev) \
-	__initdata_named(req_1) static volatile struct limine_##request request = { \
+	__initdata_prio(1) static volatile struct limine_##request request = { \
 		.id = tag, \
 		.revision = rev, \
 		.response = nullptr, \
@@ -36,11 +39,11 @@ __init void _start() {
 
 	// Get the memory map.
 	struct limine_memmap_response* const mm_res = memmap_request.response;
-	mem_map_size = min(mm_res->entry_count, array_size(mem_map));
-	if (mm_res->entry_count > mem_map_size)
-		kwarn("Truncating %zu memory map entries!", mm_res->entry_count - mem_map_size);
+	usize map_size = min(mm_res->entry_count, array_size(mem_map));
+	if (mm_res->entry_count > map_size)
+		kwarn("Truncating %zu memory map entries!", mm_res->entry_count - map_size);
 
-	for (usize i = 0; i < mem_map_size; i++) {
+	for (usize i = 0; i < map_size; i++) {
 		mem_map[i].address = mm_res->entries[i]->base;
 		mem_map[i].length = mm_res->entries[i]->length;
 
@@ -66,11 +69,11 @@ __init void _start() {
 		klog("limine: Got %zu module(s)\n", module_res->module_count);
 		boot_files_count = min(module_res->module_count, array_size(boot_files));
 		for (usize i = 0; i < boot_files_count; i++) {
-			boot_files[i].address = module_res->modules[i]->address;
+			boot_files[i].data = module_res->modules[i]->address;
 			boot_files[i].length = module_res->modules[i]->size;
 			boot_files[i].path = module_res->modules[i]->path;
 			kmsg(
-				"limine: [%zu] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, boot_files[i].address,
+				"limine: [%zu] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, boot_files[i].data,
 				boot_files[i].length, boot_files[i].path
 			);
 		}

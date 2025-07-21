@@ -4,21 +4,13 @@
 #include <menix/types.h>
 
 // Code reclaimed after boot.
-#define __init				[[gnu::used, gnu::section(".init.text"), gnu::cold]]
+#define __init			   __attribute__((used, section(".init.text"), cold))
 // Data reclaimed after boot.
-#define __initdata			[[gnu::used, gnu::section(".init.data")]]
-#define __initdata_named(p) [[gnu::used, gnu::section(".init.data." #p)]]
+#define __initconst		   __attribute__((used, section(".init.rodata")))
+#define __initdata		   __attribute__((used, section(".init.data")))
+#define __initdata_prio(p) __attribute__((used, section(".init.data." #p)))
+#define __noreturn		   __attribute__((noreturn))
 
-struct boot_file {
-	u8* address;
-	usize length;
-	const char* path;
-};
-
-extern struct boot_file boot_files[32];
-extern usize boot_files_count;
-
-[[noreturn]]
-void kmain();
+void __noreturn kmain();
 
 #endif

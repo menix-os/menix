@@ -1,7 +1,7 @@
 #ifndef _UAPI_MENIX_UTSNAME_H
 #define _UAPI_MENIX_UTSNAME_H
 
-struct utsname {
+struct __utsname {
 	char sysname[65];
 	char nodename[65];
 	char release[65];

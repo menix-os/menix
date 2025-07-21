@@ -1,5 +1,5 @@
 #include <menix/init.h>
-#include <menix/util.h>
+#include <menix/boot/file.h>
 #include <menix/types.h>
 
 __initdata struct boot_file boot_files[32] = {};

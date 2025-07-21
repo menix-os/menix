@@ -1,4 +1,5 @@
 #include <menix/util.h>
+#include <menix/hint.h>
 #include <menix/types.h>
 
 usize strlen(const char* str) {
@@ -30,7 +31,7 @@ int memcmp(const void* s1, const void* s2, usize size) {
 }
 
 void* memcpy(void* restrict dest, const void* restrict src, usize n) {
-	if (n == 0)
+	if (unlikely(n == 0))
 		return dest;
 
 	usize d = (usize)dest;
@@ -80,7 +81,7 @@ void* memmove(void* dstptr, const void* srcptr, usize size) {
 }
 
 void* memset(void* dest, int value, usize n) {
-	if (n == 0)
+	if (unlikely(n == 0))
 		return dest;
 
 	usize d = (usize)dest;

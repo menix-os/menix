@@ -1,24 +1,21 @@
 #ifndef _MENIX_SCHED_H
 #define _MENIX_SCHED_H
 
-#include <uapi/posix/types.h>
 #include <menix/types.h>
-#include <menix/mem.h>
+#include <menix/mm_types.h>
+#include <menix/posix_types.h>
 #include <bits/sched.h>
 
-typedef __tid_t tid_t;
-typedef __pid_t pid_t;
-
-enum thread_state {
-	THREAD_STATE_RUNNING,
-	THREAD_STATE_READY,
-	THREAD_STATE_BLOCKED,
+enum task_state {
+	TASK_STATE_RUNNING,
+	TASK_STATE_READY,
+	TASK_STATE_BLOCKED,
 };
 
-struct thread {
+struct task {
 	tid_t id;
 	struct process* process;
-	enum thread_state state;
+	enum task_state state;
 	struct arch_context context;
 	virt_t kernel_stack;
 	virt_t user_stack;
@@ -30,6 +27,10 @@ struct process {
 	pid_t id;
 	const char* name;
 	struct process* parent;
+};
+
+struct sched_percpu {
+	struct task* current;
 };
 
 #endif

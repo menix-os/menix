@@ -1,5 +1,5 @@
-#ifndef _MENIX_MEM_H
-#define _MENIX_MEM_H
+#ifndef _MENIX_MM_TYPES_H
+#define _MENIX_MM_TYPES_H
 
 #include <menix/types.h>
 
@@ -20,7 +20,7 @@ struct phys_mem {
 
 struct page {
 	usize flags;
-	usize count;
+	usize refcount;
 	union {
 		struct {
 			struct page* next;
@@ -29,11 +29,5 @@ struct page {
 	};
 };
 static_assert(0x1000 % sizeof(struct page) == 0, "must be a multiple of the page size!");
-
-extern struct phys_mem mem_map[128];
-extern usize mem_map_size;
-extern phys_t mem_kernel_phys_base;
-extern virt_t mem_kernel_virt_base;
-extern virt_t mem_hhdm_base;
 
 #endif

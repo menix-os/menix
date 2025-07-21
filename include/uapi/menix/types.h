@@ -1,12 +1,6 @@
 #ifndef _UAPI_MENIX_TYPES_H
 #define _UAPI_MENIX_TYPES_H
 
-#ifndef __KERNEL__
-#ifndef __EXPORTED_HEADERS__
-#warning "Don't include this file in user programs!"
-#endif
-#endif
-
 typedef __INT8_TYPE__ __i8;
 typedef __UINT8_TYPE__ __u8;
 

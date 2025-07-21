@@ -1,5 +1,5 @@
-#ifndef MENIX_ARCH_SCHED_H
-#define MENIX_ARCH_SCHED_H
+#ifndef _MENIX_ARCH_SCHED_H
+#define _MENIX_ARCH_SCHED_H
 
 #include <menix/types.h>
 

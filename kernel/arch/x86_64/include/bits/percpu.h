@@ -3,4 +3,6 @@
 
 #define __percpu_read(field) ()
 
+struct arch_percpu {};
+
 #endif

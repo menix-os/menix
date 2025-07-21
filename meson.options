@@ -1,12 +1,12 @@
 option(
-    'config',
+    'config_file',
     type: 'string',
     value: '.config',
     description: 'The path to an override configuration file',
 )
 
 option(
-    'install_headers',
+    'headers_only',
     type: 'boolean',
     value: false,
     description: 'Only install kernel headers',

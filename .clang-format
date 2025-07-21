@@ -18,7 +18,7 @@ AttributeMacros:
   - __init
   - __initdata
   - __user
-  - __io
+  - __mmio
 AlignOperands: DontAlign
 BitFieldColonSpacing: None
 ColumnLimit: 120

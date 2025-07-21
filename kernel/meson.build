@@ -1,44 +1,30 @@
-kernel_sources = []
-
 kernel_c_args = [
-    '-ffreestanding',
-    '-fno-stack-protector',
-    '-fno-omit-frame-pointer',
+    common_c_args,
     '-fno-PIC',
     '-fno-PIE',
-    '-funsigned-char',
-    '-nostdinc',
     '-D__KERNEL__',
-    '-Wall',
-    '-Werror',
 ]
 
 kernel_link_args = [
+    common_link_args,
     '-static',
-    '-nostdlib',
-    '-znoexecstack',
-    '-Wl,-nostdlib',
-    '-Wl,--gc-sections',
-    '-Wl,--build-id=none',
+    '-T' + meson.current_source_dir() / 'kernel.ld',
 ]
 
+kernel_includes = [
+    common_includes,
+    include_directories(
+        'arch' / target_machine.cpu_family() / 'include',
+    ),
+]
+
+kernel_sources = []
+
 subdir('arch' / target_machine.cpu_family())
-subdir('mem')
+subdir('mm')
 subdir('proc')
 subdir('klibc')
 subdir('sched')
-subdir('system')
+subdir('sys')
+subdir('util')
 subdir('boot')
-
-executable(
-    'menix',
-    include_directories: [
-        common_includes,
-        'arch' / target_machine.cpu_family() / 'include',
-    ],
-    sources: kernel_sources,
-    c_args: kernel_c_args,
-    link_args: kernel_link_args,
-    install: true,
-    pie: false,
-)

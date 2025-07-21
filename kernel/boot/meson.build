@@ -1,5 +1,4 @@
-kernel_sources += files('init.c')
-kernel_link_args += '-T' + meson.current_source_dir() / 'kernel.ld'
+kernel_sources += files('main.c')
 
 if config.get('CONFIG_BOOT_LIMINE', 'y') == 'y'
     subdir('limine')

@@ -2,6 +2,7 @@
 #define _MENIX_LOG_H
 
 #include <menix/util.h>
+#include <menix/hint.h>
 
 #define kassert(expr, msg, ...) \
 	do { \
