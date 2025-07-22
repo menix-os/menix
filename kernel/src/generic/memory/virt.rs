@@ -5,10 +5,7 @@ use super::{
 use crate::{
     arch::{self, virt::PageTableEntry},
     generic::{
-        memory::{
-            cache::MemoryObject,
-            pmm::{KernelAlloc, PAGE_DB, Page},
-        },
+        memory::{cache::MemoryObject, pmm::KernelAlloc},
         posix::errno::{EResult, Errno},
         sched::Scheduler,
         util::{align_up, divide_up, mutex::Mutex, once::Once},
@@ -398,7 +395,28 @@ impl PageTable {
 pub struct AddressSpace {
     pub table: Arc<PageTable>,
     /// A map that translates global page offsets (virt / page_size) to a physical page and the flags of the mapping.
-    pub mappings: Mutex<BTreeMap<usize, (PhysAddr, VmFlags)>>,
+    pub mappings: Mutex<BTreeMap<usize, MappedObject>>,
+}
+
+impl Clone for AddressSpace {
+    fn clone(&self) -> Self {
+        let maps = self.mappings.lock().clone();
+        Self {
+            table: Arc::new(if self.table.is_user {
+                PageTable::new_user::<KernelAlloc>(AllocFlags::empty())
+            } else {
+                PageTable::new_kernel::<KernelAlloc>(self.table.root_level, AllocFlags::empty())
+            }),
+            mappings: Mutex::new(maps),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct MappedObject {
+    offset_page: usize,
+    object: Arc<MemoryObject>,
+    flags: VmFlags,
 }
 
 impl AddressSpace {
@@ -429,7 +447,6 @@ impl AddressSpace {
         }
 
         let mut mappings = self.mappings.lock();
-        let mut pfndb = super::pmm::PAGE_DB.lock();
 
         // We need enough pages to fit all bytes.
         let num_pages = divide_up(len.into(), page_size);
@@ -437,17 +454,14 @@ impl AddressSpace {
         let offset_page = offset as usize / page_size;
 
         for p in 0..num_pages {
-            let phys_addr = object.try_get_page(p + offset_page).ok_or(Errno::EINVAL)?;
-            let page = pfndb
-                .get_mut(Page::idx_from_addr(phys_addr))
-                .ok_or(Errno::EINVAL)?;
-
-            // Save the object in the pfndb.
-            page.object = Some(object.clone());
-            page.page_offset = p + offset_page;
-
+            _ = object.try_get_page(p + offset_page).ok_or(Errno::EINVAL)?;
             // Create a mapping for this address space.
-            mappings.insert(start_page + p, (phys_addr, prot));
+            let mapped = MappedObject {
+                offset_page: p + offset_page,
+                object: object.clone(),
+                flags: prot,
+            };
+            mappings.insert(start_page + p, mapped);
         }
 
         Ok(())
@@ -469,8 +483,8 @@ impl AddressSpace {
         let mut mappings = self.mappings.lock();
 
         for p in 0..num_pages {
-            let (_, flags) = mappings.get_mut(&(start_page + p)).ok_or(Errno::EINVAL)?;
-            *flags = prot;
+            let mapped = mappings.get_mut(&(start_page + p)).ok_or(Errno::EINVAL)?;
+            mapped.flags = prot;
         }
 
         Ok(())
@@ -503,24 +517,14 @@ pub fn page_fault_handler(info: &PageFaultInfo) {
     let proc = Scheduler::get_current().get_process();
     let inner = proc.inner.lock();
     let space = &inner.address_space;
-    if let Some(&(phys, flags)) = inner
-        .address_space
-        .mappings
-        .lock()
-        .get(&(info.addr.value() / arch::virt::get_page_size(VmLevel::L1)))
-    {
-        let db = PAGE_DB.lock();
-        let page = db
-            .get(Page::idx_from_addr(phys))
-            .expect("Mapping table contains an out of bounds address");
-
-        if let Some(object) = &page.object
-            && let Some(phys) = object.try_get_page(page.page_offset)
-        {
+    // The page index of the page fault address.
+    let faulty_page = info.addr.value() / arch::virt::get_page_size(VmLevel::L1);
+    if let Some(mapped) = inner.address_space.mappings.lock().get(&faulty_page) {
+        if let Some(phys) = mapped.object.try_get_page(mapped.offset_page) {
             // If we get here, the accessed address is valid. Map it in the actual page table and return.
             space
                 .table
-                .map_single::<KernelAlloc>(info.addr, phys, flags, VmLevel::L1)
+                .map_single::<KernelAlloc>(info.addr, phys, mapped.flags, VmLevel::L1)
                 .expect("Failed to map a demand-loaded page");
             return;
         }

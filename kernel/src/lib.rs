@@ -23,7 +23,7 @@ pub mod generic;
 pub mod system;
 
 use crate::generic::{
-    percpu::{CPU_DATA, CpuData},
+    percpu::CpuData,
     process::{Identity, Process, task::Task},
     util::once::Once,
     vfs::{File, file::OpenFlags, inode::Mode},
@@ -97,8 +97,8 @@ pub extern "C" fn main(_: usize, _: usize) {
 
     init_proc
         .clone()
-        .fexecve(init_file, &[path], &[b"USER=root"])
-        .expect("Unable to create init process");
+        .fexecve(init_file, &[path], &[])
+        .expect("Unable to start the init process");
 
     loop {
         unsafe { arch::irq::set_irq_state(true) };

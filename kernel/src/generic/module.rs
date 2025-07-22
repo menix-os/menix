@@ -437,7 +437,6 @@ macro_rules! define_string_section {
     };
 }
 
-/// Defines metadata for
 #[macro_export]
 macro_rules! module {
     ($desc: expr, $author: expr, $entry: ident) => {

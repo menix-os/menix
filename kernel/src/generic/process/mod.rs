@@ -123,8 +123,13 @@ impl Process {
     }
 
     /// Forks a process into a new one.
-    pub fn fork(self: Arc<Self>) -> Self {
-        todo!()
+    pub fn fork(
+        self: Arc<Self>,
+        entry_point: extern "C" fn(usize, usize),
+        a0: usize,
+        a1: usize,
+    ) -> EResult<Self> {
+        todo!();
     }
 
     /// Replaces a process with a new executable image, given some arguments and an environment.
@@ -146,13 +151,13 @@ impl Process {
         };
 
         let format = vfs::exec::identify(&file).ok_or(Errno::ENOEXEC)?;
-        let init = Arc::new(format.load(&self, &mut info)?);
+        let init = Arc::try_new(format.load(&self, &mut info)?)?;
 
         // If we get here, then the loading of the executable was successful.
         let mut inner = self.inner.lock();
         inner.threads.clear();
         inner.threads.push(init.clone());
-        inner.address_space = Arc::new(info.space);
+        inner.address_space = Arc::try_new(info.space)?;
         drop(inner);
 
         // TODO: Not sure if this can be done in a better way.

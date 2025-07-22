@@ -24,3 +24,13 @@ pub fn exit(error: usize) -> EResult<usize> {
 
     todo!()
 }
+
+pub fn fork() -> EResult<usize> {
+    let proc = Scheduler::get_current().get_process();
+    todo!();
+    return Ok(0);
+}
+
+pub fn execve() -> EResult<usize> {
+    todo!()
+}
