@@ -1,3 +1,4 @@
+mod mcfg;
 mod uacpi;
 
 use crate::generic::{boot::BootInfo, memory::PhysAddr, util::once::Once};

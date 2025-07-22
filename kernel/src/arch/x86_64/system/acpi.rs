@@ -1,3 +1,5 @@
+use crate::system::pci::config::{PciAccess, PciAddress};
+
 use super::super::asm;
 use uacpi_sys::{
     UACPI_STATUS_OK, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_u8, uacpi_u16,
@@ -91,4 +93,42 @@ extern "C" fn uacpi_kernel_io_map(
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_io_unmap(handle: uacpi_handle) {
     _ = handle;
+}
+
+init_stage!(
+    #[entails(crate::system::acpi::TABLES_STAGE)]
+    ACPI_STAGE: "arch.x86_64.acpi" => init;
+);
+
+struct PortIoAccess;
+
+impl PortIoAccess {
+    fn select(&self, addr: PciAddress, offset: u32) {
+        unsafe {
+            asm::write32(
+                0xCF8,
+                (addr.bus as u32) << 16
+                    | (addr.slot as u32) << 11
+                    | (addr.function as u32) << 8
+                    | (offset & 0xFC)
+                    | 1 << 31,
+            );
+        }
+    }
+}
+
+impl PciAccess for PortIoAccess {
+    fn read32(&self, addr: PciAddress, offset: u32) -> u32 {
+        self.select(addr, offset);
+        unsafe { asm::read32(0xCFC) }
+    }
+
+    fn write32(&self, addr: PciAddress, offset: u32, value: u32) {
+        self.select(addr, offset);
+        unsafe { asm::write32(0xCFC, value) }
+    }
+}
+
+fn init() {
+    unsafe { crate::system::pci::config::ACCESS.init(&PortIoAccess) };
 }
