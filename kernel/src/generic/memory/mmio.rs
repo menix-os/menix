@@ -169,6 +169,32 @@ impl<T: PrimInt> Register<T> {
     }
 }
 
+/// `T` is a register type, while `A` is the relevant part of that register.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Field<T: PrimInt, A: PrimInt> {
+    field_offset: usize,
+    register: Register<T>,
+    _p: PhantomData<T>,
+    _a: PhantomData<A>,
+}
+
+impl<T: PrimInt, A: PrimInt> Field<T, A> {
+    /// Creates a new field with native endianness.
+    pub const fn new(register: Register<T>, field_offset: usize) -> Self {
+        assert!((field_offset + size_of::<A>()) <= size_of::<T>());
+        Self {
+            _p: PhantomData,
+            _a: PhantomData,
+            register,
+            field_offset,
+        }
+    }
+
+    pub const fn offset(&self) -> usize {
+        self.register.offset() + self.field_offset
+    }
+}
+
 /// A bit-sized member of a structure.
 #[derive(Debug, Clone, Copy)]
 pub struct BitField<T: PrimInt> {
