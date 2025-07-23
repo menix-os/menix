@@ -7,7 +7,7 @@ menix = { path = "kernel" }
 
 [profile.dev]
 panic = "abort"
-opt-level = 0
+opt-level = 1   # If this is 0, the stack overflows almost instantly.
 debug = true
 strip = false
 

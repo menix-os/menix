@@ -10,6 +10,7 @@
 #![allow(clippy::needless_return)]
 #![allow(clippy::new_without_default)]
 #![forbid(clippy::missing_safety_doc)]
+#![forbid(clippy::large_stack_frames)]
 
 #[macro_use]
 pub extern crate alloc;

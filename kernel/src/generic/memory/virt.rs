@@ -18,7 +18,8 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
-pub const KERNEL_STACK_SIZE: usize = 0x200000;
+// TODO: Kernel stacks should be mapped, not just on the HHDM. Otherwise we can't check for overflows.
+pub const KERNEL_STACK_SIZE: usize = 0x8000;
 
 bitflags! {
     /// Page protection flags.
