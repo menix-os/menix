@@ -95,11 +95,6 @@ extern "C" fn uacpi_kernel_io_unmap(handle: uacpi_handle) {
     _ = handle;
 }
 
-init_stage!(
-    #[entails(crate::system::acpi::TABLES_STAGE)]
-    ACPI_STAGE: "arch.x86_64.acpi" => init;
-);
-
 struct PortIoAccess;
 
 impl PortIoAccess {
@@ -129,6 +124,10 @@ impl PciAccess for PortIoAccess {
     }
 }
 
-fn init() {
+#[initgraph::task(
+    name = "arch.x86_64.acpi",
+    entails = [crate::system::acpi::TABLES_STAGE]
+)]
+fn ACPI_STAGE() {
     unsafe { crate::system::pci::config::ACCESS.init(&PortIoAccess) };
 }
