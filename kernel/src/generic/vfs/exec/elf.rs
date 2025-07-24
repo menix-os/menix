@@ -582,8 +582,11 @@ impl ExecFormat for ElfFormat {
     }
 }
 
-init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE)]
-    #[entails(crate::generic::vfs::VFS_STAGE)]
-    ELF_STAGE: "generic.vfs.exec.elf" => || super::register("elf", Arc::new(ElfFormat));
+#[initgraph::task(
+    name = "generic.vfs.exec-elf",
+    depends = [crate::generic::memory::MEMORY_STAGE],
+    entails = [crate::generic::vfs::VFS_STAGE],
+)]
+fn ELF_STAGE() {
+    super::register("elf", Arc::new(ElfFormat));
 }

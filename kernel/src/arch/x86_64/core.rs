@@ -16,7 +16,11 @@ use crate::{
 };
 use core::{arch::asm, mem::offset_of, ptr::null_mut, sync::atomic::Ordering};
 
-fn early_init() {
+#[initgraph::task(
+    name = "arch.x86-64.early-init",
+    entails = [crate::arch::EARLY_INIT_STAGE]
+)]
+fn EARLY_INIT_STAGE() {
     apic::disable_legacy_pic();
     idt::init();
     idt::set_idt();
@@ -29,11 +33,6 @@ fn early_init() {
     }
 
     CpuData::get().present.store(true, Ordering::Relaxed);
-}
-
-init_stage! {
-    #[entails(crate::arch::EARLY_INIT_STAGE)]
-    EARLY_INIT_STAGE: "arch.x86_64.early-init" => early_init;
 }
 
 pub(in crate::arch) fn get_frame_pointer() -> usize {

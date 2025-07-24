@@ -34,12 +34,12 @@ impl ClockSource for TscClock {
     }
 }
 
-init_stage! {
-    #[entails(crate::generic::clock::CLOCK_STAGE)]
-    TSC_STAGE: "arch.x86_64.tsc" => init;
-}
-
-fn init() {
+#[initgraph::task(
+    name = "arch.x86_64.tsc",
+    depends = [super::hpet::HPET_STAGE],
+    entails = [crate::generic::clock::CLOCK_STAGE],
+)]
+fn TSC_STAGE() {
     // We need an invariant TSC.
     if asm::cpuid(1, 0).edx & consts::CPUID_1D_TSC == 0
         || asm::cpuid(0x8000_0007, 0).edx & (1 << 8) == 0

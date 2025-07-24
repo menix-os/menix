@@ -53,7 +53,7 @@ macro_rules! current_module_name {
 #[macro_export]
 macro_rules! log_inner {
     ($prefix:expr, $suffix:literal, $($arg:tt)*) => ({
-        use core::fmt::Write;
+        use ::core::fmt::Write;
         {
             let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
             let current_time = $crate::generic::clock::get_elapsed();
@@ -115,51 +115,4 @@ macro_rules! assert_trait_impl {
             assert_trait_impl::<$t>();
         };
     };
-}
-
-/// Hooks a function or closure into the init system.
-#[macro_export]
-macro_rules! init_stage {
-    ($(
-        $(#[depends($($dep:path),* $(,)?)])?
-        $(#[entails($($rdep:path),* $(,)?)])?
-        $vis:vis $name:ident : $display_name:expr => $func:expr;
-    )*) => {
-        $(
-            #[used]
-            #[doc(hidden)]
-            #[unsafe(link_section = ".init")]
-            $vis static $name: $crate::generic::init::Node =
-                $crate::generic::init::Node::new($display_name, $func);
-
-            $($(
-                const _: () = {
-                    #[used]
-                    #[doc(hidden)]
-                    static __DEPENDS_EDGE: $crate::generic::init::Edge =
-                        $crate::generic::init::Edge::new(&$dep, &$name);
-
-                    #[used]
-                    #[doc(hidden)]
-                    #[unsafe(link_section = ".init.ctors")]
-                    static __DEPENDS_EDGE_CTOR: fn() = || __DEPENDS_EDGE.register();
-                };
-            )*)?
-
-            $($(
-                const _: () = {
-                    #[used]
-                    #[doc(hidden)]
-                    static __ENTAILS_EDGE: $crate::generic::init::Edge =
-                        $crate::generic::init::Edge::new(&$name, &$rdep);
-
-                    #[used]
-                    #[doc(hidden)]
-                    #[unsafe(link_section = ".init.ctors")]
-                    static __ENTAILS_EDGE_CTOR: fn() = || __ENTAILS_EDGE.register();
-                };
-            )*)?
-
-        )*
-    }
 }

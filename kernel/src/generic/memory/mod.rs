@@ -174,13 +174,12 @@ pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
     };
 }
 
-init_stage! {
-    #[depends(crate::arch::EARLY_INIT_STAGE)]
-    pub MEMORY_STAGE: "generic.memory" => init;
-}
-
 /// Bootstraps the memory allocators and kernel virtual page table.
-fn init() {
+#[initgraph::task(
+    name = "generic.memory",
+    depends = [crate::arch::EARLY_INIT_STAGE],
+)]
+pub fn MEMORY_STAGE() {
     let info = BootInfo::get();
 
     let kernel_phys = info

@@ -144,12 +144,11 @@ pub extern "C" fn idle_fn(_: usize, _: usize) {
     }
 }
 
-init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE, super::process::PROCESS_STAGE)]
-    pub SCHEDULER_STAGE: "generic.scheduler" => init;
-}
-
-fn init() {
+#[initgraph::task(
+    name = "generic.scheduler",
+    depends = [crate::generic::memory::MEMORY_STAGE, super::process::PROCESS_STAGE],
+)]
+pub fn SCHEDULER_STAGE() {
     // Set up scheduler.
     let bsp_scheduler = &CpuData::get().scheduler;
     let initial = Arc::new(Task::new(idle_fn, 0, 0, &Process::get_kernel(), false).unwrap());

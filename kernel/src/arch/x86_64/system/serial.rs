@@ -38,7 +38,11 @@ impl LoggerSink for SerialLogger {
     }
 }
 
-fn init() {
+#[initgraph::task(
+    name = "arch.x86_64.serial",
+    entails = [crate::arch::EARLY_INIT_STAGE],
+)]
+fn SERIAL_STAGE() {
     unsafe {
         write8(COM1_BASE + 1, 0x00); // Disable interrupts
         write8(COM1_BASE + 3, 0x80); // Enable DLAB (set baud rate divisor)
@@ -60,9 +64,4 @@ fn init() {
     };
 
     log::add_sink(Box::new(SerialLogger));
-}
-
-init_stage! {
-    #[entails(crate::arch::EARLY_INIT_STAGE)]
-    SERIAL_STAGE: "arch.x86_64.serial" => init;
 }

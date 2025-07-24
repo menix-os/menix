@@ -81,12 +81,11 @@ impl LoggerSink for FbCon {
     }
 }
 
-init_stage! {
-    #[depends(super::memory::MEMORY_STAGE)]
-    FBCON_STAGE: "generic.fbcon" => init;
-}
-
-pub fn init() {
+#[initgraph::task(
+    name = "generic.fbcon",
+    depends = [super::memory::MEMORY_STAGE],
+)]
+pub fn FBCON_STAGE() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;
     };

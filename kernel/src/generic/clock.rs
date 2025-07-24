@@ -4,9 +4,8 @@
 use super::util::mutex::Mutex;
 use alloc::boxed::Box;
 
-init_stage! {
-    pub CLOCK_STAGE: "generic.clock" => || {};
-}
+#[initgraph::task(name = "generic.clock")]
+pub fn CLOCK_STAGE() {}
 
 pub trait ClockSource: Send {
     fn name(&self) -> &'static str;

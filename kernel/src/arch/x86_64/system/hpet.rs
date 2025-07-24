@@ -60,12 +60,12 @@ impl Hpet {
     }
 }
 
-init_stage! {
-    #[depends(crate::system::acpi::TABLES_STAGE)]
-    #[entails(crate::generic::clock::CLOCK_STAGE)]
-    HPET_STAGE: "arch.x86_64.hpet" => || {
-        if let Ok(x) = Hpet::new() {
-            _ = crate::generic::clock::switch(Box::new(x));
-        }
-    };
+#[initgraph::task(
+    name = "arch.x86_64.hpet",
+    depends = [crate::system::acpi::TABLES_STAGE],
+)]
+pub fn HPET_STAGE() {
+    if let Ok(x) = Hpet::new() {
+        _ = crate::generic::clock::switch(Box::new(x));
+    }
 }

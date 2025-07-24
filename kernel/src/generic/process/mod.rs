@@ -226,12 +226,11 @@ impl Identity {
 static PID_COUNTER: AtomicUsize = AtomicUsize::new(0);
 static KERNEL_PROCESS: Once<Arc<Process>> = Once::new();
 
-init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE, crate::generic::vfs::VFS_STAGE)]
-    pub PROCESS_STAGE: "generic.process" => init;
-}
-
-fn init() {
+#[initgraph::task(
+    name = "generic.process",
+    depends = [crate::generic::memory::MEMORY_STAGE, crate::generic::vfs::VFS_STAGE],
+)]
+pub fn PROCESS_STAGE() {
     // Create the kernel process and task.
     unsafe {
         KERNEL_PROCESS.init(Arc::new(
