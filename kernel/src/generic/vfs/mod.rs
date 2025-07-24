@@ -123,12 +123,11 @@ pub fn mmap(
     return Ok(addr);
 }
 
-init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE)]
-    pub VFS_STAGE: "generic.vfs" => init;
-}
-
-fn init() {
+#[initgraph::task(
+    name = "generic.vfs",
+    depends = [crate::generic::memory::MEMORY_STAGE],
+)]
+pub fn VFS_STAGE() {
     // Mount a tmpfs as root.
     let tmpfs =
         fs::mount(None, b"tmpfs", MountFlags::empty()).expect("Unable to mount the root tmpfs");

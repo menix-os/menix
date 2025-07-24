@@ -42,7 +42,7 @@ SECTIONS
         LD_RODATA_START = .;
 
         LD_INIT_CTORS_START = .;
-        *(.init.ctors)
+        *(.initgraph.ctors)
         LD_INIT_CTORS_END = .;
 
         *(.rodata .rodata.*)
@@ -57,7 +57,7 @@ SECTIONS
         LD_DATA_START = .;
 
         LD_INIT_START = .;
-        *(.init)
+        *(.initgraph.nodes)
         LD_INIT_END = .;
 
         *(.data .data.*)

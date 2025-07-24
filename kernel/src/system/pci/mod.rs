@@ -9,12 +9,13 @@ pub enum PciError {
     DriverAlreadyExists,
 }
 
-init_stage! {
-    pub PCI_STAGE: "system.pci" => init;
-}
-
 /// Initializes the PCI subsystem.
-fn init() {
+#[initgraph::task(name = "system.pci")]
+#[cfg_attr(
+    feature = "acpi",
+    initgraph::task(depends = [super::acpi::INIT_STAGE])
+)]
+pub fn PCI_STAGE() {
     log!("Initializing the PCI subsystem");
 
     // TODO: Enumerate buses.

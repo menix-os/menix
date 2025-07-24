@@ -168,12 +168,11 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
     return Ok(());
 }
 
-init_stage! {
-    #[depends(super::super::VFS_STAGE, crate::generic::sched::SCHEDULER_STAGE)]
-    INITRAMFS_STAGE: "generic.vfs.initramfs" => init;
-}
-
-fn init() {
+#[initgraph::task(
+    name = "generic.vfs.initramfs",
+    depends = [super::super::VFS_STAGE, crate::generic::sched::SCHEDULER_STAGE],
+)]
+fn INITRAMFS_STAGE() {
     let proc_inner = Process::get_kernel().inner.lock();
     // Load the initramfs into the root directory.
     let root_dir = File::open(

@@ -10,6 +10,7 @@ crate-type = ["dylib"]
 bindgen = "0.72.0"
 
 [dependencies]
+initgraph = { path = "crates/initgraph" }
 uapi = { path = "../bindings/uapi" }
 uacpi-sys = { path = "../bindings/uacpi" }
 flanterm-sys = { path = "../bindings/flanterm" }
@@ -23,8 +24,11 @@ rustc-demangle = { version = "0.1.24" }
 intrusive-collections = { version = "0.9.7", features = ["nightly"] }
 
 [features]
-default = ["boot_limine"]
+default = ["acpi", "boot_limine"]
 
 # Boot protocols
 boot_limine = ["dep:limine"]
 boot_uefi = []
+
+# System configurations
+acpi = []

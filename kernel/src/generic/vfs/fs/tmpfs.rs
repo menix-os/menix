@@ -167,8 +167,11 @@ impl SymlinkOps for TmpRegular {
 struct TmpFile;
 impl FileOps for TmpFile {}
 
-init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE)]
-    #[entails(crate::generic::vfs::VFS_STAGE)]
-    TMPFS_INIT: "generic.vfs.tmpfs" => || super::register_fs(&TmpFs);
+#[initgraph::task(
+    name = "generic.vfs.tmpfs",
+    depends = [crate::generic::memory::MEMORY_STAGE],
+    entails = [crate::generic::vfs::VFS_STAGE],
+)]
+fn TMPFS_INIT_STAGE() {
+    super::register_fs(&TmpFs);
 }

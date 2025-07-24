@@ -45,13 +45,12 @@ pub struct ModuleInfo {
     pub mappings: Vec<(PhysAddr, VirtAddr, usize, VmFlags)>,
 }
 
-init_stage! {
-    #[depends(super::memory::MEMORY_STAGE)]
-    pub MODULE_STAGE: "generic.module" => init;
-}
-
 /// Sets up the module system.
-fn init() {
+#[initgraph::task(
+    name = "generic.module",
+    depends = [super::memory::MEMORY_STAGE],
+)]
+fn MODULE_STAGE() {
     let dynsym_start = &raw const LD_DYNSYM_START;
     let dynsym_end = &raw const LD_DYNSYM_END;
     let dynstr_start = &raw const LD_DYNSTR_START;

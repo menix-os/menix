@@ -14,9 +14,11 @@ pub mod irq;
 pub mod sched;
 pub mod virt;
 
-init_stage! {
-    pub EARLY_INIT_STAGE: "arch.early-init" => || {};
+#[initgraph::task(name = "arch.early-init")]
+pub fn EARLY_INIT_STAGE() {}
 
-    #[depends(EARLY_INIT_STAGE)]
-    pub INIT_STAGE: "arch.init" => || {};
-}
+#[initgraph::task(
+    name = "arch.init",
+    depends = [EARLY_INIT_STAGE]
+)]
+pub fn INIT_STAGE() {}

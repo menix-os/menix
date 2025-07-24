@@ -74,45 +74,11 @@ impl Edge {
 
 /// Runs the global initialization sequence.
 pub fn run() {
-    let mut ctors_start = &raw const LD_INIT_CTORS_START as *const fn();
-    let ctors_end = &raw const LD_INIT_CTORS_END as *const fn();
-    while ctors_start < ctors_end {
-        unsafe {
-            (*ctors_start)();
-            ctors_start = ctors_start.add(1);
-        }
+    unsafe {
+        initgraph::initialize_edges();
     }
 
-    let start = &raw const LD_INIT_START as *const Node;
-    let end = &raw const LD_INIT_END as *const Node;
-
-    let nodes = unsafe { core::slice::from_raw_parts(start, end.offset_from_unsigned(start)) };
-    let mut pending = LinkedList::new(PendingLinkAdapter::NEW);
-
-    for node in nodes {
-        if node.unsatisfied_deps.load(Ordering::Relaxed) == 0 {
-            pending.push_back(node);
-        }
-    }
-
-    while let Some(node) = pending.pop_front() {
-        log!("Running stage {:?}", node.display_name);
-        node.run();
-
-        for edge in node.out_edges.lock().iter() {
-            if edge.to.unsatisfied_deps.fetch_sub(1, Ordering::Relaxed) == 1 {
-                pending.push_back(edge.to);
-            }
-        }
-    }
-
-    for node in nodes {
-        assert!(
-            node.done.load(Ordering::Relaxed),
-            "The dependencies for node {} could not be resolved!",
-            node.display_name
-        );
-    }
+    initgraph::execute_graph(None, |node| status!("Done stage: {}", node.display_name()));
 
     status!("All stages are complete!");
 
@@ -122,23 +88,20 @@ pub fn run() {
         .unwrap_or(false)
     {
         let mut graph = String::new();
+
         graph += "digraph initgraph {\n";
         graph += "\tsubgraph {\n";
-        for node in nodes {
-            graph += &format!("\t\tn{:p} [label={:?}];\n", node, node.display_name);
-            for edge in node.in_edges.lock().iter() {
-                graph += &format!("\t\t\tn{:p} -> n{:p};\n", edge.from, edge.to);
+
+        for node in initgraph::get_all_nodes() {
+            graph += &format!("\t\tn{:p} [label={:?}];\n", node, node.display_name());
+
+            for edge in node.in_edges().iter() {
+                graph += &format!("\t\t\tn{:p} -> n{:p};\n", edge.source(), edge.target());
             }
         }
+
         graph += "\t}\n}";
 
         log!("{}", graph);
     }
-}
-
-unsafe extern "C" {
-    unsafe static LD_INIT_CTORS_START: u8;
-    unsafe static LD_INIT_CTORS_END: u8;
-    unsafe static LD_INIT_START: u8;
-    unsafe static LD_INIT_END: u8;
 }

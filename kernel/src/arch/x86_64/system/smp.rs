@@ -308,19 +308,18 @@ fn start_ap(temp_cr3: u32, id: u32) {
     unsafe { KernelAlloc::dealloc(mem, 1) };
 }
 
-init_stage! {
-    #[depends(crate::generic::memory::MEMORY_STAGE, crate::system::acpi::TABLES_STAGE, crate::generic::clock::CLOCK_STAGE)]
-    #[entails(crate::arch::INIT_STAGE)]
-    DISCOVER_STAGE: "arch.x86_64.discover-aps" => discover_aps;
-
-    #[depends(DISCOVER_STAGE, crate::generic::clock::CLOCK_STAGE)]
-    #[entails(crate::arch::INIT_STAGE)]
-    INIT_STAGE: "arch.x86_64.init-aps" => init_aps;
-}
-
 static FOUND_APS: Mutex<Vec<u32>> = Mutex::new(Vec::new());
 
-fn discover_aps() {
+#[initgraph::task(
+    name = "arch.x86_64.discover-aps",
+    depends = [
+        crate::generic::memory::MEMORY_STAGE,
+        crate::system::acpi::TABLES_STAGE,
+        crate::generic::clock::CLOCK_STAGE,
+    ],
+    entails = [crate::arch::INIT_STAGE],
+)]
+fn DISCOVER_APS_STAGE() {
     // Setup BSP.
     super::super::core::setup_core(CpuData::get());
 
@@ -366,7 +365,12 @@ fn discover_aps() {
     };
 }
 
-fn init_aps() {
+#[initgraph::task(
+    name = "arch.x86_64.init-aps",
+    depends = [DISCOVER_APS_STAGE, crate::generic::clock::CLOCK_STAGE],
+    entails = [crate::arch::INIT_STAGE],
+)]
+fn INIT_APS_STAGE() {
     // Prepare an identity mapped page table, with the root highter half tables mapped as well.
     let temp_table = KernelAlloc::alloc(1, AllocFlags::Kernel32 | AllocFlags::Zeroed)
         .expect("Unable to allocate a page table in 32-bit physical memory");
