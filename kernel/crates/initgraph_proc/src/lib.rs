@@ -146,23 +146,26 @@ pub fn task(
             .into();
     }
 
-    for attr in attrs
-        .iter()
-        .filter(|attr| path_starts_with(attr.meta.path(), "initgraph"))
-    {
+    let mut other_attrs = vec![];
+
+    for attr in attrs.iter() {
         let path = attr.meta.path();
 
-        if path.segments.len() != 2 || path.segments[1].ident != "task" {
-            return syn::Error::new_spanned(attr, "unknown initgraph attribute")
-                .to_compile_error()
-                .into();
-        }
-
-        match attr.parse_args::<AttributeList>() {
-            Ok(parsed) => attributes.extend_from_slice(&parsed.attributes),
-            Err(err) => {
-                return err.to_compile_error().into();
+        if path_starts_with(path, "initgraph") {
+            if path.segments.len() != 2 || path.segments[1].ident != "task" {
+                return syn::Error::new_spanned(attr, "unknown initgraph attribute")
+                    .to_compile_error()
+                    .into();
             }
+
+            match attr.parse_args::<AttributeList>() {
+                Ok(parsed) => attributes.extend_from_slice(&parsed.attributes),
+                Err(err) => {
+                    return err.to_compile_error().into();
+                }
+            }
+        } else {
+            other_attrs.push(attr);
         }
     }
 
@@ -228,6 +231,7 @@ pub fn task(
         #[used]
         #[doc(hidden)]
         #[unsafe(link_section = ".initgraph.nodes")]
+        #(#other_attrs)*
         #vis static #ident: ::initgraph::Node = ::initgraph::Node::new(
             #display_name,
             ::initgraph::Action::Callback(|| #block),
