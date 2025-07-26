@@ -66,7 +66,7 @@ pub fn openat(fd: usize, path: usize, oflag: usize) -> EResult<usize> {
         &proc_inner.identity,
     )?;
 
-    proc_inner.add_file(file).ok_or(Errno::EMFILE)
+    proc_inner.open_file(file).ok_or(Errno::EMFILE)
 }
 
 pub fn seek(fd: usize, offset: usize, whence: usize) -> EResult<usize> {
@@ -83,5 +83,13 @@ pub fn seek(fd: usize, offset: usize, whence: usize) -> EResult<usize> {
 }
 
 pub fn close(fd: usize) -> EResult<usize> {
-    Ok(0)
+    let proc = Scheduler::get_current().get_process();
+    let mut proc_inner = proc.inner.lock();
+
+    match proc_inner.open_files.remove_entry(&fd) {
+        // If removal was successful, the close worked.
+        Some(_) => Ok(0),
+        // If it wasn't, the FD argument is invalid.
+        None => Err(Errno::EBADF),
+    }
 }

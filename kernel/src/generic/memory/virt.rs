@@ -535,6 +535,7 @@ pub fn page_fault_handler(info: &PageFaultInfo) {
         // TODO: Send SIGSEGV and reschedule.
         // Kill process.
         // Force immediate reschedule.
+        panic!("User process caused a segmentation fault!");
     }
 
     // If any other attempt to recover has failed, we made a mistake.

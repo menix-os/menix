@@ -58,9 +58,9 @@ pub fn mmap(
             Some(
                 proc_inner
                     .open_files
-                    .get(fd as usize)
-                    .and_then(|x| x.clone())
-                    .ok_or(Errno::EBADF)?,
+                    .get(&(fd as usize))
+                    .ok_or(Errno::EBADF)
+                    .map(|x| x.clone())?,
             )
         }
     };
