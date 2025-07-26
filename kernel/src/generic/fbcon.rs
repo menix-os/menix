@@ -9,9 +9,9 @@ use crate::generic::{
         virt::{PageTable, VmFlags, VmLevel},
     },
 };
+use alloc::boxed::Box;
 #[allow(unused)]
 use alloc::vec;
-use alloc::{boxed::Box, vec::Vec};
 use core::{
     ffi::c_void,
     ptr::null_mut,
@@ -42,8 +42,6 @@ const FONT_WIDTH: usize = 8;
 const FONT_HEIGHT: usize = 12;
 
 struct FbCon {
-    /// Back buffer to draw updates on.
-    _buf: Vec<u8>,
     /// Frame buffer that is being drawn on.
     fb: FrameBuffer,
     /// Start of memory mapped region that is used to access the frame buffer.
@@ -81,6 +79,8 @@ impl LoggerSink for FbCon {
     }
 }
 
+static BG_COLOR: u32 = 0x00111111;
+
 #[initgraph::task(
     name = "generic.fbcon",
     depends = [super::memory::MEMORY_STAGE],
@@ -89,8 +89,6 @@ pub fn FBCON_STAGE() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;
     };
-
-    let back_buffer = vec![0; fb.pitch * fb.height];
 
     // Map the framebuffer in memory.
     let mem = PageTable::get_kernel()
@@ -128,7 +126,7 @@ pub fn FBCON_STAGE() {
             null_mut(),
             null_mut(),
             null_mut(),
-            null_mut(),
+            (&raw const BG_COLOR) as *mut u32,
             null_mut(),
             null_mut(),
             null_mut(),
@@ -142,7 +140,6 @@ pub fn FBCON_STAGE() {
         );
 
         log::add_sink(Box::new(FbCon {
-            _buf: back_buffer,
             fb,
             mem: AtomicPtr::new(mem),
             ctx: AtomicPtr::new(ctx),
