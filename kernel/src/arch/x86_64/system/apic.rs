@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::{
     arch::{
         self,

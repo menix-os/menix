@@ -116,6 +116,8 @@ pub trait FileOps: Debug {
         _ = (file, mask);
         Ok(mask)
     }
+
+    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<uapi::off_t>;
 }
 
 impl File {
@@ -150,7 +152,7 @@ impl File {
 
         let file_path = PathNode::flookup(proc, at, path, identity, lookup_flags)?;
         match file_path.entry.get_inode() {
-            Some(x) => Self::do_open_inode(file_path, &x, flags, mode, identity),
+            Some(x) => Self::do_open_inode(file_path, &x, flags, identity),
             None => {
                 // If the lookup was successful, we expect that the entry is positive.
                 if !flags.contains(OpenFlags::Create) {
@@ -189,17 +191,15 @@ impl File {
         path: PathNode,
         inode: &Arc<INode>,
         flags: OpenFlags,
-        mode: Mode,
         identity: &Identity,
     ) -> EResult<Arc<Self>> {
-        Self::do_open_inode(path, inode, flags, mode, identity)
+        Self::do_open_inode(path, inode, flags, identity)
     }
 
     fn do_open_inode(
         file_path: PathNode,
         inode: &Arc<INode>,
         flags: OpenFlags,
-        mode: Mode,
         identity: &Identity,
     ) -> EResult<Arc<Self>> {
         // If we want to open as a directory, make sure this is actually a directory.
@@ -225,8 +225,8 @@ impl File {
                 Ok(Arc::try_new(result)?)
             }
             NodeOps::Directory(dir) => dir.open(inode, file_path, flags, identity),
-            NodeOps::BlockDevice(blk) => todo!(),
-            NodeOps::CharacterDevice(chr) => todo!(),
+            NodeOps::BlockDevice(blk) => blk.open(),
+            NodeOps::CharacterDevice(chr) => chr.open(),
             NodeOps::FIFO => todo!(),
             NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
             // Doesn't make sense to call open() on anything else.
@@ -286,36 +286,7 @@ impl File {
     }
 
     pub fn seek(&self, offset: SeekAnchor) -> EResult<uapi::off_t> {
-        match offset {
-            SeekAnchor::Start(x) => Ok(self.position.swap(x as usize, Ordering::AcqRel) as _),
-            SeekAnchor::Current(x) => {
-                let x = x as isize;
-                let old = if x.is_negative() {
-                    self.position.fetch_sub(x.unsigned_abs(), Ordering::AcqRel)
-                } else {
-                    self.position.fetch_add(x as _, Ordering::AcqRel)
-                };
-                Ok((old + x as usize) as _)
-            }
-            SeekAnchor::End(x) => {
-                let x = x as isize;
-                let size = self
-                    .inode
-                    .as_ref()
-                    .ok_or(Errno::EINVAL)?
-                    .size
-                    .load(Ordering::Acquire);
-
-                let new = if x.is_negative() {
-                    size.checked_add_signed(x).ok_or(Errno::EINVAL)?
-                } else {
-                    size.checked_add_signed(x).ok_or(Errno::EOVERFLOW)?
-                };
-
-                self.position.store(new, Ordering::Release);
-                Ok(new as _)
-            }
-        }
+        self.ops.seek(self, offset)
     }
 
     pub fn ioctl(&self, request: usize, arg: usize) -> EResult<usize> {

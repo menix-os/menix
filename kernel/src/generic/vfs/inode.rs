@@ -1,6 +1,6 @@
 use super::fs::SuperBlock;
 use crate::generic::{
-    device::{BlockDevice, CharDevice},
+    device::Device,
     memory::cache::MemoryObject,
     posix::errno::{EResult, Errno},
     process::Identity,
@@ -114,8 +114,8 @@ pub enum NodeOps {
     Directory(Box<dyn DirectoryOps>),
     SymbolicLink(Box<dyn SymlinkOps>),
     FIFO,
-    BlockDevice(Arc<BlockDevice>),
-    CharacterDevice(Arc<CharDevice>),
+    BlockDevice(Arc<dyn Device>),
+    CharacterDevice(Arc<dyn Device>),
     Socket,
 }
 

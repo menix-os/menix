@@ -15,7 +15,7 @@ use crate::generic::{
         mknod, symlink,
     },
 };
-use alloc::{string::String, sync::Arc};
+use alloc::sync::Arc;
 use bytemuck::AnyBitPattern;
 use core::ffi::CStr;
 
@@ -83,7 +83,6 @@ pub fn create_dirs<'a>(
             component,
             NodeType::Directory,
             Mode::from_bits_truncate(0o755),
-            None,
             Identity::get_kernel(),
         ) && e != Errno::EEXIST
         {
