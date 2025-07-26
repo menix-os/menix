@@ -27,7 +27,6 @@ use core::{
     arch::{asm, naked_asm},
     fmt::Write,
     mem::offset_of,
-    sync::atomic::Ordering,
 };
 
 #[repr(C)]
@@ -74,6 +73,13 @@ pub struct Context {
     pub ss: u64,
 }
 static_assert!(size_of::<Context>() == 22 * size_of::<u64>());
+
+impl Context {
+    pub fn set_return(&mut self, val: usize, err: usize) {
+        self.rax = val as _;
+        self.rdx = err as _;
+    }
+}
 
 impl core::fmt::Debug for Context {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -131,12 +137,14 @@ struct TaskFrame {
 
 pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe {
+        let from_inner = (*from).inner.lock();
+        let to_inner = (*to).inner.lock();
+
         let cpu = ARCH_DATA.get();
-        cpu.tss.lock().rsp0 =
-            (*to).kernel_stack.load(Ordering::Acquire) as u64 + KERNEL_STACK_SIZE as u64;
+        cpu.tss.lock().rsp0 = (to_inner.kernel_stack + KERNEL_STACK_SIZE).value() as _;
 
         if (*from).is_user() {
-            let mut from_context = (*from).task_context.lock();
+            let mut from_context = from_inner.task_context;
             cpu.fpu_save.get()(from_context.fpu_region);
             from_context.ds = super::asm::read_ds();
             from_context.es = super::asm::read_es();
@@ -147,7 +155,7 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
         }
 
         if (*to).is_user() {
-            let mut to_context = (*to).task_context.lock();
+            let mut to_context = to_inner.task_context;
             cpu.fpu_restore.get()(to_context.fpu_region);
             to_context.ds = super::asm::read_ds();
             to_context.es = super::asm::read_es();
@@ -164,8 +172,11 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
             wrmsr(consts::MSR_KERNEL_GS_BASE, to_context.gsbase);
         }
 
-        let old_rsp = &raw mut (*(*from).task_context.raw_inner()).rsp;
-        let new_rsp = &raw mut (*(*to).task_context.raw_inner()).rsp;
+        drop(from_inner);
+        drop(to_inner);
+
+        let old_rsp = &raw mut (*(*from).inner.raw_inner()).task_context.rsp;
+        let new_rsp = &raw mut (*(*to).inner.raw_inner()).task_context.rsp;
 
         perform_switch(old_rsp, new_rsp);
     }

@@ -78,3 +78,16 @@ pub unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) {
 pub unsafe fn jump_to_user_context(context: *mut Context) {
     unsafe { internal::sched::jump_to_user_context(context) };
 }
+
+// # Note
+// This module is only used to ensure the API is correctly implemented,
+// since associated functions are more complicated. Not to be used directly.
+#[doc(hidden)]
+#[allow(unused)]
+mod api {
+    use super::Context;
+
+    fn set_return(ctx: &mut Context, val: usize, err: usize) {
+        ctx.set_return(val, err);
+    }
+}

@@ -35,9 +35,9 @@ pub struct Process {
 #[derive(Debug)]
 pub struct InnerProcess {
     /// A list of associated tasks.
-    threads: Vec<Arc<Task>>,
+    pub threads: Vec<Arc<Task>>,
     /// Child processes of this process.
-    children: Vec<Arc<Process>>,
+    pub children: Vec<Arc<Process>>,
     /// The address space for this process.
     pub address_space: Arc<AddressSpace>,
     /// The root directory for this process.
@@ -47,7 +47,7 @@ pub struct InnerProcess {
     /// The user identity of this process.
     pub identity: Identity,
     /// A table of open file descriptors.
-    pub open_files: [Option<Arc<File>>; uapi::OPEN_MAX as usize],
+    pub open_files: BTreeMap<usize, Arc<File>>,
     /// A pointer to the next free memory region.
     pub mmap_head: VirtAddr,
 }
@@ -110,7 +110,7 @@ impl Process {
                 root_dir: root,
                 working_dir: cwd,
                 identity,
-                open_files: [const { None }; _],
+                open_files: BTreeMap::new(),
                 // TODO
                 mmap_head: VirtAddr::new(0x1000_0000),
             }),
@@ -120,16 +120,6 @@ impl Process {
     /// Returns the kernel process.
     pub fn get_kernel() -> &'static Arc<Self> {
         KERNEL_PROCESS.get()
-    }
-
-    /// Forks a process into a new one.
-    pub fn fork(
-        self: Arc<Self>,
-        entry_point: extern "C" fn(usize, usize),
-        a0: usize,
-        a1: usize,
-    ) -> EResult<Self> {
-        todo!();
     }
 
     /// Replaces a process with a new executable image, given some arguments and an environment.
@@ -171,20 +161,22 @@ impl InnerProcess {
     /// Attempts to get the file corresponding to the given file descriptor.
     /// Note that this does not handle special FDs like [`uapi::AT_FDCWD`].
     pub fn get_fd(&self, fd: usize) -> Option<Arc<File>> {
-        self.open_files.get(fd).and_then(|x| x.clone())
+        self.open_files.get(&fd).cloned()
     }
 
     /// Allocates a new descriptor for a file. Returns [`None`] if there are no more free FDs for this process.
-    pub fn add_file(&mut self, file: Arc<File>) -> Option<usize> {
-        self.open_files
-            .iter_mut()
-            .enumerate()
-            .skip(3)
-            .find(|(_, x)| x.is_none())
-            .and_then(|(idx, x)| {
-                *x = Some(file);
-                Some(idx)
-            })
+    pub fn open_file(&mut self, file: Arc<File>) -> Option<usize> {
+        // TODO: OPEN_MAX
+        let mut last = 0;
+        // Find a free descriptor.
+        for (fd, _) in self.open_files.iter() {
+            if *fd > last + 1 {
+                break;
+            }
+            last = *fd;
+        }
+        self.open_files.insert(last, file);
+        Some(last)
     }
 }
 

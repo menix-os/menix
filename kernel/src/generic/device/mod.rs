@@ -1,12 +1,20 @@
 use crate::generic::{posix::errno::EResult, vfs::File};
-use alloc::sync::Arc;
+use alloc::{string::String, sync::Arc};
 use core::fmt::Debug;
 
-/// Represents a generic device.
-pub trait Device: Debug {
-    fn open(&self) -> EResult<Arc<File>>;
+#[derive(Debug)]
+pub struct Device {
+    pub name: String,
+    pub ops: &'static dyn DeviceOps,
 }
 
-pub fn register(device: Arc<dyn Device>) -> EResult<()> {
-    todo!()
+impl Device {
+    pub fn open(&self) -> EResult<Arc<File>> {
+        self.ops.open(self)
+    }
+}
+
+/// Represents a generic device.
+pub trait DeviceOps: Debug {
+    fn open(&self, dev: &Device) -> EResult<Arc<File>>;
 }

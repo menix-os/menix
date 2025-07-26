@@ -89,6 +89,7 @@ pub struct IdtEntry {
 }
 
 #[repr(u8)]
+#[allow(unused)]
 enum GateType {
     Interrupt = 0xE,
     Trap = 0xF,
@@ -164,8 +165,8 @@ unsafe extern "C" fn idt_handler(context: *const Context) {
     };
 }
 
-/// Try to send a signal to the user-space program or panic if the interrupt is caused by the kernel.
-fn try_signal_or_die(context: &Context, signal: u32, code: u32) {}
+// /// Try to send a signal to the user-space program or panic if the interrupt is caused by the kernel.
+// fn try_signal_or_die(context: &Context, signal: u32, code: u32) {}
 
 fn page_fault_handler(context: &Context) {
     let mut cr2: usize;

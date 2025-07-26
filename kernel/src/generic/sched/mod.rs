@@ -61,7 +61,7 @@ impl Scheduler {
 
     fn next(&self) -> Option<Arc<Task>> {
         let current_tid = Self::get_current().get_id();
-        let filter = |&(_, b): &(&Tid, &Arc<Task>)| *b.state.lock() == TaskState::Ready;
+        let filter = |&(_, b): &(&Tid, &Arc<Task>)| b.inner.lock().state == TaskState::Ready;
 
         let rq = self.run_queue.lock();
 
@@ -94,22 +94,18 @@ impl Scheduler {
                         to_proc.inner.lock().address_space.table.get_head_addr(),
                     );
                 }
+
+                let cpu = CPU_DATA.get();
+                let mut from_inner = (*from).inner.lock();
+                from_inner.kernel_stack = cpu.kernel_stack.load(Ordering::Acquire).into();
+                from_inner.user_stack = cpu.user_stack.load(Ordering::Acquire).into();
+
+                let to_inner = (*to).inner.lock();
+                cpu.kernel_stack
+                    .store(to_inner.kernel_stack.value(), Ordering::Release);
+                cpu.user_stack
+                    .store(to_inner.user_stack.value(), Ordering::Release);
             }
-
-            let cpu = CPU_DATA.get();
-            (*from)
-                .kernel_stack
-                .store(cpu.kernel_stack.load(Ordering::Acquire), Ordering::Release);
-            (*from)
-                .user_stack
-                .store(cpu.user_stack.load(Ordering::Acquire), Ordering::Release);
-
-            cpu.kernel_stack.store(
-                (*to).kernel_stack.load(Ordering::Acquire),
-                Ordering::Release,
-            );
-            cpu.user_stack
-                .store((*to).user_stack.load(Ordering::Acquire), Ordering::Release);
 
             arch::irq::set_irq_state(old);
             arch::sched::switch(from, to);
@@ -119,9 +115,9 @@ impl Scheduler {
     /// Kills the currently running task.
     pub fn kill_current() -> ! {
         let task = Scheduler::get_current();
-        let mut state = task.state.lock();
-        *state = TaskState::Dead;
-        drop(state);
+        let mut inner = task.inner.lock();
+        inner.state = TaskState::Dead;
+        drop(inner);
 
         CPU_DATA.get().scheduler.reschedule();
         unreachable!("The scheduler did not kill this task");
