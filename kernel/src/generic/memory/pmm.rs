@@ -3,11 +3,11 @@ use crate::{
     arch,
     generic::{
         boot::PhysMemory,
-        memory::{cache::MemoryObject, virt::VmLevel},
+        memory::virt::VmLevel,
         util::{align_up, mutex::Mutex},
     },
 };
-use alloc::{alloc::AllocError, sync::Arc};
+use alloc::alloc::AllocError;
 use bitflags::bitflags;
 use core::{
     hint::unlikely,

@@ -195,41 +195,6 @@ impl<T: PrimInt, A: PrimInt> Field<T, A> {
     }
 }
 
-/// A bit-sized member of a structure.
-#[derive(Debug, Clone, Copy)]
-pub struct BitField<T: PrimInt> {
-    _p: PhantomData<T>,
-    bit_offset: usize,
-    bit_size: usize,
-    native_endian: bool,
-}
-
-impl<T: PrimInt> BitField<T> {
-    /// Creates a new field with native endianness.
-    /// `offset` is in units of bytes.
-    pub const fn new(bit_offset: usize, bit_size: usize) -> Self {
-        assert!(bit_size <= size_of::<T>() * 8);
-        Self {
-            _p: PhantomData,
-            bit_offset,
-            bit_size,
-            native_endian: true,
-        }
-    }
-
-    /// Marks this field as little endian.
-    pub const fn with_le(mut self) -> Self {
-        self.native_endian = is_little_endian();
-        self
-    }
-
-    /// Marks this field as little endian.
-    pub const fn with_be(mut self) -> Self {
-        self.native_endian = !is_little_endian();
-        self
-    }
-}
-
 /// An array.
 #[derive(Debug, Clone, Copy)]
 pub struct Array<T> {

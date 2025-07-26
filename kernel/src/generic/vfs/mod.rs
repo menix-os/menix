@@ -13,7 +13,6 @@ pub use fs::MountFlags;
 use crate::generic::memory::cache::MemoryObject;
 use crate::generic::process::InnerProcess;
 use crate::generic::{
-    device::Device,
     memory::{
         VirtAddr,
         virt::{AddressSpace, VmFlags},
@@ -45,7 +44,6 @@ pub fn mknod(
     path: &[u8],
     file_type: NodeType,
     mode: Mode,
-    device: Option<Arc<dyn Device>>,
     identity: &Identity,
 ) -> EResult<()> {
     match file_type {

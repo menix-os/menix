@@ -11,7 +11,7 @@ use crate::{
         vfs::{
             PathNode,
             cache::Entry,
-            file::{File, FileOps, MmapFlags, OpenFlags},
+            file::{File, FileOps, MmapFlags, OpenFlags, SeekAnchor},
             fs::{FileSystem, Mount},
             inode::{DirectoryOps, INode, Mode, NodeOps, NodeType, RegularOps, SymlinkOps},
         },
@@ -165,7 +165,40 @@ impl SymlinkOps for TmpRegular {
 
 #[derive(Debug, Default)]
 struct TmpFile;
-impl FileOps for TmpFile {}
+impl FileOps for TmpFile {
+    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<uapi::off_t> {
+        match offset {
+            SeekAnchor::Start(x) => Ok(file.position.swap(x as usize, Ordering::AcqRel) as _),
+            SeekAnchor::Current(x) => {
+                let x = x as isize;
+                let old = if x.is_negative() {
+                    file.position.fetch_sub(x.unsigned_abs(), Ordering::AcqRel)
+                } else {
+                    file.position.fetch_add(x as _, Ordering::AcqRel)
+                };
+                Ok((old + x as usize) as _)
+            }
+            SeekAnchor::End(x) => {
+                let x = x as isize;
+                let size = file
+                    .inode
+                    .as_ref()
+                    .ok_or(Errno::EINVAL)?
+                    .size
+                    .load(Ordering::Acquire);
+
+                let new = if x.is_negative() {
+                    size.checked_add_signed(x).ok_or(Errno::EINVAL)?
+                } else {
+                    size.checked_add_signed(x).ok_or(Errno::EOVERFLOW)?
+                };
+
+                file.position.store(new, Ordering::Release);
+                Ok(new as _)
+            }
+        }
+    }
+}
 
 #[initgraph::task(
     name = "generic.vfs.tmpfs",
