@@ -166,6 +166,25 @@ impl SymlinkOps for TmpRegular {
 #[derive(Debug, Default)]
 struct TmpFile;
 impl FileOps for TmpFile {
+    fn read(&self, file: &File, buffer: &mut [u8], offset: uapi::off_t) -> EResult<isize> {
+        let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
+
+        if offset as usize >= inode.len() {
+            return Ok(0);
+        }
+
+        let copy_size = buffer.len().min(inode.len() - offset as usize);
+        let actual = inode.cache.read(&mut buffer[0..copy_size], offset as usize);
+        Ok(actual as _)
+    }
+
+    fn write(&self, file: &File, buffer: &[u8], offset: uapi::off_t) -> EResult<isize> {
+        let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
+        let actual = inode.cache.write(buffer, offset as usize);
+        inode.size.store(actual, Ordering::Release);
+        Ok(actual as _)
+    }
+
     fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<uapi::off_t> {
         match offset {
             SeekAnchor::Start(x) => Ok(file.position.swap(x as usize, Ordering::AcqRel) as _),
@@ -205,6 +224,6 @@ impl FileOps for TmpFile {
     depends = [crate::generic::memory::MEMORY_STAGE],
     entails = [crate::generic::vfs::VFS_STAGE],
 )]
-fn TMPFS_INIT_STAGE() {
+pub fn TMPFS_INIT_STAGE() {
     super::register_fs(&TmpFs);
 }

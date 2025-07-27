@@ -28,9 +28,11 @@ bitflags::bitflags! {
         const Append = uapi::O_APPEND as _;
         const NonBlocking = uapi::O_NONBLOCK as _;
         const SyncData = uapi::O_DSYNC as _;
+        /// Open this file as a directory.
         const Directory = uapi::O_DIRECTORY as _;
         /// Don't follow symbolic links.
         const NoFollow = uapi::O_NOFOLLOW as _;
+        /// Close this file on a call to `execve`.
         const CloseOnExec = uapi::O_CLOEXEC as _;
         const Sync = uapi::O_SYNC as _;
         const SyncRead = uapi::O_RSYNC as _;
@@ -78,30 +80,21 @@ pub struct File {
 }
 
 /// Operations that can be performed on a file. Every trait function has a
-/// generic implementation, which should be used unless the FS requires it.
+/// generic implementation, which treats it as unimplemented.
 /// Inputs have been sanitized when these functions are called.
 pub trait FileOps: Debug {
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
     fn read(&self, file: &File, buffer: &mut [u8], offset: uapi::off_t) -> EResult<isize> {
-        let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
-
-        if offset as usize >= inode.len() {
-            return Ok(0);
-        }
-
-        let copy_size = buffer.len().min(inode.len() - offset as usize);
-        let actual = inode.cache.read(&mut buffer[0..copy_size], offset as usize);
-        Ok(actual as _)
+        let _ = (offset, buffer, file);
+        Ok(0)
     }
 
     /// Writes a buffer to the file.
     /// Returns actual bytes written.
     fn write(&self, file: &File, buffer: &[u8], offset: uapi::off_t) -> EResult<isize> {
-        let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
-        let actual = inode.cache.write(buffer, offset as usize);
-        inode.size.store(actual, Ordering::Release);
-        Ok(actual as _)
+        let _ = (offset, buffer, file);
+        Ok(0)
     }
 
     /// Performs a generic ioctl operation on the file.
