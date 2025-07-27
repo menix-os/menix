@@ -136,4 +136,10 @@ pub fn VFS_STAGE() {
     };
 
     unsafe { ROOT.init(root_path.clone()) };
+
+    // Mount the devtmpfs on `/dev`.
+    let devtmpfs =
+        fs::mount(None, b"devtmpfs", MountFlags::empty()).expect("Unable to mount the devtmpfs");
+
+    ROOT.get().entry.mounts.lock().push(devtmpfs);
 }
