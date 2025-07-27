@@ -4,12 +4,12 @@ use crate::{
         percpu::{CPU_DATA, CpuData},
         process::{
             Process,
-            task::{Task, TaskState, Tid},
+            task::{Task, TaskState},
         },
         util::mutex::Mutex,
     },
 };
-use alloc::{collections::btree_map::BTreeMap, sync::Arc};
+use alloc::{collections::vec_deque::VecDeque, sync::Arc};
 use core::{
     mem,
     ptr::null_mut,
@@ -21,64 +21,82 @@ use core::{
 pub struct Scheduler {
     /// The currently running task on this scheduler instance. Use [`Self::get_current`] instead.
     pub(crate) current: AtomicPtr<Task>,
+    pub(crate) idle_task: AtomicPtr<Task>,
     pub(crate) preempt_level: usize,
-    // TODO: Don't make this a part of the per-CPU struct. This should be a global variable so it can properly do rebalancing.
-    run_queue: Mutex<BTreeMap<Tid, Arc<Task>>>,
+    run_queue: Mutex<VecDeque<Arc<Task>>>,
 }
 
 impl Scheduler {
     pub(crate) const fn new() -> Self {
         return Self {
             current: AtomicPtr::new(null_mut()),
+            idle_task: AtomicPtr::new(null_mut()),
             preempt_level: 0,
-            run_queue: Mutex::new(BTreeMap::new()),
+            run_queue: Mutex::new(VecDeque::new()),
         };
     }
 
+    /// Returns a reference to the idle task.
+    fn idle_task(&self) -> *mut Task {
+        let ptr = self.idle_task.load(Ordering::Relaxed);
+        debug_assert!(!ptr.is_null());
+        ptr
+    }
+
     /// Adds a task to a run queue.
-    /// The scheduler will find the most optimal CPU to run on.
     pub fn add_task(&self, task: Arc<Task>) {
-        self.run_queue.lock().insert(task.get_id(), task);
+        self.run_queue.lock().push_back(task);
     }
 
     /// Returns the task currently running on this CPU.
     pub fn get_current() -> Arc<Task> {
-        unsafe {
-            let ptr = arch::sched::get_task();
-            debug_assert!(!ptr.is_null());
-            let task = Arc::from_raw(ptr);
-            let result = task.clone();
-            mem::forget(task);
-
-            return result;
-        }
-    }
-
-    /// Attempts to find a task by its ID on this scheduler.
-    pub fn get_by_tid(&self, tid: Tid) -> Option<Arc<Task>> {
-        self.run_queue.lock().get(&tid).cloned()
+        let ptr = arch::sched::get_task();
+        debug_assert!(!ptr.is_null());
+        let task = unsafe { Arc::from_raw(ptr) };
+        let result = task.clone();
+        mem::forget(task);
+        result
     }
 
     fn next(&self) -> Option<Arc<Task>> {
-        let current_tid = Self::get_current().get_id();
-        let filter = |&(_, b): &(&Tid, &Arc<Task>)| b.inner.lock().state == TaskState::Ready;
+        self.run_queue.lock().pop_front()
+    }
 
-        let rq = self.run_queue.lock();
+    /// Puts the current task back to the run queue and reschedules.
+    pub fn reschedule(&self) {
+        let old = unsafe { arch::irq::set_irq_state(false) };
+        let idle = self.idle_task();
+        let from = self.current.load(Ordering::Relaxed);
 
-        rq.range((current_tid + 1)..)
-            .find(filter)
-            .or_else(|| rq.range(..=current_tid).find(filter))
-            .map(|(_, task)| task.clone())
+        if from != idle {
+            self.add_task(unsafe {
+                let task = Arc::from_raw(from);
+                let result = task.clone();
+                mem::forget(task);
+                result
+            });
+        }
+
+        self.do_reschedule();
+        unsafe { arch::irq::set_irq_state(old) };
+    }
+
+    /// Reschedules without adding the current task back to the run queue.
+    pub fn do_yield(&self) {
+        let old = unsafe { arch::irq::set_irq_state(false) };
+        self.do_reschedule();
+        unsafe { arch::irq::set_irq_state(old) };
     }
 
     /// Runs the scheduler.
-    pub fn reschedule(&self) {
-        let old = unsafe { arch::irq::set_irq_state(false) };
+    fn do_reschedule(&self) {
         let from = self.current.load(Ordering::Relaxed);
-        let to = Arc::into_raw(self.next().expect("No more tasks to run!")) as *mut Task;
+        let to = self
+            .next()
+            .map(|task| Arc::into_raw(task) as *mut _)
+            .unwrap_or(self.idle_task());
 
         if from == to {
-            unsafe { arch::irq::set_irq_state(old) };
             return;
         }
 
@@ -107,7 +125,6 @@ impl Scheduler {
                     .store(to_inner.user_stack.value(), Ordering::Release);
             }
 
-            arch::irq::set_irq_state(old);
             arch::sched::switch(from, to);
         }
     }
@@ -118,8 +135,7 @@ impl Scheduler {
         let mut inner = task.inner.lock();
         inner.state = TaskState::Dead;
         drop(inner);
-
-        CPU_DATA.get().scheduler.reschedule();
+        CPU_DATA.get().scheduler.do_yield();
         unreachable!("The scheduler did not kill this task");
     }
 }
@@ -134,8 +150,8 @@ pub extern "C" fn task_entry(entry: extern "C" fn(usize, usize), arg1: usize, ar
 
 /// Function used for waiting.
 pub extern "C" fn idle_fn(_: usize, _: usize) {
+    unsafe { crate::arch::irq::set_irq_state(true) };
     loop {
-        unsafe { crate::arch::irq::set_irq_state(true) };
         crate::arch::irq::wait_for_irq();
     }
 }
@@ -147,9 +163,17 @@ pub extern "C" fn idle_fn(_: usize, _: usize) {
 pub fn SCHEDULER_STAGE() {
     // Set up scheduler.
     let bsp_scheduler = &CpuData::get().scheduler;
-    let initial = Arc::new(Task::new(idle_fn, 0, 0, &Process::get_kernel(), false).unwrap());
-    bsp_scheduler.add_task(initial.clone());
+    let idle_task = Arc::new(Task::new(idle_fn, 0, 0, &Process::get_kernel(), false).unwrap());
+    let initial_task =
+        Arc::new(Task::new(crate::main, 0, 0, &Process::get_kernel(), false).unwrap());
 
-    let to = Arc::into_raw(initial);
-    bsp_scheduler.current.store(to as *mut _, Ordering::Relaxed);
+    bsp_scheduler.add_task(initial_task);
+
+    let idle_task_ptr = Arc::into_raw(idle_task);
+    bsp_scheduler
+        .current
+        .store(idle_task_ptr as *mut _, Ordering::Relaxed);
+    bsp_scheduler
+        .idle_task
+        .store(idle_task_ptr as *mut _, Ordering::Relaxed);
 }
