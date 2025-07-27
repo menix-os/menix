@@ -51,13 +51,18 @@ impl Attribute {
 
     fn parse_depends_entails_attribute(
         input: ParseStream,
-    ) -> syn::Result<Punctuated<syn::Path, syn::Token![,]>> {
+    ) -> syn::Result<(Span, Punctuated<syn::Path, syn::Token![,]>)> {
         let _: syn::Token![=] = input.parse()?;
 
         let content;
-        let _ = syn::bracketed!(content in input);
+        let bracket = syn::bracketed!(content in input);
+        let result = Punctuated::<syn::Path, syn::Token![,]>::parse_terminated(&content)?;
+        let bracket_span = bracket.span.join();
 
-        Punctuated::<syn::Path, syn::Token![,]>::parse_terminated(&content)
+        Ok((
+            result.span().join(bracket_span).unwrap_or(bracket_span),
+            result,
+        ))
     }
 }
 
@@ -68,13 +73,13 @@ impl Parse for Attribute {
         if name_ident == "name" {
             Self::parse_name_attribute(name_ident.span(), input)
         } else if name_ident == "depends" {
-            Self::parse_depends_entails_attribute(input).map(|x| Self {
-                span: name_ident.span().join(x.span()).unwrap(),
+            Self::parse_depends_entails_attribute(input).map(|(span, x)| Self {
+                span: name_ident.span().join(span).unwrap(),
                 kind: AttributeKind::Depends(x.iter().cloned().collect()),
             })
         } else if name_ident == "entails" {
-            Self::parse_depends_entails_attribute(input).map(|x| Self {
-                span: name_ident.span().join(x.span()).unwrap(),
+            Self::parse_depends_entails_attribute(input).map(|(span, x)| Self {
+                span: name_ident.span().join(span).unwrap(),
                 kind: AttributeKind::Entails(x.iter().cloned().collect()),
             })
         } else {
@@ -146,23 +151,26 @@ pub fn task(
             .into();
     }
 
-    for attr in attrs
-        .iter()
-        .filter(|attr| path_starts_with(attr.meta.path(), "initgraph"))
-    {
+    let mut other_attrs = vec![];
+
+    for attr in attrs.iter() {
         let path = attr.meta.path();
 
-        if path.segments.len() != 2 || path.segments[1].ident != "task" {
-            return syn::Error::new_spanned(attr, "unknown initgraph attribute")
-                .to_compile_error()
-                .into();
-        }
-
-        match attr.parse_args::<AttributeList>() {
-            Ok(parsed) => attributes.extend_from_slice(&parsed.attributes),
-            Err(err) => {
-                return err.to_compile_error().into();
+        if path_starts_with(path, "initgraph") {
+            if path.segments.len() != 2 || path.segments[1].ident != "task" {
+                return syn::Error::new_spanned(attr, "unknown initgraph attribute")
+                    .to_compile_error()
+                    .into();
             }
+
+            match attr.parse_args::<AttributeList>() {
+                Ok(parsed) => attributes.extend_from_slice(&parsed.attributes),
+                Err(err) => {
+                    return err.to_compile_error().into();
+                }
+            }
+        } else {
+            other_attrs.push(attr);
         }
     }
 
@@ -228,6 +236,7 @@ pub fn task(
         #[used]
         #[doc(hidden)]
         #[unsafe(link_section = ".initgraph.nodes")]
+        #(#other_attrs)*
         #vis static #ident: ::initgraph::Node = ::initgraph::Node::new(
             #display_name,
             ::initgraph::Action::Callback(|| #block),

@@ -24,8 +24,7 @@ pub mod generic;
 pub mod system;
 
 use crate::generic::{
-    percpu::CpuData,
-    process::{Identity, Process, task::Task},
+    process::{Identity, Process},
     util::once::Once,
     vfs::{File, file::OpenFlags, inode::Mode},
 };
@@ -41,11 +40,6 @@ pub fn init() -> ! {
         generic::init::run();
         arch::irq::set_irq_state(true);
     }
-
-    CpuData::get().scheduler.add_task(Arc::new(
-        Task::new(crate::main, 0, 0, Process::get_kernel(), false)
-            .expect("Couldn't create kernel task"),
-    ));
 
     loop {
         hint::spin_loop();
@@ -100,8 +94,4 @@ pub extern "C" fn main(_: usize, _: usize) {
         .clone()
         .fexecve(init_file, &[path], &[])
         .expect("Unable to start the init process");
-
-    loop {
-        unsafe { arch::irq::set_irq_state(true) };
-    }
 }
