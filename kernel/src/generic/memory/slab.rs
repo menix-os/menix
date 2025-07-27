@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     arch,
-    generic::util::{align_down, align_up, mutex::Mutex},
+    generic::util::{align_down, align_up, spin_mutex::SpinMutex},
 };
 use core::{
     alloc::{GlobalAlloc, Layout},
@@ -20,7 +20,7 @@ use core::{
 struct Slab {
     /// Size of one entry.
     ent_size: usize,
-    head: Mutex<VirtAddr>,
+    head: SpinMutex<VirtAddr>,
 }
 
 #[repr(transparent)]
@@ -40,7 +40,7 @@ impl Slab {
     const fn new(size: usize) -> Self {
         Self {
             ent_size: size,
-            head: Mutex::new(VirtAddr::null()),
+            head: SpinMutex::new(VirtAddr::null()),
         }
     }
 

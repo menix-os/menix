@@ -8,7 +8,7 @@ use crate::{
         memory::{cache::MemoryObject, pmm::KernelAlloc},
         posix::errno::{EResult, Errno},
         sched::Scheduler,
-        util::{align_up, divide_up, mutex::Mutex, once::Once},
+        util::{align_up, divide_up, once::Once, spin_mutex::SpinMutex},
     },
 };
 use alloc::{alloc::AllocError, collections::btree_map::BTreeMap, slice, sync::Arc};
@@ -70,7 +70,7 @@ pub enum VmLevel {
 #[derive(Debug)]
 pub struct PageTable {
     /// Physical address of the root directory.
-    head: Mutex<PhysAddr>,
+    head: SpinMutex<PhysAddr>,
     /// The root page level.
     root_level: usize,
     /// `true`, if this is a user page table.
@@ -94,7 +94,7 @@ impl PageTable {
             user_l1_slice.copy_from_slice(&kernel_l1_slice);
         }
         Self {
-            head: Mutex::new(user_l1),
+            head: SpinMutex::new(user_l1),
             root_level: KERNEL_PAGE_TABLE.get().root_level,
             is_user: true,
         }
@@ -103,7 +103,7 @@ impl PageTable {
     /// Creates a new page table for a kernel process.
     pub fn new_kernel<P: PageAllocator>(root_level: usize, flags: AllocFlags) -> Self {
         Self {
-            head: Mutex::new(P::alloc(1, flags | AllocFlags::Zeroed).unwrap()),
+            head: SpinMutex::new(P::alloc(1, flags | AllocFlags::Zeroed).unwrap()),
             root_level,
             is_user: false,
         }
@@ -396,7 +396,7 @@ impl PageTable {
 pub struct AddressSpace {
     pub table: Arc<PageTable>,
     /// A map that translates global page offsets (virt / page_size) to a physical page and the flags of the mapping.
-    pub mappings: Mutex<BTreeMap<usize, MappedObject>>,
+    pub mappings: SpinMutex<BTreeMap<usize, MappedObject>>,
 }
 
 impl Clone for AddressSpace {
@@ -408,7 +408,7 @@ impl Clone for AddressSpace {
             } else {
                 PageTable::new_kernel::<KernelAlloc>(self.table.root_level, AllocFlags::empty())
             }),
-            mappings: Mutex::new(maps),
+            mappings: SpinMutex::new(maps),
         }
     }
 }
@@ -424,7 +424,7 @@ impl AddressSpace {
     pub fn new() -> Self {
         Self {
             table: Arc::new(PageTable::new_user::<KernelAlloc>(AllocFlags::empty())),
-            mappings: Mutex::default(),
+            mappings: SpinMutex::default(),
         }
     }
 

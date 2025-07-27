@@ -4,7 +4,7 @@ use crate::{
     generic::{
         boot::PhysMemory,
         memory::virt::VmLevel,
-        util::{align_up, mutex::Mutex},
+        util::{align_up, spin_mutex::SpinMutex},
     },
 };
 use alloc::alloc::AllocError;
@@ -57,10 +57,10 @@ pub struct Page {
 // If this assert fails, the PFNDB can't properly allocate data.
 static_assert!(0x1000 % size_of::<Page>() == 0);
 
-pub static PAGE_DB: Mutex<&'static mut [Page]> = Mutex::new(&mut []);
+pub static PAGE_DB: SpinMutex<&'static mut [Page]> = SpinMutex::new(&mut []);
 pub static PAGE_DB_START: AtomicPtr<()> = AtomicPtr::new(null_mut());
 
-pub static PMM: Mutex<Option<NonNull<Page>>> = Mutex::new(None);
+pub static PMM: SpinMutex<Option<NonNull<Page>>> = SpinMutex::new(None);
 
 pub struct KernelAlloc;
 impl PageAllocator for KernelAlloc {

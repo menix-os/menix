@@ -5,7 +5,7 @@ mod tmpfs;
 use super::inode::INode;
 use crate::generic::{
     posix::errno::{EResult, Errno},
-    util::mutex::Mutex,
+    util::spin_mutex::SpinMutex,
     vfs::{
         PathNode,
         cache::Entry,
@@ -21,7 +21,7 @@ pub struct Mount {
     pub flags: MountFlags,
     pub super_block: Arc<dyn SuperBlock>,
     pub root: Arc<Entry>,
-    pub mount_point: Mutex<Option<PathNode>>,
+    pub mount_point: SpinMutex<Option<PathNode>>,
 }
 
 bitflags::bitflags! {
@@ -87,8 +87,8 @@ pub trait SuperBlock: Debug {
 }
 
 /// A map of all known and registered file systems.
-static FS_TABLE: Mutex<BTreeMap<&'static [u8], &'static dyn FileSystem>> =
-    Mutex::new(BTreeMap::new());
+static FS_TABLE: SpinMutex<BTreeMap<&'static [u8], &'static dyn FileSystem>> =
+    SpinMutex::new(BTreeMap::new());
 
 /// Registers a new file system.
 pub fn register_fs(fs: &'static dyn FileSystem) {

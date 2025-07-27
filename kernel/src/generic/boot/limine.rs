@@ -4,7 +4,7 @@ use super::{BootFile, BootInfo, PhysMemory};
 use crate::generic::{
     cmdline::CmdLine,
     fbcon::{FbColorBits, FrameBuffer},
-    util::mutex::Mutex,
+    util::spin_mutex::SpinMutex,
 };
 use core::ptr::slice_from_raw_parts;
 use limine::{BaseRevision, memory_map::EntryType, paging::Mode, request::*};
@@ -109,7 +109,7 @@ extern "C" fn _start() -> ! {
         }
 
         unsafe {
-            info.memory_map = Mutex::new(&mut MEMMAP_BUF[0..total_entries]);
+            info.memory_map = SpinMutex::new(&mut MEMMAP_BUF[0..total_entries]);
         }
         info.kernel_phys = Some(kernel_addr.physical_base().into());
         info.kernel_virt = Some(kernel_addr.virtual_base().into());

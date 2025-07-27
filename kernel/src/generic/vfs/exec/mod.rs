@@ -4,7 +4,7 @@ use crate::generic::{
     memory::virt::AddressSpace,
     posix::errno::EResult,
     process::{Process, task::Task},
-    util::mutex::Mutex,
+    util::spin_mutex::SpinMutex,
     vfs::file::File,
 };
 use alloc::{
@@ -38,7 +38,8 @@ pub trait ExecFormat {
     fn load(&self, proc: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task>;
 }
 
-static KNOWN_FORMATS: Mutex<BTreeMap<String, Arc<dyn ExecFormat>>> = Mutex::new(BTreeMap::new());
+static KNOWN_FORMATS: SpinMutex<BTreeMap<String, Arc<dyn ExecFormat>>> =
+    SpinMutex::new(BTreeMap::new());
 
 /// Attempts to identify the format of this executable file.
 pub fn identify(file: &File) -> Option<Arc<dyn ExecFormat>> {

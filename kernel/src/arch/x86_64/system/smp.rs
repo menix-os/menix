@@ -21,7 +21,7 @@ use crate::{
             virt::{KERNEL_STACK_SIZE, PageTable, VmFlags, VmLevel},
         },
         percpu::{self, CpuData},
-        util::mutex::Mutex,
+        util::spin_mutex::SpinMutex,
     },
 };
 use alloc::vec::Vec;
@@ -308,7 +308,7 @@ fn start_ap(temp_cr3: u32, id: u32) {
     unsafe { KernelAlloc::dealloc(mem, 1) };
 }
 
-static FOUND_APS: Mutex<Vec<u32>> = Mutex::new(Vec::new());
+static FOUND_APS: SpinMutex<Vec<u32>> = SpinMutex::new(Vec::new());
 
 #[initgraph::task(
     name = "arch.x86_64.discover-aps",

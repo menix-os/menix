@@ -2,10 +2,10 @@
 
 use num_traits::PrimInt;
 
-pub mod mutex;
 pub mod once;
 pub mod rwlock;
 pub mod spin;
+pub mod spin_mutex;
 
 /// Aligns a value to the next higher multiple of `alignment`.
 #[inline]

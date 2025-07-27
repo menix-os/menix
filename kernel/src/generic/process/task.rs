@@ -4,7 +4,7 @@ use crate::{
     generic::{
         memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
         posix::errno::EResult,
-        util::mutex::Mutex,
+        util::spin_mutex::SpinMutex,
     },
 };
 use alloc::sync::{Arc, Weak};
@@ -40,7 +40,7 @@ pub struct Task {
     process: Weak<Process>,
     /// If this task is a user task. `false` forbids this task to ever enter user mode.
     is_user: bool,
-    pub inner: Mutex<InnerTask>,
+    pub inner: SpinMutex<InnerTask>,
 }
 
 /// Represents the locked, mutable part of a task.
@@ -82,7 +82,7 @@ impl Task {
             id: TASK_ID_COUNTER.fetch_add(1, Ordering::Acquire),
             is_user,
             process: Arc::downgrade(parent),
-            inner: Mutex::new(InnerTask {
+            inner: SpinMutex::new(InnerTask {
                 state: TaskState::Ready,
                 user_context: None,
                 task_context: arch::sched::TaskContext::default(),

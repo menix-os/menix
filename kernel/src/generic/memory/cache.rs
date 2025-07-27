@@ -6,7 +6,7 @@ use crate::{
             PhysAddr,
             pmm::{AllocFlags, KernelAlloc, PageAllocator},
         },
-        util::mutex::Mutex,
+        util::spin_mutex::SpinMutex,
     },
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
@@ -15,7 +15,7 @@ use core::{fmt::Debug, slice};
 /// A list of mappable pages.
 #[derive(Debug)]
 pub struct MemoryObject {
-    pages: Mutex<BTreeMap<usize, PhysAddr>>,
+    pages: SpinMutex<BTreeMap<usize, PhysAddr>>,
     source: Arc<dyn Pager>,
 }
 
@@ -23,7 +23,7 @@ impl MemoryObject {
     /// Creates a new object, without making allocations.
     pub fn new(source: Arc<dyn Pager>) -> Self {
         Self {
-            pages: Mutex::new(BTreeMap::new()),
+            pages: SpinMutex::new(BTreeMap::new()),
             source,
         }
     }

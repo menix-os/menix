@@ -1,7 +1,7 @@
 //! Message logs from the kernel.
 // TODO: Convert to struct Console
 
-use super::util::mutex::Mutex;
+use super::util::spin_mutex::SpinMutex;
 use alloc::{boxed::Box, vec::Vec};
 use core::{
     fmt,
@@ -53,7 +53,7 @@ pub fn remove_sink(name: &str) {
 const MAX_LOGGERS: usize = 16;
 
 /// The global registry for loggers.
-pub static GLOBAL_LOGGERS: Mutex<Logger> = Mutex::new(Logger {
+pub static GLOBAL_LOGGERS: SpinMutex<Logger> = SpinMutex::new(Logger {
     sinks: [const { None }; MAX_LOGGERS],
 });
 
@@ -69,14 +69,14 @@ impl fmt::Write for Logger {
 }
 
 /// A static buffer to write early messages to.
-static EARLY_BUFFER: Mutex<[u8; EARLY_BUFFER_LEN]> = Mutex::new([0; EARLY_BUFFER_LEN]);
+static EARLY_BUFFER: SpinMutex<[u8; EARLY_BUFFER_LEN]> = SpinMutex::new([0; EARLY_BUFFER_LEN]);
 /// The size of the early kernel buffer.
 const EARLY_BUFFER_LEN: usize = 8192;
 /// The current offset in this logger
 static EARLY_BUFFER_ADDR: AtomicUsize = AtomicUsize::new(0);
 
 /// Global in-memory logger.
-static KERNEL_LOGGER: Mutex<Vec<u8>> = Mutex::new(Vec::new());
+static KERNEL_LOGGER: SpinMutex<Vec<u8>> = SpinMutex::new(Vec::new());
 
 /// Primitive Logger sink for the kernel.
 pub struct KernelLogger;
