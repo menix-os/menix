@@ -6,7 +6,7 @@ use crate::{
             Process,
             task::{Task, TaskState},
         },
-        util::mutex::Mutex,
+        util::spin_mutex::SpinMutex,
     },
 };
 use alloc::{collections::vec_deque::VecDeque, sync::Arc};
@@ -23,7 +23,7 @@ pub struct Scheduler {
     pub(crate) current: AtomicPtr<Task>,
     pub(crate) idle_task: AtomicPtr<Task>,
     pub(crate) preempt_level: usize,
-    run_queue: Mutex<VecDeque<Arc<Task>>>,
+    run_queue: SpinMutex<VecDeque<Arc<Task>>>,
 }
 
 impl Scheduler {
@@ -32,7 +32,7 @@ impl Scheduler {
             current: AtomicPtr::new(null_mut()),
             idle_task: AtomicPtr::new(null_mut()),
             preempt_level: 0,
-            run_queue: Mutex::new(VecDeque::new()),
+            run_queue: SpinMutex::new(VecDeque::new()),
         };
     }
 

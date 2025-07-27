@@ -7,7 +7,7 @@ use crate::{
         memory::{PhysAddr, cache::MemoryObject, virt::VmLevel},
         posix::errno::{EResult, Errno},
         process::Identity,
-        util::mutex::Mutex,
+        util::spin_mutex::SpinMutex,
         vfs::{
             PathNode,
             cache::Entry,
@@ -45,7 +45,7 @@ impl FileSystem for TmpFs {
             flags,
             super_block,
             root: Arc::try_new(Entry::new(b"", Some(root_inode), None))?,
-            mount_point: Mutex::default(),
+            mount_point: SpinMutex::default(),
         })?)
     }
 }
@@ -81,9 +81,9 @@ impl SuperBlock for TmpSuper {
             sb: self,
             cache: Arc::new(MemoryObject::new_phys()),
             mode: AtomicU32::new(mode.bits()),
-            atime: Mutex::default(),
-            mtime: Mutex::default(),
-            ctime: Mutex::default(),
+            atime: SpinMutex::default(),
+            mtime: SpinMutex::default(),
+            ctime: SpinMutex::default(),
             size: AtomicUsize::default(),
             uid: AtomicUsize::default(),
             gid: AtomicUsize::default(),

@@ -1,6 +1,6 @@
 // PCI driver handling.
 
-use crate::generic::util::mutex::Mutex;
+use crate::generic::util::spin_mutex::SpinMutex;
 
 use super::{PciError, device::PciDevice};
 use alloc::collections::btree_map::BTreeMap;
@@ -25,7 +25,7 @@ pub struct PciDriver {
     pub variants: &'static [PciVariant],
 }
 
-static DRIVERS: Mutex<BTreeMap<&'static str, PciDriver>> = Mutex::new(BTreeMap::new());
+static DRIVERS: SpinMutex<BTreeMap<&'static str, PciDriver>> = SpinMutex::new(BTreeMap::new());
 
 impl PciDriver {
     pub fn register(self) -> Result<(), PciError> {

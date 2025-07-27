@@ -1,7 +1,7 @@
 //! Global timer management.
 // TODO: Try to get rid of some locks.
 
-use super::util::mutex::Mutex;
+use super::util::spin_mutex::SpinMutex;
 use alloc::boxed::Box;
 
 #[initgraph::task(name = "generic.clock")]
@@ -93,7 +93,7 @@ struct Clock {
     counter_base: usize,
 }
 
-static CLOCK: Mutex<Clock> = Mutex::new(Clock {
+static CLOCK: SpinMutex<Clock> = SpinMutex::new(Clock {
     current: None,
     counter_base: 0,
 });

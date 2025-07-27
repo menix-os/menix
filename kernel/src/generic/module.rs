@@ -5,7 +5,7 @@ use super::{
         virt::VmFlags,
         virt::VmLevel,
     },
-    util::mutex::Mutex,
+    util::spin_mutex::SpinMutex,
     util::{align_down, align_up},
     vfs::exec::elf::{self, ElfHashTable, ElfHdr, ElfPhdr, ElfRela, ElfSym},
 };
@@ -21,10 +21,11 @@ use core::{
 };
 
 // TODO: This can use RwLocks.
-pub(crate) static SYMBOL_TABLE: Mutex<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>> =
-    Mutex::new(BTreeMap::new());
+pub(crate) static SYMBOL_TABLE: SpinMutex<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>> =
+    SpinMutex::new(BTreeMap::new());
 
-pub(crate) static MODULE_TABLE: Mutex<BTreeMap<String, ModuleInfo>> = Mutex::new(BTreeMap::new());
+pub(crate) static MODULE_TABLE: SpinMutex<BTreeMap<String, ModuleInfo>> =
+    SpinMutex::new(BTreeMap::new());
 
 unsafe extern "C" {
     unsafe static LD_DYNSYM_START: u8;

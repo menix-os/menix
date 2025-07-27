@@ -16,7 +16,7 @@ use crate::{
             mmio::{Mmio, Register},
         },
         percpu::CpuData,
-        util::mutex::Mutex,
+        util::spin_mutex::SpinMutex,
     },
 };
 use core::{
@@ -31,11 +31,11 @@ pub struct LocalApic {
     ticks_per_10ms: AtomicU32,
     /// If [`Some`], points to the xAPIC MMIO space.
     /// Otherwise, it's an x2APIC.
-    xapic_regs: Mutex<Option<Mmio>>,
+    xapic_regs: SpinMutex<Option<Mmio>>,
 }
 
 per_cpu! {
-    pub static LAPIC: LocalApic = LocalApic { ticks_per_10ms: AtomicU32::new(0), xapic_regs: Mutex::new(None) };
+    pub static LAPIC: LocalApic = LocalApic { ticks_per_10ms: AtomicU32::new(0), xapic_regs: SpinMutex::new(None) };
 }
 
 mod regs {

@@ -4,7 +4,7 @@ use crate::generic::{
     memory::cache::MemoryObject,
     posix::errno::{EResult, Errno},
     process::Identity,
-    util::mutex::Mutex,
+    util::spin_mutex::SpinMutex,
     vfs::{
         PathNode,
         file::{File, FileOps, OpenFlags},
@@ -37,9 +37,9 @@ pub struct INode {
     pub size: AtomicUsize,
     pub uid: AtomicUsize,
     pub gid: AtomicUsize,
-    pub atime: Mutex<uapi::timespec>,
-    pub mtime: Mutex<uapi::timespec>,
-    pub ctime: Mutex<uapi::timespec>,
+    pub atime: SpinMutex<uapi::timespec>,
+    pub mtime: SpinMutex<uapi::timespec>,
+    pub ctime: SpinMutex<uapi::timespec>,
     pub mode: AtomicU32,
 }
 

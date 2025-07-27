@@ -5,7 +5,7 @@ use crate::generic::{
     percpu::CPU_DATA,
     posix::errno::{EResult, Errno},
     process::task::Task,
-    util::{mutex::Mutex, once::Once},
+    util::{once::Once, spin_mutex::SpinMutex},
     vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
 };
 use alloc::{
@@ -28,7 +28,7 @@ pub struct Process {
     /// The parent of this process, or [`None`], if this is the init process.
     parent: Option<Weak<Process>>,
     /// Mutable fields of the process.
-    pub inner: Mutex<InnerProcess>,
+    pub inner: SpinMutex<InnerProcess>,
 }
 
 /// The lockable, mutable part of a process.
@@ -103,7 +103,7 @@ impl Process {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             name,
             parent: parent.map(|x| Arc::downgrade(&x)),
-            inner: Mutex::new(InnerProcess {
+            inner: SpinMutex::new(InnerProcess {
                 threads: Vec::new(),
                 children: Vec::new(),
                 address_space: space,
@@ -231,7 +231,7 @@ pub fn PROCESS_STAGE() {
                 None,
                 Arc::new(AddressSpace {
                     table: super::memory::virt::KERNEL_PAGE_TABLE.get().clone(),
-                    mappings: Mutex::new(BTreeMap::new()),
+                    mappings: SpinMutex::new(BTreeMap::new()),
                 }),
             )
             .expect("Unable to create the main kernel process"),

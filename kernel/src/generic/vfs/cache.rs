@@ -2,7 +2,7 @@ use super::inode::INode;
 use crate::generic::{
     posix::errno::{EResult, Errno},
     process::{Identity, InnerProcess},
-    util::mutex::Mutex,
+    util::spin_mutex::SpinMutex,
     vfs::{File, file::OpenFlags, fs::Mount, inode::NodeOps},
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};
@@ -24,28 +24,28 @@ pub struct Entry {
     /// The name of this entry.
     pub name: Vec<u8>,
     /// The underlying [`INode`] this entry is pointing to.
-    pub inode: Mutex<EntryState>,
+    pub inode: SpinMutex<EntryState>,
     /// The parent of this [`Entry`].
     /// A [`None`] value indicates that this entry is a root.
     pub parent: Option<Arc<Entry>>,
     /// If the [`Self::present`] is set to `true`,
     /// then this contains a map of all children of this entry.
-    pub children: Mutex<BTreeMap<Vec<u8>, Arc<Entry>>>,
+    pub children: SpinMutex<BTreeMap<Vec<u8>, Arc<Entry>>>,
     /// A list of mounts on this entry.
-    pub mounts: Mutex<Vec<Arc<Mount>>>,
+    pub mounts: SpinMutex<Vec<Arc<Mount>>>,
 }
 
 impl Entry {
     pub fn new(name: &[u8], inode: Option<Arc<INode>>, parent: Option<Arc<Entry>>) -> Self {
         Entry {
             name: name.to_vec(),
-            inode: Mutex::new(match inode {
+            inode: SpinMutex::new(match inode {
                 Some(x) => EntryState::Present(x),
                 None => EntryState::NotPresent,
             }),
             parent,
-            children: Mutex::new(BTreeMap::new()),
-            mounts: Mutex::new(Vec::new()),
+            children: SpinMutex::new(BTreeMap::new()),
+            mounts: SpinMutex::new(Vec::new()),
         }
     }
 
@@ -196,10 +196,10 @@ impl PathNode {
             mount,
             entry: Arc::try_new(Entry {
                 name: name.to_vec(),
-                inode: Mutex::default(),
+                inode: SpinMutex::default(),
                 parent: Some(entry.clone()),
-                children: Mutex::default(),
-                mounts: Mutex::default(),
+                children: SpinMutex::default(),
+                mounts: SpinMutex::default(),
             })?,
         };
 
