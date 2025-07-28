@@ -1,3 +1,5 @@
+mod memfiles;
+
 use crate::generic::{posix::errno::EResult, vfs::File};
 use alloc::{string::String, sync::Arc};
 use core::fmt::Debug;

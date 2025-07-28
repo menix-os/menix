@@ -1,5 +1,3 @@
-use alloc::{borrow::ToOwned, string::String};
-
 use crate::generic::{
     log::GLOBAL_LOGGERS,
     posix::errno::{EResult, Errno},
@@ -10,6 +8,7 @@ use crate::generic::{
         inode::Mode,
     },
 };
+use alloc::{borrow::ToOwned, string::String};
 use core::{
     ffi::{CStr, c_char},
     fmt::Write,
@@ -92,4 +91,12 @@ pub fn close(fd: usize) -> EResult<usize> {
         // If it wasn't, the FD argument is invalid.
         None => Err(Errno::EBADF),
     }
+}
+
+pub fn ioctl(fd: usize, request: usize, arg: usize) -> EResult<usize> {
+    let proc = Scheduler::get_current().get_process();
+    let proc_inner = proc.inner.lock();
+    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+
+    file.ioctl(request, arg)
 }
