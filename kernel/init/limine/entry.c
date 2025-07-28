@@ -1,13 +1,11 @@
 #include <menix/acpi.h>
-#include <menix/cmdline.h>
-#include <menix/init.h>
-#include <menix/boot/file.h>
-#include <menix/mem/init.h>
-#include <menix/mm.h>
+#include <menix/init/cmdline.h>
+#include <menix/init/init.h>
+#include <menix/boot.h>
+#include <menix/mem.h>
 #include <menix/log.h>
 #include <menix/util.h>
 #include <menix/hint.h>
-#include <string.h>
 
 #include "limine.h"
 
@@ -31,13 +29,12 @@ LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);
 LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);
 LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);
 
-__init void _start() {
+void __init _start() {
 	kassert(memmap_request.response, "Unable to get memory map!");
 	kassert(hhdm_request.response, "Unable to get HHDM response!");
 	kassert(executable_address_request.response, "Unable to get kernel address info!");
 	kassert(executable_file_request.response, "Unable to get kernel file info!");
 
-	// Get the memory map.
 	struct limine_memmap_response* const mm_res = memmap_request.response;
 	usize map_size = min(mm_res->entry_count, array_size(mem_map));
 	if (mm_res->entry_count > map_size)
@@ -61,7 +58,6 @@ __init void _start() {
 		}
 	}
 
-	// Get modules.
 	if (module_request.response == nullptr)
 		kerror("limine: Unable to get modules, or none were provided!\n");
 	else {
@@ -83,8 +79,7 @@ __init void _start() {
 	mem_kernel_virt_base = (virt_t)executable_address_request.response->virtual_base;
 	mem_hhdm_base = (virt_t)hhdm_request.response->offset;
 
-	const char* cmdline = executable_file_request.response->executable_file->string;
-	memcpy(cmdline_buffer, cmdline, min(strlen(cmdline), array_size(cmdline_buffer)));
+	cmdline_setup(executable_file_request.response->executable_file->string);
 
 	if (rsdp_request.response)
 		acpi_rsdp_address = (phys_t)rsdp_request.response->address;

@@ -2,9 +2,9 @@
 #define _MENIX_MEM_ALLOC_H
 
 #include <menix/types.h>
-#include <menix/mm_types.h>
+#include <menix/mem_types.h>
 
-enum kmalloc_flags {
+typedef enum kmalloc_flags {
 	// Allocate memory for the kernel.
 	KMF_KERNEL = 1 << 0,
 	// Zero out the allocated memory.
@@ -13,12 +13,10 @@ enum kmalloc_flags {
 	KMF_MEM32 = 1 << 2,
 	// Allocated memory needs to fit inside 20 bits.
 	KMF_MEM20 = 1 << 3,
-};
+} kmf_t;
 
 // Allocates a region of memory smaller than the page size.
-void* kmalloc(usize length, enum kmalloc_flags flags);
-
-void* krealloc(void* old, usize new_size);
+void* kmalloc(usize length, kmf_t flags);
 
 // Frees an allocation created by `kmalloc`.
 void kfree(void* mem);

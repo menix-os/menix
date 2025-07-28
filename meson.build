@@ -14,6 +14,9 @@ if get_option('headers_only') == true
     subdir_done()
 endif
 
+objcopy = find_program('objcopy')
+strip = find_program('strip')
+
 common_c_args = [
     '-ffreestanding',
     '-fno-stack-protector',
@@ -23,7 +26,6 @@ common_c_args = [
     '-Wall',
     '-Werror',
 ]
-
 common_link_args = [
     '-nostdlib',
     '-znoexecstack',
@@ -31,7 +33,6 @@ common_link_args = [
     '-Wl,--gc-sections',
     '-Wl,--build-id=none',
 ]
-
 common_includes = include_directories('include')
 
 subdir('kernel')

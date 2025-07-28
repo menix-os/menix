@@ -3,17 +3,19 @@
 
 #include <menix/types.h>
 
-extern u8 _LD_KERNEL_START[];
-extern u8 _LD_TEXT_START[];
-extern u8 _LD_TEXT_END[];
-extern u8 _LD_RODATA_START[];
-extern u8 _LD_RODATA_END[];
-extern u8 _LD_DATA_START[];
-extern u8 _LD_PERCPU_START[];
-extern u8 _LD_PERCPU_END[];
-extern u8 _LD_DATA_END[];
-extern u8 _LD_KERNEL_END[];
-extern u8 _LD_VDSO_START[];
-extern u8 _LD_VDSO_END[];
+extern u8 __ld_kernel_start[];
+extern u8 __ld_text_start[];
+extern u8 __ld_text_end[];
+extern u8 __ld_rodata_start[];
+extern u8 __ld_rodata_end[];
+extern u8 __ld_data_start[];
+extern u8 __ld_percpu_start[];
+extern u8 __ld_percpu_end[];
+extern u8 __ld_data_end[];
+extern u8 __ld_kernel_end[];
+extern u8 __ld_vdso_start[];
+extern u8 __ld_vdso_end[];
+extern u8 __ld_cmdline_start[];
+extern u8 __ld_cmdline_end[];
 
 #endif

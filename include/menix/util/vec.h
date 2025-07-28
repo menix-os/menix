@@ -1,7 +1,7 @@
-#ifndef _MENIX_vec_H
-#define _MENIX_vec_H
+#ifndef _MENIX_UTIL_VEC_H
+#define _MENIX_UTIL_VEC_H
 
-#include <menix/alloc.h>
+#include <menix/mem/alloc.h>
 
 #define vec(type) \
 	struct { \

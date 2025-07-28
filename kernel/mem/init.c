@@ -1,6 +1,6 @@
 #include <menix/cmdline.h>
 #include <menix/init.h>
-#include <menix/mem/init.h>
+#include <menix/mem.h>
 
 __initdata struct phys_mem mem_map[128];
 __initdata usize mem_map_size = 0;

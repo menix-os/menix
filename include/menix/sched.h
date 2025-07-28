@@ -2,7 +2,7 @@
 #define _MENIX_SCHED_H
 
 #include <menix/types.h>
-#include <menix/mm_types.h>
+#include <menix/mem_types.h>
 #include <menix/posix_types.h>
 #include <bits/sched.h>
 

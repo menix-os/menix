@@ -12,7 +12,7 @@ PHDRS
 SECTIONS
 {
 	. = 0xffffffff80000000;
-	_LD_KERNEL_START = .;
+	__ld_kernel_start = .;
 
 	. = ALIGN(CONSTANT(MAXPAGESIZE));
 
@@ -29,27 +29,33 @@ SECTIONS
 
 	. = ALIGN(CONSTANT(MAXPAGESIZE));
 
-	_LD_TEXT_START = .;
 	.text : {
+		__ld_text_start = .;
 		*(.text .text.*)
 		*(.plt .plt.*)
+		__ld_text_end = .;
 	} :text
-	_LD_TEXT_END = .;
 
 	. = ALIGN(CONSTANT(MAXPAGESIZE));
 
-	_LD_RODATA_START = .;
 	.rodata : {
+		__ld_rodata_start = .;
 		*(.rodata .rodata.*)
 		*(.got .got.*)
+		__ld_rodata_end = .;
 	} :rodata
-	_LD_RODATA_END = .;
 
 	. = ALIGN(CONSTANT(MAXPAGESIZE));
 
-	_LD_DATA_START = .;
+	__ld_data_start = .;
 	.data : {
 		*(.data .data.*)
+	} :data
+
+	.cmdline : {
+		__ld_cmdline_start = .;
+		KEEP(*(SORT_BY_NAME(.cmdline.*)))
+		__ld_cmdline_end = .;
 	} :data
 
 	.dynamic : {
@@ -63,15 +69,15 @@ SECTIONS
 
 	/* Per-CPU data block. MUST always come last. */
 	.percpu ALIGN(CONSTANT(MAXPAGESIZE)) : {
-		_LD_PERCPU_START = .;
+		__ld_percpu_start = .;
 		*(.percpu.init)
 		*(.percpu)
 		. = ALIGN(CONSTANT(MAXPAGESIZE));
-		_LD_PERCPU_END = .;
+		__ld_percpu_end = .;
 	} :percpu
-	_LD_DATA_END = .;
+	__ld_data_end = .;
 
-	_LD_KERNEL_END = .;
+	__ld_kernel_end = .;
 
 	/DISCARD/ :
 	{

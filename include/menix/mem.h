@@ -1,7 +1,10 @@
-#ifndef _MENIX_MEM_MANAGER_H
-#define _MENIX_MEM_MANAGER_H
+#ifndef _MENIX_MEM_H
+#define _MENIX_MEM_H
 
-#include <menix/mm_types.h>
+#include <menix/types.h>
+#include <menix/mem_types.h>
+
+extern struct page mem_pfndb[];
 
 extern struct phys_mem mem_map[128];
 extern usize mem_map_size;

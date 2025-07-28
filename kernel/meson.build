@@ -20,11 +20,10 @@ kernel_includes = [
 
 kernel_sources = []
 
-subdir('arch' / target_machine.cpu_family())
-subdir('mm')
-subdir('proc')
 subdir('klibc')
-subdir('sched')
+subdir('arch' / target_machine.cpu_family())
+subdir('init')
+subdir('mem')
+subdir('proc')
 subdir('sys')
 subdir('util')
-subdir('boot')

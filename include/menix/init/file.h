@@ -1,5 +1,5 @@
-#ifndef _MENIX_BOOT_FILE_H
-#define _MENIX_BOOT_FILE_H
+#ifndef _MENIX_INIT_FILE_H
+#define _MENIX_INIT_FILE_H
 
 #include <menix/types.h>
 #include <menix/init.h>
