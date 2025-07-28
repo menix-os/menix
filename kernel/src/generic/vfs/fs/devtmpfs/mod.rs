@@ -1,5 +1,3 @@
-mod memfiles;
-
 use crate::generic::{
     device::Device,
     posix::errno::EResult,
@@ -9,6 +7,9 @@ use crate::generic::{
 use alloc::sync::Arc;
 
 static DEV_MOUNT: Once<Arc<Mount>> = Once::new();
+
+/// Adds a new device to the devtmpfs.
+pub fn add_device(device: Arc<Device>, block_dev: bool) {}
 
 #[derive(Debug)]
 struct DevTmpFs;
@@ -21,10 +22,6 @@ impl FileSystem for DevTmpFs {
     fn mount(&self, _: Option<Arc<Entry>>, _: MountFlags) -> EResult<Arc<super::Mount>> {
         Ok(DEV_MOUNT.get().clone())
     }
-}
-
-impl DevTmpFs {
-    pub fn add_device(device: Arc<Device>) {}
 }
 
 #[initgraph::task(

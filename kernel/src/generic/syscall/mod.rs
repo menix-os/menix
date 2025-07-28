@@ -32,6 +32,7 @@ pub fn dispatch(
         numbers::READ => vfs::read(a0, a1, a2).map(|x| x as _),
         numbers::WRITE => vfs::write(a0, a1, a2).map(|x| x as _),
         numbers::SEEK => vfs::seek(a0, a1, a2),
+        numbers::IOCTL => vfs::ioctl(a0, a1, a2),
         numbers::OPENAT => vfs::openat(a0, a1, a2),
         numbers::CLOSE => vfs::close(a0),
         numbers::FCNTL => Ok(0), // todo
