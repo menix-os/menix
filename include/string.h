@@ -1,11 +1,9 @@
-#ifndef _STRING_H
-#define _STRING_H
+#ifndef _MENIX_STRING_H
+#define _MENIX_STRING_H
 
-#include <menix/types.h>
+#include <stddef.h>
 
-void* memcpy(void* dest, const void* src, usize n);
-
-#define memset __builtin_memset
-#define strlen __builtin_strlen
+void* memcpy(void* dest, const void* src, size_t n);
+void* memset(void* ptr, int value, size_t num);
 
 #endif

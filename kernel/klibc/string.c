@@ -1,136 +1,137 @@
-#include <menix/util.h>
-#include <menix/hint.h>
-#include <menix/types.h>
+#include <menix/util/common.h>
+#include <menix/util/attributes.h>
+#include <stddef.h>
+#include <stdint.h>
 
-usize strlen(const char* str) {
-	usize result = 0;
-	while (*str++) {
-		result++;
-	}
-	return result;
+size_t strlen(const char* str) {
+    size_t result = 0;
+    while (*str++) {
+        result++;
+    }
+    return result;
 }
 
-usize strnlen(const char* str, usize len) {
-	usize result = 0;
-	while (result < len && *str++) {
-		result++;
-	}
-	return result;
+size_t strnlen(const char* str, size_t len) {
+    size_t result = 0;
+    while (result < len && *str++) {
+        result++;
+    }
+    return result;
 }
 
-int memcmp(const void* s1, const void* s2, usize size) {
-	int diff = 0;
-	char* s1ptr = (char*)s1;
-	char* s2ptr = (char*)s2;
+int memcmp(const void* s1, const void* s2, size_t size) {
+    int diff = 0;
+    char* s1ptr = (char*)s1;
+    char* s2ptr = (char*)s2;
 
-	for (usize i = 0; i < size; i++) {
-		if (s1ptr[i] != s2ptr[i])
-			diff++;
-	}
-	return diff;
+    for (size_t i = 0; i < size; i++) {
+        if (s1ptr[i] != s2ptr[i])
+            diff++;
+    }
+    return diff;
 }
 
-void* memcpy(void* restrict dest, const void* restrict src, usize n) {
-	if (unlikely(n == 0))
-		return dest;
+void* memcpy(void* restrict dest, const void* restrict src, size_t n) {
+    if (__unlikely(n == 0))
+        return dest;
 
-	usize d = (usize)dest;
-	usize s = (usize)src;
+    size_t d = (size_t)dest;
+    size_t s = (size_t)src;
 
-	if (d % sizeof(usize) != 0 || s % sizeof(usize) != 0) {
-		while (n && (d % sizeof(usize) != 0) && (s % sizeof(usize) != 0)) {
-			*((u8*)d) = *((u8*)s);
-			d++;
-			s++;
-			n--;
-		}
-	}
+    if (d % sizeof(size_t) != 0 || s % sizeof(size_t) != 0) {
+        while (n && (d % sizeof(size_t) != 0) && (s % sizeof(size_t) != 0)) {
+            *((uint8_t*)d) = *((uint8_t*)s);
+            d++;
+            s++;
+            n--;
+        }
+    }
 
-	usize* qword_dest = (usize*)d;
-	const usize* qword_src = (const usize*)s;
-	const usize word_count = n / sizeof(usize);
+    size_t* qword_dest = (size_t*)d;
+    const size_t* qword_src = (const size_t*)s;
+    const size_t word_count = n / sizeof(size_t);
 
-	for (usize i = 0; i < word_count; i++) {
-		qword_dest[i] = qword_src[i];
-	}
+    for (size_t i = 0; i < word_count; i++) {
+        qword_dest[i] = qword_src[i];
+    }
 
-	usize remaining_bytes = n % sizeof(usize);
-	d = (usize)(qword_dest + word_count);
-	s = (usize)(qword_src + word_count);
+    size_t remaining_bytes = n % sizeof(size_t);
+    d = (size_t)(qword_dest + word_count);
+    s = (size_t)(qword_src + word_count);
 
-	while (remaining_bytes--) {
-		*((u8*)d) = *((u8*)s);
-		d++;
-		s++;
-	}
+    while (remaining_bytes--) {
+        *((uint8_t*)d) = *((uint8_t*)s);
+        d++;
+        s++;
+    }
 
-	return dest;
+    return dest;
 }
 
-void* memmove(void* dstptr, const void* srcptr, usize size) {
-	u8* dst = (u8*)dstptr;
-	const u8* src = (const u8*)srcptr;
-	if (dst < src) {
-		for (usize i = 0; i < size; i++)
-			dst[i] = src[i];
-	} else {
-		for (usize i = size; i != 0; i--)
-			dst[i - 1] = src[i - 1];
-	}
-	return dstptr;
+void* memmove(void* dstptr, const void* srcptr, size_t size) {
+    uint8_t* dst = (uint8_t*)dstptr;
+    const uint8_t* src = (const uint8_t*)srcptr;
+    if (dst < src) {
+        for (size_t i = 0; i < size; i++)
+            dst[i] = src[i];
+    } else {
+        for (size_t i = size; i != 0; i--)
+            dst[i - 1] = src[i - 1];
+    }
+    return dstptr;
 }
 
-void* memset(void* dest, int value, usize n) {
-	if (unlikely(n == 0))
-		return dest;
+void* memset(void* dest, int value, size_t n) {
+    if (__unlikely(n == 0))
+        return dest;
 
-	usize d = (usize)dest;
+    size_t d = (size_t)dest;
 
-	if (d % sizeof(usize) != 0) {
-		while (n && (d % sizeof(usize) != 0)) {
-			*((u8*)d) = value;
-			d++;
-			n--;
-		}
-	}
+    if (d % sizeof(size_t) != 0) {
+        while (n && (d % sizeof(size_t) != 0)) {
+            *((uint8_t*)d) = value;
+            d++;
+            n--;
+        }
+    }
 
-	usize* qword_dest = (usize*)d;
-	usize qword_value = value;
-	qword_value |= (qword_value << 8);
-	qword_value |= (qword_value << 16);
-	qword_value |= (qword_value << 32);
+    size_t* qword_dest = (size_t*)d;
+    size_t qword_value = value;
+    qword_value |= (qword_value << 8);
+    qword_value |= (qword_value << 16);
+    qword_value |= (qword_value << 32);
 
-	const usize word_count = n / sizeof(usize);
+    const size_t word_count = n / sizeof(size_t);
 
-	for (usize i = 0; i < word_count; i++) {
-		qword_dest[i] = qword_value;
-	}
+    for (size_t i = 0; i < word_count; i++) {
+        qword_dest[i] = qword_value;
+    }
 
-	usize remaining_bytes = n % sizeof(usize);
-	d = (usize)(qword_dest + word_count);
+    size_t remaining_bytes = n % sizeof(size_t);
+    d = (size_t)(qword_dest + word_count);
 
-	while (remaining_bytes--) {
-		*((u8*)d) = value;
-		d++;
-	}
+    while (remaining_bytes--) {
+        *((uint8_t*)d) = value;
+        d++;
+    }
 
-	return dest;
+    return dest;
 }
 
-char* strncpy(char* restrict dst, const char* restrict src, usize len) {
-	usize src_len = strnlen(src, len) + 1;
-	return memcpy(dst, src, min(len, src_len));
+char* strncpy(char* restrict dst, const char* restrict src, size_t len) {
+    size_t src_len = strnlen(src, len) + 1;
+    return memcpy(dst, src, MIN(len, src_len));
 }
 
-int strncmp(const char* str1, const char* str2, usize len) {
-	while (len && *str1 && (*str1 == *str2)) {
-		++str1;
-		++str2;
-		--len;
-	}
-	if (len == 0) {
-		return 0;
-	} else {
-		return (*(unsigned char*)str1 - *(unsigned char*)str2);
-	}
+int strncmp(const char* str1, const char* str2, size_t len) {
+    while (len && *str1 && (*str1 == *str2)) {
+        ++str1;
+        ++str2;
+        --len;
+    }
+    if (len == 0) {
+        return 0;
+    } else {
+        return (*(unsigned char*)str1 - *(unsigned char*)str2);
+    }
 }

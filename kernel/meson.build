@@ -22,8 +22,10 @@ kernel_sources = []
 
 subdir('klibc')
 subdir('arch' / target_machine.cpu_family())
-subdir('init')
+subdir('boot')
 subdir('mem')
 subdir('proc')
 subdir('sys')
 subdir('util')
+
+subdir('drivers')

@@ -9,7 +9,6 @@ IndentCaseBlocks: false
 IndentCaseLabels: false
 IndentPPDirectives: None
 IndentGotoLabels: false
-UseTab: Always
 TabWidth: 4
 Standard: Latest
 Language: Cpp

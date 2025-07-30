@@ -1,4 +1,7 @@
-kernel_sources += files('main.c')
+kernel_sources += files(
+    'cmdline.c',
+    'main.c',
+)
 
 if get_option('boot_protocol') == 'limine'
     subdir('limine')

@@ -10,7 +10,7 @@ project(
 
 # Install headers
 if get_option('headers_only') == true
-    install_subdir('include' / 'uapi', install_dir: get_option('includedir'))
+    install_subdir('uapi', install_dir: get_option('includedir'))
     subdir_done()
 endif
 
@@ -36,7 +36,6 @@ common_link_args = [
 common_includes = include_directories('include')
 
 subdir('kernel')
-subdir('drivers')
 subdir('vdso')
 
 executable(
