@@ -1,21 +1,26 @@
-#include <menix/sys/acpi.h>
 #include <menix/boot/cmdline.h>
 #include <menix/boot/file.h>
 #include <menix/boot/main.h>
-#include <menix/sys/log.h>
-#include <menix/util/common.h>
-#include <menix/mem/types.h>
 #include <menix/mem/pm.h>
+#include <menix/mem/types.h>
+#include <menix/sys/kprintf.h>
+#include <menix/util/assert.h>
+#include <menix/util/common.h>
+
+#include <drivers/firmware/acpi/acpi.h>
 
 #include "limine.h"
 
-__initdata_ord("limine.0") static volatile LIMINE_REQUESTS_START_MARKER;
-__initdata_ord("limine.1") static volatile LIMINE_BASE_REVISION(3);
-__initdata_ord("limine.2") static volatile LIMINE_REQUESTS_END_MARKER;
+[[__initdata_sorted("limine.0")]] static volatile LIMINE_REQUESTS_START_MARKER;
+[[__initdata_sorted("limine.1")]] static volatile LIMINE_BASE_REVISION(3);
+[[__initdata_sorted("limine.2")]] static volatile LIMINE_REQUESTS_END_MARKER;
 
 #define LIMINE_REQUEST(request, tag, rev) \
-    __initdata_ord("limine.1") static volatile struct limine_##request request = { \
-        .id = tag, .revision = rev, .response = nullptr \
+    [[__initdata_sorted("limine.1")]] \
+    static volatile struct limine_##request request = { \
+        .id = tag, \
+        .revision = rev, \
+        .response = nullptr, \
     }
 
 LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST, 0);
@@ -27,12 +32,15 @@ LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);
 LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);
 LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);
 
-void __init _start() {
-    kassert(memmap_request.response, "Unable to get memory map!");
-    kassert(hhdm_request.response, "Unable to get HHDM response!");
-    kassert(executable_address_request.response, "Unable to get kernel address info!");
-    kassert(executable_file_request.response, "Unable to get kernel file info!");
+[[__init]]
+void _start() {
+    ASSERT(executable_file_request.response, "Unable to get kernel file info!");
+    boot_cmdline(executable_file_request.response->executable_file->string);
 
+    ASSERT(hhdm_request.response, "Unable to get HHDM response!");
+    ASSERT(executable_address_request.response, "Unable to get kernel address info!");
+
+    ASSERT(memmap_request.response, "Unable to get memory map!");
     struct limine_memmap_response* const mm_res = memmap_request.response;
 
     // We create a VLA here because we have no other form of memory management at this point.
@@ -66,18 +74,15 @@ void __init _start() {
             boot_files[i].data = module_res->modules[i]->address;
             boot_files[i].length = module_res->modules[i]->size;
             boot_files[i].path = module_res->modules[i]->path;
-            kmsg(
-                "limine: [%zu] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, boot_files[i].data,
-                boot_files[i].length, boot_files[i].path
-            );
         }
     }
 
-    mem_kernel_phys_base = (phys_t)executable_address_request.response->physical_base;
-    mem_kernel_virt_base = (virt_t)executable_address_request.response->virtual_base;
-    mem_hhdm_base = (virt_t)hhdm_request.response->offset;
-
-    cmdline_setup(executable_file_request.response->executable_file->string);
+    [[__unused]]
+    auto kernel_phys_base = (phys_t)executable_address_request.response->physical_base;
+    [[__unused]]
+    auto kernel_virt_base = (virt_t)executable_address_request.response->virtual_base;
+    [[__unused]]
+    auto hhdm_base = (virt_t)hhdm_request.response->offset;
 
     if (rsdp_request.response)
         acpi_rsdp_address = (phys_t)rsdp_request.response->address;

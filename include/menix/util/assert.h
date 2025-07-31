@@ -1,0 +1,18 @@
+#ifndef _MENIX_UTIL_ASSERT_H
+#define _MENIX_UTIL_ASSERT_H
+
+#include <menix/sys/panic.h>
+#include <menix/util/attributes.h>
+
+#define ASSERT(expr, msg, ...) \
+    do { \
+        if (__unlikely(!(expr))) { \
+            panic( \
+                "Environment is unsound! Assertion \"%s\" failed!\n" \
+                "In function \"%s\" (%s:%u):\n" msg "\n", \
+                #expr, __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__ \
+            ); \
+        } \
+    } while (0)
+
+#endif

@@ -15,7 +15,4 @@ extern uint8_t __ld_data_end[];
 extern uint8_t __ld_kernel_end[];
 extern uint8_t __ld_vdso_start[];
 extern uint8_t __ld_vdso_end[];
-extern uint8_t __ld_cmdline_start[];
-extern uint8_t __ld_cmdline_end[];
-
 #endif

@@ -1,1 +1,1 @@
-kernel_sources += files('acpi.c', 'openfw.c')
+kernel_sources += files('openfw.c')

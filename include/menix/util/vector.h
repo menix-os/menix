@@ -2,6 +2,7 @@
 #define _MENIX_UTIL_VECTOR_H
 
 #include <menix/mem/alloc.h>
+
 #include <stddef.h>
 
 #define vec(type) \
@@ -68,8 +69,8 @@
 #define vec_iter(vec, var_name) \
     for (typeof(((vec)->items)) var_name = (vec)->items + 0; (var_name) < (vec)->items + (vec)->length; var_name++)
 
-// Looks for a `value` in the `vec` and returns the index of the first match in `result`. If unsuccessful, returns
-// -1.
+// Looks for a `value` in the `vec` and returns the index of the first match in `result`.
+// If unsuccessful, returns -1.
 #define vec_find(vec, result, value) \
     do { \
         result = -1; \

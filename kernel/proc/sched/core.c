@@ -1,1 +1,1 @@
-#include <menix/sched.h>
+#include <menix/proc/sched.h>

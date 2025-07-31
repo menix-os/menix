@@ -1,8 +1,9 @@
 #ifndef _MENIX_PROC_SCHED_H
 #define _MENIX_PROC_SCHED_H
 
-#include <menix/posix/types.h>
 #include <menix/mem/types.h>
+#include <menix/posix/types.h>
+
 #include <bits/sched.h>
 
 enum task_state {

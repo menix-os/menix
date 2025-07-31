@@ -27,5 +27,3 @@ subdir('mem')
 subdir('proc')
 subdir('sys')
 subdir('util')
-
-subdir('drivers')

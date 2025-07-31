@@ -1,8 +1,8 @@
 #ifndef _UAPI_MENIX_FCNTL_H
 #define _UAPI_MENIX_FCNTL_H
 
-#include <uapi/menix/types.h>
 #include <uapi/menix/posix_types.h>
+#include <uapi/menix/types.h>
 
 #define __O_PATH    010000000
 #define __O_ACCMODE (03 | __O_PATH)

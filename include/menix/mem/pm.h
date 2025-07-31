@@ -2,6 +2,7 @@
 #define _MENIX_MEM_PM_H
 
 #include <menix/mem/types.h>
+
 #include <stddef.h>
 
 enum phys_mem_usage {

@@ -1,5 +1,5 @@
-#include <uapi/menix/types.h>
 #include <uapi/menix/syscall.h>
+#include <uapi/menix/types.h>
 #include <uapi/menix/vdso.h>
 
 struct __syscall_result

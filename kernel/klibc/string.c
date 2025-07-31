@@ -1,8 +1,10 @@
-#include <menix/util/common.h>
 #include <menix/util/attributes.h>
+#include <menix/util/common.h>
+
 #include <stddef.h>
 #include <stdint.h>
 
+[[__hot]]
 size_t strlen(const char* str) {
     size_t result = 0;
     while (*str++) {
@@ -11,6 +13,7 @@ size_t strlen(const char* str) {
     return result;
 }
 
+[[__hot]]
 size_t strnlen(const char* str, size_t len) {
     size_t result = 0;
     while (result < len && *str++) {
@@ -19,6 +22,7 @@ size_t strnlen(const char* str, size_t len) {
     return result;
 }
 
+[[__hot]]
 int memcmp(const void* s1, const void* s2, size_t size) {
     int diff = 0;
     char* s1ptr = (char*)s1;
@@ -31,6 +35,7 @@ int memcmp(const void* s1, const void* s2, size_t size) {
     return diff;
 }
 
+[[__hot]]
 void* memcpy(void* restrict dest, const void* restrict src, size_t n) {
     if (__unlikely(n == 0))
         return dest;
@@ -68,6 +73,7 @@ void* memcpy(void* restrict dest, const void* restrict src, size_t n) {
     return dest;
 }
 
+[[__hot]]
 void* memmove(void* dstptr, const void* srcptr, size_t size) {
     uint8_t* dst = (uint8_t*)dstptr;
     const uint8_t* src = (const uint8_t*)srcptr;
@@ -81,6 +87,7 @@ void* memmove(void* dstptr, const void* srcptr, size_t size) {
     return dstptr;
 }
 
+[[__hot]]
 void* memset(void* dest, int value, size_t n) {
     if (__unlikely(n == 0))
         return dest;

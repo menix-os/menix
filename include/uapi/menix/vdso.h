@@ -1,8 +1,8 @@
 #ifndef _UAPI_MENIX_VDSO_H
 #define _UAPI_MENIX_VDSO_H
 
-#include <uapi/menix/types.h>
 #include <uapi/menix/syscall.h>
+#include <uapi/menix/types.h>
 
 #define __vdsocall __attribute__((weak))
 

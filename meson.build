@@ -25,6 +25,7 @@ common_c_args = [
     '-nostdinc',
     '-Wall',
     '-Werror',
+    '-Wno-unused',
 ]
 common_link_args = [
     '-nostdlib',
@@ -36,9 +37,10 @@ common_link_args = [
 common_includes = include_directories('include')
 
 subdir('kernel')
+subdir('drivers')
 subdir('vdso')
 
-executable(
+kernel = executable(
     'menix',
     include_directories: kernel_includes,
     sources: kernel_sources,

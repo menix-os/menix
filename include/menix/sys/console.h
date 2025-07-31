@@ -1,7 +1,8 @@
-#ifndef _MENIX_CONSOLE_H
-#define _MENIX_CONSOLE_H
+#ifndef _MENIX_SYS_CONSOLE_H
+#define _MENIX_SYS_CONSOLE_H
 
 #include <menix/util/attributes.h>
+
 #include <stddef.h>
 
 struct console {

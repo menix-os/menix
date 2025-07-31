@@ -1,17 +1,13 @@
 /* Linker script for kernel modules */
 
-ENTRY(_start)
-
 PHDRS
 {
-    null		PT_NULL;
-    text		PT_LOAD		FLAGS(5);
-    rodata		PT_LOAD		FLAGS(4);
-    data		PT_LOAD		FLAGS(6);
-    dynamic		PT_DYNAMIC	FLAGS(6);
-    modversion	0x60000001;
-    modauthor	0x60000002;
-    moddesc		0x60000003;
+    null    PT_NULL;
+    text    PT_LOAD     FLAGS(5);
+    rodata  PT_LOAD     FLAGS(4);
+    data    PT_LOAD     FLAGS(6);
+    dynamic PT_DYNAMIC  FLAGS(6);
+    mod     0x60000001  FLAGS(4);
 }
 
 SECTIONS
@@ -42,17 +38,9 @@ SECTIONS
         *(.got.*)
     } :rodata
 
-    .mod.version : {
-        KEEP(*(.mod.version))
-    } :rodata :modversion
-
-    .mod.author : {
-        KEEP(*(.mod.author))
-    } :rodata :modauthor
-
-    .mod.desc : {
-        KEEP(*(.mod.desc))
-    } :rodata :moddesc
+    .mod : {
+        KEEP(*(.mod))
+    } :rodata :mod
 
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 

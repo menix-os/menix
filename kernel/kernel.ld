@@ -54,7 +54,7 @@ SECTIONS
 
     .cmdline : {
         __ld_cmdline_start = .;
-        KEEP(*(SORT_BY_NAME(.cmdline.*)))
+        KEEP(*(.cmdline))
         __ld_cmdline_end = .;
     } :data
 
