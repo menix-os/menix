@@ -1,6 +1,5 @@
 #include <menix/util/attributes.h>
 #include <menix/util/common.h>
-
 #include <stddef.h>
 #include <stdint.h>
 

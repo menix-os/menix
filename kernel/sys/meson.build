@@ -1,1 +1,5 @@
-kernel_sources += files('openfw.c')
+kernel_sources += files(
+    'kprintf.c',
+    'openfw.c',
+    'panic.c',
+)

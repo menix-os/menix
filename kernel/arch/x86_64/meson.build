@@ -4,3 +4,8 @@ kernel_c_args += [
     '-mcmodel=kernel',
     '-masm=intel',
 ]
+
+kernel_sources += files(
+    'gdt.c',
+    'trampoline.S',
+)

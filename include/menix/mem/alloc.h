@@ -2,7 +2,6 @@
 #define _MENIX_MEM_ALLOC_H
 
 #include <menix/mem/types.h>
-
 #include <stddef.h>
 
 typedef enum kmalloc_flags {

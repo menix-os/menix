@@ -6,8 +6,11 @@
 #include <menix/sys/kprintf.h>
 #include <menix/util/assert.h>
 #include <menix/util/common.h>
+#include <config.h>
 
-#include <drivers/firmware/acpi/acpi.h>
+#ifdef CONFIG_ACPI
+#include <drivers/acpi/acpi.h>
+#endif
 
 #include "limine.h"
 
@@ -29,11 +32,14 @@ LIMINE_REQUEST(executable_address_request, LIMINE_EXECUTABLE_ADDRESS_REQUEST, 0)
 LIMINE_REQUEST(executable_file_request, LIMINE_EXECUTABLE_FILE_REQUEST, 0);
 LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 1);
 LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);
-LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);
 LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);
 
+#ifdef CONFIG_ACPI
+LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);
+#endif
+
 [[__init]]
-void _start() {
+void kernel_start() {
     ASSERT(executable_file_request.response, "Unable to get kernel file info!");
     boot_cmdline(executable_file_request.response->executable_file->string);
 
@@ -44,6 +50,7 @@ void _start() {
     struct limine_memmap_response* const mm_res = memmap_request.response;
 
     // We create a VLA here because we have no other form of memory management at this point.
+    // Assume that Limine provides sane values that don't overflow the stack.
     struct phys_mem mem_map[mm_res->entry_count];
 
     for (size_t i = 0; i < ARRAY_SIZE(mem_map); i++) {
@@ -65,10 +72,10 @@ void _start() {
     }
 
     if (module_request.response == nullptr)
-        kerror("limine: Unable to get modules, or none were provided!\n");
+        pr_err("limine: Unable to get modules, or none were provided!\n");
     else {
         const struct limine_module_response* module_res = module_request.response;
-        klog("limine: Got %zu module(s)\n", module_res->module_count);
+        pr_log("limine: Got %zu module(s)\n", module_res->module_count);
         boot_files_count = MIN(module_res->module_count, ARRAY_SIZE(boot_files));
         for (size_t i = 0; i < boot_files_count; i++) {
             boot_files[i].data = module_res->modules[i]->address;
@@ -84,8 +91,10 @@ void _start() {
     [[__unused]]
     auto hhdm_base = (virt_t)hhdm_request.response->offset;
 
+#ifdef CONFIG_ACPI
     if (rsdp_request.response)
         acpi_rsdp_address = (phys_t)rsdp_request.response->address;
+#endif
 
     kmain();
 }

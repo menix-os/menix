@@ -1,7 +1,6 @@
 #include <menix/boot/cmdline.h>
 #include <menix/boot/file.h>
 #include <menix/boot/main.h>
-
 #include <stddef.h>
 
 [[__initdata]]

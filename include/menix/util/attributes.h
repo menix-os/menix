@@ -9,11 +9,16 @@
 #define __format(like, ...) gnu::format(like, __VA_ARGS__)
 #define __likely(x)         __builtin_expect(!!(x), 1)
 #define __unlikely(x)       __builtin_expect(!!(x), 0)
+// Symbol is defined by a linker script.
+#define __linker
+// Symbol is defined per architecture.
+#define __arch
 
 #define __weak                  gnu::weak
 #define __section(x)            gnu::section(x)
 #define __packed                gnu::packed
 #define __aligned(x)            gnu::aligned(x)
+#define __inline                gnu::always_inline
 #define __init                  __used, __section(".init.text"), __cold
 #define __initdata              __used, __section(".init.data")
 #define __initdata_sorted(name) __used, __section(".init.data." name)

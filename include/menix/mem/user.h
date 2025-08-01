@@ -2,7 +2,6 @@
 #define _MENIX_MEM_USER_H
 
 #include <menix/util/attributes.h>
-
 #include <stddef.h>
 #include <stdint.h>
 

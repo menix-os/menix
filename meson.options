@@ -5,29 +5,9 @@ option(
     description: 'Only install kernel headers',
 )
 
-# Boot
-
 option(
-    'boot_protocol',
-    type: 'combo',
-    choices: ['limine', 'uefi'],
-    value: 'limine',
-    description: 'The protocol to use for booting',
-)
-
-option(
-    'example',
-    type: 'combo',
-    choices: ['y', 'm', 'n'],
-    value: 'm',
-    description: 'An example module',
-)
-
-# Drivers
-
-option(
-    'firmware_acpi',
-    type: 'boolean',
-    value: true,
-    description: 'ACPI firmware support with uACPI',
+    'config',
+    type: 'string',
+    value: 'configs/defconfig',
+    description: 'The configuration file path',
 )

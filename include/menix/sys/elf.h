@@ -1,6 +1,7 @@
 #ifndef _MENIX_SYS_ELF_H
 #define _MENIX_SYS_ELF_H
 
+#include <bits/sys/elf.h>
 #include <stdint.h>
 
 #define ELF_MAG       (const char[4]){0x7F, 'E', 'L', 'F'}
@@ -121,14 +122,6 @@ enum {
     AT_GID = 13,
     AT_EGID = 14,
 };
-
-#ifdef __x86_64__
-#define EI_ARCH_CLASS   ELFCLASS64
-#define EI_ARCH_DATA    ELFDATA2LSB
-#define EI_ARCH_MACHINE EM_X86_64
-#else
-#error "Unsupported Architecture"
-#endif
 
 #if __SIZEOF_POINTER__ == 8
 #define Elf_Hdr  Elf64_Hdr

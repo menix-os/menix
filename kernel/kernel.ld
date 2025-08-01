@@ -1,7 +1,9 @@
+ENTRY(kernel_start)
+
 PHDRS
 {
-    itext	PT_LOAD		FLAGS(5);
     idata	PT_LOAD		FLAGS(6);
+    itext	PT_LOAD		FLAGS(5);
     text	PT_LOAD		FLAGS(5);
     rodata	PT_LOAD		FLAGS(4);
     data	PT_LOAD		FLAGS(6);
@@ -16,16 +18,16 @@ SECTIONS
 
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
-    .init.text : {
-        KEEP(*(.init.text))
-    } :itext
-
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
-
     .init.data : {
         KEEP(*(SORT_BY_NAME(.init.data.*)))
         KEEP(*(.init.data))
     } :idata
+
+    . = ALIGN(CONSTANT(MAXPAGESIZE));
+
+    .init.text : {
+        KEEP(*(.init.text))
+    } :itext
 
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
@@ -45,6 +47,12 @@ SECTIONS
         __ld_rodata_end = .;
     } :rodata
 
+    .cmdline : {
+        __ld_cmdline_start = .;
+        KEEP(*(.cmdline))
+        __ld_cmdline_end = .;
+    } :rodata
+
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
     __ld_data_start = .;
@@ -52,17 +60,11 @@ SECTIONS
         *(.data .data.*)
     } :data
 
-    .cmdline : {
-        __ld_cmdline_start = .;
-        KEEP(*(.cmdline))
-        __ld_cmdline_end = .;
-    } :data
-
     .dynamic : {
         *(.dynamic)
     } :data :dynamic
 
-    .bss ALIGN(CONSTANT(MAXPAGESIZE)) : {
+    .bss : {
         *(.*bss .*bss.*)
         *(COMMON)
     } :data

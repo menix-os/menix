@@ -3,7 +3,6 @@
 
 #include <menix/mem/types.h>
 #include <menix/posix/types.h>
-
 #include <bits/sched.h>
 
 enum task_state {

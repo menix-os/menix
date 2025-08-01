@@ -15,4 +15,7 @@
 #define OFFSET_OF(type, field)        __builtin_offsetof(type, field)
 #define CONTAINER_OF(value, p, field) ((p*)((char*)(&(value)) + offsetof(p, field)))
 
+#define CONCAT(A, B)  _CONCAT(A, B)
+#define _CONCAT(A, B) A##B
+
 #endif

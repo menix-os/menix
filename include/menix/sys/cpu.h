@@ -3,8 +3,7 @@
 
 #include <menix/proc/sched.h>
 #include <menix/util/attributes.h>
-
-#include <bits/cpu.h>
+#include <bits/sys/cpu.h>
 #include <stddef.h>
 
 struct cpu {

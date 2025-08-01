@@ -1,7 +1,7 @@
 modules = []
 
 subdir('example')
-subdir('firmware')
+subdir('acpi')
 
 foreach m : modules
     shared_library(

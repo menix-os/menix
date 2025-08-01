@@ -2,7 +2,6 @@
 #define _MENIX_SYS_CONSOLE_H
 
 #include <menix/util/attributes.h>
-
 #include <stddef.h>
 
 struct console {

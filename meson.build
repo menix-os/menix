@@ -14,8 +14,19 @@ if get_option('headers_only') == true
     subdir_done()
 endif
 
-objcopy = find_program('objcopy')
-strip = find_program('strip')
+keyval = import('keyval')
+cfg = keyval.load(get_option('config'))
+
+# Generate a header from the config file.
+output_config = {}
+foreach c, v : cfg
+    if v == 'y' or v == 'm'
+        output_config += {c: ''}
+    elif v != 'n'
+        output_config += {c: v}
+    endif
+endforeach
+configure_file(output: 'config.h', configuration: output_config)
 
 common_c_args = [
     '-ffreestanding',
@@ -38,9 +49,8 @@ common_includes = include_directories('include')
 
 subdir('kernel')
 subdir('drivers')
-subdir('vdso')
 
-kernel = executable(
+executable(
     'menix',
     include_directories: kernel_includes,
     sources: kernel_sources,
@@ -50,3 +60,8 @@ kernel = executable(
     install_dir: get_option('datadir') / 'menix',
     pie: false,
 )
+
+subdir('vdso')
+# TODO: Copy VDSO into the kernel.
+# objcopy = find_program('objcopy')
+# strip = find_program('strip')

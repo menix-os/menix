@@ -1,0 +1,8 @@
+#ifndef _MENIX_BITS_SYS_ELF_H
+#define _MENIX_BITS_SYS_ELF_H
+
+#define EI_ARCH_CLASS   ELFCLASS64
+#define EI_ARCH_DATA    ELFDATA2LSB
+#define EI_ARCH_MACHINE EM_X86_64
+
+#endif

@@ -2,8 +2,8 @@
 #define _MENIX_UTIL_VECTOR_H
 
 #include <menix/mem/alloc.h>
-
 #include <stddef.h>
+#include <string.h>
 
 #define vec(type) \
     struct { \
