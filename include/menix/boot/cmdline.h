@@ -3,9 +3,7 @@
 
 #include <menix/util/attributes.h>
 #include <menix/util/common.h>
-#include <stdint.h>
 
-// This is an ugly use of _Generic to
 #define CMDLINE_OPTION(opt_name, opt_func) \
     [[__used, __section(".cmdline")]] \
     static const struct cmdline_option CONCAT(__cmline_option_, __COUNTER__) = { \
@@ -19,12 +17,7 @@ struct cmdline_option {
     // Gets run if this option is present on the command line.
     // If an option is specified as `name=value`, then the `value` is passed as well.
     // Otherwise, it's NULL.
-    union {
-        void (*func_str)(const char* value);
-        void (*func_bool)(bool value);
-        void (*func_num)(int64_t value);
-        void* func;
-    };
+    void* func;
 };
 
 // Parses the command line and invokes all options.

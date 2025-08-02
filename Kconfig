@@ -1,0 +1,4 @@
+mainmenu "Menix Build Configuration"
+
+source "kernel/Kconfig"
+source "drivers/Kconfig"

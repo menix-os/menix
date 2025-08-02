@@ -17,5 +17,6 @@ typedef __INTPTR_TYPE__ __iptr;
 typedef __UINTPTR_TYPE__ __uptr;
 
 typedef __SIZE_TYPE__ __usize;
+typedef __PTRDIFF_TYPE__ __isize;
 
 #endif

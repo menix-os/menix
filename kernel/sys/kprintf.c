@@ -1,5 +1,5 @@
 #include <menix/sys/kprintf.h>
 
-void kprintf(const char* message, ...) {
+void kprintf(int severity, const char* message, ...) {
     // TODO
 }

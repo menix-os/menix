@@ -1,4 +1,5 @@
 #include <menix/boot/cmdline.h>
+#include <menix/boot/init.h>
 #include <menix/sys/kprintf.h>
 #include <stddef.h>
 #include <string.h>
@@ -19,7 +20,7 @@ void boot_cmdline(char* cmdline) {
 }
 
 static void cmd_hello(const char* value) {
-    kprintf("Hello %s world!\n", value);
+    pr_log("Hello %s world!\n", value);
 }
 
 CMDLINE_OPTION("hello", cmd_hello);

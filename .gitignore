@@ -9,5 +9,4 @@
 *.so
 
 # Generated files
-.config
-include/menix/config.h
+.config*

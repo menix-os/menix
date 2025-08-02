@@ -33,7 +33,7 @@ typedef __usize __pthread_spinlock_t;
 typedef __usize __pthread_t;
 typedef __usize __reclen_t;
 typedef __usize __size_t;
-typedef __usize __ssize_t;
+typedef __isize __ssize_t;
 typedef __usize __suseconds_t;
 typedef __u64 __time_t;
 typedef __usize __timer_t;

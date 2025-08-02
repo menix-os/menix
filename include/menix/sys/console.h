@@ -5,10 +5,15 @@
 #include <stddef.h>
 
 struct console {
-    char name[16];
+    const char* name;
+    void* private;
+
+    // Writes to the console.
     void (*write)(struct console* con, const char* buf, size_t count);
+    // Reads from the console.
     size_t (*read)(struct console* con, char* buf, size_t count);
-    int (*init)(struct console* con, char* options);
+    // Sets up the console.
+    int (*setup)(struct console* con, char* options);
 };
 
 #endif

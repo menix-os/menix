@@ -8,6 +8,6 @@ option(
 option(
     'config',
     type: 'string',
-    value: 'configs/defconfig',
-    description: 'The configuration file path',
+    value: '.config',
+    description: 'The main config file path',
 )

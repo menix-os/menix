@@ -1,5 +1,6 @@
 #include <menix/boot/cmdline.h>
 #include <menix/boot/file.h>
+#include <menix/boot/init.h>
 #include <menix/boot/main.h>
 #include <menix/mem/pm.h>
 #include <menix/mem/types.h>

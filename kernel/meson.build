@@ -2,7 +2,7 @@ kernel_c_args = [
     common_c_args,
     '-fno-PIC',
     '-fno-PIE',
-    '-D__KERNEL__',
+    '-D__KERNEL__=1',
 ]
 
 kernel_link_args = [

@@ -1,0 +1,11 @@
+menu "Drivers"
+
+source "drivers/acpi/Kconfig"
+
+config EXAMPLE
+  tristate "Example driver"
+  default m
+  help
+    Says hello world on the console.
+
+endmenu

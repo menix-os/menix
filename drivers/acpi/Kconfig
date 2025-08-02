@@ -1,0 +1,10 @@
+menuconfig ACPI
+  bool "Advanced Configuration and Power Interface"
+  default y
+  depends on X86_64 || AARCH64 || RISCV64 || LOONGARCH64
+  help
+    Enables ACPI firmware support.
+
+if ACPI
+
+endif

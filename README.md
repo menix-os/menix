@@ -6,10 +6,8 @@
 ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/menix-os/menix?style=flat)
 
 # Menix
-Menix is a lightweight modular kernel targeting modern 64-bit devices.
 
-It provides a familiar POSIX/Linux-like user interface with an
-easy to follow code structure and an emphasis on stable operation.
+Menix is a lightweight and modular Unix-like kernel targeting modern 64-bit devices.
 
 > [!IMPORTANT]
 > Please note that this project is a work in progress.
@@ -22,12 +20,29 @@ easy to follow code structure and an emphasis on stable operation.
 > If you want to get a bootable image, you might want to check out
 > **https://github.com/menix-os/bootstrap** instead.
 
-To build the kernel you need `meson` and either `gcc` or `clang`
+To build the kernel you need `meson` and either `gcc` or `clang`.
+You will also need a tool that can parse `Kconfig`s, for example
+[`kconfiglib`](https://github.com/ulfalizer/Kconfiglib).
 
-And to build:
+First, run the `Kconfig` parser to generate a config file.
+Make sure to provide the `ARCH` environment variable,
+which is the architecture you're compiling for (see `kernel/arch/`).
 
+For example with `kconfiglib`:
+```sh
+ARCH=x86_64 python3 -m alldefconfig
+```
+
+By default, the searched for file name is `.config`, but you can change that
+by adding `-Dconfig=<path>` when configuring.
+
+To configure, run:
 ```sh
 meson setup $build_dir
+```
+
+And to build:
+```sh
 meson compile -C $build_dir
 ```
 

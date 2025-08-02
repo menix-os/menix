@@ -7,7 +7,7 @@ foreach m : modules
     shared_library(
         m[0],
         sources: m[1],
-        c_args: [common_c_args, '-D__MODULE__'],
+        c_args: [common_c_args, '-D__MODULE__=1'],
         include_directories: common_includes,
         link_args: [common_link_args, '-T' + meson.current_source_dir() / 'module.ld'],
         name_prefix: '',

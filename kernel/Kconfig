@@ -1,0 +1,18 @@
+menu "Kernel"
+
+menuconfig MODULES
+  bool "Dynamic modules"
+  default y
+  help
+    Enables build support for dynamically loaded modules.
+    Modules are shared objects that can link against the kernel at runtime.
+
+menu "$(ARCH) Architecture"
+source "kernel/arch/$(ARCH)/Kconfig"
+endmenu
+
+source "kernel/boot/Kconfig"
+
+source "kernel/mem/Kconfig"
+
+endmenu

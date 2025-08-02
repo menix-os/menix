@@ -20,9 +20,9 @@ cfg = keyval.load(get_option('config'))
 # Generate a header from the config file.
 output_config = {}
 foreach c, v : cfg
-    if v == 'y' or v == 'm'
-        output_config += {c: ''}
-    elif v != 'n'
+    if v == 'y'
+        output_config += {c: 1}
+    else
         output_config += {c: v}
     endif
 endforeach

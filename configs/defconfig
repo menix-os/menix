@@ -1,2 +1,0 @@
-CONFIG_ACPI=y
-CONFIG_BOOT=limine

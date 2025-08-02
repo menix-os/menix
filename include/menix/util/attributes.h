@@ -14,14 +14,11 @@
 // Symbol is defined per architecture.
 #define __arch
 
-#define __weak                  gnu::weak
-#define __section(x)            gnu::section(x)
-#define __packed                gnu::packed
-#define __aligned(x)            gnu::aligned(x)
-#define __inline                gnu::always_inline
-#define __init                  __used, __section(".init.text"), __cold
-#define __initdata              __used, __section(".init.data")
-#define __initdata_sorted(name) __used, __section(".init.data." name)
+#define __weak       gnu::weak
+#define __section(x) gnu::section(x)
+#define __packed     gnu::packed
+#define __aligned(x) gnu::aligned(x)
+#define __inline     gnu::always_inline
 
 // Only clang has these attributes, GCC will throw a warning here.
 // They also don't support the C23 attribute format.
