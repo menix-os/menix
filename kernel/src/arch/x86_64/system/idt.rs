@@ -1,14 +1,21 @@
 use super::gdt::Gdt;
 use crate::{
     arch::{
+        self,
         sched::Context,
-        x86_64::{ARCH_DATA, consts, system::apic::LAPIC},
+        x86_64::{
+            ARCH_DATA,
+            consts::{self, RFLAGS_IF},
+            system::apic::LAPIC,
+        },
     },
     generic::{
         self,
         irq::IrqHandlerKind,
+        log::GLOBAL_LOGGERS,
         memory::{VirtAddr, virt::PageFaultInfo},
         percpu::CpuData,
+        sched::Scheduler,
     },
 };
 use core::{
@@ -146,7 +153,6 @@ unsafe extern "C" fn idt_handler(context: *const Context) {
         consts::IDT_RESCHED => {
             unsafe { crate::arch::sched::preempt_disable() };
             let cpu = CpuData::get();
-            //log!("resched on {}, now {:?}", cpu.id, Scheduler::get_current());
             if unsafe { crate::arch::sched::preempt_enable() } {
                 LAPIC.get().eoi();
                 cpu.scheduler.reschedule();

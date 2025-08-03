@@ -6,7 +6,7 @@ use super::inode::INode;
 use crate::generic::{
     device::Device,
     posix::errno::{EResult, Errno},
-    util::spin_mutex::SpinMutex,
+    util::mutex::spin::SpinMutex,
     vfs::{
         PathNode,
         cache::Entry,

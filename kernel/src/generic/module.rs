@@ -5,7 +5,7 @@ use super::{
         virt::VmFlags,
         virt::VmLevel,
     },
-    util::spin_mutex::SpinMutex,
+    util::mutex::spin::SpinMutex,
     util::{align_down, align_up},
     vfs::exec::elf::{self, ElfHashTable, ElfHdr, ElfPhdr, ElfRela, ElfSym},
 };

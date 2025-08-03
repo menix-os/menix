@@ -55,8 +55,9 @@ macro_rules! log_inner {
     ($prefix:expr, $suffix:literal, $($arg:tt)*) => ({
         use ::core::fmt::Write;
         {
-            let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
             let current_time = $crate::generic::clock::get_elapsed();
+            let _lock = $crate::generic::util::mutex::irq::IrqMutex::lock();
+            let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
             _ = writer.write_fmt(format_args!(
                 "[{:5}.{:06}] ",
                 current_time / 1_000_000_000,

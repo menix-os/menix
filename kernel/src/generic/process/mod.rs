@@ -5,7 +5,7 @@ use crate::generic::{
     percpu::CPU_DATA,
     posix::errno::{EResult, Errno},
     process::task::Task,
-    util::{once::Once, spin_mutex::SpinMutex},
+    util::{mutex::spin::SpinMutex, once::Once},
     vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
 };
 use alloc::{

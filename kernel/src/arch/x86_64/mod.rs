@@ -8,7 +8,7 @@ pub mod virt;
 
 use crate::generic::{
     irq::IrqHandlerKind,
-    util::{once::Once, spin_mutex::SpinMutex},
+    util::{mutex::spin::SpinMutex, once::Once},
 };
 use ::core::sync::atomic::AtomicBool;
 use system::gdt::{Gdt, TaskStateSegment};

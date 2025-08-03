@@ -2,6 +2,7 @@ use super::internal;
 
 /// Sets whether or not IRQs are enabled on this CPU.
 /// Returns the old value.
+/// Don't use this directly, use [`crate::generic::util::mutex::irq::IrqMutex`] instead.
 ///
 /// # Safety
 ///

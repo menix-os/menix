@@ -1,6 +1,10 @@
 use super::internal;
 use crate::generic::{percpu::CpuData, posix::errno::EResult};
 
+pub fn setup_bsp() {
+    internal::core::setup_bsp()
+}
+
 /// Returns the value of the frame pointer register.
 pub fn get_frame_pointer() -> usize {
     internal::core::get_frame_pointer()

@@ -21,7 +21,7 @@ use crate::{
             virt::{KERNEL_STACK_SIZE, PageTable, VmFlags, VmLevel},
         },
         percpu::{self, CpuData},
-        util::spin_mutex::SpinMutex,
+        util::mutex::spin::SpinMutex,
     },
 };
 use alloc::vec::Vec;

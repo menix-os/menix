@@ -8,7 +8,7 @@ use crate::{
         memory::{cache::MemoryObject, pmm::KernelAlloc},
         posix::errno::{EResult, Errno},
         sched::Scheduler,
-        util::{align_up, divide_up, once::Once, spin_mutex::SpinMutex},
+        util::{align_up, divide_up, once::Once, mutex::spin::SpinMutex},
     },
 };
 use alloc::{alloc::AllocError, collections::btree_map::BTreeMap, slice, sync::Arc};

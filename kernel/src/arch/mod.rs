@@ -1,5 +1,9 @@
 //! This module and all submodules contain architecture dependent code.
 //! All architectures should implement all functions referenced by the submodules of this module.
+//!
+//! # STOP!
+//! If you were looking to use functions from this module,
+//! please reconsider and check if there isn't a wrapper around these functions!
 
 #[cfg(target_arch = "x86_64")]
 mod x86_64;

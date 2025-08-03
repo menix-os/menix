@@ -1,7 +1,7 @@
 //! Global timer management.
 // TODO: Try to get rid of some locks.
 
-use super::util::spin_mutex::SpinMutex;
+use super::util::mutex::spin::SpinMutex;
 use alloc::boxed::Box;
 
 #[initgraph::task(name = "generic.clock")]

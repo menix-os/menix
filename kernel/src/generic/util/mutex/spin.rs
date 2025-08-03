@@ -1,9 +1,10 @@
-use super::spin::SpinLock;
 use core::{
     cell::UnsafeCell,
     fmt::{self, Debug, Formatter},
     ops::{Deref, DerefMut},
 };
+
+use crate::generic::util::spin::SpinLock;
 
 /// A locking primitive for mutually exclusive accesses.
 /// `T` is the type of the inner value to store.
@@ -55,9 +56,8 @@ impl<T: ?Sized> SpinMutex<T> {
     }
 
     /// Forcefully unlocks this [`SpinMutex`].
-    /// `irq` controls if IRQs should be reactivated after unlocking.
     /// # Safety
-    /// The caller must ensure that enabling IRQs at this point is safe.
+    /// The caller must ensure that unlocking the mutex at this point is safe.
     pub unsafe fn force_unlock(&self) {
         let inner = unsafe { &mut (*self.inner.get()) };
         inner.spin.unlock();

@@ -16,25 +16,6 @@ use crate::{
 };
 use core::{arch::asm, mem::offset_of, ptr::null_mut, sync::atomic::Ordering};
 
-#[initgraph::task(
-    name = "arch.x86-64.early-init",
-    entails = [crate::arch::EARLY_INIT_STAGE]
-)]
-fn EARLY_INIT_STAGE() {
-    apic::disable_legacy_pic();
-    idt::init();
-    idt::set_idt();
-
-    // Set FSGSBASE contents.
-    unsafe {
-        super::asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
-        super::asm::wrmsr(consts::MSR_GS_BASE, &raw const LD_PERCPU_START as u64);
-        super::asm::wrmsr(consts::MSR_FS_BASE, 0);
-    }
-
-    CpuData::get().present.store(true, Ordering::Relaxed);
-}
-
 pub(in crate::arch) fn get_frame_pointer() -> usize {
     let mut fp: usize;
     unsafe {
@@ -55,6 +36,21 @@ pub(in crate::arch) fn get_per_cpu() -> *mut CpuData {
         assert_ne!(cpu, null_mut());
         return cpu;
     }
+}
+
+pub fn setup_bsp() {
+    apic::disable_legacy_pic();
+    idt::init();
+    idt::set_idt();
+
+    // Set FSGSBASE contents.
+    unsafe {
+        super::asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
+        super::asm::wrmsr(consts::MSR_GS_BASE, &raw const LD_PERCPU_START as u64);
+        super::asm::wrmsr(consts::MSR_FS_BASE, 0);
+    }
+
+    CpuData::get().present.store(true, Ordering::Relaxed);
 }
 
 pub(super) fn setup_core(context: &'static CpuData) {
