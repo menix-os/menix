@@ -7,9 +7,6 @@ use alloc::sync::Arc;
 
 static DEV_MOUNT: Once<Arc<Mount>> = Once::new();
 
-/// Adds a new device to the devtmpfs.
-pub fn add_device(device: Arc<Device>, block_dev: bool) {}
-
 #[derive(Debug)]
 struct DevTmpFs;
 
