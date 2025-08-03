@@ -4,6 +4,7 @@ use super::{MountFlags, SuperBlock};
 use crate::{
     arch,
     generic::{
+        device::Device,
         memory::{PhysAddr, cache::MemoryObject, virt::VmLevel},
         posix::errno::{EResult, Errno},
         process::Identity,
@@ -37,9 +38,11 @@ impl FileSystem for TmpFs {
             inode_counter: AtomicUsize::new(0),
         })?;
 
-        let root_inode = super_block
-            .clone()
-            .create_inode(NodeType::Directory, Mode::from_bits_truncate(0o755))?;
+        let root_inode = super_block.clone().create_inode(
+            NodeType::Directory,
+            Mode::from_bits_truncate(0o755),
+            None,
+        )?;
 
         Ok(Arc::try_new(Mount {
             flags,
@@ -65,11 +68,18 @@ impl SuperBlock for TmpSuper {
         todo!()
     }
 
-    fn create_inode(self: Arc<Self>, node_type: NodeType, mode: Mode) -> EResult<Arc<INode>> {
+    fn create_inode(
+        self: Arc<Self>,
+        node_type: NodeType,
+        mode: Mode,
+        device: Option<Arc<Device>>,
+    ) -> EResult<Arc<INode>> {
         let node_ops = match node_type {
             NodeType::Regular => NodeOps::Regular(Box::new(TmpRegular::default())),
             NodeType::SymbolicLink => NodeOps::SymbolicLink(Box::new(TmpRegular::default())),
             NodeType::Directory => NodeOps::Directory(Box::new(TmpDir::default())),
+            NodeType::CharacterDevice => NodeOps::CharacterDevice(device.ok_or(Errno::ENODEV)?),
+            NodeType::BlockDevice => NodeOps::BlockDevice(device.ok_or(Errno::ENODEV)?),
             _ => return Err(Errno::EINVAL),
         };
         let file_ops = Arc::try_new(TmpFile::default())?;

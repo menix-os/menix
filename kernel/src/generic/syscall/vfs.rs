@@ -1,5 +1,5 @@
 use crate::generic::{
-    log::GLOBAL_LOGGERS,
+    memory::{VirtAddr, user::UserSlice},
     posix::errno::{EResult, Errno},
     sched::Scheduler,
     vfs::{
@@ -8,54 +8,47 @@ use crate::generic::{
         inode::Mode,
     },
 };
-use alloc::{borrow::ToOwned, string::String};
-use core::{
-    ffi::{CStr, c_char},
-    fmt::Write,
-};
+use alloc::borrow::ToOwned;
+use core::ffi::{CStr, c_char};
 
-pub fn read(fd: usize, buf: usize, len: usize) -> EResult<isize> {
-    // TODO: Use User{Ptr,Slice} instead of raw pointers.
-    let buf = unsafe { core::slice::from_raw_parts_mut(buf as *mut u8, len) };
-
+pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
+
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+    let slice = UserSlice::new(addr, len)
+        .as_mut_slice(&proc_inner.address_space)
+        .ok_or(Errno::EINVAL)?;
     drop(proc_inner);
 
-    file.read(buf)
+    file.read(slice)
 }
 
-pub fn write(fd: usize, buf: usize, len: usize) -> EResult<isize> {
-    // TODO: Use User{Ptr,Slice} instead of raw pointers.
-    let buf = unsafe { core::slice::from_raw_parts(buf as *const u8, len) };
-
-    if fd == 1 || fd == 2 {
-        let mut log = GLOBAL_LOGGERS.lock();
-        log.write_str(&String::from_utf8_lossy(buf)).unwrap();
-        return Ok(len as _);
-    }
-
+pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
-    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
 
-    file.write(buf)
+    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+    let slice = UserSlice::new(addr, len)
+        .as_slice(&proc_inner.address_space)
+        .ok_or(Errno::EINVAL)?;
+    drop(proc_inner);
+
+    file.write(slice)
 }
 
 pub fn openat(fd: usize, path: usize, oflag: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
-    let mut proc_inner = proc.inner.lock();
-
     let parent = if fd == uapi::AT_FDCWD as _ {
         None
     } else {
-        Some(proc_inner.get_fd(fd).ok_or(Errno::EBADF)?)
+        Some(proc.inner.lock().get_fd(fd).ok_or(Errno::EBADF)?)
     };
 
-    // TODO: Use UserCStr
     let path = unsafe { CStr::from_ptr(path as *const c_char) };
     let v = path.to_owned();
+    let mut proc_inner = proc.inner.lock();
+
     let file = File::open(
         &proc_inner,
         parent,

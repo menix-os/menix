@@ -14,6 +14,7 @@ use crate::{
 use alloc::{alloc::AllocError, collections::btree_map::BTreeMap, slice, sync::Arc};
 use bitflags::bitflags;
 use core::{
+    fmt::Debug,
     num::NonZeroUsize,
     sync::atomic::{AtomicUsize, Ordering},
 };
@@ -489,6 +490,22 @@ impl AddressSpace {
         }
 
         Ok(())
+    }
+
+    /// Checks if the entire range is mapped in this address space.
+    pub fn is_mapped(&self, addr: VirtAddr, len: usize) -> bool {
+        let page_size = arch::virt::get_page_size(VmLevel::L1);
+        let num_pages = divide_up(len.into(), page_size);
+        let start_page = addr.value() / page_size;
+
+        let mappings = self.mappings.lock();
+
+        for p in start_page..(start_page + num_pages) {
+            if !mappings.contains_key(&p) {
+                return false;
+            }
+        }
+        return true;
     }
 
     pub fn clear(&self) {

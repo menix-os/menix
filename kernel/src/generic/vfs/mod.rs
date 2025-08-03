@@ -10,19 +10,20 @@ pub use file::File;
 pub use fs::Mount;
 pub use fs::MountFlags;
 
-use crate::generic::memory::cache::MemoryObject;
-use crate::generic::process::InnerProcess;
 use crate::generic::{
+    device::Device,
     memory::{
         VirtAddr,
+        cache::MemoryObject,
         virt::{AddressSpace, VmFlags},
     },
     posix::errno::{EResult, Errno},
-    process::Identity,
+    process::{Identity, InnerProcess, PROCESS_STAGE, Process},
     util::once::Once,
     vfs::{
         cache::LookupFlags,
         file::{MmapFlags, OpenFlags},
+        fs::devtmpfs,
         inode::{Mode, NodeOps, NodeType},
     },
 };
@@ -44,6 +45,7 @@ pub fn mknod(
     path: &[u8],
     file_type: NodeType,
     mode: Mode,
+    device: Option<Arc<Device>>,
     identity: &Identity,
 ) -> EResult<()> {
     match file_type {
@@ -62,7 +64,7 @@ pub fn mknod(
         .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
         .expect("Entry has no parent node?");
 
-    let new_inode = parent.sb.clone().create_inode(file_type, mode)?;
+    let new_inode = parent.sb.clone().create_inode(file_type, mode, device)?;
     path.entry.set_inode(new_inode);
 
     Ok(())
@@ -98,7 +100,7 @@ pub fn symlink(
     }
 }
 
-/// Maps a file in the address space of a process.
+/// Maps a memory object in the address space of a process.
 pub fn mmap(
     file: Option<Arc<File>>,
     space: &AddressSpace,
@@ -121,6 +123,9 @@ pub fn mmap(
     return Ok(addr);
 }
 
+// TODO
+pub fn mount() {}
+
 #[initgraph::task(
     name = "generic.vfs",
     depends = [crate::generic::memory::MEMORY_STAGE],
@@ -136,10 +141,38 @@ pub fn VFS_STAGE() {
     };
 
     unsafe { ROOT.init(root_path.clone()) };
+}
 
+#[initgraph::task(
+    name = "generic.vfs.dev-mount",
+    depends = [VFS_STAGE, devtmpfs::DEVTMPFS_STAGE, PROCESS_STAGE],
+)]
+pub fn VFS_DEV_MOUNT_STAGE() {
     // Mount the devtmpfs on `/dev`.
     let devtmpfs =
         fs::mount(None, b"devtmpfs", MountFlags::empty()).expect("Unable to mount the devtmpfs");
 
-    ROOT.get().entry.mounts.lock().push(devtmpfs);
+    let kernel = Process::get_kernel().inner.lock();
+    mknod(
+        &kernel,
+        None,
+        b"/dev",
+        NodeType::Directory,
+        Mode::UserRead | Mode::UserWrite,
+        None,
+        &Identity::get_kernel(),
+    )
+    .expect("Unable to create /dev");
+
+    let devdir = PathNode::lookup(
+        &kernel,
+        None,
+        b"/dev",
+        &Identity::get_kernel(),
+        LookupFlags::MustExist,
+    )
+    .expect("Lookup for /dev failed");
+
+    *devtmpfs.mount_point.lock() = Some(devdir.clone());
+    devdir.entry.mounts.lock().push(devtmpfs);
 }

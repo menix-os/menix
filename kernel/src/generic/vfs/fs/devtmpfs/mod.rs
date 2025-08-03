@@ -1,5 +1,4 @@
 use crate::generic::{
-    device::Device,
     posix::errno::EResult,
     util::once::Once,
     vfs::{Entry, Mount, MountFlags, fs::FileSystem},
