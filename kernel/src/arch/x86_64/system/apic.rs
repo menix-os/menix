@@ -16,7 +16,7 @@ use crate::{
             mmio::{Mmio, Register},
         },
         percpu::CpuData,
-        util::spin_mutex::SpinMutex,
+        util::mutex::spin::SpinMutex,
     },
 };
 use core::{

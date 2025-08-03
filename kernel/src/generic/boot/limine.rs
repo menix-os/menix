@@ -4,7 +4,7 @@ use super::{BootFile, BootInfo, PhysMemory};
 use crate::generic::{
     cmdline::CmdLine,
     fbcon::{FbColorBits, FrameBuffer},
-    util::spin_mutex::SpinMutex,
+    util::mutex::spin::SpinMutex,
 };
 use core::ptr::slice_from_raw_parts;
 use limine::{BaseRevision, memory_map::EntryType, paging::Mode, request::*};
@@ -56,6 +56,8 @@ static mut FILE_BUF: [BootFile; 128] = [BootFile::new(); 128];
 
 #[unsafe(no_mangle)]
 extern "C" fn _start() -> ! {
+    crate::arch::core::setup_bsp();
+
     // Start collecting boot info.
     let mut info = BootInfo::new();
 

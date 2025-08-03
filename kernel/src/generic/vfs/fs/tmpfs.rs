@@ -8,7 +8,7 @@ use crate::{
         memory::{PhysAddr, cache::MemoryObject, virt::VmLevel},
         posix::errno::{EResult, Errno},
         process::Identity,
-        util::spin_mutex::SpinMutex,
+        util::mutex::spin::SpinMutex,
         vfs::{
             PathNode,
             cache::Entry,

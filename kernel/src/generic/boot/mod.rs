@@ -1,7 +1,7 @@
 use super::{
     fbcon::FrameBuffer,
     memory::VirtAddr,
-    util::{once::Once, spin_mutex::SpinMutex},
+    util::{once::Once, mutex::spin::SpinMutex},
 };
 use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
 

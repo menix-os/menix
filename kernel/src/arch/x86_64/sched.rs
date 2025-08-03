@@ -21,6 +21,7 @@ use crate::{
         percpu::CpuData,
         posix::errno::EResult,
         process::task::Task,
+        util::mutex::irq::IrqMutex,
     },
 };
 use core::{
@@ -311,7 +312,7 @@ pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
 
     // Clear segment registers. Because this also clears GSBASE, we have to restore it immediately.
     unsafe {
-        let old_irq_state = arch::irq::set_irq_state(false);
+        let lock = IrqMutex::lock();
         let percpu = get_per_cpu();
 
         let zero = 0u16;
@@ -321,7 +322,7 @@ pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
         wrmsr(consts::MSR_GS_BASE, percpu as u64);
         wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
 
-        arch::irq::set_irq_state(old_irq_state);
+        drop(lock);
         jump_to_user_context(&raw mut context);
     }
 }

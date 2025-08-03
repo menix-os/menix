@@ -4,7 +4,7 @@ use crate::generic::{
     memory::cache::MemoryObject,
     posix::errno::{EResult, Errno},
     process::Identity,
-    util::spin_mutex::SpinMutex,
+    util::mutex::spin::SpinMutex,
     vfs::{
         PathNode,
         file::{File, FileOps, OpenFlags},

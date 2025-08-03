@@ -2,7 +2,7 @@ use super::inode::INode;
 use crate::generic::{
     posix::errno::{EResult, Errno},
     process::{Identity, InnerProcess},
-    util::spin_mutex::SpinMutex,
+    util::mutex::spin::SpinMutex,
     vfs::{File, file::OpenFlags, fs::Mount, inode::NodeOps},
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};

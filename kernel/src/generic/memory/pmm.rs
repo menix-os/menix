@@ -4,7 +4,7 @@ use crate::{
     generic::{
         boot::PhysMemory,
         memory::virt::VmLevel,
-        util::{align_up, spin_mutex::SpinMutex},
+        util::{align_up, mutex::spin::SpinMutex},
     },
 };
 use alloc::alloc::AllocError;

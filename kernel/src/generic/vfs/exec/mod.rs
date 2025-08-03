@@ -4,7 +4,7 @@ use crate::generic::{
     memory::virt::AddressSpace,
     posix::errno::EResult,
     process::{Process, task::Task},
-    util::spin_mutex::SpinMutex,
+    util::mutex::spin::SpinMutex,
     vfs::file::File,
 };
 use alloc::{

@@ -6,7 +6,7 @@ use crate::{
             PhysAddr,
             pmm::{AllocFlags, KernelAlloc, PageAllocator},
         },
-        util::spin_mutex::SpinMutex,
+        util::mutex::spin::SpinMutex,
     },
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};

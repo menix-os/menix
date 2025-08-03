@@ -7,7 +7,7 @@ use super::{
 };
 use crate::{
     arch,
-    generic::util::{align_down, align_up, spin_mutex::SpinMutex},
+    generic::util::{align_down, align_up, mutex::spin::SpinMutex},
 };
 use core::{
     alloc::{GlobalAlloc, Layout},

@@ -1,7 +1,7 @@
 //! Message logs from the kernel.
 // TODO: Convert to struct Console
 
-use super::util::spin_mutex::SpinMutex;
+use super::util::mutex::spin::SpinMutex;
 use alloc::{boxed::Box, vec::Vec};
 use core::{
     fmt,

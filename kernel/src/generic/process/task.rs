@@ -4,7 +4,7 @@ use crate::{
     generic::{
         memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
         posix::errno::EResult,
-        util::spin_mutex::SpinMutex,
+        util::mutex::spin::SpinMutex,
     },
 };
 use alloc::sync::{Arc, Weak};

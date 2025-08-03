@@ -1,6 +1,6 @@
 // PCI driver handling.
 
-use crate::generic::util::spin_mutex::SpinMutex;
+use crate::generic::util::mutex::spin::SpinMutex;
 
 use super::{PciError, device::PciDevice};
 use alloc::collections::btree_map::BTreeMap;

@@ -6,7 +6,10 @@ use crate::{
             Process,
             task::{Task, TaskState},
         },
-        util::spin_mutex::SpinMutex,
+        util::mutex::{
+            irq::{IrqGuard, IrqMutex},
+            spin::SpinMutex,
+        },
     },
 };
 use alloc::{collections::vec_deque::VecDeque, sync::Arc};
@@ -64,11 +67,10 @@ impl Scheduler {
 
     /// Puts the current task back to the run queue and reschedules.
     pub fn reschedule(&self) {
-        let old = unsafe { arch::irq::set_irq_state(false) };
-        let idle = self.idle_task();
+        let lock = IrqMutex::lock();
         let from = self.current.load(Ordering::Relaxed);
 
-        if from != idle {
+        if from != self.idle_task() {
             self.add_task(unsafe {
                 let task = Arc::from_raw(from);
                 let result = task.clone();
@@ -77,19 +79,17 @@ impl Scheduler {
             });
         }
 
-        self.do_reschedule();
-        unsafe { arch::irq::set_irq_state(old) };
+        self.do_reschedule(lock);
     }
 
     /// Reschedules without adding the current task back to the run queue.
     pub fn do_yield(&self) {
-        let old = unsafe { arch::irq::set_irq_state(false) };
-        self.do_reschedule();
-        unsafe { arch::irq::set_irq_state(old) };
+        let lock = IrqMutex::lock();
+        self.do_reschedule(lock);
     }
 
     /// Runs the scheduler.
-    fn do_reschedule(&self) {
+    fn do_reschedule(&self, irq_guard: IrqGuard) {
         let from = self.current.load(Ordering::Relaxed);
         let to = self
             .next()
@@ -125,6 +125,7 @@ impl Scheduler {
                     .store(to_inner.user_stack.value(), Ordering::Release);
             }
 
+            drop(irq_guard);
             arch::sched::switch(from, to);
         }
     }
@@ -150,7 +151,6 @@ pub extern "C" fn task_entry(entry: extern "C" fn(usize, usize), arg1: usize, ar
 
 /// Function used for waiting.
 pub extern "C" fn idle_fn(_: usize, _: usize) {
-    unsafe { crate::arch::irq::set_irq_state(true) };
     loop {
         crate::arch::irq::wait_for_irq();
     }

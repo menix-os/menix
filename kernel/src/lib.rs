@@ -26,7 +26,7 @@ pub mod system;
 
 use crate::generic::{
     process::{Identity, Process},
-    util::once::Once,
+    util::{mutex::irq::IrqMutex, once::Once},
     vfs::{File, file::OpenFlags, inode::Mode},
 };
 use alloc::{string::String, sync::Arc};
@@ -36,10 +36,9 @@ use generic::boot::BootInfo;
 /// Initializes all important kernel structures.
 /// This is invoked by the prekernel environment.
 pub fn init() -> ! {
-    unsafe {
-        arch::irq::set_irq_state(false);
+    {
+        let _irq = IrqMutex::lock();
         generic::init::run();
-        arch::irq::set_irq_state(true);
     }
 
     loop {
