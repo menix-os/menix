@@ -4,6 +4,7 @@ mod tmpfs;
 
 use super::inode::INode;
 use crate::generic::{
+    device::Device,
     posix::errno::{EResult, Errno},
     util::spin_mutex::SpinMutex,
     vfs::{
@@ -80,7 +81,13 @@ pub trait SuperBlock: Debug {
     fn statvfs(self: Arc<Self>) -> EResult<uapi::statvfs>;
 
     /// Allocates a new inode on this super block.
-    fn create_inode(self: Arc<Self>, node_type: NodeType, mode: Mode) -> EResult<Arc<INode>>;
+    /// If `node_type` is a character or block device, a `device` must also be passed.
+    fn create_inode(
+        self: Arc<Self>,
+        node_type: NodeType,
+        mode: Mode,
+        device: Option<Arc<Device>>,
+    ) -> EResult<Arc<INode>>;
 
     /// Deletes the inode.
     fn destroy_inode(self: Arc<Self>, inode: INode) -> EResult<()>;

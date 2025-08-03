@@ -66,7 +66,8 @@ impl Process {
     /// Gets the parent process of this process.
     /// Returns [`None`], if it is the init process.
     pub fn get_parent(&self) -> Option<Arc<Self>> {
-        // TODO: The upgrade should never fail. If it does, then somehow the child was alive but the parent was not.
+        // TODO: The upgrade should never fail.
+        // If it does, then somehow the child was alive but the parent was not.
         self.parent.as_ref().map(|x| {
             x.upgrade()
                 .expect("FIXME: Child process was alive for longer than the parent")

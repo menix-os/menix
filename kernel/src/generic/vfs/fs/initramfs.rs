@@ -83,6 +83,7 @@ pub fn create_dirs<'a>(
             component,
             NodeType::Directory,
             Mode::from_bits_truncate(0o755),
+            None,
             Identity::get_kernel(),
         ) && e != Errno::EEXIST
         {

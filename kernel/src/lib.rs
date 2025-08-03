@@ -5,6 +5,7 @@
 #![feature(new_zeroed_alloc)]
 #![feature(likely_unlikely)]
 #![feature(slice_split_once)]
+#![feature(bool_to_result)]
 #![no_builtins]
 // Clippy lints
 #![allow(clippy::needless_return)]

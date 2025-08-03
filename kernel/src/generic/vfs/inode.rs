@@ -143,10 +143,11 @@ pub trait DirectoryOps: Any + Debug {
         target_path: &[u8],
         identity: &Identity,
     ) -> EResult<()> {
-        let sym_inode = node
-            .sb
-            .clone()
-            .create_inode(NodeType::SymbolicLink, Mode::from_bits_truncate(0o777))?;
+        let sym_inode = node.sb.clone().create_inode(
+            NodeType::SymbolicLink,
+            Mode::from_bits_truncate(0o777),
+            None,
+        )?;
 
         match &sym_inode.node_ops {
             NodeOps::SymbolicLink(_) => {

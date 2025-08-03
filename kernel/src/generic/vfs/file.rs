@@ -165,7 +165,11 @@ impl File {
 
                 parent.try_access(identity, flags, false)?;
 
-                let file_node = parent.sb.clone().create_inode(NodeType::Regular, mode)?;
+                let file_node = parent
+                    .sb
+                    .clone()
+                    .create_inode(NodeType::Regular, mode, None)?;
+
                 file_path.entry.as_ref().set_inode(file_node.clone());
                 let result = File {
                     path: Some(file_path),
