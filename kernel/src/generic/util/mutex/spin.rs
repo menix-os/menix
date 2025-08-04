@@ -82,7 +82,7 @@ impl<T> SpinMutex<T> {
 }
 
 /// # Safety
-/// We can guarantee that types encapuslated by a [`Mutex`] are thread safe.
+/// We can guarantee that types encapuslated by a [`SpinMutex`] are thread safe.
 unsafe impl<T> Sync for SpinMutex<T> {}
 
 impl<T: ?Sized + Debug> Debug for SpinMutex<T> {
@@ -92,7 +92,7 @@ impl<T: ?Sized + Debug> Debug for SpinMutex<T> {
     }
 }
 
-/// This struct is returned by [`Mutex::lock`] and is used to safely control mutex locking state.
+/// This struct is returned by [`SpinMutex::lock`] and is used to safely control mutex locking state.
 pub struct SpinMutexGuard<'m, T: ?Sized> {
     parent: &'m SpinMutex<T>,
 }

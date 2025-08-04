@@ -72,7 +72,7 @@ impl SuperBlock for TmpSuper {
         self: Arc<Self>,
         node_type: NodeType,
         mode: Mode,
-        device: Option<Arc<Device>>,
+        device: Option<Arc<dyn Device>>,
     ) -> EResult<Arc<INode>> {
         let node_ops = match node_type {
             NodeType::Regular => NodeOps::Regular(Box::new(TmpRegular::default())),

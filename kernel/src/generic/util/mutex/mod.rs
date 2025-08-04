@@ -35,6 +35,12 @@ pub struct MutexGuard<'m, T: ?Sized> {
     mutex: &'m Mutex<T>,
 }
 
+impl<T> Debug for Mutex<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Mutex").field("locked", &self.flag).finish()
+    }
+}
+
 impl<T: ?Sized> Deref for MutexGuard<'_, T> {
     type Target = T;
 
@@ -85,8 +91,6 @@ impl<T: ?Sized> Mutex<T> {
             .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
             .is_err()
         {
-            // let task = Scheduler::get_current();
-            // status!("waiting for mutex task {}", task.get_id());
             let waiter = Waiter {
                 waiters_link: LinkedListAtomicLink::new(),
                 task: Scheduler::get_current(),
@@ -98,7 +102,6 @@ impl<T: ?Sized> Mutex<T> {
                 .push_back(unsafe { UnsafeRef::from_raw(&waiter) });
 
             CpuData::get().scheduler.do_yield();
-            // status!("i woke up yay");
         }
 
         let mut inner = self.inner.lock();
@@ -119,10 +122,11 @@ impl<T: ?Sized> Mutex<T> {
 
         inner.owner = None;
 
+        // If there were waiters for this mutex at some point, wake them up.
         if let Some(waiter) = inner.waiters.pop_front() {
-            // status!("waking up task {}", waiter.task.get_id());
             CpuData::get().scheduler.add_task(waiter.task.clone());
         } else {
+            // If there were no more waiters, we're done.
             self.flag.store(false, Ordering::Release);
         }
     }

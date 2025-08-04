@@ -45,7 +45,7 @@ pub fn mknod(
     path: &[u8],
     file_type: NodeType,
     mode: Mode,
-    device: Option<Arc<Device>>,
+    device: Option<Arc<dyn Device>>,
     identity: &Identity,
 ) -> EResult<()> {
     match file_type {

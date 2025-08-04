@@ -114,8 +114,8 @@ pub enum NodeOps {
     Directory(Box<dyn DirectoryOps>),
     SymbolicLink(Box<dyn SymlinkOps>),
     FIFO,
-    BlockDevice(Arc<Device>),
-    CharacterDevice(Arc<Device>),
+    BlockDevice(Arc<dyn Device>),
+    CharacterDevice(Arc<dyn Device>),
     Socket,
 }
 

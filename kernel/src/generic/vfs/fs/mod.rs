@@ -86,7 +86,7 @@ pub trait SuperBlock: Debug {
         self: Arc<Self>,
         node_type: NodeType,
         mode: Mode,
-        device: Option<Arc<Device>>,
+        device: Option<Arc<dyn Device>>,
     ) -> EResult<Arc<INode>>;
 
     /// Deletes the inode.
