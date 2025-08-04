@@ -77,6 +77,25 @@ pub extern "C" fn main(_: usize, _: usize) {
     };
 
     let init_proc = INIT.get();
+
+    // Open /dev/console for stdio for init.
+    {
+        let mut init_inner = init_proc.inner.lock();
+        let console = File::open(
+            &init_inner,
+            None,
+            b"/dev/console",
+            OpenFlags::ReadWrite,
+            Mode::empty(),
+            Identity::get_kernel(),
+        )
+        .expect("Unable to open console for init");
+
+        init_inner.open_files.insert(0, console.clone());
+        init_inner.open_files.insert(1, console.clone());
+        init_inner.open_files.insert(2, console);
+    }
+
     let init_file = {
         let init_inner = init_proc.inner.lock();
         File::open(

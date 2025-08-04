@@ -141,4 +141,11 @@ struct termio {
   __u8 c_cc[NCC];
 };
 
+struct winsize {
+  unsigned short ws_row;
+  unsigned short ws_col;
+  unsigned short ws_xpixel; /* unused */
+  unsigned short ws_ypixel; /* unused */
+};
+
 #endif

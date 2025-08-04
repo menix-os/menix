@@ -110,7 +110,10 @@ pub trait FileOps: Debug {
         Ok(mask)
     }
 
-    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<uapi::off_t>;
+    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<uapi::off_t> {
+        _ = (file, offset);
+        Err(Errno::ESPIPE)
+    }
 }
 
 impl File {
@@ -210,7 +213,6 @@ impl File {
         match &inode.node_ops {
             NodeOps::Regular(_) => {
                 inode.try_access(identity, flags, false)?;
-
                 let result = File {
                     path: Some(file_path),
                     ops: inode.file_ops.clone(),
@@ -218,12 +220,33 @@ impl File {
                     flags,
                     position: AtomicUsize::new(0),
                 };
-
                 Ok(Arc::try_new(result)?)
             }
             NodeOps::Directory(dir) => dir.open(inode, file_path, flags, identity),
-            NodeOps::BlockDevice(blk) => blk.open(),
-            NodeOps::CharacterDevice(chr) => chr.open(),
+            NodeOps::BlockDevice(dev) => {
+                dev.open()?;
+                inode.try_access(identity, flags, false)?;
+                let result = File {
+                    path: Some(file_path),
+                    ops: dev.clone(),
+                    inode: Some(inode.clone()),
+                    flags,
+                    position: AtomicUsize::new(0),
+                };
+                Ok(Arc::try_new(result)?)
+            }
+            NodeOps::CharacterDevice(dev) => {
+                dev.open()?;
+                inode.try_access(identity, flags, false)?;
+                let result = File {
+                    path: Some(file_path),
+                    ops: dev.clone(),
+                    inode: Some(inode.clone()),
+                    flags,
+                    position: AtomicUsize::new(0),
+                };
+                Ok(Arc::try_new(result)?)
+            }
             NodeOps::FIFO => todo!(),
             NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
             // Doesn't make sense to call open() on anything else.

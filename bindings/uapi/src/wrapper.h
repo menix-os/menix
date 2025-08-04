@@ -3,6 +3,7 @@
 #include "bits/archctl.h"
 #include "bits/errno.h"
 #include "bits/fcntl.h"
+#include "bits/ioctls.h"
 #include "bits/limits.h"
 #include "bits/mman.h"
 #include "bits/mount.h"

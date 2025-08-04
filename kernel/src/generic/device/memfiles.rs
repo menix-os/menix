@@ -1,10 +1,14 @@
 use crate::generic::{
+    device::Device,
     posix::errno::{EResult, Errno},
+    process::{Identity, PROCESS_STAGE, Process},
     vfs::{
-        File,
+        self, File, VFS_DEV_MOUNT_STAGE,
         file::{FileOps, SeekAnchor},
+        inode::{Mode, NodeType},
     },
 };
+use alloc::sync::Arc;
 
 #[derive(Debug)]
 pub struct NullFile;
@@ -20,6 +24,16 @@ impl FileOps for NullFile {
 
     fn write(&self, _: &File, buffer: &[u8], _: uapi::off_t) -> EResult<isize> {
         Ok(buffer.len() as _)
+    }
+}
+
+impl Device for NullFile {
+    fn open(&self) -> EResult<()> {
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "null"
     }
 }
 
@@ -41,6 +55,16 @@ impl FileOps for ZeroFile {
     }
 }
 
+impl Device for ZeroFile {
+    fn open(&self) -> EResult<()> {
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "zero"
+    }
+}
+
 #[derive(Debug)]
 pub struct FullFile;
 
@@ -57,4 +81,55 @@ impl FileOps for FullFile {
     fn write(&self, _: &File, _: &[u8], _: uapi::off_t) -> EResult<isize> {
         Err(Errno::ENOSPC)
     }
+}
+
+impl Device for FullFile {
+    fn open(&self) -> EResult<()> {
+        Ok(())
+    }
+
+    fn name(&self) -> &str {
+        "full"
+    }
+}
+
+#[initgraph::task(
+    name = "generic.device.memfiles",
+    depends = [PROCESS_STAGE, VFS_DEV_MOUNT_STAGE]
+)]
+fn MEMFILES_STAGE() {
+    let inner = Process::get_kernel().inner.lock();
+
+    vfs::mknod(
+        &inner,
+        None,
+        b"/dev/null",
+        NodeType::CharacterDevice,
+        Mode::from_bits_truncate(0o666),
+        Some(Arc::new(NullFile)),
+        Identity::get_kernel(),
+    )
+    .expect("Unable to create /dev/null");
+
+    vfs::mknod(
+        &inner,
+        None,
+        b"/dev/full",
+        NodeType::CharacterDevice,
+        Mode::from_bits_truncate(0o666),
+        Some(Arc::new(FullFile)),
+        Identity::get_kernel(),
+    )
+    .expect("Unable to create /dev/full");
+
+    vfs::mknod(
+        &inner,
+        None,
+        b"/dev/zero",
+        NodeType::CharacterDevice,
+        Mode::from_bits_truncate(0o666),
+        Some(Arc::new(ZeroFile)),
+        Identity::get_kernel(),
+    )
+    .expect("Unable to create /dev/zero");
 }

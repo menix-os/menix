@@ -90,6 +90,7 @@ pub fn ioctl(fd: usize, request: usize, arg: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+    drop(proc_inner);
 
     file.ioctl(request, arg)
 }
