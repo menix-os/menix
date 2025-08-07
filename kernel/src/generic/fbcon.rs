@@ -6,7 +6,7 @@ use crate::generic::{
     memory::{
         PhysAddr, free, malloc,
         pmm::KernelAlloc,
-        virt::{PageTable, VmFlags, VmLevel},
+        virt::{VmFlags, mmu::PageTable},
     },
 };
 use alloc::boxed::Box;
@@ -55,7 +55,7 @@ impl Drop for FbCon {
         unsafe { flanterm_sys::flanterm_deinit(self.ctx.load(Ordering::Acquire), Some(free)) };
 
         PageTable::get_kernel()
-            .unmap_range(
+            .unmap_range::<KernelAlloc>(
                 self.mem.load(Ordering::Relaxed).into(),
                 self.fb.pitch * self.fb.height,
             )
@@ -95,7 +95,6 @@ pub fn FBCON_STAGE() {
         .map_memory::<KernelAlloc>(
             fb.base,
             VmFlags::Read | VmFlags::Write,
-            VmLevel::L1,
             fb.pitch * fb.height,
         )
         .unwrap();

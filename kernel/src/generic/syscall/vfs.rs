@@ -24,6 +24,19 @@ pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     file.read(slice)
 }
 
+pub fn pread(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
+    let proc = Scheduler::get_current().get_process();
+    let proc_inner = proc.inner.lock();
+
+    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+    let slice = UserSlice::new(addr, len)
+        .as_mut_slice(&proc_inner.address_space)
+        .ok_or(Errno::EINVAL)?;
+    drop(proc_inner);
+
+    file.pread(slice, offset as _)
+}
+
 pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
@@ -35,6 +48,19 @@ pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     drop(proc_inner);
 
     file.write(slice)
+}
+
+pub fn pwrite(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
+    let proc = Scheduler::get_current().get_process();
+    let proc_inner = proc.inner.lock();
+
+    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+    let slice = UserSlice::new(addr, len)
+        .as_slice(&proc_inner.address_space)
+        .ok_or(Errno::EINVAL)?;
+    drop(proc_inner);
+
+    file.pwrite(slice, offset as _)
 }
 
 pub fn openat(fd: usize, path: usize, oflag: usize) -> EResult<usize> {

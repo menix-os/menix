@@ -19,8 +19,6 @@ use core::{
 
 /// A standalone file system node, also commonly referred to as a vnode.
 /// It is used to represent a file or sized memory in a generic way.
-/// Menix also uses inodes to represent anonymous memory. This allows us to
-/// automatically handle freeing unmapped memory.
 #[derive(Debug)]
 pub struct INode {
     /// Operations that only work on a certain type of node.

@@ -174,9 +174,8 @@ pub fn execute_graph(goal: Option<&'static Node>, mut on_node_reached: impl FnMu
     }
 
     while let Some(node) = pending.pop_front() {
-        node.on_reached();
-
         on_node_reached(node);
+        node.on_reached();
 
         for edge in node.out_edges.lock().iter() {
             let successor = edge.target;

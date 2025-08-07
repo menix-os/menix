@@ -52,7 +52,7 @@ pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 
 static mut MEMMAP_BUF: [PhysMemory; 128] = [PhysMemory::empty(); 128];
-static mut FILE_BUF: [BootFile; 128] = [BootFile::new(); 128];
+static mut FILE_BUF: [BootFile; 32] = [BootFile::new(); _];
 
 #[unsafe(no_mangle)]
 extern "C" fn _start() -> ! {
@@ -78,6 +78,11 @@ extern "C" fn _start() -> ! {
                 };
                 total_entries += 1;
             });
+
+        info.highest_phys = Some({
+            let last = entries.iter().last().unwrap();
+            (last.base + last.length).into()
+        });
 
         // Get kernel physical and virtual base.
         let kernel_addr = KERNEL_ADDR_REQUEST.get_response().unwrap();

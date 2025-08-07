@@ -3,11 +3,10 @@
 use super::{
     VirtAddr,
     pmm::{AllocFlags, KernelAlloc, PageAllocator},
-    virt::VmLevel,
 };
 use crate::{
     arch,
-    generic::util::{align_down, align_up, mutex::spin::SpinMutex},
+    generic::util::{align_down, align_up, divide_up, mutex::spin::SpinMutex},
 };
 use core::{
     alloc::{GlobalAlloc, Layout},
@@ -50,7 +49,7 @@ impl Slab {
             // Calculate the amount of bytes we need to skip in order to be able to store a reference to the slab.
             let offset = align_up(size_of::<SlabHeader>(), self.ent_size);
             // That also means we need to deduct that amount here.
-            let available_size = (arch::virt::get_page_size(VmLevel::L1)) - offset;
+            let available_size = arch::virt::get_page_size() - offset;
 
             // Allocate memory for this slab.
             let mem = KernelAlloc::alloc(1, AllocFlags::empty()).expect("Out of memory");
@@ -150,8 +149,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
 
         // The allocation won't fit within our defined slabs.
         // Get how many pages have to be allocated in order to fit `size`.
-        let num_pages = align_up(layout.size(), arch::virt::get_page_size(VmLevel::L1))
-            / arch::virt::get_page_size(VmLevel::L1);
+        let num_pages = divide_up(layout.size(), arch::virt::get_page_size());
 
         // Allocate the pages plus an additional page for metadata.
         match KernelAlloc::alloc(num_pages + 1, AllocFlags::empty()) {
@@ -165,7 +163,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
                 (*info).size = layout.size();
 
                 // Skip the metadata and return the next one.
-                return ret.byte_add(arch::virt::get_page_size(VmLevel::L1));
+                return ret.byte_add(arch::virt::get_page_size());
             },
             Err(_) => return null_mut(),
         }
@@ -177,12 +175,12 @@ unsafe impl GlobalAlloc for SlabAllocator {
         }
 
         unsafe {
-            if ptr as usize == align_down(ptr as usize, arch::virt::get_page_size(VmLevel::L1)) {
-                let info = ptr.sub(arch::virt::get_page_size(VmLevel::L1)) as *mut SlabInfo;
+            if ptr as usize == align_down(ptr as usize, arch::virt::get_page_size()) {
+                let info = ptr.sub(arch::virt::get_page_size()) as *mut SlabInfo;
                 KernelAlloc::dealloc((VirtAddr::from(info)).as_hhdm().unwrap(), (*info).num_pages);
             } else {
-                let header = align_down(ptr as usize, arch::virt::get_page_size(VmLevel::L1))
-                    as *mut SlabHeader;
+                let header =
+                    align_down(ptr as usize, arch::virt::get_page_size()) as *mut SlabHeader;
                 (*(*header).slab).free(ptr);
             }
         }

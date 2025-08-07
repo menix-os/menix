@@ -11,7 +11,6 @@ use alloc::sync::{Arc, Weak};
 use core::{
     alloc::Layout,
     panic,
-    ptr::NonNull,
     sync::atomic::{AtomicUsize, Ordering},
 };
 
@@ -48,8 +47,6 @@ pub struct Task {
 pub struct InnerTask {
     /// The current state of the thread.
     pub state: TaskState,
-    /// A pointer to the saved context of user mode registers.
-    pub user_context: Option<NonNull<arch::sched::Context>>,
     /// The saved context of a task while it is not running.
     pub task_context: arch::sched::TaskContext,
     /// The kernel stack for this task.
@@ -84,7 +81,6 @@ impl Task {
             process: Arc::downgrade(parent),
             inner: SpinMutex::new(InnerTask {
                 state: TaskState::Ready,
-                user_context: None,
                 task_context: arch::sched::TaskContext::default(),
                 kernel_stack,
                 user_stack: VirtAddr::null(),

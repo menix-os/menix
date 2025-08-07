@@ -140,7 +140,6 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
                 )?;
                 file.pwrite(&data[offset + 512..][..file_size], 0)?;
             }
-            HARD_LINK => todo!(),
             SYM_LINK => {
                 let link_len = current_file
                     .linkname
@@ -155,7 +154,9 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
                     Identity::get_kernel(),
                 )?;
             }
-            DIRECTORY => todo!(),
+            DIRECTORY => {
+                create_dirs(&proc_inner, dir.clone(), file_name)?;
+            }
             _ => (),
         }
 

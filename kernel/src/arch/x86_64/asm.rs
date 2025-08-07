@@ -2,6 +2,11 @@
 
 use core::arch::{asm, global_asm};
 
+use crate::generic::{
+    memory::pmm::{AllocFlags, KernelAlloc, PageAllocator},
+    posix::errno::EResult,
+};
+
 pub struct CpuIdResult {
     pub eax: u32,
     pub ebx: u32,

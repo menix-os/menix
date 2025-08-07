@@ -1,11 +1,10 @@
 use super::internal;
-use crate::generic::memory::{PhysAddr, VirtAddr, virt::VmLevel};
-
+use crate::generic::memory::{PhysAddr, VirtAddr};
 pub use internal::virt::PageTableEntry;
 
 /// Gets the page size for a given level.
-pub fn get_page_size(level: VmLevel) -> usize {
-    1 << (get_page_bits() + (get_level_bits() * level as usize))
+pub fn get_page_size() -> usize {
+    1 << get_page_bits()
 }
 
 /// Gets the highest possible shift for a canonical virtual address.
@@ -25,7 +24,7 @@ pub fn get_level_bits() -> usize {
 
 /// Gets the highest supported mappable page level.
 /// This is different from [`get_num_levels`], because not all levels can be PTE leaves.
-pub fn get_max_leaf_level() -> VmLevel {
+pub fn get_max_leaf_level() -> usize {
     internal::virt::get_max_leaf_level()
 }
 
@@ -55,7 +54,7 @@ pub fn flush_tlb(addr: VirtAddr) {
 #[allow(unused)]
 mod api {
     use super::PageTableEntry;
-    use crate::generic::memory::{PhysAddr, virt::VmFlags};
+    use crate::generic::memory::{PhysAddr, virt::PteFlags};
 
     /// Returns a PTE which represents an empty slot.
     const fn pte_empty() -> PageTableEntry {
@@ -63,7 +62,7 @@ mod api {
     }
 
     /// Returns a new PTE with a set address.
-    const fn pte_new(address: PhysAddr, flags: VmFlags, level: usize) -> PageTableEntry {
+    const fn pte_new(address: PhysAddr, flags: PteFlags, level: usize) -> PageTableEntry {
         PageTableEntry::new(address, flags, level)
     }
 

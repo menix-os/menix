@@ -11,7 +11,6 @@ assert_trait_impl!(Context, Copy);
 pub use internal::sched::TaskContext;
 assert_trait_impl!(TaskContext, Default);
 assert_trait_impl!(TaskContext, Clone);
-assert_trait_impl!(TaskContext, Copy);
 
 /// Returns the current task running on this CPU.
 /// DO NOT USE THIS DIRECTLY. Use [`crate::generic::sched::Scheduler::get_current`] instead.

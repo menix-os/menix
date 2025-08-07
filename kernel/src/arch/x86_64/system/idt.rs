@@ -1,21 +1,18 @@
 use super::gdt::Gdt;
 use crate::{
     arch::{
-        self,
         sched::Context,
         x86_64::{
             ARCH_DATA,
-            consts::{self, RFLAGS_IF},
+            consts::{self},
             system::apic::LAPIC,
         },
     },
     generic::{
         self,
         irq::IrqHandlerKind,
-        log::GLOBAL_LOGGERS,
-        memory::{VirtAddr, virt::PageFaultInfo},
+        memory::{VirtAddr, virt::fault::PageFaultInfo},
         percpu::CpuData,
-        sched::Scheduler,
     },
 };
 use core::{
@@ -188,7 +185,7 @@ fn page_fault_handler(context: &Context) {
         addr: cr2.into(),
     };
 
-    generic::memory::virt::page_fault_handler(&info);
+    generic::memory::virt::fault::handler(&info);
 }
 
 // There are some interrupts which generate an error code on the stack, while others do not.
@@ -242,7 +239,7 @@ unsafe extern "C" fn interrupt_stub_internal() {
         "push r15",
         "cld",
         // Zero out the base pointer since we can't trust it.
-        "xor rbp, rbp",
+        //"xor rbp, rbp",
         // Load the frame as first argument.
         "mov rdi, rsp",
         "call {interrupt_handler}",

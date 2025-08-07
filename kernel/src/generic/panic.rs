@@ -5,7 +5,8 @@ use super::log::GLOBAL_LOGGERS;
 use crate::{
     arch,
     generic::{
-        memory::{VirtAddr, virt::PageTable},
+        memory::{VirtAddr, virt::mmu::PageTable},
+        sched::Scheduler,
         vfs::exec::elf::ElfAddr,
     },
 };

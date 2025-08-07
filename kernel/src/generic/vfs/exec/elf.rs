@@ -2,10 +2,7 @@ use super::ExecInfo;
 use crate::{
     arch,
     generic::{
-        memory::{
-            cache::MemoryObject,
-            virt::{VmFlags, VmLevel},
-        },
+        memory::{cache::MemoryObject, virt::VmFlags},
         posix::errno::{EResult, Errno},
         process::{InnerProcess, Process, task::Task, to_user},
         util::align_down,
@@ -366,7 +363,7 @@ impl ElfFormat {
         // If it's fixed, don't account for an extra base address.
         let base = if elf_hdr.e_type == ET_DYN { base } else { 0 };
 
-        let page_size = arch::virt::get_page_size(VmLevel::L1);
+        let page_size = arch::virt::get_page_size();
         let mut phdr_addr = 0usize;
 
         // Iterate all PHDRs.
@@ -474,7 +471,7 @@ impl ExecFormat for ElfFormat {
 
     fn load(&self, proc: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task> {
         let mut inner = proc.inner.lock();
-        let page_size = arch::virt::get_page_size(VmLevel::L1);
+        let page_size = arch::virt::get_page_size();
 
         // Load the main executable. The base address only matters if the type is ET_DYN.
         // Base could technically be 0, but we don't want to get anywhere near the NULL address.

@@ -1,4 +1,3 @@
-use super::virt::VmLevel;
 use crate::{
     arch::virt::get_page_size,
     generic::{
@@ -54,7 +53,7 @@ impl MemoryObject {
     /// Reads data from the object into a buffer.
     /// Reading out of bounds will return 0.
     pub fn read(&self, buffer: &mut [u8], offset: usize) -> usize {
-        let page_size = get_page_size(VmLevel::L1);
+        let page_size = get_page_size();
         let mut progress = 0;
 
         while progress < buffer.len() {
@@ -79,7 +78,7 @@ impl MemoryObject {
     /// Writes data from a buffer into the object.
     /// Writing out of bounds will return 0.
     pub fn write(&self, buffer: &[u8], offset: usize) -> usize {
-        let page_size = get_page_size(VmLevel::L1);
+        let page_size = get_page_size();
         let mut progress = 0;
 
         while progress < buffer.len() {
@@ -105,7 +104,7 @@ impl MemoryObject {
 impl Drop for MemoryObject {
     fn drop(&mut self) {
         let p = self.pages.lock();
-        for (_, &addr) in &*p {
+        for (_, &addr) in p.iter() {
             unsafe { KernelAlloc::dealloc(addr, 1) };
         }
     }

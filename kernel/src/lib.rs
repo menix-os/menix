@@ -6,6 +6,7 @@
 #![feature(likely_unlikely)]
 #![feature(slice_split_once)]
 #![feature(bool_to_result)]
+#![feature(box_into_inner)]
 #![no_builtins]
 // Clippy lints
 #![allow(clippy::needless_return)]
