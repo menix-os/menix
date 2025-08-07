@@ -47,10 +47,6 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
     todo!()
 }
 
-pub fn waitpid(pid: usize, status: usize, flags: usize) -> EResult<usize> {
-    Err(Errno::EINTR)
-}
-
 pub fn do_yield() -> EResult<usize> {
     CPU_DATA.get().scheduler.do_yield();
     Ok(0)
