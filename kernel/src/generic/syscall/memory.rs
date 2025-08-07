@@ -1,18 +1,14 @@
-use core::num::NonZeroUsize;
-
 use crate::{
     arch::virt::get_page_size,
     generic::{
-        memory::{
-            VirtAddr,
-            virt::{VmFlags, VmLevel},
-        },
+        memory::{VirtAddr, virt::VmFlags},
         posix::errno::{EResult, Errno},
         sched::Scheduler,
         util::align_up,
         vfs::file::MmapFlags,
     },
 };
+use core::num::NonZeroUsize;
 
 pub fn mmap(
     addr: VirtAddr,
@@ -44,7 +40,7 @@ pub fn mmap(
     // If MAP_FIXED isn't specified, we must find a suitable address.
     let addr = if !flags.contains(MmapFlags::Fixed) {
         let cur = proc_inner.mmap_head;
-        proc_inner.mmap_head = align_up((cur + length).value(), get_page_size(VmLevel::L1)).into();
+        proc_inner.mmap_head = align_up((cur + length).value(), get_page_size()).into();
 
         cur
     } else {

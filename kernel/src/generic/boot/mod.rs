@@ -1,7 +1,7 @@
 use super::{
     fbcon::FrameBuffer,
     memory::VirtAddr,
-    util::{once::Once, mutex::spin::SpinMutex},
+    util::{mutex::spin::SpinMutex, once::Once},
 };
 use crate::generic::{cmdline::CmdLine, memory::PhysAddr};
 
@@ -28,8 +28,10 @@ pub struct BootInfo {
     pub hhdm_address: Option<VirtAddr>,
     /// How many levels the page table has.
     pub paging_level: Option<usize>,
-    /// A list of valid physical memory.
+    /// A list of usable physical memory.
     pub memory_map: SpinMutex<&'static mut [PhysMemory]>,
+    /// The highest possible physical memory address.
+    pub highest_phys: Option<PhysAddr>,
     /// The start of the physical kernel address.
     pub kernel_phys: Option<PhysAddr>,
     /// The start of the virtual kernel address.
@@ -52,6 +54,7 @@ impl BootInfo {
             hhdm_address: None,
             paging_level: None,
             memory_map: SpinMutex::new(&mut []),
+            highest_phys: None,
             kernel_phys: None,
             kernel_virt: None,
             rsdp_addr: None,

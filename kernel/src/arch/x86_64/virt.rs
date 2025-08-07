@@ -1,7 +1,4 @@
-use crate::generic::memory::{
-    PhysAddr, VirtAddr,
-    virt::{VmFlags, VmLevel},
-};
+use crate::generic::memory::{PhysAddr, VirtAddr, virt::PteFlags};
 use bitflags::bitflags;
 use core::arch::asm;
 
@@ -49,25 +46,25 @@ impl PageTableEntry {
         return Self { inner: 0 };
     }
 
-    pub const fn new(address: PhysAddr, flags: VmFlags, _level: usize) -> Self {
+    pub const fn new(address: PhysAddr, flags: PteFlags, _level: usize) -> Self {
         let mut result = (address.value() as u64 & ADDR_MASK) | PageFlags::Present.bits();
 
-        if flags.contains(VmFlags::User) {
+        if flags.contains(PteFlags::User) {
             result |= PageFlags::UserMode.bits();
         }
 
-        if flags.contains(VmFlags::Directory) {
+        if flags.contains(PteFlags::Directory) {
             result |= PageFlags::ReadWrite.bits();
         } else {
-            if flags.contains(VmFlags::Write) {
+            if flags.contains(PteFlags::Write) {
                 result |= PageFlags::ReadWrite.bits();
             }
 
-            if !flags.contains(VmFlags::Exec) {
+            if !flags.contains(PteFlags::Exec) {
                 result |= PageFlags::ExecuteDisable.bits();
             }
 
-            if flags.contains(VmFlags::Large) {
+            if flags.contains(PteFlags::Large) {
                 result |= PageFlags::Size.bits();
             }
         }
@@ -112,8 +109,8 @@ pub(in crate::arch) const fn get_page_bits() -> usize {
     12
 }
 
-pub(in crate::arch) const fn get_max_leaf_level() -> VmLevel {
-    VmLevel::L3
+pub(in crate::arch) const fn get_max_leaf_level() -> usize {
+    2
 }
 
 pub(in crate::arch) const fn get_level_bits() -> usize {

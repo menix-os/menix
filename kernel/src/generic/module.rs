@@ -3,7 +3,6 @@ use super::{
         PhysAddr, VirtAddr,
         pmm::{AllocFlags, KernelAlloc, PageAllocator},
         virt::VmFlags,
-        virt::VmLevel,
     },
     util::mutex::spin::SpinMutex,
     util::{align_down, align_up},
@@ -11,7 +10,7 @@ use super::{
 };
 use crate::{
     arch,
-    generic::memory::virt::{self, PageTable},
+    generic::memory::virt::{self, mmu::PageTable},
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{
@@ -168,13 +167,10 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 let mut memsz = phdr.p_memsz as usize;
 
                 // Fix potentially unaligned addresses.
-                let aligned_virt = align_down(
-                    phdr.p_vaddr as usize,
-                    arch::virt::get_page_size(VmLevel::L1),
-                );
+                let aligned_virt = align_down(phdr.p_vaddr as usize, arch::virt::get_page_size());
                 if aligned_virt < phdr.p_vaddr as usize {
-                    memsz += arch::virt::get_page_size(VmLevel::L1)
-                        - (phdr.p_memsz as usize % arch::virt::get_page_size(VmLevel::L1));
+                    memsz += arch::virt::get_page_size()
+                        - (phdr.p_memsz as usize % arch::virt::get_page_size());
                 }
 
                 // Allocate physical memory.
@@ -184,17 +180,16 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 let page_table = PageTable::get_kernel();
 
                 // Map memory with RW permissions.
-                for page in (0..memsz).step_by(arch::virt::get_page_size(VmLevel::L1)) {
+                for page in (0..memsz).step_by(arch::virt::get_page_size()) {
                     page_table
                         .map_single::<KernelAlloc>(
                             (load_base + aligned_virt + page).into(),
                             phys + page,
                             VmFlags::Read | VmFlags::Write,
-                            VmLevel::L1,
                         )
                         .map_err(|_| ModuleLoadError::AllocFailed)?;
 
-                    MODULE_ADDR.fetch_add(arch::virt::get_page_size(VmLevel::L1), Ordering::AcqRel);
+                    MODULE_ADDR.fetch_add(arch::virt::get_page_size(), Ordering::AcqRel);
                 }
 
                 let virt = load_base + phdr.p_vaddr as usize;
@@ -360,11 +355,11 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
 
     // Finally, remap everything so the permissions are as described.
     for (_, virt, length, flags) in &info.mappings {
-        let length = align_up(*length, arch::virt::get_page_size(VmLevel::L1));
+        let length = align_up(*length, arch::virt::get_page_size());
         let page_table = PageTable::get_kernel();
-        for page in (0..length).step_by(arch::virt::get_page_size(VmLevel::L1)) {
+        for page in (0..length).step_by(arch::virt::get_page_size()) {
             page_table
-                .remap_single::<KernelAlloc>(*virt + page, *flags, VmLevel::L1)
+                .remap_single::<KernelAlloc>(*virt + page, *flags)
                 .map_err(|_| ModuleLoadError::AllocFailed)?;
         }
     }

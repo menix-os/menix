@@ -67,7 +67,7 @@ impl Device for Console {
     }
 
     fn name(&self) -> &str {
-        "tty"
+        "console"
     }
 }
 

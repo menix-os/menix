@@ -1,15 +1,19 @@
 pub mod task;
 
-use crate::generic::{
-    memory::{VirtAddr, virt::AddressSpace},
-    percpu::CPU_DATA,
-    posix::errno::{EResult, Errno},
-    process::task::Task,
-    util::{mutex::spin::SpinMutex, once::Once},
-    vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
+use crate::{
+    arch::sched::Context,
+    generic::{
+        memory::{VirtAddr, virt::AddressSpace},
+        percpu::CPU_DATA,
+        posix::errno::{EResult, Errno},
+        process::task::Task,
+        util::{mutex::spin::SpinMutex, once::Once},
+        vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
+    },
 };
 use alloc::{
-    collections::btree_map::BTreeMap,
+    boxed::Box,
+    collections::{btree_map::BTreeMap, btree_set::BTreeSet},
     string::String,
     sync::{Arc, Weak},
     vec::Vec,
@@ -76,6 +80,39 @@ impl Process {
 
     pub fn new(name: String, parent: Option<Arc<Self>>) -> EResult<Self> {
         Self::new_with_space(name, parent, Arc::new(AddressSpace::new()))
+    }
+
+    pub fn fork(self: Arc<Self>, context: &Context) -> EResult<(Arc<Self>, Arc<Task>)> {
+        let mut old_inner = self.inner.lock();
+        let forked = Arc::new(Self {
+            id: PID_COUNTER.fetch_add(1, Ordering::Acquire),
+            name: self.name.clone(),
+            parent: Some(Arc::downgrade(&self)),
+            inner: SpinMutex::new(InnerProcess {
+                threads: Vec::new(),
+                children: Vec::new(),
+                address_space: Arc::new(old_inner.address_space.fork()?),
+                root_dir: old_inner.root_dir.clone(),
+                working_dir: old_inner.root_dir.clone(),
+                identity: old_inner.identity.clone(),
+                open_files: old_inner.open_files.clone(),
+                mmap_head: old_inner.mmap_head.clone(),
+            }),
+        });
+
+        // Create a heap allocated context that we can pass to the entry point.
+        let mut forked_ctx = Box::new(context.clone());
+        forked_ctx.set_return(0, 0); // User mode returns 0 for forked processes.
+        let raw_ctx = Box::into_raw(forked_ctx);
+
+        // Create the main thread.
+        let forked_thread = Arc::new(Task::new(to_user_context, raw_ctx as _, 0, &forked, true)?);
+
+        forked.inner.lock().threads.push(forked_thread.clone());
+
+        old_inner.children.push(forked.clone());
+
+        Ok((forked, forked_thread))
     }
 
     fn new_with_space(
@@ -168,14 +205,15 @@ impl InnerProcess {
     /// Allocates a new descriptor for a file. Returns [`None`] if there are no more free FDs for this process.
     pub fn open_file(&mut self, file: Arc<File>) -> Option<usize> {
         // TODO: OPEN_MAX
-        let mut last = 0;
         // Find a free descriptor.
-        for (fd, _) in self.open_files.iter() {
-            if *fd > last + 1 {
+        let mut last = 0;
+        loop {
+            if !self.open_files.contains_key(&last) {
                 break;
             }
-            last = *fd;
+            last += 1;
         }
+
         self.open_files.insert(last, file);
         Some(last)
     }
@@ -184,6 +222,15 @@ impl InnerProcess {
 /// Entry point for tasks wanting to jump to user space.
 pub extern "C" fn to_user(ip: usize, sp: usize) {
     unsafe { crate::arch::sched::jump_to_user(VirtAddr::from(ip), VirtAddr::from(sp)) };
+}
+
+/// Entry point for tasks wanting to jump to user space.
+pub extern "C" fn to_user_context(context: usize, _: usize) {
+    unsafe {
+        let ctx: Box<Context> = Box::from_raw(context as _);
+        let mut stack_ctx = Box::into_inner(ctx);
+        crate::arch::sched::jump_to_user_context(&raw mut stack_ctx)
+    };
 }
 
 #[derive(Debug, Clone, Default)]
@@ -232,7 +279,7 @@ pub fn PROCESS_STAGE() {
                 None,
                 Arc::new(AddressSpace {
                     table: super::memory::virt::KERNEL_PAGE_TABLE.get().clone(),
-                    mappings: SpinMutex::new(BTreeMap::new()),
+                    mappings: SpinMutex::new(BTreeSet::new()),
                 }),
             )
             .expect("Unable to create the main kernel process"),

@@ -103,18 +103,21 @@ pub unsafe extern "C" fn amd64_syscall_stub() {
 /// Invoked by either the interrupt or syscall stub.
 extern "C" fn syscall_handler(frame: *mut Context) {
     unsafe {
+        let frame = frame.as_mut().unwrap();
+
         // Arguments use the SYSV C ABI.
         // Except for a3, since RCX is needed for sysret, we need a different register.
         let result = generic::syscall::dispatch(
-            (*frame).rax as usize,
-            (*frame).rdi as usize,
-            (*frame).rsi as usize,
-            (*frame).rdx as usize,
-            (*frame).r10 as usize,
-            (*frame).r8 as usize,
-            (*frame).r9 as usize,
+            frame,
+            frame.rax as usize,
+            frame.rdi as usize,
+            frame.rsi as usize,
+            frame.rdx as usize,
+            frame.r10 as usize,
+            frame.r8 as usize,
+            frame.r9 as usize,
         );
-        (*frame).rax = result.0 as u64;
-        (*frame).rdx = result.1 as u64;
+        frame.rax = result.0 as u64;
+        frame.rdx = result.1 as u64;
     }
 }

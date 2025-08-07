@@ -1,4 +1,12 @@
-use crate::generic::{posix::errno::EResult, sched::Scheduler};
+use crate::{
+    arch::sched::Context,
+    generic::{
+        memory::VirtAddr,
+        percpu::CPU_DATA,
+        posix::errno::{EResult, Errno},
+        sched::Scheduler,
+    },
+};
 
 pub fn gettid() -> usize {
     Scheduler::get_current().get_id()
@@ -25,10 +33,25 @@ pub fn exit(error: usize) -> EResult<usize> {
     todo!()
 }
 
-pub fn fork() -> EResult<usize> {
-    todo!();
+pub fn fork(ctx: &Context) -> EResult<usize> {
+    let old = Scheduler::get_current().get_process();
+
+    // Fork the current process. This puts both processes at this point in code.
+    let (new_proc, new_task) = old.fork(ctx)?;
+    CPU_DATA.get().scheduler.add_task(new_task.clone());
+
+    Ok(new_proc.get_pid())
 }
 
-pub fn execve() -> EResult<usize> {
+pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> {
     todo!()
+}
+
+pub fn waitpid(pid: usize, status: usize, flags: usize) -> EResult<usize> {
+    Err(Errno::EINTR)
+}
+
+pub fn do_yield() -> EResult<usize> {
+    CPU_DATA.get().scheduler.do_yield();
+    Ok(0)
 }

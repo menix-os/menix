@@ -3,7 +3,6 @@
 use super::{
     PhysAddr,
     pmm::{AllocFlags, PageAllocator},
-    virt::VmLevel,
 };
 use crate::arch::{self};
 use alloc::alloc::AllocError;
@@ -15,7 +14,7 @@ pub(crate) static BUMP_CURRENT: AtomicUsize = AtomicUsize::new(0);
 pub(crate) struct BumpAllocator;
 impl PageAllocator for BumpAllocator {
     fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
-        let bytes = pages * arch::virt::get_page_size(VmLevel::L1);
+        let bytes = pages * arch::virt::get_page_size();
         let mem = PhysAddr(BUMP_CURRENT.fetch_add(bytes, Ordering::Relaxed));
 
         if flags.contains(AllocFlags::Zeroed) {

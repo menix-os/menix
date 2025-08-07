@@ -8,7 +8,7 @@ pub fn run() {
     }
 
     initgraph::execute_graph(None, |node| {
-        status!("Reached stage \"{}\"", node.display_name())
+        status!("Running stage \"{}\"", node.display_name())
     });
 
     status!("All stages are complete!");

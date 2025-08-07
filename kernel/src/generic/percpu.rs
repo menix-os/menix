@@ -7,7 +7,7 @@ use crate::{
         memory::{
             self,
             pmm::{AllocFlags, KernelAlloc, PageAllocator},
-            virt::{PageTable, VmFlags},
+            virt::{VmFlags, mmu::PageTable},
         },
         posix::errno::{EResult, Errno},
     },
@@ -148,7 +148,6 @@ pub(crate) fn allocate_cpu() -> EResult<&'static CpuData> {
             VirtAddr::from(percpu_new),
             phys,
             VmFlags::Read | VmFlags::Write,
-            memory::virt::VmLevel::L1,
             percpu_size,
         )
         .map_err(|_| Errno::ENOMEM)?;

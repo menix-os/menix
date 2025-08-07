@@ -3,8 +3,7 @@ use crate::{
     arch,
     generic::{
         boot::PhysMemory,
-        memory::virt::VmLevel,
-        util::{align_up, mutex::spin::SpinMutex},
+        util::{divide_up, mutex::spin::SpinMutex},
     },
 };
 use alloc::alloc::AllocError;
@@ -34,8 +33,7 @@ pub trait PageAllocator {
 
     /// Allocates enough consecutive pages to fit `bytes` amount of bytes.
     fn alloc_bytes(bytes: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
-        let pages = align_up(bytes, arch::virt::get_page_size(VmLevel::L1))
-            / arch::virt::get_page_size(VmLevel::L1);
+        let pages = divide_up(bytes, arch::virt::get_page_size());
         return Self::alloc(pages, flags);
     }
 
@@ -66,7 +64,7 @@ pub struct KernelAlloc;
 impl PageAllocator for KernelAlloc {
     fn alloc(pages: usize, flags: AllocFlags) -> Result<PhysAddr, AllocError> {
         let mut head = PMM.lock();
-        let bytes = pages * arch::virt::get_page_size(VmLevel::L1);
+        let bytes = pages * arch::virt::get_page_size();
 
         let limit = if flags.contains(AllocFlags::Kernel20) {
             PhysAddr(1 << 20)
@@ -106,8 +104,7 @@ impl PageAllocator for KernelAlloc {
                 page.count = 0;
             } else {
                 page.count -= pages;
-                addr =
-                    Some(page.get_address() + page.count * arch::virt::get_page_size(VmLevel::L1));
+                addr = Some(page.get_address() + page.count * arch::virt::get_page_size());
             }
             break;
         }
@@ -115,11 +112,15 @@ impl PageAllocator for KernelAlloc {
         // TODO: Merge adjacent regions if we didn't find anything.
         debug_assert!(addr.is_some());
 
-        if flags.contains(AllocFlags::Zeroed) {
-            unsafe { write_bytes(addr.unwrap().as_hhdm() as *mut u8, 0, bytes) };
+        match addr {
+            Some(x) => {
+                if flags.contains(AllocFlags::Zeroed) {
+                    unsafe { write_bytes(addr.unwrap().as_hhdm() as *mut u8, 0, bytes) };
+                }
+                Ok(x)
+            }
+            None => Err(AllocError),
         }
-
-        return addr.ok_or(AllocError);
     }
 
     unsafe fn dealloc(addr: PhysAddr, pages: usize) {
@@ -139,7 +140,7 @@ impl PageAllocator for KernelAlloc {
 impl Page {
     #[inline]
     pub fn idx_from_addr(address: PhysAddr) -> usize {
-        address.0 / arch::virt::get_page_size(VmLevel::L1)
+        address.0 / arch::virt::get_page_size()
     }
 
     /// Returns the page number of this page.
@@ -166,14 +167,14 @@ pub fn init(memory_map: &[PhysMemory], pages: (*mut Page, usize)) {
 
     // Register free regions.
     for entry in memory_map.iter() {
-        if entry.length < arch::virt::get_page_size(VmLevel::L1) {
+        if entry.length < arch::virt::get_page_size() {
             continue;
         }
 
         let mut pmm = PMM.lock();
         let mut page_db = PAGE_DB.lock();
         let page = page_db.get_mut(Page::idx_from_addr(entry.address)).unwrap();
-        page.count = entry.length / arch::virt::get_page_size(VmLevel::L1);
+        page.count = entry.length / arch::virt::get_page_size();
         page.next = *pmm;
         *pmm = NonNull::new(page);
 

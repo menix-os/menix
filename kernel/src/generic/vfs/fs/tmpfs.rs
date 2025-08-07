@@ -5,7 +5,7 @@ use crate::{
     arch,
     generic::{
         device::Device,
-        memory::{PhysAddr, cache::MemoryObject, virt::VmLevel},
+        memory::{PhysAddr, cache::MemoryObject},
         posix::errno::{EResult, Errno},
         process::Identity,
         util::mutex::spin::SpinMutex,

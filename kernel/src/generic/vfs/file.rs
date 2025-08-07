@@ -328,6 +328,7 @@ impl File {
 
         if private {
             // Private mapping means we need to do a unique allocation.
+            // TODO: Do this in smaller chunks to not overwhelm the allocator.
             let phys = MemoryObject::new_phys();
             let mut buf = vec![0u8; length.into()];
             cache.read(&mut buf, offset as _);

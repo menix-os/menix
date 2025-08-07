@@ -31,7 +31,7 @@ use core::{
 };
 
 #[repr(C)]
-#[derive(Default, Debug, Clone, Copy)]
+#[derive(Default, Debug, Clone)]
 pub struct TaskContext {
     pub rsp: u64,
     pub fpu_region: *mut u8,
@@ -138,14 +138,14 @@ struct TaskFrame {
 
 pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
     unsafe {
-        let from_inner = (*from).inner.lock();
+        let mut from_inner = (*from).inner.lock();
         let to_inner = (*to).inner.lock();
 
         let cpu = ARCH_DATA.get();
         cpu.tss.lock().rsp0 = (to_inner.kernel_stack + KERNEL_STACK_SIZE).value() as _;
 
         if (*from).is_user() {
-            let mut from_context = from_inner.task_context;
+            let from_context = &mut from_inner.task_context;
             cpu.fpu_save.get()(from_context.fpu_region);
             from_context.ds = super::asm::read_ds();
             from_context.es = super::asm::read_es();
@@ -156,11 +156,11 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
         }
 
         if (*to).is_user() {
-            let mut to_context = to_inner.task_context;
+            let to_context = &to_inner.task_context;
             cpu.fpu_restore.get()(to_context.fpu_region);
-            to_context.ds = super::asm::read_ds();
-            to_context.es = super::asm::read_es();
-            to_context.fs = super::asm::read_fs();
+            super::asm::write_ds(to_context.ds);
+            super::asm::write_es(to_context.es);
+            super::asm::write_fs(to_context.fs);
 
             // If we have to change the GS segment we need to reload the MSR, otherwise we lose its value.
             if to_context.gs != super::asm::read_gs() {
@@ -233,6 +233,8 @@ pub(in crate::arch) fn init_task(
         if is_user {
             context.fpu_region =
                 KernelAlloc::alloc_bytes(*cpu.fpu_size.get(), AllocFlags::Zeroed)?.as_hhdm();
+            cpu.fpu_save.get()(context.fpu_region);
+
             context.ds = super::asm::read_ds();
             context.es = super::asm::read_es();
             context.fs = super::asm::read_fs();

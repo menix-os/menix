@@ -1,6 +1,6 @@
 use crate::{
     arch::{
-        virt::{PageTableEntry, get_page_size},
+        virt::{PageTableEntry, get_level_bits, get_max_leaf_level, get_page_bits, get_page_size},
         x86_64::{
             consts::{CR0_ET, CR0_PE, CR0_PG, CR4_PAE, MSR_EFER, MSR_EFER_LME, MSR_EFER_NXE},
             system::{
@@ -18,7 +18,7 @@ use crate::{
         memory::{
             PhysAddr,
             pmm::{AllocFlags, KernelAlloc, PageAllocator},
-            virt::{KERNEL_STACK_SIZE, PageTable, VmFlags, VmLevel},
+            virt::{KERNEL_STACK_SIZE, PteFlags, mmu::PageTable},
         },
         percpu::{self, CpuData},
         util::mutex::spin::SpinMutex,
@@ -26,8 +26,7 @@ use crate::{
 };
 use alloc::vec::Vec;
 use bytemuck::{Pod, Zeroable};
-use core::mem::offset_of;
-use core::{arch::global_asm, sync::atomic::Ordering};
+use core::{arch::global_asm, mem::offset_of, sync::atomic::Ordering};
 use uacpi_sys::{UACPI_STATUS_OK, acpi_entry_hdr, acpi_madt_lapic, acpi_madt_x2apic, uacpi_table};
 
 unsafe extern "C" {
@@ -194,9 +193,7 @@ struct InfoData {
 }
 
 extern "C" fn ap_entry(info: PhysAddr) -> ! {
-    unsafe {
-        PageTable::get_kernel().set_active();
-    }
+    unsafe { PageTable::get_kernel().set_active() };
 
     let cpu_ctx = percpu::allocate_cpu().expect("Unable to allocate per-CPU context");
     super::super::core::setup_core(cpu_ctx);
@@ -206,7 +203,6 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
         "CPU is not present?"
     );
     assert!(cpu_ctx.online.load(Ordering::Acquire), "CPU is not online?");
-
     status!("Hello from CPU {}", CpuData::get().id);
 
     unsafe {
@@ -216,9 +212,7 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
     }
 
     loop {
-        unsafe {
-            core::arch::asm!("hlt");
-        }
+        unsafe { core::arch::asm!("hlt") };
     }
 }
 
@@ -385,8 +379,10 @@ fn INIT_APS_STAGE() {
         for i in 0..4 {
             temp_l3_buffer.add(i).write(
                 PageTableEntry::new(
-                    PhysAddr::new(i * get_page_size(VmLevel::L3)),
-                    VmFlags::Read | VmFlags::Write | VmFlags::Exec | VmFlags::Large,
+                    PhysAddr::new(
+                        i * (1 << (get_page_bits() + get_max_leaf_level() * get_level_bits())),
+                    ),
+                    PteFlags::Read | PteFlags::Write | PteFlags::Exec | PteFlags::Large,
                     3,
                 )
                 .inner() as u64,
@@ -394,8 +390,12 @@ fn INIT_APS_STAGE() {
         }
 
         temp_buffer.write(
-            PageTableEntry::new(temp_l3, VmFlags::Read | VmFlags::Write | VmFlags::Exec, 3).inner()
-                as u64,
+            PageTableEntry::new(
+                temp_l3,
+                PteFlags::Read | PteFlags::Write | PteFlags::Exec,
+                3,
+            )
+            .inner() as u64,
         );
 
         // Copy over the higher half maps from the root table.
