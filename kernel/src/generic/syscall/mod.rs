@@ -63,8 +63,8 @@ pub fn dispatch(
         numbers::GETTID => Ok(process::gettid()),
         numbers::GETPID => Ok(process::getpid()),
         numbers::GETPPID => Ok(process::getppid()),
-        numbers::WAITID => sys_unimp!("waitpid", Err(Errno::ENOSYS)),
-        numbers::WAITPID => process::waitpid(a0, a1, a2),
+        numbers::WAITID => sys_unimp!("waitid", Err(Errno::ENOSYS)),
+        numbers::WAITPID => sys_unimp!("waitpid", Err(Errno::EINTR)),
 
         // Threads
         numbers::THREAD_CREATE => sys_unimp!("thread_create", Err(Errno::ENOSYS)),
