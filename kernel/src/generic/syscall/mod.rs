@@ -94,7 +94,7 @@ pub fn dispatch(
         numbers::PSELECT => sys_unimp!("pselect", Err(Errno::ENOSYS)),
         numbers::MKNODAT => sys_unimp!("mknodat", Err(Errno::ENOSYS)),
         numbers::READDIR => sys_unimp!("readdir", Err(Errno::ENOSYS)),
-        numbers::GETCWD => sys_unimp!("getcwd", Err(Errno::ENOSYS)),
+        numbers::GETCWD => vfs::getcwd(a0.into(), a1),
         numbers::CHDIR => sys_unimp!("chdir", Err(Errno::ENOSYS)),
         numbers::FCHDIR => sys_unimp!("fchdir", Err(Errno::ENOSYS)),
         numbers::MKDIRAT => sys_unimp!("mkdirat", Err(Errno::ENOSYS)),

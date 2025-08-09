@@ -3,61 +3,57 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     sched::Scheduler,
     vfs::{
-        File,
+        Entry, File,
         file::{OpenFlags, SeekAnchor},
         inode::Mode,
     },
 };
-use alloc::borrow::ToOwned;
+use alloc::{borrow::ToOwned, string::String};
 use core::ffi::{CStr, c_char};
 
 pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
+    let slice = UserSlice::new(addr, len)
+        .as_mut_slice()
+        .ok_or(Errno::EINVAL)?;
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
 
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-    let slice = UserSlice::new(addr, len)
-        .as_mut_slice(&proc_inner.address_space)
-        .ok_or(Errno::EINVAL)?;
     drop(proc_inner);
 
     file.read(slice)
 }
 
 pub fn pread(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
+    let slice = UserSlice::new(addr, len)
+        .as_mut_slice()
+        .ok_or(Errno::EINVAL)?;
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
 
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-    let slice = UserSlice::new(addr, len)
-        .as_mut_slice(&proc_inner.address_space)
-        .ok_or(Errno::EINVAL)?;
     drop(proc_inner);
 
     file.pread(slice, offset as _)
 }
 
 pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
+    let slice = UserSlice::new(addr, len).as_slice().ok_or(Errno::EINVAL)?;
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
 
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-    let slice = UserSlice::new(addr, len)
-        .as_slice(&proc_inner.address_space)
-        .ok_or(Errno::EINVAL)?;
     drop(proc_inner);
 
     file.write(slice)
 }
 
 pub fn pwrite(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
+    let slice = UserSlice::new(addr, len).as_slice().ok_or(Errno::EINVAL)?;
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
 
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-    let slice = UserSlice::new(addr, len)
-        .as_slice(&proc_inner.address_space)
-        .ok_or(Errno::EINVAL)?;
     drop(proc_inner);
 
     file.pwrite(slice, offset as _)
@@ -71,6 +67,7 @@ pub fn openat(fd: usize, path: usize, oflag: usize) -> EResult<usize> {
         Some(proc.inner.lock().get_fd(fd).ok_or(Errno::EBADF)?)
     };
 
+    // TODO: Use UserPtr instead.
     let path = unsafe { CStr::from_ptr(path as *const c_char) };
     let v = path.to_owned();
     let mut proc_inner = proc.inner.lock();
@@ -119,4 +116,39 @@ pub fn ioctl(fd: usize, request: usize, arg: usize) -> EResult<usize> {
     drop(proc_inner);
 
     file.ioctl(request, arg)
+}
+
+pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
+    let buf: &mut [u8] = UserSlice::new(buffer, len)
+        .as_mut_slice()
+        .ok_or(Errno::EINVAL)?;
+
+    let proc = Scheduler::get_current().get_process();
+    let proc_inner = proc.inner.lock();
+
+    let mut buffer = vec![0u8; uapi::PATH_MAX as _];
+    let mut cursor = uapi::PATH_MAX as usize;
+    let mut current = proc_inner.working_dir.clone();
+    while cursor > 0 {
+        let len = current.entry.name.len();
+        // Write the component to the buffer.
+        cursor -= len;
+        buffer[cursor..][..len].copy_from_slice(&current.entry.name);
+
+        // Write the path separator.
+        cursor -= 1;
+        buffer[cursor] = b'/';
+
+        let Ok(res) = current.lookup_parent() else {
+            break;
+        };
+        current = res;
+    }
+    log!(
+        "Path is: \"{}\"",
+        String::from_utf8_lossy(&buffer[cursor..])
+    );
+    buf[0..buffer.len() - cursor].copy_from_slice(&buffer[cursor..]);
+
+    Ok(0)
 }

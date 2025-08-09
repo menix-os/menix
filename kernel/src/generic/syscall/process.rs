@@ -1,11 +1,6 @@
 use crate::{
     arch::sched::Context,
-    generic::{
-        memory::VirtAddr,
-        percpu::CPU_DATA,
-        posix::errno::{EResult, Errno},
-        sched::Scheduler,
-    },
+    generic::{memory::VirtAddr, percpu::CPU_DATA, posix::errno::EResult, sched::Scheduler},
 };
 
 pub fn gettid() -> usize {
@@ -23,14 +18,14 @@ pub fn getppid() -> usize {
         .map_or(0, |x| x.get_pid())
 }
 
-pub fn exit(error: usize) -> EResult<usize> {
+pub fn exit(error: usize) -> ! {
     let proc = Scheduler::get_current().get_process();
 
     if proc.get_pid() <= 1 {
         panic!("Attempted to kill init with error code {error}");
     }
 
-    todo!()
+    Scheduler::kill_current();
 }
 
 pub fn fork(ctx: &Context) -> EResult<usize> {
@@ -48,6 +43,6 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
 }
 
 pub fn do_yield() -> EResult<usize> {
-    CPU_DATA.get().scheduler.do_yield();
+    // TODO
     Ok(0)
 }
