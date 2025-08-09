@@ -34,20 +34,15 @@ impl FileOps for Console {
     }
 
     fn ioctl(&self, _: &File, request: usize, arg: usize) -> EResult<usize> {
-        let proc = Scheduler::get_current().get_process();
-        let space = { proc.inner.lock().address_space.clone() };
         match request as _ {
             uapi::TIOCGWINSZ => {
                 let arg: UserPtr<'_, uapi::winsize> = UserPtr::new(arg.into());
-                arg.write(
-                    &space,
-                    uapi::winsize {
-                        ws_row: 80,
-                        ws_col: 25,
-                        ws_xpixel: 0, // Unused
-                        ws_ypixel: 0, // Unused
-                    },
-                )
+                arg.write(uapi::winsize {
+                    ws_row: 80,
+                    ws_col: 25,
+                    ws_xpixel: 0, // Unused
+                    ws_ypixel: 0, // Unused
+                })
                 .ok_or(Errno::EINVAL)?;
             }
             _ => return Err(Errno::ENOSYS),

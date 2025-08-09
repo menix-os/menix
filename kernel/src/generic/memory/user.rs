@@ -1,7 +1,7 @@
 //! Safe user memory reading/writing.
 
 use super::VirtAddr;
-use crate::generic::memory::virt::AddressSpace;
+use crate::generic::sched::Scheduler;
 use bytemuck::AnyBitPattern;
 use core::marker::PhantomData;
 
@@ -19,7 +19,9 @@ impl<'a, T: Sized + Copy> UserPtr<'a, T> {
         }
     }
 
-    pub fn read(&self, space: &AddressSpace) -> Option<T> {
+    pub fn read(&self) -> Option<T> {
+        let current = Scheduler::get_current().get_process();
+        let space = &current.inner.lock().address_space;
         if !space.is_mapped(self.addr, size_of::<T>()) {
             None
         } else {
@@ -27,7 +29,9 @@ impl<'a, T: Sized + Copy> UserPtr<'a, T> {
         }
     }
 
-    pub fn write(&self, space: &AddressSpace, value: T) -> bool {
+    pub fn write(&self, value: T) -> bool {
+        let current = Scheduler::get_current().get_process();
+        let space = &current.inner.lock().address_space;
         if !space.is_mapped(self.addr, size_of::<T>()) {
             false
         } else {
@@ -59,7 +63,9 @@ impl<'a, T: AnyBitPattern> UserSlice<'a, T> {
         }
     }
 
-    pub fn as_slice(&self, space: &AddressSpace) -> Option<&'a [T]> {
+    pub fn as_slice(&self) -> Option<&'a [T]> {
+        let current = Scheduler::get_current().get_process();
+        let space = &current.inner.lock().address_space;
         if !space.is_mapped(self.addr, size_of::<T>() * self.len) {
             None
         } else {
@@ -67,7 +73,9 @@ impl<'a, T: AnyBitPattern> UserSlice<'a, T> {
         }
     }
 
-    pub fn as_mut_slice(&mut self, space: &AddressSpace) -> Option<&'a mut [T]> {
+    pub fn as_mut_slice(&mut self) -> Option<&'a mut [T]> {
+        let current = Scheduler::get_current().get_process();
+        let space = &current.inner.lock().address_space;
         if !space.is_mapped(self.addr, size_of::<T>() * self.len) {
             None
         } else {
