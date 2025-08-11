@@ -13,7 +13,7 @@ struct cpu {
     virt_t user_stack;
 
     struct sched_percpu sched; // Scheduler data.
-    struct arch_cpu arch;      // Definitions for each architecture.
+    struct arch_percpu arch;   // Definitions for each architecture.
 
     _Atomic(bool) online;  // Whether this CPU is initialized and active.
     _Atomic(bool) present; // Whether this CPU is plugged in.

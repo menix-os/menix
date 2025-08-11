@@ -2,9 +2,7 @@
 #include <menix/util/attributes.h>
 #include <smp.h>
 
-[[__linker]]
 extern uint8_t smp_trampoline_start[];
-[[__linker]]
 extern uint8_t smp_trampoline_end[];
 
 [[noreturn]]

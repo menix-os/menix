@@ -53,11 +53,29 @@ SECTIONS
         __ld_cmdline_end = .;
     } :rodata
 
+    .bootcon : {
+        __ld_bootcon_start = .;
+        KEEP(*(.bootcon))
+        __ld_bootcon_end = .;
+    } :rodata
+
     . = ALIGN(CONSTANT(MAXPAGESIZE));
 
     __ld_data_start = .;
     .data : {
         *(.data .data.*)
+    } :data
+
+    .dynsym : {
+        __ld_dynsym_start = .;
+        *(.dynsym)
+        __ld_dynsym_end = .;
+    } :data
+
+    .dynstr : {
+        __ld_dynstr_start = .;
+        *(.dynstr)
+        __ld_dynstr_end = .;
     } :data
 
     .dynamic : {

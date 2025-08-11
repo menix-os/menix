@@ -9,10 +9,6 @@
 #define __format(like, ...) gnu::format(like, __VA_ARGS__)
 #define __likely(x)         __builtin_expect(!!(x), 1)
 #define __unlikely(x)       __builtin_expect(!!(x), 0)
-// Symbol is defined by a linker script.
-#define __linker
-// Symbol is defined per architecture.
-#define __arch
 
 #define __weak       gnu::weak
 #define __section(x) gnu::section(x)

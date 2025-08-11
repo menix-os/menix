@@ -50,32 +50,32 @@ static inline void asm_xrstor(void* mem) {
 
 static inline uint8_t asm_inb(uint16_t port) {
     uint8_t result;
-    asm volatile("inb %1, %0" : "=a"(result) : "Nd"(port));
+    asm volatile("in %0, %1" : "=a"(result) : "Nd"(port));
     return result;
 }
 
 static inline uint16_t asm_inw(uint16_t port) {
     uint16_t result;
-    asm volatile("inw %1, %0" : "=a"(result) : "Nd"(port));
+    asm volatile("in %0, %1" : "=a"(result) : "Nd"(port));
     return result;
 }
 
 static inline uint32_t asm_inl(uint16_t port) {
     uint32_t result;
-    asm volatile("inl %1, %0" : "=a"(result) : "Nd"(port));
+    asm volatile("in %0, %1" : "=a"(result) : "Nd"(port));
     return result;
 }
 
 static inline void asm_outb(uint16_t port, uint8_t value) {
-    asm volatile("outb %0, %1" : : "a"(value), "Nd"(port));
+    asm volatile("out %0, %1" : : "Nd"(port), "a"(value));
 }
 
 static inline void asm_outw(uint16_t port, uint16_t value) {
-    asm volatile("outw %0, %1" : : "a"(value), "Nd"(port));
+    asm volatile("out %0, %1" : : "Nd"(port), "a"(value));
 }
 
 static inline void asm_outl(uint16_t port, uint32_t value) {
-    asm volatile("outl %0, %1" : : "a"(value), "Nd"(port));
+    asm volatile("out %0, %1" : : "Nd"(port), "a"(value));
 }
 
 #endif

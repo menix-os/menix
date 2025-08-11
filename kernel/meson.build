@@ -1,18 +1,13 @@
 kernel_c_args = [
-    common_c_args,
-    '-fno-PIC',
-    '-fno-PIE',
     '-D__KERNEL__=1',
 ]
 
 kernel_link_args = [
-    common_link_args,
     '-static',
     '-T' + meson.current_source_dir() / 'kernel.ld',
 ]
 
 kernel_includes = [
-    common_includes,
     include_directories(
         'arch' / target_machine.cpu_family() / 'include',
     ),

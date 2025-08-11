@@ -3,7 +3,9 @@ project(
     'c',
     license: 'BSD-3',
     license_files: ['LICENSE'],
-    default_options: ['c_std=gnu23'],
+    default_options: [
+        'c_std=gnu23',
+    ],
     version: '0.1.0',
     meson_version: '>=1.1.0',
 )
@@ -47,19 +49,40 @@ common_link_args = [
 ]
 common_includes = include_directories('include')
 
+modules = []
+
 subdir('kernel')
 subdir('drivers')
 
-executable(
+kernel = shared_library(
     'menix',
-    include_directories: kernel_includes,
+    include_directories: [common_includes, kernel_includes],
+    c_args: [common_c_args, kernel_c_args],
+    link_args: [common_link_args, kernel_link_args],
     sources: kernel_sources,
-    c_args: kernel_c_args,
-    link_args: kernel_link_args,
     install: true,
     install_dir: get_option('datadir') / 'menix',
-    pie: false,
+    name_prefix: '',
+    name_suffix: 'elf',
 )
+
+foreach m : modules
+    shared_library(
+        m[0],
+        sources: m[1],
+        c_args: [common_c_args, '-D__MODULE__="' + m[0] + '"'],
+        include_directories: common_includes,
+        link_args: [
+            common_link_args,
+            '-T' + meson.current_source_dir() / 'drivers' / 'module.ld',
+        ],
+        name_prefix: '',
+        name_suffix: 'kso',
+        install: true,
+        install_dir: get_option('datadir') / 'menix' / 'modules',
+        link_with: [kernel],
+    )
+endforeach
 
 subdir('vdso')
 # TODO: Copy VDSO into the kernel.

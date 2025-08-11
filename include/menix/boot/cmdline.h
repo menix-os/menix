@@ -6,7 +6,7 @@
 
 #define CMDLINE_OPTION(opt_name, opt_func) \
     [[__used, __section(".cmdline")]] \
-    static const struct cmdline_option CONCAT(__cmline_option_, __COUNTER__) = { \
+    static const struct cmdline_option UNIQUE_IDENT(__cmline_option_) = { \
         .name = opt_name, \
         .func = opt_func, \
     }
@@ -17,7 +17,7 @@ struct cmdline_option {
     // Gets run if this option is present on the command line.
     // If an option is specified as `name=value`, then the `value` is passed as well.
     // Otherwise, it's NULL.
-    void* func;
+    void (*func)(const char* value);
 };
 
 // Parses the command line and invokes all options.

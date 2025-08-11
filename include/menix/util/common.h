@@ -18,4 +18,6 @@
 #define CONCAT(A, B)  _CONCAT(A, B)
 #define _CONCAT(A, B) A##B
 
+#define UNIQUE_IDENT(ident) CONCAT(ident, __COUNTER__)
+
 #endif

@@ -5,14 +5,6 @@
 #include <menix/posix/types.h>
 #include <stddef.h>
 
-// Asserts that `obj_field` is the first member in a structure `struc`.
-#define OBJECT(struc, obj_field) \
-    static_assert( \
-        __builtin_types_compatible_p(typeof(((struc*)0)->obj_field), struct object), \
-        #obj_field " must be a struct object" \
-    ); \
-    static_assert(__builtin_offsetof(struc, obj_field) == 0, #obj_field " must be the first member in the structure")
-
 struct object;
 
 struct object_ops {
@@ -37,11 +29,5 @@ errno_t obj_new(size_t size, const char* name, void** out);
 void obj_ref_inc(struct object* obj);
 // Decreases the refcount by 1.
 void obj_ref_dec(struct object* obj);
-
-struct test {
-    struct object b;
-    int a;
-};
-OBJECT(struct test, b);
 
 #endif
