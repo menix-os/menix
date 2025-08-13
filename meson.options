@@ -2,12 +2,13 @@ option(
     'headers_only',
     type: 'boolean',
     value: false,
-    description: 'Only install kernel headers',
+    description: 'Only install headers',
 )
 
 option(
-    'config',
-    type: 'string',
-    value: '.config',
-    description: 'The main config file path',
+    'boot_protocol',
+    type: 'combo',
+    choices: ['limine', 'uefi'],
+    value: 'limine',
+    description: 'The boot protocol to start the kernel with',
 )

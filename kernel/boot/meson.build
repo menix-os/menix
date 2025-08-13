@@ -3,10 +3,10 @@ kernel_sources += files(
     'main.c',
 )
 
-if cfg.get('CONFIG_BOOT_LIMINE', 'n') == 'y'
+if get_option('boot_protocol') == 'limine'
     subdir('limine')
-elif cfg.get('CONFIG_BOOT_UEFI', 'n') == 'y'
+elif get_option('boot_protocol') == 'uefi'
     subdir('uefi')
 else
-    error('Need one of BOOT_LIMINE or BOOT_UEFI')
+    error('Need one of limine or uefi')
 endif

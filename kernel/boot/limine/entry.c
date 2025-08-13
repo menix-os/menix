@@ -1,18 +1,12 @@
-#include <menix/boot/cmdline.h>
-#include <menix/boot/file.h>
-#include <menix/boot/init.h>
-#include <menix/boot/main.h>
-#include <menix/mem/pm.h>
-#include <menix/mem/types.h>
-#include <menix/sys/kprintf.h>
-#include <menix/util/assert.h>
-#include <menix/util/common.h>
-#include <config.h>
-
-#ifdef CONFIG_ACPI
-#include <drivers/acpi/acpi.h>
-#endif
-
+#include <kernel/boot/cmdline.h>
+#include <kernel/boot/file.h>
+#include <kernel/boot/init.h>
+#include <kernel/boot/main.h>
+#include <kernel/mem/pm.h>
+#include <kernel/mem/types.h>
+#include <kernel/sys/kprintf.h>
+#include <kernel/util/assert.h>
+#include <kernel/util/common.h>
 #include "limine.h"
 
 [[__initdata_sorted("limine.0")]] static volatile LIMINE_REQUESTS_START_MARKER;
@@ -34,10 +28,7 @@ LIMINE_REQUEST(executable_file_request, LIMINE_EXECUTABLE_FILE_REQUEST, 0);
 LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 1);
 LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);
 LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);
-
-#ifdef CONFIG_ACPI
 LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);
-#endif
 
 [[__init]]
 void kernel_start() {
@@ -92,10 +83,5 @@ void kernel_start() {
     [[__unused]]
     auto hhdm_base = (virt_t)hhdm_request.response->offset;
 
-#ifdef CONFIG_ACPI
-    if (rsdp_request.response)
-        acpi_rsdp_address = (phys_t)rsdp_request.response->address;
-#endif
-
-    kmain();
+    kernel_main();
 }

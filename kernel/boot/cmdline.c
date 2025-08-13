@@ -1,6 +1,6 @@
-#include <menix/boot/cmdline.h>
-#include <menix/boot/init.h>
-#include <menix/sys/kprintf.h>
+#include <kernel/boot/cmdline.h>
+#include <kernel/boot/init.h>
+#include <kernel/sys/kprintf.h>
 #include <stddef.h>
 #include <string.h>
 

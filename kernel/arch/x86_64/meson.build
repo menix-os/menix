@@ -4,6 +4,10 @@ common_c_args += [
     '-masm=intel',
 ]
 
+kernel_c_args += [
+    '-mcmodel=kernel',
+]
+
 kernel_sources += files(
     'gdt.c',
     'serial.c',

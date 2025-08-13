@@ -1,17 +1,19 @@
 #ifndef _MENIX_STDINT_H
 #define _MENIX_STDINT_H
 
-#include <uapi/menix/types.h>
+typedef __INT8_TYPE__ int8_t;
+typedef __UINT8_TYPE__ uint8_t;
 
-typedef __i8 int8_t;
-typedef __u8 uint8_t;
-typedef __i16 int16_t;
-typedef __u16 uint16_t;
-typedef __i32 int32_t;
-typedef __u32 uint32_t;
-typedef __i64 int64_t;
-typedef __u64 uint64_t;
-typedef __uptr uintptr_t;
-typedef __iptr intptr_t;
+typedef __INT16_TYPE__ int16_t;
+typedef __UINT16_TYPE__ uint16_t;
+
+typedef __INT32_TYPE__ int32_t;
+typedef __UINT32_TYPE__ uint32_t;
+
+typedef __INT64_TYPE__ int64_t;
+typedef __UINT64_TYPE__ uint64_t;
+
+typedef __INTPTR_TYPE__ intptr_t;
+typedef __UINTPTR_TYPE__ uintptr_t;
 
 #endif

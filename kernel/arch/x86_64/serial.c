@@ -1,4 +1,4 @@
-#include <menix/sys/console.h>
+#include <kernel/sys/console.h>
 #include <asm.h>
 #include <stdint.h>
 
@@ -44,4 +44,4 @@ static struct console serial_con = {
     .write = serial_write,
     .init = serial_setup,
 };
-DEFINE_BOOTCON(serial_con);
+DEFINE_EARLYCON(serial_con);

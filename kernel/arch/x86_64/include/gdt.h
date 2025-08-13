@@ -1,7 +1,7 @@
-#ifndef _MENIX_X86_64_GDT_H
-#define _MENIX_X86_64_GDT_H
+#ifndef _KERNEL_X86_64_GDT_H
+#define _KERNEL_X86_64_GDT_H
 
-#include <menix/util/attributes.h>
+#include <kernel/util/attributes.h>
 #include <stdint.h>
 #include <tss.h>
 

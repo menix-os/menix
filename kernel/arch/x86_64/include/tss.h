@@ -1,7 +1,7 @@
-#ifndef _MENIX_X86_64_TSS_H
-#define _MENIX_X86_64_TSS_H
+#ifndef _KERNEL_X86_64_TSS_H
+#define _KERNEL_X86_64_TSS_H
 
-#include <menix/util/attributes.h>
+#include <kernel/util/attributes.h>
 #include <stdint.h>
 
 struct [[__packed, __aligned(0x10)]] tss {

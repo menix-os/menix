@@ -45,9 +45,9 @@ SpaceInEmptyBlock: false
 SpacesBeforeTrailingComments: 1
 IncludeBlocks: Merge
 IncludeCategories:
-  - Regex: "^<menix/.*>"
+  - Regex: "^<kernel/.*>"
     Priority: 1
-  - Regex: "^<uapi/.*>"
+  - Regex: "^<menix/.*>"
     Priority: 2
   - Regex: '^<.*\.h>'
     Priority: 3

@@ -7,7 +7,7 @@
 
 # Menix
 
-Menix is a lightweight and modular Unix-like kernel targeting modern 64-bit devices.
+Menix is a lightweight Unix-like microkernel targeting modern 64-bit devices.
 
 > [!IMPORTANT]
 > Please note that this project is a work in progress.
@@ -21,20 +21,6 @@ Menix is a lightweight and modular Unix-like kernel targeting modern 64-bit devi
 > **https://github.com/menix-os/bootstrap** instead.
 
 To build the kernel you need `meson` and either `gcc` or `clang`.
-You will also need a tool that can parse `Kconfig`s, for example
-[`kconfiglib`](https://github.com/ulfalizer/Kconfiglib).
-
-First, run the `Kconfig` parser to generate a config file.
-Make sure to provide the `ARCH` environment variable,
-which is the architecture you're compiling for (see `kernel/arch/`).
-
-For example with `kconfiglib`:
-```sh
-ARCH=x86_64 python3 -m alldefconfig
-```
-
-By default, the searched for file name is `.config`, but you can change that
-by adding `-Dconfig=<path>` when configuring.
 
 To configure, run:
 ```sh

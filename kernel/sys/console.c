@@ -1,9 +1,10 @@
-#include <menix/boot/cmdline.h>
-#include <menix/sys/console.h>
+#include <kernel/boot/cmdline.h>
+#include <kernel/sys/console.h>
 #include <string.h>
 
-extern struct console* __ld_bootcon_start[];
-extern struct console* __ld_bootcon_end[];
+extern struct console* const __ld_earlycon_start[];
+extern struct console* const __ld_earlycon_end[];
+
 struct console* bootcon = nullptr;
 
 void console_write(const char* buf, size_t len) {
@@ -20,8 +21,8 @@ static void bootcon_setup(const char* value) {
         return;
 
     // Find a suitable boot console.
-    struct console** cur = __ld_bootcon_start;
-    while (cur <= __ld_bootcon_end) {
+    struct console* const* cur = __ld_earlycon_start;
+    while (cur < __ld_earlycon_end) {
         if (!strncmp(value, (*cur)->name, strlen(value))) {
             bootcon = *cur;
             bootcon->init(bootcon);

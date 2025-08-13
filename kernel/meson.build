@@ -15,10 +15,19 @@ kernel_includes = [
 
 kernel_sources = []
 
-subdir('klibc')
 subdir('arch' / target_machine.cpu_family())
 subdir('boot')
 subdir('mem')
-subdir('proc')
+subdir('sched')
 subdir('sys')
 subdir('util')
+
+executable(
+    'menix',
+    include_directories: [common_includes, kernel_includes],
+    c_args: [common_c_args, kernel_c_args],
+    link_args: [common_link_args, kernel_link_args],
+    sources: kernel_sources,
+    install: true,
+    install_dir: get_option('datadir') / 'menix',
+)

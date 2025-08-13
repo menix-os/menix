@@ -1,5 +1,5 @@
-#ifndef _MENIX_X86_64_DEFS_H
-#define _MENIX_X86_64_DEFS_H
+#ifndef _KERNEL_X86_64_DEFS_H
+#define _KERNEL_X86_64_DEFS_H
 
 #define CPUID_1C_SSE3       (1 << 0)
 #define CPUID_1C_PCLMUL     (1 << 1)

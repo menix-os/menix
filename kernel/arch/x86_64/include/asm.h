@@ -1,5 +1,5 @@
-#ifndef _MENIX_X86_64_ASM_H
-#define _MENIX_X86_64_ASM_H
+#ifndef _KERNEL_X86_64_ASM_H
+#define _KERNEL_X86_64_ASM_H
 
 #include <stdint.h>
 

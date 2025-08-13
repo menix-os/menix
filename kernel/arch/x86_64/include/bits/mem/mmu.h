@@ -1,5 +1,5 @@
-#ifndef _MENIX_BITS_MEM_MMU_H
-#define _MENIX_BITS_MEM_MMU_H
+#ifndef _KERNEL_BITS_MEM_MMU_H
+#define _KERNEL_BITS_MEM_MMU_H
 
 #include <stdint.h>
 

@@ -1,5 +1,5 @@
-#ifndef _MENIX_BITS_SCHED_H
-#define _MENIX_BITS_SCHED_H
+#ifndef _KERNEL_BITS_SCHED_H
+#define _KERNEL_BITS_SCHED_H
 
 #include <stdint.h>
 

@@ -1,5 +1,5 @@
-#ifndef _MENIX_X86_64_TRAMPOLINE_H
-#define _MENIX_X86_64_TRAMPOLINE_H
+#ifndef _KERNEL_X86_64_SMP_H
+#define _KERNEL_X86_64_SMP_H
 
 #include <defs.h>
 
@@ -16,8 +16,8 @@
 
 #ifndef __ASSEMBLER__
 
-#include <menix/util/attributes.h>
-#include <menix/util/common.h>
+#include <kernel/util/attributes.h>
+#include <kernel/util/common.h>
 #include <gdt.h>
 #include <stdint.h>
 

@@ -47,16 +47,18 @@ SECTIONS
         __ld_rodata_end = .;
     } :rodata
 
+    /* Command line options */
     .cmdline : {
         __ld_cmdline_start = .;
         KEEP(*(.cmdline))
         __ld_cmdline_end = .;
     } :rodata
 
-    .bootcon : {
-        __ld_bootcon_start = .;
-        KEEP(*(.bootcon))
-        __ld_bootcon_end = .;
+    /* Early consoles */
+    .earlycon : {
+        __ld_earlycon_start = .;
+        KEEP(*(.earlycon))
+        __ld_earlycon_end = .;
     } :rodata
 
     . = ALIGN(CONSTANT(MAXPAGESIZE));
