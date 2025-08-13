@@ -1,5 +1,5 @@
-#ifndef _MENIX_POSIX_TYPES_H
-#define _MENIX_POSIX_TYPES_H
+#ifndef _SERVERS_POSIX_TYPES_H
+#define _SERVERS_POSIX_TYPES_H
 
 #include <stddef.h>
 #include <stdint.h>

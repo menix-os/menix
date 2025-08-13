@@ -1,5 +1,5 @@
-#ifndef _MENIX_POSIX_REBOOT_H
-#define _MENIX_POSIX_REBOOT_H
+#ifndef _SERVERS_POSIX_REBOOT_H
+#define _SERVERS_POSIX_REBOOT_H
 
 #define __RB_AUTOBOOT    0xdeadb007
 #define __RB_HALT_SYSTEM 0xdeaddead

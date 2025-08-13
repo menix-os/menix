@@ -1,5 +1,5 @@
-#ifndef _MENIX_POSIX_LIMITS_H
-#define _MENIX_POSIX_LIMITS_H
+#ifndef _SERVERS_POSIX_LIMITS_H
+#define _SERVERS_POSIX_LIMITS_H
 
 #define __PATH_MAX    4096
 #define __SYMLINK_MAX 4096

@@ -1,5 +1,5 @@
-#ifndef _MENIX_POSIX_MOUNT_H
-#define _MENIX_POSIX_MOUNT_H
+#ifndef _SERVERS_POSIX_MOUNT_H
+#define _SERVERS_POSIX_MOUNT_H
 
 #define __MS_RDONLY       1
 #define __MS_NOSUID       2

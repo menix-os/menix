@@ -8,6 +8,7 @@
 // A positive value indicates an error from a server.
 typedef int32_t menix_status_t;
 
+// Kernel errors.
 enum : menix_status_t {
     MENIX_OK = 0,
     // An internal error occured.
@@ -16,6 +17,8 @@ enum : menix_status_t {
     MENIX_ERR_UNSUPPORTED,
     // System does not have enough free memory for this operation.
     MENIX_ERR_NO_MEMORY,
+    // Process can not allocate any more handles.
+    MENIX_ERR_NO_HANDLES,
     // Syscall number is not a recognized syscall.
     MENIX_ERR_BAD_SYSCALL,
     // One or more of the provided arguments is not valid.

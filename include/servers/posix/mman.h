@@ -1,5 +1,5 @@
-#ifndef _MENIX_POSIX_MMAN_H
-#define _MENIX_POSIX_MMAN_H
+#ifndef _SERVERS_POSIX_MMAN_H
+#define _SERVERS_POSIX_MMAN_H
 
 #define __PROT_NONE  0x00
 #define __PROT_READ  0x01

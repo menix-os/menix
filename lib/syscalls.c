@@ -1,12 +1,7 @@
+#include <kernel/sys/syscalls.h>
 #include <menix/status.h>
-#include <menix/syscalls.h>
+#include <menix/system.h>
 #include <stddef.h>
-
-enum {
-#define SYSCALL(num, name) sc_##name = num,
-#include <kernel/sys/syscall_list.h>
-#undef SYSCALL
-};
 
 static menix_status_t do_syscall(size_t num, size_t a0, size_t a1, size_t a2, size_t a3, size_t a4, size_t a5) {
     size_t value;
@@ -57,11 +52,7 @@ static menix_status_t do_syscall(size_t num, size_t a0, size_t a1, size_t a2, si
     return value;
 }
 
-void menix_panic() {
-    do_syscall(sc_panic, 0, 0, 0, 0, 0, 0);
+void menix_panic(menix_status_t error) {
+    do_syscall(SYSCALL_PANIC, error, 0, 0, 0, 0, 0);
     __builtin_unreachable();
-}
-
-menix_status_t menix_action_await() {
-    return do_syscall(sc_action_await, 0, 0, 0, 0, 0, 0);
 }

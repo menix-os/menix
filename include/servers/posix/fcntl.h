@@ -1,7 +1,7 @@
-#ifndef _MENIX_POSIX_FCNTL_H
-#define _MENIX_POSIX_FCNTL_H
+#ifndef _SERVERS_POSIX_FCNTL_H
+#define _SERVERS_POSIX_FCNTL_H
 
-#include <menix/posix/types.h>
+#include <servers/posix/types.h>
 #include <stdint.h>
 
 #define __O_PATH    010000000

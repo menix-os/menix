@@ -1,5 +1,5 @@
-#ifndef _MENIX_POSIX_ERRNO_H
-#define _MENIX_POSIX_ERRNO_H
+#ifndef _SERVERS_POSIX_ERRNO_H
+#define _SERVERS_POSIX_ERRNO_H
 
 #define __EPERM           1
 #define __ENOENT          2

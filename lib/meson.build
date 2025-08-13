@@ -1,7 +1,8 @@
 libmenix = static_library(
     'menix',
     sources: [
-        'main.c',
+        'entry.c',
+        'syscalls.c',
     ],
     c_args: [common_c_args],
     link_args: [common_link_args],

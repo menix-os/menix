@@ -1,4 +1,0 @@
-#ifndef _PROTOS_POSIX_ACTIONS_H
-#define _PROTOS_POSIX_ACTIONS_H
-
-#endif

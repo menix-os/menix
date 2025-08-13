@@ -1,5 +1,5 @@
-#ifndef _MENIX_POSIX_UTSNAME_H
-#define _MENIX_POSIX_UTSNAME_H
+#ifndef _SERVERS_POSIX_UTSNAME_H
+#define _SERVERS_POSIX_UTSNAME_H
 
 struct __utsname {
     char sysname[65];

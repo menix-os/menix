@@ -1,6 +1,7 @@
-#include <menix/syscalls.h>
+#include <menix/status.h>
+#include <menix/system.h>
 
-void _start() {
-    menix_action_await();
-    menix_panic();
+int main() {
+    menix_log("Hello, server world!\n", 21);
+    menix_panic(MENIX_ERR_INTERNAL);
 }
