@@ -56,3 +56,7 @@ void menix_panic(menix_status_t error) {
     do_syscall(SYSCALL_PANIC, error, 0, 0, 0, 0, 0);
     __builtin_unreachable();
 }
+
+void menix_log(const char* message, size_t length) {
+    do_syscall(SYSCALL_LOG, (size_t)message, length, 0, 0, 0, 0);
+}
