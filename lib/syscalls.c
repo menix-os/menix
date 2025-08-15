@@ -3,60 +3,142 @@
 #include <menix/system.h>
 #include <stddef.h>
 
-static menix_status_t do_syscall(size_t num, size_t a0, size_t a1, size_t a2, size_t a3, size_t a4, size_t a5) {
-    size_t value;
-#if defined(__x86_64__)
-    register size_t r3 asm("r10") = a3;
-    register size_t r4 asm("r8") = a4;
-    register size_t r5 asm("r9") = a5;
-    asm volatile("syscall"
-                 : "=a"(value)
-                 : "a"(num), "D"(a0), "S"(a1), "d"(a2), "r"(r3), "r"(r4), "r"(r5)
-                 : "memory", "rcx", "r11");
+#ifdef __x86_64__
+#define ASM_REG_NUM "rax"
+#define ASM_REG_RET "rax"
+#define ASM_REG_A0  "rdi"
+#define ASM_REG_A1  "rsi"
+#define ASM_REG_A2  "rdx"
+#define ASM_REG_A3  "r9"
+#define ASM_REG_A4  "r8"
+#define ASM_REG_A5  "r10"
+#define ASM_SYSCALL "syscall"
+#define ASM_CLOBBER "rcx", "r11"
 #elif defined(__aarch64__)
-    register size_t rnum asm("x8") = num;
-    register size_t value asm("x0");
-    register size_t r0 asm("x0") = a0;
-    register size_t r1 asm("x1") = a1;
-    register size_t r2 asm("x2") = a2;
-    register size_t r3 asm("x3") = a3;
-    register size_t r4 asm("x4") = a4;
-    register size_t r5 asm("x5") = a5;
-    asm volatile("svc 0" : "=r"(value) : "r"(rnum), "r"(r0), "r"(r1), "r"(r2), "r"(r3), "r"(r4), "r"(r5) : "memory");
+#define ASM_REG_NUM "x8"
+#define ASM_REG_RET "x0"
+#define ASM_REG_A0  "x0"
+#define ASM_REG_A1  "x1"
+#define ASM_REG_A2  "x2"
+#define ASM_REG_A3  "x3"
+#define ASM_REG_A4  "x4"
+#define ASM_REG_A5  "x5"
+#define ASM_SYSCALL "svc 0"
+#define ASM_CLOBBER
 #elif defined(__riscv) && (__riscv_xlen == 64)
-    register size_t rnum asm("a7") = num;
-    register size_t value asm("a0");
-    register size_t r0 asm("a0") = a0;
-    register size_t r1 asm("a1") = a1;
-    register size_t r2 asm("a2") = a2;
-    register size_t r3 asm("a3") = a3;
-    register size_t r4 asm("a4") = a4;
-    register size_t r5 asm("a5") = a5;
-    asm volatile("ecall" : "=r"(value) : "r"(rnum), "r"(r0), "r"(r1), "r"(r2), "r"(r3), "r"(r4), "r"(r5) : "memory");
+#define ASM_REG_NUM "a7"
+#define ASM_REG_RET "a0"
+#define ASM_REG_A0  "a0"
+#define ASM_REG_A1  "a1"
+#define ASM_REG_A2  "a2"
+#define ASM_REG_A3  "a3"
+#define ASM_REG_A4  "a4"
+#define ASM_REG_A5  "a5"
+#define ASM_SYSCALL "ecall"
+#define ASM_CLOBBER
 #elif defined(__loongarch64)
-    register size_t rnum asm("a7") = num;
-    register size_t value asm("a0");
-    register size_t r0 asm("a0") = a0;
-    register size_t r1 asm("a1") = a1;
-    register size_t r2 asm("a2") = a2;
-    register size_t r3 asm("a3") = a3;
-    register size_t r4 asm("a4") = a4;
-    register size_t r5 asm("a5") = a5;
-    asm volatile("syscall 0"
-                 : "=r"(value)
-                 : "r"(rnum), "r"(r0), "r"(r1), "r"(r2), "r"(r3), "r"(r4), "r"(r5)
-                 : "memory");
+#define ASM_REG_NUM "a7"
+#define ASM_REG_RET "a0"
+#define ASM_REG_A0  "a0"
+#define ASM_REG_A1  "a1"
+#define ASM_REG_A2  "a2"
+#define ASM_REG_A3  "a3"
+#define ASM_REG_A4  "a4"
+#define ASM_REG_A5  "a5"
+#define ASM_SYSCALL "syscall 0"
+#define ASM_CLOBBER
 #else
 #error "Unsupported architecture!"
 #endif
+
+static menix_status_t do_syscall0(size_t num) {
+    register size_t rnum asm(ASM_REG_NUM) = num;
+    register size_t value asm(ASM_REG_RET);
+    asm volatile(ASM_SYSCALL : "=r"(value) : "r"(rnum) : "memory", ASM_CLOBBER);
+
+    return value;
+}
+
+static menix_status_t do_syscall1(size_t num, size_t a0) {
+    register size_t rnum asm(ASM_REG_NUM) = num;
+    register size_t value asm(ASM_REG_RET);
+    register size_t r0 asm(ASM_REG_A0) = a0;
+    asm volatile(ASM_SYSCALL : "=r"(value) : "r"(rnum), "r"(r0) : "memory", ASM_CLOBBER);
+
+    return value;
+}
+
+static menix_status_t do_syscall2(size_t num, size_t a0, size_t a1) {
+    register size_t rnum asm(ASM_REG_NUM) = num;
+    register size_t value asm(ASM_REG_RET);
+    register size_t r0 asm(ASM_REG_A0) = a0;
+    register size_t r1 asm(ASM_REG_A1) = a1;
+    asm volatile(ASM_SYSCALL : "=r"(value) : "r"(rnum), "r"(r0), "r"(r1) : "memory", ASM_CLOBBER);
+
+    return value;
+}
+
+static menix_status_t do_syscall3(size_t num, size_t a0, size_t a1, size_t a2) {
+    register size_t rnum asm(ASM_REG_NUM) = num;
+    register size_t value asm(ASM_REG_RET);
+    register size_t r0 asm(ASM_REG_A0) = a0;
+    register size_t r1 asm(ASM_REG_A1) = a1;
+    register size_t r2 asm(ASM_REG_A2) = a2;
+    asm volatile(ASM_SYSCALL : "=r"(value) : "r"(rnum), "r"(r0), "r"(r1), "r"(r2) : "memory", ASM_CLOBBER);
+
+    return value;
+}
+
+static menix_status_t do_syscall4(size_t num, size_t a0, size_t a1, size_t a2, size_t a3) {
+    register size_t rnum asm(ASM_REG_NUM) = num;
+    register size_t value asm(ASM_REG_RET);
+    register size_t r0 asm(ASM_REG_A0) = a0;
+    register size_t r1 asm(ASM_REG_A1) = a1;
+    register size_t r2 asm(ASM_REG_A2) = a2;
+    register size_t r3 asm(ASM_REG_A3) = a3;
+    asm volatile(ASM_SYSCALL : "=r"(value) : "r"(rnum), "r"(r0), "r"(r1), "r"(r2), "r"(r3) : "memory", ASM_CLOBBER);
+
+    return value;
+}
+
+static menix_status_t do_syscall5(size_t num, size_t a0, size_t a1, size_t a2, size_t a3, size_t a4) {
+    register size_t rnum asm(ASM_REG_NUM) = num;
+    register size_t value asm(ASM_REG_RET);
+    register size_t r0 asm(ASM_REG_A0) = a0;
+    register size_t r1 asm(ASM_REG_A1) = a1;
+    register size_t r2 asm(ASM_REG_A2) = a2;
+    register size_t r3 asm(ASM_REG_A3) = a3;
+    register size_t r4 asm(ASM_REG_A4) = a4;
+    asm volatile(ASM_SYSCALL
+                 : "=r"(value)
+                 : "r"(rnum), "r"(r0), "r"(r1), "r"(r2), "r"(r3), "r"(r4)
+                 : "memory", ASM_CLOBBER);
+
+    return value;
+}
+
+static menix_status_t do_syscall6(size_t num, size_t a0, size_t a1, size_t a2, size_t a3, size_t a4, size_t a5) {
+    register size_t rnum asm(ASM_REG_NUM) = num;
+    register size_t value asm(ASM_REG_RET);
+    register size_t r0 asm(ASM_REG_A0) = a0;
+    register size_t r1 asm(ASM_REG_A1) = a1;
+    register size_t r2 asm(ASM_REG_A2) = a2;
+    register size_t r3 asm(ASM_REG_A3) = a3;
+    register size_t r4 asm(ASM_REG_A4) = a4;
+    register size_t r5 asm(ASM_REG_A5) = a5;
+    asm volatile(ASM_SYSCALL
+                 : "=r"(value)
+                 : "r"(rnum), "r"(r0), "r"(r1), "r"(r2), "r"(r3), "r"(r4), "r"(r5)
+                 : "memory", ASM_CLOBBER);
+
     return value;
 }
 
 void menix_panic(menix_status_t error) {
-    do_syscall(SYSCALL_PANIC, error, 0, 0, 0, 0, 0);
+    do_syscall1(SYSCALL_PANIC, error);
     __builtin_unreachable();
 }
 
 void menix_log(const char* message, size_t length) {
-    do_syscall(SYSCALL_LOG, (size_t)message, length, 0, 0, 0, 0);
+    do_syscall2(SYSCALL_LOG, (size_t)message, length);
 }

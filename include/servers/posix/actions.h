@@ -1,4 +1,0 @@
-#ifndef _SERVERS_POSIX_ACTIONS_H
-#define _SERVERS_POSIX_ACTIONS_H
-
-#endif

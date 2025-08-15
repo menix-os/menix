@@ -1,5 +1,11 @@
 ---
 AlignAfterOpenBracket: BlockIndent
+BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+BreakAfterReturnType: Automatic
+PenaltyReturnTypeOnItsOwnLine: 1000
 AlignArrayOfStructures: None
 IndentWidth: 4
 InsertNewlineAtEOF: true
@@ -24,7 +30,6 @@ SpaceAfterCStyleCast: false
 AllowShortEnumsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortBlocksOnASingleLine: Empty
-AllowAllArgumentsOnNextLine: true
 BreakAfterAttributes: Always
 BreakConstructorInitializers: BeforeComma
 BreakBeforeBraces: Attach

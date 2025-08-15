@@ -5,15 +5,34 @@
 #include <menix/status.h>
 #include <stddef.h>
 
+enum {
+    MENIX_LINK_OPTION_NONE = 0,
+};
+
 #ifndef __KERNEL__
 
-// Creates a new bi-directional link. It can be used to share messages with another process.
-menix_status_t menix_link_create(menix_object_t* out_end0, menix_object_t* out_end1, size_t max_msg_size);
+// Creates a new link and returns two endpoint handles.
+menix_status_t menix_link_create(uint32_t options, menix_obj_t endpoints[2]);
 
-// Connects this client to the specified link. Returns two memory addresses for communicating with the other end.
-// `send` is the outgoing buffer, while `recv` is the incoming buffer.
-// Both buffers can only fit data with a length less or equal than the link's maximum data size.
-menix_status_t menix_link_connect(menix_object_t link, void** out_send, const void** out_recv);
+// Writes object handles and a message to a link endpoint.
+menix_status_t menix_link_write(
+    menix_obj_t endpoint,
+    const menix_obj_t* handles,
+    size_t num_handles,
+    const void* data,
+    size_t num_bytes
+);
+
+// Reads object handles and a message from a link endpoint.
+menix_status_t menix_link_read(
+    menix_obj_t endpoint,
+    menix_obj_t* handle_buffer,
+    size_t max_handles,
+    size_t* actual_handles,
+    void* data_buffer,
+    size_t max_data,
+    size_t* actual_data
+);
 
 #endif
 #endif

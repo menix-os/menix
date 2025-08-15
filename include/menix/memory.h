@@ -1,9 +1,10 @@
 #ifndef _MENIX_MEMORY_H
 #define _MENIX_MEMORY_H
 
+#include <menix/object.h>
 #include <menix/status.h>
-#include <stddef.h>
 
+// Virtual memory flags.
 enum menix_vm_flags {
     MENIX_VM_READ = 1 << 0,
     MENIX_VM_WRITE = 1 << 1,
@@ -22,8 +23,12 @@ enum menix_cache_type {
 
 #ifndef __KERNEL__
 
-// Allocates a generic, private and zero-initialized buffer on the heap.
-menix_status_t menix_memory_allocate(size_t bytes, void** out);
+// Creates a new virtual memory object.
+menix_status_t menix_vmobj_create(menix_obj_t* vmobj);
+
+menix_status_t menix_vmobj_read();
+
+menix_status_t menix_vmobj_write();
 
 #endif
 #endif

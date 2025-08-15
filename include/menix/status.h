@@ -29,8 +29,8 @@ enum : menix_status_t {
     MENIX_ERR_BAD_OBJECT,
     // Object handle is valid, but names an incorrect object type.
     MENIX_ERR_BAD_OBJECT_TYPE,
-    // Object has insufficient capabilites for this operation.
-    MENIX_ERR_BAD_CAPS,
+    // Object has insufficient permissions for this operation.
+    MENIX_ERR_BAD_PERMS,
     // Buffer is not large enough or doesn't point to a valid memory region.
     MENIX_ERR_BAD_BUFFER,
 };
