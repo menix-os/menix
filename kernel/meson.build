@@ -22,6 +22,8 @@ subdir('sched')
 subdir('sys')
 subdir('util')
 
+configure_file(configuration: common_cfg, output: 'config.h')
+
 executable(
     'menix',
     include_directories: [common_includes, kernel_includes],

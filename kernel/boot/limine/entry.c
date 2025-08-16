@@ -1,11 +1,9 @@
 #include <kernel/boot/cmdline.h>
-#include <kernel/boot/file.h>
 #include <kernel/boot/init.h>
-#include <kernel/boot/main.h>
-#include <kernel/mem/pm.h>
+#include <kernel/mem/phys.h>
 #include <kernel/mem/types.h>
-#include <kernel/sys/kprintf.h>
-#include <kernel/util/assert.h>
+#include <kernel/sys/assert.h>
+#include <kernel/sys/print.h>
 #include <kernel/util/common.h>
 #include "limine.h"
 
@@ -30,58 +28,55 @@ LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);
 LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);
 LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);
 
+[[__initdata]]
+static struct phys_mem mem[128];
+[[__initdata]]
+static struct boot_file files[8];
+
 [[__init]]
 void kernel_start() {
-    ASSERT(executable_file_request.response, "Unable to get kernel file info!");
-    boot_cmdline(executable_file_request.response->executable_file->string);
+    kernel_early_init();
 
-    ASSERT(hhdm_request.response, "Unable to get HHDM response!");
-    ASSERT(executable_address_request.response, "Unable to get kernel address info!");
+    struct boot_info info;
 
-    ASSERT(memmap_request.response, "Unable to get memory map!");
-    struct limine_memmap_response* const mm_res = memmap_request.response;
+    struct limine_memmap_response* mm_res = memmap_request.response;
+    struct limine_module_response* module_res = module_request.response;
+    struct limine_executable_address_response* exec_res = executable_address_request.response;
+    struct limine_executable_file_response* exec_file_res = executable_file_request.response;
 
-    // We create a VLA here because we have no other form of memory management at this point.
-    // Assume that Limine provides sane values that don't overflow the stack.
-    struct phys_mem mem_map[mm_res->entry_count];
+    info.cmdline = exec_file_res->executable_file->string;
 
-    for (size_t i = 0; i < ARRAY_SIZE(mem_map); i++) {
-        mem_map[i].address = mm_res->entries[i]->base;
-        mem_map[i].length = mm_res->entries[i]->length;
+    info.num_mem_maps = MIN(ARRAY_SIZE(mem), mm_res->entry_count);
+    for (size_t i = 0; i < info.num_mem_maps; i++) {
+        struct phys_mem mem;
+        mem.address = mm_res->entries[i]->base;
+        mem.length = mm_res->entries[i]->length;
 
         switch (mm_res->entries[i]->type) {
         case LIMINE_MEMMAP_USABLE:
-            mem_map[i].usage = PHYS_USABLE;
+            mem.usage = PHYS_USABLE;
             break;
         case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
         case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
-            mem_map[i].usage = PHYS_RECLAIMABLE;
+            mem.usage = PHYS_RECLAIMABLE;
             break;
         default:
-            mem_map[i].usage = PHYS_RESERVED;
+            mem.usage = PHYS_RESERVED;
             break;
         }
     }
 
-    if (module_request.response == nullptr)
-        pr_err("limine: Unable to get modules, or none were provided!\n");
-    else {
-        const struct limine_module_response* module_res = module_request.response;
-        pr_log("limine: Got %zu module(s)\n", module_res->module_count);
-        boot_files_count = MIN(module_res->module_count, ARRAY_SIZE(boot_files));
-        for (size_t i = 0; i < boot_files_count; i++) {
-            boot_files[i].data = module_res->modules[i]->address;
-            boot_files[i].length = module_res->modules[i]->size;
-            boot_files[i].path = module_res->modules[i]->path;
-        }
+    info.num_files = MIN(ARRAY_SIZE(files), module_res->module_count);
+    for (size_t i = 0; i < info.num_files; i++) {
+        files[i].data = module_res->modules[i]->address;
+        files[i].length = module_res->modules[i]->size;
+        files[i].path = module_res->modules[i]->path;
     }
 
-    [[__unused]]
-    auto kernel_phys_base = (phys_t)executable_address_request.response->physical_base;
-    [[__unused]]
-    auto kernel_virt_base = (virt_t)executable_address_request.response->virtual_base;
-    [[__unused]]
-    auto hhdm_base = (virt_t)hhdm_request.response->offset;
+    info.mem_map = mem;
+    info.phys_base = (phys_t)exec_res->physical_base;
+    info.virt_base = (virt_t)exec_res->virtual_base;
+    info.hhdm_base = (virt_t)hhdm_request.response->offset;
 
-    kernel_main();
+    kernel_init(&info);
 }

@@ -10,6 +10,8 @@ void* memcpy(void* restrict dest, const void* restrict src, size_t n);
 void* memmove(void* dstptr, const void* srcptr, size_t size);
 void* memset(void* dest, int value, size_t n);
 char* strncpy(char* restrict dst, const char* restrict src, size_t len);
+int strcmp(const char* str1, const char* str2);
 int strncmp(const char* str1, const char* str2, size_t len);
+char* strchr(const char* c, int s);
 
 #endif

@@ -1,6 +1,7 @@
-#include <kernel/sys/syscalls.h>
+#ifndef _LIB_SYSCALLS_H
+#define _LIB_SYSCALLS_H
+
 #include <menix/status.h>
-#include <menix/system.h>
 #include <stddef.h>
 
 #ifdef __x86_64__
@@ -51,7 +52,7 @@
 #error "Unsupported architecture!"
 #endif
 
-static menix_status_t do_syscall0(size_t num) {
+static inline menix_status_t do_syscall0(size_t num) {
     register size_t rnum asm(ASM_REG_NUM) = num;
     register size_t value asm(ASM_REG_RET);
     asm volatile(ASM_SYSCALL : "=r"(value) : "r"(rnum) : "memory", ASM_CLOBBER);
@@ -59,7 +60,7 @@ static menix_status_t do_syscall0(size_t num) {
     return value;
 }
 
-static menix_status_t do_syscall1(size_t num, size_t a0) {
+static inline menix_status_t do_syscall1(size_t num, size_t a0) {
     register size_t rnum asm(ASM_REG_NUM) = num;
     register size_t value asm(ASM_REG_RET);
     register size_t r0 asm(ASM_REG_A0) = a0;
@@ -68,7 +69,7 @@ static menix_status_t do_syscall1(size_t num, size_t a0) {
     return value;
 }
 
-static menix_status_t do_syscall2(size_t num, size_t a0, size_t a1) {
+static inline menix_status_t do_syscall2(size_t num, size_t a0, size_t a1) {
     register size_t rnum asm(ASM_REG_NUM) = num;
     register size_t value asm(ASM_REG_RET);
     register size_t r0 asm(ASM_REG_A0) = a0;
@@ -78,7 +79,7 @@ static menix_status_t do_syscall2(size_t num, size_t a0, size_t a1) {
     return value;
 }
 
-static menix_status_t do_syscall3(size_t num, size_t a0, size_t a1, size_t a2) {
+static inline menix_status_t do_syscall3(size_t num, size_t a0, size_t a1, size_t a2) {
     register size_t rnum asm(ASM_REG_NUM) = num;
     register size_t value asm(ASM_REG_RET);
     register size_t r0 asm(ASM_REG_A0) = a0;
@@ -89,7 +90,7 @@ static menix_status_t do_syscall3(size_t num, size_t a0, size_t a1, size_t a2) {
     return value;
 }
 
-static menix_status_t do_syscall4(size_t num, size_t a0, size_t a1, size_t a2, size_t a3) {
+static inline menix_status_t do_syscall4(size_t num, size_t a0, size_t a1, size_t a2, size_t a3) {
     register size_t rnum asm(ASM_REG_NUM) = num;
     register size_t value asm(ASM_REG_RET);
     register size_t r0 asm(ASM_REG_A0) = a0;
@@ -101,7 +102,7 @@ static menix_status_t do_syscall4(size_t num, size_t a0, size_t a1, size_t a2, s
     return value;
 }
 
-static menix_status_t do_syscall5(size_t num, size_t a0, size_t a1, size_t a2, size_t a3, size_t a4) {
+static inline menix_status_t do_syscall5(size_t num, size_t a0, size_t a1, size_t a2, size_t a3, size_t a4) {
     register size_t rnum asm(ASM_REG_NUM) = num;
     register size_t value asm(ASM_REG_RET);
     register size_t r0 asm(ASM_REG_A0) = a0;
@@ -117,7 +118,7 @@ static menix_status_t do_syscall5(size_t num, size_t a0, size_t a1, size_t a2, s
     return value;
 }
 
-static menix_status_t do_syscall6(size_t num, size_t a0, size_t a1, size_t a2, size_t a3, size_t a4, size_t a5) {
+static inline menix_status_t do_syscall6(size_t num, size_t a0, size_t a1, size_t a2, size_t a3, size_t a4, size_t a5) {
     register size_t rnum asm(ASM_REG_NUM) = num;
     register size_t value asm(ASM_REG_RET);
     register size_t r0 asm(ASM_REG_A0) = a0;
@@ -134,11 +135,4 @@ static menix_status_t do_syscall6(size_t num, size_t a0, size_t a1, size_t a2, s
     return value;
 }
 
-void menix_panic(menix_status_t error) {
-    do_syscall1(SYSCALL_PANIC, error);
-    __builtin_unreachable();
-}
-
-void menix_log(const char* message, size_t length) {
-    do_syscall2(SYSCALL_LOG, (size_t)message, length);
-}
+#endif

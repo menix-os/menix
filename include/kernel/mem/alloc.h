@@ -1,7 +1,6 @@
-#ifndef _KERNEL_MEM_ALLOC_H
-#define _KERNEL_MEM_ALLOC_H
+#ifndef _KERNEL_ALLOC_H
+#define _KERNEL_ALLOC_H
 
-#include <kernel/mem/types.h>
 #include <stddef.h>
 
 typedef enum kmalloc_flags {
@@ -13,8 +12,7 @@ typedef enum kmalloc_flags {
 
 // Allocates a region of memory which can be smaller than the page size.
 // Returns `nullptr` if the allocator cannot provide an allocation for the
-// given `length` + `flags` combination.
-// Always returns `nullptr` if `length` is 0.
+// given `length` + `flags` combination. Always returns `nullptr` if `length` is 0.
 void* kmalloc(size_t length, kmf_t flags, const char* name);
 
 // Frees an allocation created by `kmalloc`.

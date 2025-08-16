@@ -1,5 +1,5 @@
-#ifndef _KERNEL_SYSCALLS_H
-#define _KERNEL_SYSCALLS_H
+#ifndef _KERNEL_SYS_SYSCALLS_H
+#define _KERNEL_SYS_SYSCALLS_H
 
 // TODO
 enum {

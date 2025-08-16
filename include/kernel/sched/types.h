@@ -1,12 +1,12 @@
-#ifndef _KERNEL_PROC_SCHED_H
-#define _KERNEL_PROC_SCHED_H
+#ifndef _KERNEL_SCHED_TYPES_H
+#define _KERNEL_SCHED_TYPES_H
 
 #include <kernel/mem/types.h>
-#include <bits/sched.h>
+#include <bits/sched/types.h>
 #include <stddef.h>
+#include <stdint.h>
 
 typedef size_t tid_t;
-typedef size_t pid_t;
 
 enum task_state {
     TASK_STATE_RUNNING,
@@ -23,12 +23,6 @@ struct task {
     virt_t user_stack;
     size_t time_slice;
     int8_t priority;
-};
-
-struct process {
-    pid_t id;
-    const char* name;
-    struct process* parent;
 };
 
 struct sched_percpu {

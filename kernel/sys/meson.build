@@ -1,7 +1,7 @@
 kernel_sources += files(
     'console.c',
     'klibc.c',
-    'kprintf.c',
+    'log.c',
     'openfw.c',
     'panic.c',
 )

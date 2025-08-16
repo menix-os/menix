@@ -1,6 +1,5 @@
 #include <kernel/boot/cmdline.h>
 #include <kernel/boot/init.h>
-#include <kernel/sys/kprintf.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -9,18 +8,60 @@ extern struct cmdline_option __ld_cmdline_start[];
 extern struct cmdline_option __ld_cmdline_end[];
 
 [[__init]]
-void boot_cmdline(char* cmdline) {
+void cmdline_parse(char* cmdline) {
     struct cmdline_option* opt = __ld_cmdline_start;
     const size_t len = strlen(cmdline);
-    const char* cmd = cmdline;
+    size_t idx = 0;
 
-    while (cmd < cmdline + len) {
-        // TODO
+    while (1) {
+        char* name = nullptr;
+        char* value = nullptr;
+
+        // Skip all leading spaces.
+        while (idx < len && cmdline[idx] == ' ')
+            idx++;
+        if (idx >= len)
+            break;
+        size_t name_idx = idx;
+        name = cmdline + name_idx;
+
+        // Find the next equal sign or space.
+        while (idx < len && cmdline[idx] != '=' && cmdline[idx] != ' ')
+            idx++;
+        if (idx > len)
+            break;
+
+        // Check if the option has a value (=foo).
+        char seperator = cmdline[idx];
+        cmdline[idx++] = 0;
+        if (seperator == '=') {
+            // Check if we need to escape the value.
+            char check;
+            if (cmdline[idx] == '"') {
+                check = '"';
+                cmdline[idx++] = 0;
+            } else {
+                check = ' ';
+            }
+
+            value = cmdline + idx;
+
+            // Skip the value.
+            while (idx < len && cmdline[idx] != check)
+                idx++;
+            if (idx > len)
+                break;
+            cmdline[idx++] = 0;
+        }
+
+        // Find the corresponding option.
+        while (opt < __ld_cmdline_end) {
+            if (!strcmp(opt->name, name))
+                opt->func(value);
+            opt++;
+        }
+
+        if (idx >= len)
+            break;
     }
 }
-
-static void cmd_hello(const char* value) {
-    pr_log("Hello %s world!\n", value);
-}
-
-CMDLINE_OPTION("hello", cmd_hello);

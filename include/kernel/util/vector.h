@@ -60,7 +60,9 @@
             break; \
         /* Move all data back by one entry. */ \
         memmove( \
-            __vec->items + (idx), __vec->items + (idx) + 1, sizeof(typeof(*(__vec->items))) * (__vec->length - (idx)) \
+            __vec->items + (idx), \
+            __vec->items + (idx) + 1, \
+            sizeof(typeof(*(__vec->items))) * (__vec->length - (idx)) \
         ); \
         __vec->length--; \
     } while (0)

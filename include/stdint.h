@@ -16,4 +16,7 @@ typedef __UINT64_TYPE__ uint64_t;
 typedef __INTPTR_TYPE__ intptr_t;
 typedef __UINTPTR_TYPE__ uintptr_t;
 
+#define INT32_MAX  __INT32_MAX__
+#define UINT32_MAX __UINT32_MAX__
+
 #endif

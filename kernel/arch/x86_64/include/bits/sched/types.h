@@ -1,5 +1,5 @@
-#ifndef _KERNEL_BITS_SCHED_H
-#define _KERNEL_BITS_SCHED_H
+#ifndef _KERNEL_BITS_SCHED_TYPES_H
+#define _KERNEL_BITS_SCHED_TYPES_H
 
 #include <stdint.h>
 

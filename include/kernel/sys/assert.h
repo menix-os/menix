@@ -10,7 +10,11 @@
             panic( \
                 "Environment is unsound! Assertion \"%s\" failed!\n" \
                 "In function \"%s\" (%s:%u):\n" msg "\n", \
-                #expr, __FUNCTION__, __FILE__, __LINE__, ##__VA_ARGS__ \
+                #expr, \
+                __FUNCTION__, \
+                __FILE__, \
+                __LINE__, \
+                ##__VA_ARGS__ \
             ); \
         } \
     } while (0)

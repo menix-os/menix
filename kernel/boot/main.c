@@ -1,17 +1,23 @@
 #include <kernel/boot/cmdline.h>
-#include <kernel/boot/file.h>
 #include <kernel/boot/init.h>
-#include <kernel/boot/main.h>
 #include <kernel/sys/console.h>
-#include <stddef.h>
+#include <kernel/sys/print.h>
+#include <config.h>
 
-[[__initdata]]
-struct boot_file boot_files[32] = {};
-[[__initdata]]
-size_t boot_files_count = 0;
+const char menix_banner[] = "Menix " MENIX_VERSION " (" MENIX_COMPILER_ID ", " MENIX_LINKER_ID ")";
+
+void kernel_early_init() {}
 
 [[noreturn]]
-void kernel_main() {
-    console_write("Hello world!", 12);
+void kernel_init(struct boot_info* info) {
+    cmdline_parse(info->cmdline);
+    earlycon_init();
+    kprintf("%s\n", menix_banner);
+
+    while (1) {}
+}
+
+[[noreturn]]
+void kernel_main(size_t, size_t) {
     while (1) {}
 }

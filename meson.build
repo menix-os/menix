@@ -34,6 +34,12 @@ common_link_args = [
     '-Wl,--build-id=none',
 ]
 common_includes = include_directories('include')
+common_cfg = configuration_data()
+
+common_cfg.set_quoted('MENIX_VERSION', meson.project_version())
+c_compiler = meson.get_compiler('c')
+common_cfg.set_quoted('MENIX_COMPILER_ID', c_compiler.get_id() + ' ' + c_compiler.version())
+common_cfg.set_quoted('MENIX_LINKER_ID', c_compiler.get_linker_id())
 
 subdir('kernel')
 subdir('lib')

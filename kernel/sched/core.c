@@ -1,1 +1,1 @@
-#include <kernel/proc/sched.h>
+#include <kernel/sched/types.h>

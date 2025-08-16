@@ -6,7 +6,7 @@
 #include <stddef.h>
 
 // Defines a new early console which can be used to log early boot messages.
-// These consoles don't need to be added explicitly.
+// An early console must not make any heap allocations.
 #define DEFINE_EARLYCON(con) \
     [[__section(".earlycon")]] \
     static struct console* UNIQUE_IDENT(__earlycon_) = &(con)
@@ -23,8 +23,11 @@ struct console {
     struct console* next;
 };
 
+void earlycon_init();
+
 void console_add(struct console* con);
 void console_remove(struct console* con);
+
 void console_write(const char* buf, size_t len);
 
 #endif

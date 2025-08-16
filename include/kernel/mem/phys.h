@@ -1,7 +1,7 @@
-#ifndef _KERNEL_MEM_PM_H
-#define _KERNEL_MEM_PM_H
+#ifndef _KERNEL_MEM_PHYS_H
+#define _KERNEL_MEM_PHYS_H
 
-#include <kernel/mem/types.h>
+#include <bits/mem/types.h>
 #include <stddef.h>
 
 enum phys_mem_usage {
