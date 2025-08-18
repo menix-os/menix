@@ -3,7 +3,7 @@
 
 #include <kernel/util/attributes.h>
 #include <stdint.h>
-#include <tss.h>
+#include <x86_64/tss.h>
 
 struct gdt {
     uint64_t null;

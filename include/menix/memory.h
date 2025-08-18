@@ -1,7 +1,7 @@
 #ifndef _MENIX_MEMORY_H
 #define _MENIX_MEMORY_H
 
-#include <menix/object.h>
+#include <menix/handle.h>
 #include <menix/status.h>
 
 // Virtual memory flags.
@@ -21,14 +21,4 @@ enum menix_cache_type {
     MENIX_CACHE_MMIO,
 };
 
-#ifndef __KERNEL__
-
-// Creates a new virtual memory object.
-menix_status_t menix_vmobj_create(menix_obj_t* vmobj);
-
-menix_status_t menix_vmobj_read();
-
-menix_status_t menix_vmobj_write();
-
-#endif
 #endif

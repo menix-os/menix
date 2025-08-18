@@ -4,4 +4,5 @@ kernel_sources += files(
     'log.c',
     'openfw.c',
     'panic.c',
+    'percpu.c',
 )

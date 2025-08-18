@@ -14,7 +14,7 @@
 struct cmdline_option {
     // The name of this option.
     const char* name;
-    // Gets run if this option is present on the command line.
+    // Gets called if this option is present on the command line.
     // If an option is specified as `name=value`, then the `value` is passed as well.
     // Otherwise, it's NULL.
     void (*func)(const char* value);

@@ -1,4 +1,4 @@
-#include <gdt.h>
+#include <x86_64/gdt.h>
 
 struct gdt main_gdt = {
     .null = 0,

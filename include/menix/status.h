@@ -5,25 +5,25 @@
 
 // A status value of 0 means everything is okay.
 // A negative value indicates an error from the kernel.
-// A positive value indicates an error from a server.
+// Positive values are available to user processes.
 typedef int32_t menix_status_t;
 
-// Kernel errors.
-enum : menix_status_t {
+// Status values that may be returned by the kernel.
+enum {
     MENIX_OK = 0,
     // An internal error occured.
     MENIX_ERR_INTERNAL,
+    // Syscall number is not a recognized syscall.
+    MENIX_ERR_BAD_SYSCALL,
     // This operation is not supported.
     MENIX_ERR_UNSUPPORTED,
     // System does not have enough free memory for this operation.
     MENIX_ERR_NO_MEMORY,
-    // Process can not allocate any more handles.
+    // Process can not own any more handles.
     MENIX_ERR_NO_HANDLES,
-    // Syscall number is not a recognized syscall.
-    MENIX_ERR_BAD_SYSCALL,
     // One or more of the provided arguments is not valid.
     MENIX_ERR_BAD_ARG,
-    // Argument is out of range for valid values.
+    // Argument is outside of the range for valid values.
     MENIX_ERR_BAD_RANGE,
     // Object handle does not name a valid object.
     MENIX_ERR_BAD_OBJECT,

@@ -1,4 +1,4 @@
-#include <smp.h>
+#include <x86_64/smp.h>
 
 .intel_syntax noprefix
 

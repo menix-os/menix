@@ -20,7 +20,8 @@ Menix is a lightweight Unix-like microkernel targeting modern 64-bit devices.
 > If you want to get a bootable image, you might want to check out
 > **https://github.com/menix-os/bootstrap** instead.
 
-To build the kernel you need `meson` and either `gcc` or `clang`.
+To build the kernel you need `meson` and either a `gcc` or `clang`
+cross-compiler which understands the `menix` OS.
 
 To configure, run:
 ```sh

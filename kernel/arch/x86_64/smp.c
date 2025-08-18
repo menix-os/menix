@@ -1,6 +1,6 @@
 #include <kernel/mem/types.h>
 #include <kernel/util/attributes.h>
-#include <smp.h>
+#include <x86_64/smp.h>
 
 extern uint8_t smp_trampoline_start[];
 extern uint8_t smp_trampoline_end[];

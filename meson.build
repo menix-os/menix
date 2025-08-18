@@ -17,22 +17,17 @@ if get_option('headers_only') == true
 endif
 
 common_c_args = [
-    '-ffreestanding',
-    '-fno-stack-protector',
-    '-fno-omit-frame-pointer',
     '-funsigned-char',
-    '-nostdinc',
     '-Wall',
     '-Werror',
     '-Wno-unused',
 ]
 common_link_args = [
-    '-nostdlib',
     '-znoexecstack',
-    '-Wl,-nostdlib',
     '-Wl,--gc-sections',
     '-Wl,--build-id=none',
 ]
+
 common_includes = include_directories('include')
 common_cfg = configuration_data()
 
@@ -42,5 +37,4 @@ common_cfg.set_quoted('MENIX_COMPILER_ID', c_compiler.get_id() + ' ' + c_compile
 common_cfg.set_quoted('MENIX_LINKER_ID', c_compiler.get_linker_id())
 
 subdir('kernel')
-subdir('lib')
 subdir('servers')

@@ -1,4 +1,6 @@
+#include <kernel/arch/sys.h>
 #include <kernel/sys/console.h>
+#include <kernel/sys/panic.h>
 #include <kernel/sys/print.h>
 #include <stdarg.h>
 #include <stddef.h>

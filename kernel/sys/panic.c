@@ -1,6 +1,7 @@
-#include <kernel/sys/panic.h>
+#include <kernel/arch/sys.h>
 
-void panic(const char* msg, ...) {
-    while (1)
-        ;
+[[noreturn]]
+void panic() {
+    // TODO
+    arch_panic();
 }

@@ -92,8 +92,7 @@ SECTIONS
     /* Per-CPU data block. MUST always come last. */
     .percpu ALIGN(CONSTANT(MAXPAGESIZE)) : {
         __ld_percpu_start = .;
-        *(.percpu.init)
-        *(.percpu)
+        KEEP(*(.percpu))
         . = ALIGN(CONSTANT(MAXPAGESIZE));
         __ld_percpu_end = .;
     } :percpu

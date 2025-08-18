@@ -1,7 +1,7 @@
 #ifndef _KERNEL_X86_64_SMP_H
 #define _KERNEL_X86_64_SMP_H
 
-#include <defs.h>
+#include <x86_64/defs.h>
 
 #define SMP_GDTR_OFFSET       80
 #define SMP_FARJMP_OFFSET     90
@@ -18,8 +18,8 @@
 
 #include <kernel/util/attributes.h>
 #include <kernel/util/common.h>
-#include <gdt.h>
 #include <stdint.h>
+#include <x86_64/gdt.h>
 
 struct [[__packed]] smp_info {
     struct gdt gdt;

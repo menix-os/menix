@@ -8,7 +8,7 @@
 // Defines a new early console which can be used to log early boot messages.
 // An early console must not make any heap allocations.
 #define DEFINE_EARLYCON(con) \
-    [[__section(".earlycon")]] \
+    [[__used, __section(".earlycon")]] \
     static struct console* UNIQUE_IDENT(__earlycon_) = &(con)
 
 struct console {

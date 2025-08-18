@@ -2,12 +2,13 @@
 #define _KERNEL_UTIL_ASSERT_H
 
 #include <kernel/sys/panic.h>
+#include <kernel/sys/print.h>
 #include <kernel/util/attributes.h>
 
 #define ASSERT(expr, msg, ...) \
-    do { \
+    ({ \
         if (__unlikely(!(expr))) { \
-            panic( \
+            kprintf( \
                 "Environment is unsound! Assertion \"%s\" failed!\n" \
                 "In function \"%s\" (%s:%u):\n" msg "\n", \
                 #expr, \
@@ -16,7 +17,8 @@
                 __LINE__, \
                 ##__VA_ARGS__ \
             ); \
+            panic(); \
         } \
-    } while (0)
+    })
 
 #endif

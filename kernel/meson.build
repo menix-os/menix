@@ -1,14 +1,21 @@
 kernel_c_args = [
+    '-ffreestanding',
+    '-fno-stack-protector',
+    '-fno-omit-frame-pointer',
+    '-nostdinc',
     '-D__KERNEL__=1',
 ]
 
 kernel_link_args = [
+    '-nostdlib',
+    '-Wl,-nostdlib',
     '-static',
     '-T' + meson.current_source_dir() / 'kernel.ld',
 ]
 
 kernel_includes = [
     include_directories(
+        'include',
         'arch' / target_machine.cpu_family() / 'include',
     ),
 ]

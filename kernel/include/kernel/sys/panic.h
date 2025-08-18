@@ -4,6 +4,6 @@
 #include <kernel/util/attributes.h>
 
 [[noreturn]]
-void panic(const char* msg, ...);
+void panic();
 
 #endif
