@@ -1,7 +1,10 @@
 #ifndef _MENIX_STATUS_H
 #define _MENIX_STATUS_H
 
+#include <menix/compiler.h>
 #include <stdint.h>
+
+__MENIX_CDECL_START
 
 // A status value of 0 means everything is okay.
 // A negative value indicates an error from the kernel.
@@ -34,5 +37,7 @@ enum {
     // Buffer is not large enough or doesn't point to a valid memory region.
     MENIX_ERR_BAD_BUFFER,
 };
+
+__MENIX_CDECL_END
 
 #endif

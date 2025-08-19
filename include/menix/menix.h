@@ -1,12 +1,18 @@
 #ifndef _MENIX_MENIX_H
 #define _MENIX_MENIX_H
 
-#include <menix/handle.h>
-#include <menix/ipc.h>
+#include <menix/archctl.h>
+#include <menix/compiler.h>
+#include <menix/rights.h>
+#include <menix/status.h>
 #include <menix/syscall_numbers.h>
 #include <menix/syscall_stubs.h>
+#include <menix/types.h>
 #include <stddef.h>
 
+__MENIX_CDECL_START
+
+// Panics and returns an error status to the parent process.
 [[noreturn]]
 static inline void menix_panic(menix_status_t status) {
     menix_syscall1(MENIX_SYSCALL_PANIC, (menix_arg_t)status);
@@ -15,6 +21,11 @@ static inline void menix_panic(menix_status_t status) {
 
 static inline void menix_log(const char* message, size_t length) {
     menix_syscall2(MENIX_SYSCALL_LOG, (menix_arg_t)message, (size_t)length);
+}
+
+// Performs an architecture-dependent operation identified by `op`.
+static inline menix_status_t menix_archctl(menix_archctl_t op, size_t value) {
+    return menix_syscall2(MENIX_SYSCALL_ARCHCTL, (menix_arg_t)op, (menix_arg_t)value);
 }
 
 // Checks an object handle for validity.
@@ -30,7 +41,11 @@ static inline menix_status_t menix_handle_drop(menix_handle_t handle) {
 }
 
 // Clones an object handle.
-static inline menix_status_t menix_handle_clone(menix_handle_t object, menix_handle_t* cloned) {
+static inline menix_status_t menix_handle_clone(
+    menix_handle_t object,
+    menix_rights_t cloned_rights,
+    menix_handle_t* cloned
+) {
     return menix_syscall2(MENIX_SYSCALL_HANDLE_CLONE, (menix_arg_t)object, (menix_arg_t)cloned);
 }
 
@@ -70,5 +85,15 @@ static inline menix_status_t menix_port_connect(
         (menix_arg_t)num_bytes
     );
 }
+
+static inline menix_status_t menix_port_write(menix_handle_t port) {
+    return menix_syscall1(MENIX_SYSCALL_PORT_WRITE, (menix_arg_t)port);
+}
+
+static inline menix_status_t menix_port_read(menix_handle_t port) {
+    return menix_syscall1(MENIX_SYSCALL_PORT_READ, (menix_arg_t)port);
+}
+
+__MENIX_CDECL_END
 
 #endif
