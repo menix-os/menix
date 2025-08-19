@@ -1,8 +1,8 @@
 #ifndef _KERNEL_SCHED_H
 #define _KERNEL_SCHED_H
 
+#include <kernel/arch/sched.h>
 #include <kernel/mem.h>
-#include <bits/sched.h>
 #include <stddef.h>
 #include <stdint.h>
 
