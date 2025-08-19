@@ -11,8 +11,11 @@ enum pte_flags {
 };
 
 enum cache_mode {
-    CACHE_NONE = 0,
-    CACH
+    CACHE_NONE,
+    CACHE_WRITE_COMBINE,
+    CACHE_WRITE_THROUGH,
+    CACHE_WRITE_BACK,
+    CACHE_MMIO,
 };
 
 struct page_table {
