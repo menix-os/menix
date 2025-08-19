@@ -1,5 +1,5 @@
 #include <kernel/sys/percpu.h>
-#include <kernel/util/attributes.h>
+#include <kernel/util/compiler.h>
 
 [[__used, __section(".percpu")]]
 struct percpu percpu_bsp = {

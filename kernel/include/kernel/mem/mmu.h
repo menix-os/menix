@@ -2,7 +2,7 @@
 #define _KERNEL_MEM_MMU_H
 
 #include <kernel/mem/types.h>
-#include <kernel/util/attributes.h>
+#include <kernel/util/compiler.h>
 #include <bits/mem/mmu.h>
 
 // Gets the physical address from the PTE.

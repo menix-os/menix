@@ -1,5 +1,5 @@
-#include <kernel/util/attributes.h>
 #include <kernel/util/common.h>
+#include <kernel/util/compiler.h>
 #include <stddef.h>
 #include <stdint.h>
 

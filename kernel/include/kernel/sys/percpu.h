@@ -2,7 +2,7 @@
 #define _KERNEL_SYS_PERCPU_H
 
 #include <kernel/mem/types.h>
-#include <kernel/util/attributes.h>
+#include <kernel/util/compiler.h>
 #include <bits/sys/percpu.h>
 #include <stddef.h>
 

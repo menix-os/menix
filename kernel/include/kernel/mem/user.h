@@ -1,7 +1,7 @@
 #ifndef _KERNEL_MEM_USER_H
 #define _KERNEL_MEM_USER_H
 
-#include <kernel/util/attributes.h>
+#include <kernel/util/compiler.h>
 #include <stddef.h>
 #include <stdint.h>
 

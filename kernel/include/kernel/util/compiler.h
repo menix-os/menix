@@ -1,5 +1,9 @@
-#ifndef _KERNEL_UTIL_ATTRIBUTES_H
-#define _KERNEL_UTIL_ATTRIBUTES_H
+#ifndef _KERNEL_UTIL_COMPILER_H
+#define _KERNEL_UTIL_COMPILER_H
+
+#if !defined(__GNUC__) && !defined(__clang__)
+#error "These attributes are only supported by GCC or Clang"
+#endif
 
 // Hints
 #define __cold              gnu::cold
@@ -9,6 +13,7 @@
 #define __format(like, ...) gnu::format(like, __VA_ARGS__)
 #define __likely(x)         __builtin_expect(!!(x), 1)
 #define __unlikely(x)       __builtin_expect(!!(x), 0)
+#define __unreachable       __builtin_unreachable
 
 // Attributes
 #define __weak       gnu::weak

@@ -2,8 +2,8 @@
 #define _KERNEL_BOOT_INIT_H
 
 #include <kernel/mem/types.h>
-#include <kernel/util/attributes.h>
 #include <kernel/util/common.h>
+#include <kernel/util/compiler.h>
 #include <stddef.h>
 #include <stdint.h>
 

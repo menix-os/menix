@@ -16,8 +16,8 @@
 
 #ifndef __ASSEMBLER__
 
-#include <kernel/util/attributes.h>
 #include <kernel/util/common.h>
+#include <kernel/util/compiler.h>
 #include <stdint.h>
 #include <x86_64/gdt.h>
 

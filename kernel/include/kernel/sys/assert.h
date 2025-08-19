@@ -3,7 +3,7 @@
 
 #include <kernel/sys/panic.h>
 #include <kernel/sys/print.h>
-#include <kernel/util/attributes.h>
+#include <kernel/util/compiler.h>
 
 #define ASSERT(expr, msg, ...) \
     ({ \

@@ -10,7 +10,7 @@
 const char menix_banner[] = "Menix " MENIX_VERSION " (" MENIX_COMPILER_ID ", " MENIX_LINKER_ID ")";
 
 void kernel_early_init() {
-    arch_bsp_init();
+    arch_bsp_early_init();
 }
 
 [[noreturn]]

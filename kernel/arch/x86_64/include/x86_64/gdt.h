@@ -1,11 +1,11 @@
 #ifndef _KERNEL_X86_64_GDT_H
 #define _KERNEL_X86_64_GDT_H
 
-#include <kernel/util/attributes.h>
+#include <kernel/util/compiler.h>
 #include <stdint.h>
 #include <x86_64/tss.h>
 
-struct gdt {
+struct [[__packed]] gdt {
     uint64_t null;
     uint64_t kernel_code32;
     uint64_t kernel_data32;

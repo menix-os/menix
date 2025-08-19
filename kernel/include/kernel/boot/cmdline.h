@@ -1,8 +1,8 @@
 #ifndef _KERNEL_BOOT_CMDLINE_H
 #define _KERNEL_BOOT_CMDLINE_H
 
-#include <kernel/util/attributes.h>
 #include <kernel/util/common.h>
+#include <kernel/util/compiler.h>
 
 #define CMDLINE_OPTION(opt_name, opt_func) \
     [[__used, __section(".cmdline")]] \

@@ -1,7 +1,7 @@
 #ifndef _KERNEL_X86_64_TSS_H
 #define _KERNEL_X86_64_TSS_H
 
-#include <kernel/util/attributes.h>
+#include <kernel/util/compiler.h>
 #include <stdint.h>
 
 struct [[__packed, __aligned(0x10)]] tss {

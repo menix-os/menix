@@ -1,8 +1,8 @@
 #ifndef _KERNEL_SYS_CONSOLE_H
 #define _KERNEL_SYS_CONSOLE_H
 
-#include <kernel/util/attributes.h>
 #include <kernel/util/common.h>
+#include <kernel/util/compiler.h>
 #include <stddef.h>
 
 // Defines a new early console which can be used to log early boot messages.
