@@ -15,7 +15,7 @@ enum : pte_t {
     ARCH_FLAG_ATTRIBUTE_TABLE = 1 << 10,
     ARCH_FLAG_EXECUTE_DISABLE = 1LU << 63,
 
-    PTE_ADDR_MASK = 0x000F'FFFF'FFFF'F000,
+    ARCH_PTE_ADDR_MASK = 0x000F'FFFF'FFFF'F000,
 };
 
 void pte_clear(pte_t* pte) {
@@ -24,7 +24,7 @@ void pte_clear(pte_t* pte) {
 }
 
 pte_t pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
-    pte_t result = ((pte_t)addr & PTE_ADDR_MASK);
+    pte_t result = ((pte_t)addr & ARCH_PTE_ADDR_MASK);
 
     if (flags & PTE_WRITE)
         result |= ARCH_FLAG_READ_WRITE;
