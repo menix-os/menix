@@ -10,9 +10,9 @@ project(
     meson_version: '>=1.1.0',
 )
 
-# Install headers
+# Install public headers
 if get_option('headers_only') == true
-    install_subdir('include' / 'menix', install_dir: get_option('includedir'))
+    install_subdir('include', install_dir: get_option('includedir'))
     subdir_done()
 endif
 

@@ -1,7 +1,7 @@
 #ifndef _KERNEL_X86_64_GDT_H
 #define _KERNEL_X86_64_GDT_H
 
-#include <kernel/util/compiler.h>
+#include <kernel/compiler.h>
 #include <stdint.h>
 #include <x86_64/tss.h>
 

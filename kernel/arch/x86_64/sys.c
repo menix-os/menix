@@ -1,12 +1,11 @@
-#include <kernel/arch/sys.h>
-#include <kernel/sys/percpu.h>
-#include <kernel/util/compiler.h>
+#include <kernel/compiler.h>
+#include <kernel/percpu.h>
 #include <menix/archctl.h>
 #include <menix/status.h>
 #include <x86_64/asm.h>
 #include <x86_64/defs.h>
 
-void arch_bsp_early_init() {
+void percpu_init_bsp() {
     asm_wrmsr(MSR_GS_BASE, (uint64_t)&percpu_bsp);
     asm_wrmsr(MSR_FS_BASE, 0);
     asm_wrmsr(MSR_KERNEL_GS_BASE, 0);

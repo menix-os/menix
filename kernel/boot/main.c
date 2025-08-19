@@ -1,16 +1,15 @@
-#include <kernel/arch/sys.h>
-#include <kernel/boot/cmdline.h>
-#include <kernel/boot/init.h>
-#include <kernel/sys/assert.h>
-#include <kernel/sys/console.h>
-#include <kernel/sys/percpu.h>
-#include <kernel/sys/print.h>
+#include <kernel/assert.h>
+#include <kernel/cmdline.h>
+#include <kernel/console.h>
+#include <kernel/init.h>
+#include <kernel/percpu.h>
+#include <kernel/print.h>
 #include <config.h>
 
 const char menix_banner[] = "Menix " MENIX_VERSION " (" MENIX_COMPILER_ID ", " MENIX_LINKER_ID ")";
 
 void kernel_early_init() {
-    arch_bsp_early_init();
+    percpu_init_bsp();
 }
 
 [[noreturn]]

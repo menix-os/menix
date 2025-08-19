@@ -1,5 +1,5 @@
-#include <kernel/mem/types.h>
-#include <kernel/util/compiler.h>
+#include <kernel/compiler.h>
+#include <kernel/mem.h>
 #include <x86_64/smp.h>
 
 extern uint8_t smp_trampoline_start[];

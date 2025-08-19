@@ -1,10 +1,9 @@
-#include <kernel/boot/cmdline.h>
-#include <kernel/boot/init.h>
-#include <kernel/mem/phys.h>
-#include <kernel/mem/types.h>
-#include <kernel/sys/assert.h>
-#include <kernel/sys/print.h>
-#include <kernel/util/common.h>
+#include <kernel/assert.h>
+#include <kernel/cmdline.h>
+#include <kernel/common.h>
+#include <kernel/init.h>
+#include <kernel/mem.h>
+#include <kernel/print.h>
 #include "limine.h"
 
 [[__initdata_sorted("limine.0")]] static volatile LIMINE_REQUESTS_START_MARKER;

@@ -24,10 +24,7 @@ kernel_sources = []
 
 subdir('arch' / target_machine.cpu_family())
 subdir('boot')
-subdir('mem')
-subdir('sched')
-subdir('sys')
-subdir('util')
+subdir('generic')
 
 configure_file(configuration: common_cfg, output: 'config.h')
 

@@ -1,0 +1,34 @@
+#ifndef _KERNEL_PERCPU_H
+#define _KERNEL_PERCPU_H
+
+#include <kernel/arch/percpu.h>
+#include <kernel/compiler.h>
+#include <kernel/mem.h>
+#include <kernel/sched.h>
+#include <stddef.h>
+
+// CPU-relative information.
+struct percpu {
+    struct percpu* self; // A pointer to this structure.
+    size_t id;           // The virtual ID of this CPU.
+    virt_t kernel_stack; // The kernel mode stack.
+    virt_t user_stack;   // The user mode stack.
+    bool online;         // Whether this CPU is initialized and active.
+
+    struct arch_percpu arch;   // Architecture-specific fields.
+    struct sched_percpu sched; // Scheduler information.
+};
+
+// Per-CPU data for the bootstrap processor.
+extern struct percpu percpu_bsp;
+
+// Allocates a block of memory for a new CPU.
+struct percpu* percpu_new();
+
+// Initializes the bootstrap processor.
+void percpu_init_bsp();
+
+// Initializes a CPU.
+void percpu_init_cpu(struct percpu* cpu);
+
+#endif
