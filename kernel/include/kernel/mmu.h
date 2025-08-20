@@ -22,4 +22,6 @@ struct page_table {
     phys_t root;
 };
 
+void mmu_pt_map(struct page_table* pt);
+
 #endif

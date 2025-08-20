@@ -47,20 +47,19 @@ void kernel_start() {
 
     info.num_mem_maps = MIN(ARRAY_SIZE(mem), mm_res->entry_count);
     for (size_t i = 0; i < info.num_mem_maps; i++) {
-        struct phys_mem mem;
-        mem.address = mm_res->entries[i]->base;
-        mem.length = mm_res->entries[i]->length;
+        mem[i].address = mm_res->entries[i]->base;
+        mem[i].length = mm_res->entries[i]->length;
 
         switch (mm_res->entries[i]->type) {
         case LIMINE_MEMMAP_USABLE:
-            mem.usage = PHYS_USABLE;
+            mem[i].usage = PHYS_USABLE;
             break;
         case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
         case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
-            mem.usage = PHYS_RECLAIMABLE;
+            mem[i].usage = PHYS_RECLAIMABLE;
             break;
         default:
-            mem.usage = PHYS_RESERVED;
+            mem[i].usage = PHYS_RESERVED;
             break;
         }
     }

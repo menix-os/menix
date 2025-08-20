@@ -10,8 +10,7 @@ struct object;
 struct object {
     size_t ref_count;
 
-    // Called to close an object.
-    void (*close)(struct object* obj);
+    void (*drop)(struct object* obj);
 };
 
 // Allocates a new object on the heap.
@@ -21,7 +20,7 @@ void obj_ref_inc(struct object* obj);
 // Decreases the refcount by 1.
 void obj_ref_dec(struct object* obj);
 
-// A handle to a object.
+// A handle to an object.
 struct object_handle {
     // The actual object.
     struct object* object;

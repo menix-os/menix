@@ -10,14 +10,14 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-#define BIT(value, bit) (((value) & (1 << bit)) == (1 << bit))
+#define BIT_TEST(value, bit) (((value) & (1 << bit)) == (1 << bit))
 
-#define OFFSET_OF(type, field)        __builtin_offsetof(type, field)
 #define CONTAINER_OF(value, p, field) ((p*)((char*)(&(value)) + offsetof(p, field)))
 
 #define CONCAT(A, B)  _CONCAT(A, B)
 #define _CONCAT(A, B) A##B
 
+// Creates a unique identifier for a compilation unit.
 #define UNIQUE_IDENT(ident) CONCAT(ident, __COUNTER__)
 
 // Ensures that a type is properly defined at this point.

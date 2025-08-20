@@ -38,8 +38,8 @@ static_assert(0x1000 % sizeof(struct page) == 0, "struct must be a multiple of t
 
 extern struct page* mem_page_db;
 
-// Initializes all memory structures.
-void mem_init();
+// Initializes all memory management structures.
+void mem_init(struct phys_mem* map, size_t length, virt_t kernel_virt, phys_t kernel_phys, virt_t hhdm_address);
 
 // Allocates a region of memory which can be smaller than the page size.
 // Returns `nullptr` if the allocator cannot provide an allocation for the
@@ -51,7 +51,7 @@ void* mem_alloc(size_t length, enum alloc_flags flags, const char* name);
 void mem_free(void* mem);
 
 // Allocate a single page of physical memory.
-phys_t page_alloc();
+phys_t mem_page_alloc();
 
 // Copies a block of data from user to kernel memory.
 void copy_from_user(uint8_t* dst, const uint8_t __user* src, size_t num);

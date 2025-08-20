@@ -15,15 +15,7 @@
 #define __unlikely(x)       __builtin_expect(!!(x), 0)
 #define __unreachable       __builtin_unreachable
 
-// Attributes
-#define __weak       gnu::weak
-#define __section(x) gnu::section(x)
-#define __packed     gnu::packed
-#define __aligned(x) gnu::aligned(x)
-#define __inline     gnu::always_inline
-#define __atomic     _Atomic
-
-// Only clang has these attributes, GCC will throw a warning here.
+// Only clang has these hints, GCC will throw a warning here.
 // They also don't support the C23 attribute format.
 #ifdef __clang__
 #define __user __attribute__((noderef, address_space(1)))
@@ -32,5 +24,13 @@
 #define __user
 #define __mmio
 #endif
+
+// Attributes
+#define __weak       gnu::weak
+#define __section(x) gnu::section(x)
+#define __packed     gnu::packed
+#define __aligned(x) gnu::aligned(x)
+#define __inline     gnu::always_inline
+#define __atomic(x)  _Atomic(x)
 
 #endif
