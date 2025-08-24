@@ -1,12 +1,48 @@
-#ifndef _KERNEL_ELF_H
-#define _KERNEL_ELF_H
+#pragma once
 
-#include <kernel/arch/elf.h>
+#include <bits/elf.h>
 #include <stdint.h>
+
+#ifndef ELF_ARCH_CLASS
+#error ""
+#endif
+#ifndef ELF_ARCH_DATA
+#error ""
+#endif
+#ifndef ELF_ARCH_MACHINE
+#error ""
+#endif
+
+#ifndef elf_hdr
+#error ""
+#endif
+#ifndef elf_phdr
+#error ""
+#endif
+#ifndef elf_dyn
+#error ""
+#endif
+#ifndef elf_addr
+#error ""
+#endif
+#ifndef elf_off
+#error ""
+#endif
+#ifndef elf_nhdr
+#error ""
+#endif
+#ifndef elf_auxv
+#error ""
+#endif
 
 #define ELF_MAG (const char[4]){0x7F, 'E', 'L', 'F'}
 
-enum {
+typedef uint64_t elf64_addr_t;
+typedef uint64_t elf64_off_t;
+typedef uint32_t elf32_addr_t;
+typedef uint32_t elf32_off_t;
+
+enum : uint8_t {
     EI_MAG0 = 0,
     EI_MAG1 = 1,
     EI_MAG2 = 2,
@@ -20,34 +56,36 @@ enum {
     EI_NIDENT = 16,
 };
 
-enum {
+enum : uint16_t {
     EM_X86_64 = 62,
+    EM_AARCH64 = 183,
     EM_RISCV = 243,
+    EM_LOONGARCH = 258,
 };
 
-enum {
+enum : uint32_t {
     ELFCLASS32 = 1,
     ELFCLASS64 = 2,
 };
 
-enum {
+enum : uint32_t {
     ELFDATA2LSB = 1,
     ELFDATA2MSB = 2,
 };
 
-enum {
+enum : uint32_t {
     EV_NONE = 0,
     EV_CURRENT = 1,
     EV_NUM = 2,
 };
 
-enum {
+enum : uint32_t {
     ELFOSABI_SYSV = 0,
     ELFOSABI_HPUX = 1,
     ELFOSABI_STANDALONE = 255,
 };
 
-enum {
+enum : uint32_t {
     ET_NONE = 0,
     ET_REL = 1,
     ET_EXEC = 2,
@@ -55,7 +93,7 @@ enum {
     ET_CORE = 4,
 };
 
-enum {
+enum : uint32_t {
     PT_NULL = 0x00000000,
     PT_LOAD = 0x00000001,
     PT_DYNAMIC = 0x00000002,
@@ -64,16 +102,15 @@ enum {
     PT_SHLIB = 0x00000005,
     PT_PHDR = 0x00000006,
     PT_TLS = 0x00000007,
-    PT_KERNEL = 0x60000001,
 };
 
-enum {
-    PF_X = 0x01,
-    PF_W = 0x02,
-    PF_R = 0x04,
+enum : uint32_t {
+    PF_X = 0x00000001,
+    PF_W = 0x00000002,
+    PF_R = 0x00000004,
 };
 
-enum {
+enum : uint32_t {
     DT_NULL = 0,
     DT_NEEDED = 1,
     DT_PLTRELSZ = 2,
@@ -109,7 +146,7 @@ enum {
     DT_HIPROC = 0x7FFFFFFF,
 };
 
-enum {
+enum : uint32_t {
     AT_NULL = 0,
     AT_IGNORE = 1,
     AT_EXECFD = 2,
@@ -126,11 +163,6 @@ enum {
     AT_GID = 13,
     AT_EGID = 14,
 };
-
-typedef uint64_t elf64_addr_t;
-typedef uint64_t elf64_off_t;
-typedef uint32_t elf32_addr_t;
-typedef uint32_t elf32_off_t;
 
 struct elf64_ehdr {
     uint8_t e_ident[EI_NIDENT];
@@ -225,5 +257,3 @@ struct elf32_auxv {
     uint32_t atype;
     uint32_t avalue;
 };
-
-#endif

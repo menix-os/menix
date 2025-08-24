@@ -1,5 +1,4 @@
-#ifndef _KERNEL_BITS_ELF_H
-#define _KERNEL_BITS_ELF_H
+#pragma once
 
 #define ELF_ARCH_CLASS   ELFCLASS64
 #define ELF_ARCH_DATA    ELFDATA2LSB
@@ -12,5 +11,3 @@
 #define elf_off  elf64_off
 #define elf_nhdr elf64_nhdr
 #define elf_auxv elf64_auxv
-
-#endif

@@ -1,4 +1,5 @@
-#include <kernel/mmu.h>
+#include <kernel/mem/paging.h>
+#include <kernel/types.h>
 
 enum : pte_t {
     ARCH_FLAG_NONE = 0,
@@ -18,12 +19,11 @@ enum : pte_t {
     ARCH_PTE_ADDR_MASK = 0x000F'FFFF'FFFF'F000,
 };
 
-void pte_clear(pte_t* pte) {
-    if (pte)
-        *pte = 0;
+void arch_pte_clear(pte_t* pte) {
+    *pte = 0;
 }
 
-pte_t pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
+pte_t arch_pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
     pte_t result = ((pte_t)addr & ARCH_PTE_ADDR_MASK);
 
     if (flags & PTE_WRITE)
@@ -32,4 +32,16 @@ pte_t pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
         result |= ARCH_FLAG_EXECUTE_DISABLE;
 
     return result;
+}
+
+bool arch_pte_is_present(pte_t* pte) {
+    return *pte & ARCH_FLAG_PRESENT;
+}
+
+bool arch_pte_is_dir(pte_t* pte) {
+    return *pte & ARCH_FLAG_SIZE;
+}
+
+phys_t arch_pte_address(pte_t* pte) {
+    return (phys_t)(*pte & ARCH_PTE_ADDR_MASK);
 }

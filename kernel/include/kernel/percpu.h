@@ -1,12 +1,12 @@
-#ifndef _KERNEL_PERCPU_H
-#define _KERNEL_PERCPU_H
+#pragma once
 
-#include <kernel/arch/percpu.h>
 #include <kernel/compiler.h>
-#include <kernel/irq.h>
-#include <kernel/mem.h>
 #include <kernel/sched.h>
+#include <kernel/sys/irq.h>
+#include <bits/percpu.h>
 #include <stddef.h>
+
+ASSERT_TYPE(struct arch_percpu);
 
 // CPU-relative information.
 struct percpu {
@@ -23,6 +23,11 @@ struct percpu {
 // Per-CPU data for the bootstrap processor.
 extern struct percpu percpu_bsp;
 
+// Gets the per-CPU data on the current CPU.
+static inline struct percpu* percpu_get() {
+    return arch_percpu_get();
+}
+
 // Allocates a block of memory for a new CPU.
 struct percpu* percpu_new();
 
@@ -31,5 +36,3 @@ void percpu_init_bsp();
 
 // Initializes a CPU.
 void percpu_init_cpu(struct percpu* cpu);
-
-#endif

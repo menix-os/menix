@@ -1,5 +1,4 @@
-#ifndef _KERNEL_X86_64_GDT_H
-#define _KERNEL_X86_64_GDT_H
+#pragma once
 
 #include <kernel/compiler.h>
 #include <stdint.h>
@@ -25,5 +24,3 @@ struct [[__packed]] gdtr {
 // Initializes a GDT with initial values.
 void gdt_new(struct gdt* gdt);
 void gdt_set_tss(struct gdt* gdt, struct tss* tss);
-
-#endif

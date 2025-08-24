@@ -1,5 +1,4 @@
-#ifndef _KERNEL_X86_64_ASM_H
-#define _KERNEL_X86_64_ASM_H
+#pragma once
 
 #include <stdint.h>
 
@@ -77,5 +76,3 @@ static inline void asm_outw(uint16_t port, uint16_t value) {
 static inline void asm_outl(uint16_t port, uint32_t value) {
     asm volatile("out %0, %1" : : "Nd"(port), "a"(value));
 }
-
-#endif

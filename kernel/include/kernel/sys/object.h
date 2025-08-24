@@ -1,5 +1,4 @@
-#ifndef _KERNEL_OBJECT_H
-#define _KERNEL_OBJECT_H
+#pragma once
 
 #include <menix/status.h>
 #include <stddef.h>
@@ -25,5 +24,3 @@ struct object_handle {
     // The actual object.
     struct object* object;
 };
-
-#endif

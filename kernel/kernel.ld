@@ -2,13 +2,13 @@ ENTRY(kernel_start)
 
 PHDRS
 {
-    idata	PT_LOAD		FLAGS(6);
-    itext	PT_LOAD		FLAGS(5);
-    text	PT_LOAD		FLAGS(5);
-    rodata	PT_LOAD		FLAGS(4);
-    data	PT_LOAD		FLAGS(6);
-    dynamic	PT_DYNAMIC	FLAGS(6);
-    percpu	PT_LOAD		FLAGS(6);
+    idata   PT_LOAD     FLAGS(6);
+    itext   PT_LOAD     FLAGS(5);
+    text    PT_LOAD     FLAGS(5);
+    rodata  PT_LOAD     FLAGS(4);
+    data    PT_LOAD     FLAGS(6);
+    dynamic PT_DYNAMIC  FLAGS(6);
+    percpu  PT_LOAD     FLAGS(6);
 }
 
 SECTIONS

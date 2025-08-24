@@ -1,5 +1,4 @@
-#ifndef _KERNEL_CMDLINE_H
-#define _KERNEL_CMDLINE_H
+#pragma once
 
 #include <kernel/common.h>
 #include <kernel/compiler.h>
@@ -22,5 +21,3 @@ struct cmdline_option {
 
 // Parses the command line and invokes all options.
 void cmdline_parse(char* cmdline);
-
-#endif

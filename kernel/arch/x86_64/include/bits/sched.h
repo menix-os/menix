@@ -1,5 +1,4 @@
-#ifndef _KERNEL_BITS_SCHED_H
-#define _KERNEL_BITS_SCHED_H
+#pragma once
 
 #include <stdint.h>
 
@@ -34,5 +33,3 @@ struct arch_context {
     uint64_t rsp;
     uint64_t ss;
 };
-
-#endif

@@ -1,7 +1,6 @@
-#ifndef _KERNEL_VECTOR_H
-#define _KERNEL_VECTOR_H
+#pragma once
 
-#include <kernel/mem.h>
+#include <kernel/mem/alloc.h>
 #include <stddef.h>
 #include <string.h>
 
@@ -84,5 +83,3 @@
         } \
         true; \
     } while (0)
-
-#endif

@@ -4,11 +4,9 @@ kernel_sources += files(
     'irq.c',
     'klibc.c',
     'log.c',
-    'mem.c',
-    'mmu.c',
     'panic.c',
     'percpu.c',
     'sched.c',
-    'slab.c',
+    'spin.c',
     'syscalls.c',
 )

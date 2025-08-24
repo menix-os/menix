@@ -1,4 +1,4 @@
-#include <kernel/console.h>
+#include <kernel/sys/console.h>
 #include <stdint.h>
 #include <x86_64/asm.h>
 

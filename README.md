@@ -1,4 +1,4 @@
-<img src="assets/menix.svg" width="10%"/>
+<img src="menix.svg" width="10%"/>
 
 ![GitHub License](https://img.shields.io/github/license/menix-os/menix?style=flat&color=red)
 ![GitHub Repo stars](https://img.shields.io/github/stars/menix-os/menix?style=flat)

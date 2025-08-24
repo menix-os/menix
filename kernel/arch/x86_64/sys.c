@@ -9,7 +9,6 @@ void percpu_init_bsp() {
     asm_wrmsr(MSR_GS_BASE, (uint64_t)&percpu_bsp);
     asm_wrmsr(MSR_FS_BASE, 0);
     asm_wrmsr(MSR_KERNEL_GS_BASE, 0);
-    percpu_write(online, true);
 }
 
 [[noreturn]]

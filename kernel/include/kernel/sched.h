@@ -1,10 +1,12 @@
-#ifndef _KERNEL_SCHED_H
-#define _KERNEL_SCHED_H
+#pragma once
 
-#include <kernel/arch/sched.h>
-#include <kernel/mem.h>
+#include <kernel/types.h>
+#include <bits/sched.h>
 #include <stddef.h>
 #include <stdint.h>
+
+ASSERT_TYPE(struct arch_context);
+ASSERT_TYPE(struct arch_task_context);
 
 typedef size_t tid_t;
 
@@ -28,5 +30,3 @@ struct task {
 struct sched_percpu {
     struct task* current;
 };
-
-#endif

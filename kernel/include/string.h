@@ -1,5 +1,4 @@
-#ifndef _MENIX_STRING_H
-#define _MENIX_STRING_H
+#pragma once
 
 #include <stddef.h>
 
@@ -13,5 +12,3 @@ char* strncpy(char* restrict dst, const char* restrict src, size_t len);
 int strcmp(const char* str1, const char* str2);
 int strncmp(const char* str1, const char* str2, size_t len);
 char* strchr(const char* c, int s);
-
-#endif

@@ -1,6 +1,8 @@
-#ifndef _KERNEL_TYPES_H
-#define _KERNEL_TYPES_H
+#pragma once
 
-#include <kernel/arch/types.h>
+#include <kernel/common.h>
+#include <bits/types.h>
 
-#endif
+ASSERT_TYPE(phys_t);
+ASSERT_TYPE(virt_t);
+ASSERT_TYPE(reg_t);

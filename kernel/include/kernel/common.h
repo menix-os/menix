@@ -1,5 +1,4 @@
-#ifndef _KERNEL_COMMON_H
-#define _KERNEL_COMMON_H
+#pragma once
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 
@@ -21,6 +20,5 @@
 #define UNIQUE_IDENT(ident) CONCAT(ident, __COUNTER__)
 
 // Ensures that a type is properly defined at this point.
-#define ASSERT_TYPE(type) static_assert(sizeof(type) == sizeof(type), "Type was not previously defined!")
-
-#endif
+// This is used to ensure that e.g. architecture-specific structures are defined.
+#define ASSERT_TYPE(type) static_assert(sizeof(type) == sizeof(type))

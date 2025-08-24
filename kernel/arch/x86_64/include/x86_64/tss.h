@@ -1,5 +1,4 @@
-#ifndef _KERNEL_X86_64_TSS_H
-#define _KERNEL_X86_64_TSS_H
+#pragma once
 
 #include <kernel/compiler.h>
 #include <stdint.h>
@@ -23,5 +22,3 @@ struct [[__packed, __aligned(0x10)]] tss {
     uint16_t reserved5;
     uint16_t iopb;
 };
-
-#endif

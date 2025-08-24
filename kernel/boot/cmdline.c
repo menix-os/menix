@@ -1,5 +1,5 @@
-#include <kernel/cmdline.h>
-#include <kernel/init.h>
+#include <kernel/boot/cmdline.h>
+#include <kernel/boot/init.h>
 #include <stddef.h>
 #include <string.h>
 

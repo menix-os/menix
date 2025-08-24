@@ -1,9 +1,8 @@
-#ifndef _KERNEL_INIT_H
-#define _KERNEL_INIT_H
+#pragma once
 
 #include <kernel/common.h>
 #include <kernel/compiler.h>
-#include <kernel/mem.h>
+#include <kernel/types.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -34,5 +33,3 @@ void kernel_early_init();
 // Initializes the kernel.
 [[noreturn]]
 void kernel_init(struct boot_info* info);
-
-#endif

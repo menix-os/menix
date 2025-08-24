@@ -32,6 +32,7 @@ common_includes = include_directories('include')
 common_cfg = configuration_data()
 
 common_cfg.set_quoted('MENIX_VERSION', meson.project_version())
+common_cfg.set_quoted('MENIX_ARCH', target_machine.cpu_family())
 c_compiler = meson.get_compiler('c')
 common_cfg.set_quoted('MENIX_COMPILER_ID', c_compiler.get_id() + ' ' + c_compiler.version())
 common_cfg.set_quoted('MENIX_LINKER_ID', c_compiler.get_linker_id())

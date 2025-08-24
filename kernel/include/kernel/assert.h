@@ -1,5 +1,4 @@
-#ifndef _KERNEL_ASSERT_H
-#define _KERNEL_ASSERT_H
+#pragma once
 
 #include <kernel/compiler.h>
 #include <kernel/panic.h>
@@ -9,16 +8,15 @@
     ({ \
         if (__unlikely(!(expr))) { \
             kprintf( \
-                "Environment is unsound! Assertion \"%s\" failed!\n" \
-                "In function \"%s\" (%s:%u):\n" msg "\n", \
-                #expr, \
+                "Kernel panic - Environment is unsound!\n" \
+                "In function \"%s\" (%s:%u):\n" \
+                "Assertion \"%s\" failed! " msg "\n", \
                 __FUNCTION__, \
                 __FILE__, \
                 __LINE__, \
+                #expr, \
                 ##__VA_ARGS__ \
             ); \
             panic(); \
         } \
     })
-
-#endif

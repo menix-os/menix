@@ -1,5 +1,4 @@
-#ifndef _KERNEL_X86_64_SMP_H
-#define _KERNEL_X86_64_SMP_H
+#pragma once
 
 #include <x86_64/defs.h>
 
@@ -18,6 +17,7 @@
 
 #include <kernel/common.h>
 #include <kernel/compiler.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <x86_64/gdt.h>
 
@@ -34,19 +34,18 @@ struct [[__packed]] smp_info {
     uint8_t booted;
 };
 
-static_assert(SMP_GDTR_OFFSET == OFFSET_OF(struct smp_info, gdtr));
-static_assert(SMP_FARJMP_OFFSET == OFFSET_OF(struct smp_info, farjmp_offset));
-static_assert(SMP_TEMP_STACK_OFFSET == OFFSET_OF(struct smp_info, temp_stack));
-static_assert(SMP_TEMP_CR3_OFFSET == OFFSET_OF(struct smp_info, temp_cr3));
-static_assert(SMP_ENTRY_OFFSET == OFFSET_OF(struct smp_info, entry));
-static_assert(SMP_HHDM_OFFSET == OFFSET_OF(struct smp_info, hhdm_offset));
-static_assert(SMP_KERNEL32_DS == OFFSET_OF(struct gdt, kernel_data32));
-static_assert(SMP_KERNEL64_CS == OFFSET_OF(struct gdt, kernel_code64));
-static_assert(SMP_KERNEL64_DS == OFFSET_OF(struct gdt, kernel_data64));
+static_assert(SMP_GDTR_OFFSET == offsetof(struct smp_info, gdtr));
+static_assert(SMP_FARJMP_OFFSET == offsetof(struct smp_info, farjmp_offset));
+static_assert(SMP_TEMP_STACK_OFFSET == offsetof(struct smp_info, temp_stack));
+static_assert(SMP_TEMP_CR3_OFFSET == offsetof(struct smp_info, temp_cr3));
+static_assert(SMP_ENTRY_OFFSET == offsetof(struct smp_info, entry));
+static_assert(SMP_HHDM_OFFSET == offsetof(struct smp_info, hhdm_offset));
+static_assert(SMP_KERNEL32_DS == offsetof(struct gdt, kernel_data32));
+static_assert(SMP_KERNEL64_CS == offsetof(struct gdt, kernel_code64));
+static_assert(SMP_KERNEL64_DS == offsetof(struct gdt, kernel_data64));
 static_assert(SMP_INFO_SIZE == sizeof(struct smp_info));
 
 // Initializes a LAPIC.
 void x86_64_smp_init(uint32_t id);
 
-#endif
 #endif

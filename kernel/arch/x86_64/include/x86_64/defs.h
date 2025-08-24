@@ -1,5 +1,4 @@
-#ifndef _KERNEL_X86_64_DEFS_H
-#define _KERNEL_X86_64_DEFS_H
+#pragma once
 
 #define CPUID_1C_SSE3       (1 << 0)
 #define CPUID_1C_PCLMUL     (1 << 1)
@@ -190,5 +189,3 @@
 
 #define CPL_USER   (0b11)
 #define CPL_KERNEL (0b00)
-
-#endif

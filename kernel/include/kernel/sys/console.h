@@ -1,5 +1,4 @@
-#ifndef _KERNEL_CONSOLE_H
-#define _KERNEL_CONSOLE_H
+#pragma once
 
 #include <kernel/common.h>
 #include <kernel/compiler.h>
@@ -29,5 +28,3 @@ void console_add(struct console* con);
 void console_remove(struct console* con);
 
 void console_write(const char* buf, size_t len);
-
-#endif

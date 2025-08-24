@@ -10,8 +10,9 @@ kernel_c_args += [
 
 kernel_sources += files(
     'gdt.c',
-    'mmu.c',
+    'mem.c',
     'serial.c',
+    'smp.c',
     'sys.c',
     'trampoline.S',
 )

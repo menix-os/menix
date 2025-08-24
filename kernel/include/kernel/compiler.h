@@ -1,5 +1,4 @@
-#ifndef _KERNEL_COMPILER_H
-#define _KERNEL_COMPILER_H
+#pragma once
 
 #if !defined(__GNUC__) && !defined(__clang__)
 #error "These attributes are only supported by GCC or Clang"
@@ -19,10 +18,10 @@
 // They also don't support the C23 attribute format.
 #ifdef __clang__
 #define __user __attribute__((noderef, address_space(1)))
-#define __mmio __attribute__((noderef, address_space(2)))
+#define __phys __attribute__((noderef, address_space(2)))
 #else
 #define __user
-#define __mmio
+#define __phys
 #endif
 
 // Attributes
@@ -32,5 +31,3 @@
 #define __aligned(x) gnu::aligned(x)
 #define __inline     gnu::always_inline
 #define __atomic(x)  _Atomic(x)
-
-#endif
