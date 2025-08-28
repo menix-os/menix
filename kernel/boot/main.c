@@ -1,7 +1,7 @@
 #include <kernel/assert.h>
 #include <kernel/boot/cmdline.h>
 #include <kernel/boot/init.h>
-#include <kernel/mem/mm.h>
+#include <kernel/mem.h>
 #include <kernel/percpu.h>
 #include <kernel/print.h>
 #include <kernel/sys/console.h>

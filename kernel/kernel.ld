@@ -1,4 +1,4 @@
-ENTRY(kernel_start)
+ENTRY(_start)
 
 PHDRS
 {
@@ -85,6 +85,10 @@ SECTIONS
     } :data :dynamic
 
     .bss : {
+        /* Small stack to bootstrap the allocator */
+        __ld_stack_bottom = .;
+        . += 0x2000;
+        __ld_stack_top = .;
         *(.*bss .*bss.*)
         *(COMMON)
     } :data

@@ -2,7 +2,7 @@
 #include <kernel/boot/cmdline.h>
 #include <kernel/boot/init.h>
 #include <kernel/common.h>
-#include <kernel/mem/types.h>
+#include <kernel/mem.h>
 #include <kernel/print.h>
 #include "limine.h"
 
@@ -33,7 +33,7 @@ static struct phys_mem mem[128];
 static struct boot_file files[8];
 
 [[__init]]
-void kernel_start() {
+void kernel_entry() {
     kernel_early_init();
 
     struct boot_info info;

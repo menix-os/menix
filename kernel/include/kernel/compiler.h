@@ -30,4 +30,5 @@
 #define __packed     gnu::packed
 #define __aligned(x) gnu::aligned(x)
 #define __inline     gnu::always_inline
+#define __naked      gnu::naked
 #define __atomic(x)  _Atomic(x)

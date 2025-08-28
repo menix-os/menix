@@ -1,53 +1,91 @@
 #include <kernel/assert.h>
-#include <kernel/mem/mm.h>
-#include <kernel/mem/paging.h>
-#include <kernel/mem/types.h>
+#include <kernel/mem.h>
+#include <kernel/print.h>
 #include <kernel/sys/spin.h>
+#include <menix/status.h>
 
-static struct page_table kernel_table = {};
+menix_status_t mem_pt_new_kernel(struct page_table* pt, enum alloc_flags flags) {
+    ASSERT(!(flags & ALLOC_NOZERO), "Invalid flags combination");
+
+    phys_t addr;
+    menix_status_t status = mem_page_alloc(1, flags, &addr);
+    if (status != MENIX_OK)
+        return status;
+
+    pt->root = addr;
+
+    return MENIX_OK;
+}
+
+menix_status_t mem_pt_new_user(struct page_table* pt, enum alloc_flags flags) {
+    return MENIX_OK;
+}
 
 // Gets a reference to the PTE at the given virtual address.
 // If `check_only` is set, only checks if the PTE exists,
 // and doesn't allocate new levels if they don't already exist.
 // If it can't allocate a page if it has to, returns `nullptr`.
-static pte_t* get_pte(struct page_table* pt, virt_t vaddr, bool check_only) {
+static menix_status_t get_pte(struct page_table* pt, virt_t vaddr, bool user, bool check_only, pte_t** ret) {
     ASSERT(spin_locked(&pt->lock), "page table was not locked");
 
     pte_t* current_head = mem_hhdm(pt->root);
     size_t index = 0;
 
-    for (int8_t level = mem_num_levels() - 1; level > 0; level--) {
+    for (int8_t level = mem_num_levels() - 1; level >= 0; level--) {
         const size_t addr_mask = (1 << mem_level_bits()) - 1;
         const size_t addr_shift = mem_page_bits() + (mem_level_bits() * level);
 
         index = (vaddr >> addr_shift) & addr_mask;
         pte_t* pte = &current_head[index];
 
+        // The last level is used to access the actual PTE, so break the loop then.
+        // We still need to update the index beforehand, that's why we can't just end early.
+        if (level == 0)
+            break;
+
+        enum pte_flags level_flags = PTE_DIR | (user ? PTE_USER : 0);
+
         if (pte_is_present(pte)) {
             // Get the next level.
             current_head = mem_hhdm(pte_address(pte));
+            *pte = pte_build(pte_address(pte), level_flags, CACHE_NONE);
         } else {
             // If the current level isn't present, we can skip the rest.
             if (check_only)
-                return nullptr;
+                return MENIX_ERR_NO_MEMORY;
 
-            // TODO
+            phys_t addr;
+            menix_status_t alloc_status = mem_page_alloc(1, 0, &addr);
+            if (alloc_status != MENIX_OK)
+                return alloc_status;
+
+            *pte = pte_build(addr, level_flags, CACHE_NONE);
+            current_head = mem_hhdm(addr);
         }
-
-        current_head = mem_hhdm(pte_address(pte));
     }
 
-    return &current_head[index];
+    *ret = &current_head[index];
+    return MENIX_OK;
 }
 
-bool mem_pt_map(struct page_table* pt, virt_t vaddr, phys_t paddr, enum pte_flags flags) {
+menix_status_t mem_pt_map(
+    struct page_table* pt,
+    virt_t vaddr,
+    phys_t paddr,
+    enum pte_flags flags,
+    enum cache_mode cache
+) {
     spin_lock(&pt->lock);
 
-    pte_t* pte = get_pte(pt, vaddr, false);
-    if (!pte)
-        return false;
-    // TODO
+    pte_t* pte;
+    menix_status_t status = get_pte(pt, vaddr, flags & PTE_USER, false, &pte);
+    if (status != MENIX_OK) {
+        goto fail;
+    }
 
+    *pte = pte_build(paddr, flags, cache);
+
+fail:
     spin_unlock(&pt->lock);
-    return true;
+    return status;
 }

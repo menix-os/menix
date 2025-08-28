@@ -27,6 +27,12 @@ struct boot_info {
     size_t num_files;
 };
 
+extern uint8_t __ld_stack_top[];
+extern uint8_t __ld_stack_bottom[];
+
+// Entry point for the kernel after arch-specific setup has finished.
+void kernel_entry();
+
 // Initializes the early parts of the kernel.
 void kernel_early_init();
 

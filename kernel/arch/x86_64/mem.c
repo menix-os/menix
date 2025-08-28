@@ -1,8 +1,7 @@
-#include <kernel/mem/paging.h>
+#include <kernel/mem.h>
 #include <kernel/types.h>
 
 enum : pte_t {
-    ARCH_FLAG_NONE = 0,
     ARCH_FLAG_PRESENT = 1 << 0,
     ARCH_FLAG_READ_WRITE = 1 << 1,
     ARCH_FLAG_USER_MODE = 1 << 2,
@@ -24,13 +23,19 @@ void arch_pte_clear(pte_t* pte) {
 }
 
 pte_t arch_pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
-    pte_t result = ((pte_t)addr & ARCH_PTE_ADDR_MASK);
+    pte_t result = ((pte_t)addr & ARCH_PTE_ADDR_MASK) | ARCH_FLAG_PRESENT;
 
-    if (flags & PTE_WRITE)
+    if (flags & PTE_USER)
+        result |= ARCH_FLAG_USER_MODE;
+
+    if (flags & PTE_DIR)
         result |= ARCH_FLAG_READ_WRITE;
-    if (!(flags & PTE_EXEC))
-        result |= ARCH_FLAG_EXECUTE_DISABLE;
-
+    else {
+        if (flags & PTE_WRITE)
+            result |= ARCH_FLAG_READ_WRITE;
+        if (!(flags & PTE_EXEC))
+            result |= ARCH_FLAG_EXECUTE_DISABLE;
+    }
     return result;
 }
 
@@ -44,4 +49,8 @@ bool arch_pte_is_dir(pte_t* pte) {
 
 phys_t arch_pte_address(pte_t* pte) {
     return (phys_t)(*pte & ARCH_PTE_ADDR_MASK);
+}
+
+void arch_mem_pt_set(struct page_table* pt) {
+    asm volatile("mov cr3, %0" ::"r"(pt->root) : "memory");
 }

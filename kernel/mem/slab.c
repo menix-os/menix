@@ -1,2 +1,1 @@
-#include <kernel/mem/alloc.h>
-#include <kernel/mem/types.h>
+#include <kernel/mem.h>

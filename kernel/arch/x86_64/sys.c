@@ -1,9 +1,16 @@
+#include <kernel/boot/init.h>
 #include <kernel/compiler.h>
 #include <kernel/percpu.h>
 #include <menix/archctl.h>
 #include <menix/status.h>
 #include <x86_64/asm.h>
 #include <x86_64/defs.h>
+
+[[__init, __naked]]
+void _start() {
+    asm volatile("lea rsp, [rip + %0]" ::"i"(__ld_stack_top));
+    asm volatile("jmp %0" ::"r"(kernel_entry));
+}
 
 void percpu_init_bsp() {
     asm_wrmsr(MSR_GS_BASE, (uint64_t)&percpu_bsp);
