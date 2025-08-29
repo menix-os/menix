@@ -5,7 +5,7 @@
 #include <menix/status.h>
 
 menix_status_t mem_pt_new_kernel(struct page_table* pt, enum alloc_flags flags) {
-    ASSERT(!(flags & ALLOC_NOZERO), "Invalid flags combination");
+    flags &= ~ALLOC_NOZERO;
 
     phys_t addr;
     menix_status_t status = mem_phys_alloc(1, flags, &addr);
@@ -18,6 +18,7 @@ menix_status_t mem_pt_new_kernel(struct page_table* pt, enum alloc_flags flags) 
 }
 
 menix_status_t mem_pt_new_user(struct page_table* pt, enum alloc_flags flags) {
+    // TODO
     return MENIX_OK;
 }
 
@@ -26,7 +27,7 @@ menix_status_t mem_pt_new_user(struct page_table* pt, enum alloc_flags flags) {
 // and doesn't allocate new levels if they don't already exist.
 // If it can't allocate a page if it has to, returns `nullptr`.
 static menix_status_t get_pte(struct page_table* pt, virt_t vaddr, bool user, bool check_only, pte_t** ret) {
-    ASSERT(spin_locked(&pt->lock), "page table was not locked");
+    ASSERT(spin_locked(&pt->lock), "Page table was not locked");
 
     pte_t* current_head = HHDM_PTR(pt->root);
     size_t index = 0;
@@ -34,21 +35,21 @@ static menix_status_t get_pte(struct page_table* pt, virt_t vaddr, bool user, bo
     for (int8_t level = mem_num_levels() - 1; level >= 0; level--) {
         const size_t addr_mask = (1 << mem_level_bits()) - 1;
         const size_t addr_shift = mem_page_bits() + (mem_level_bits() * level);
+        const enum pte_flags level_flags = PTE_DIR | (user ? PTE_USER : 0);
 
         index = (vaddr >> addr_shift) & addr_mask;
-        pte_t* pte = &current_head[index];
 
         // The last level is used to access the actual PTE, so break the loop then.
         // We still need to update the index beforehand, that's why we can't just end early.
         if (level == 0)
             break;
 
-        enum pte_flags level_flags = PTE_DIR | (user ? PTE_USER : 0);
+        pte_t* pte = &current_head[index];
 
         if (mem_pte_is_present(pte)) {
             // Get the next level.
-            current_head = HHDM_PTR(mem_pte_address(pte));
             *pte = mem_pte_build(mem_pte_address(pte), level_flags, CACHE_NONE);
+            current_head = HHDM_PTR(mem_pte_address(pte));
         } else {
             // If the current level isn't present, we can skip the rest.
             if (check_only)

@@ -1,6 +1,7 @@
 #include <kernel/assert.h>
 #include <kernel/compiler.h>
 #include <kernel/mem.h>
+#include <kernel/print.h>
 #include <kernel/sys/spin.h>
 #include <menix/status.h>
 #include <stdint.h>
@@ -20,35 +21,35 @@ menix_status_t mem_phys_free(phys_t start, size_t num_pages) {
     return free_fn(start, num_pages);
 }
 
-static struct phys_mem* bump_mem = nullptr;
-static phys_t bump_start = 0;
+static struct phys_mem bump_mem = {0};
+static struct phys_mem* bump_start = nullptr;
 
 static menix_status_t bump_alloc(size_t num_pages, enum alloc_flags flags, phys_t* out) {
     const size_t bytes = num_pages * mem_page_size();
-    bump_mem->address += bytes;
-
-    if (((intptr_t)bump_mem->length - bytes) <= 0)
+    if (((intptr_t)bump_mem.length - bytes) <= 0)
         return MENIX_ERR_NO_MEMORY;
-    bump_mem->length -= bytes;
+
+    *out = bump_mem.address;
+    bump_mem.length -= bytes;
+    bump_mem.address += bytes;
 
     if (!(flags & ALLOC_NOZERO)) {
-        memset(HHDM_PTR(bump_mem->address), 0, bytes);
+        memset(HHDM_PTR(*out), 0, bytes);
     }
 
-    *out = bump_mem->address;
     return MENIX_OK;
 }
 
 static menix_status_t bump_free(phys_t addr, size_t num_pages) {
     // We don't free bootstrap memory.
-    ASSERT(false, "Attempted to free bootstrap memory. Fix this!");
+    ASSERT(false, "Attempted to free bootstrap memory!");
 }
 
 void mem_phys_bootstrap(struct phys_mem* mem) {
     alloc_fn = bump_alloc;
     free_fn = bump_free;
-    bump_mem = mem;
-    bump_start = mem->address;
+    bump_mem = *mem;
+    bump_start = mem;
 }
 
 static __atomic(struct page*) pmm_head = nullptr;
@@ -131,6 +132,8 @@ static menix_status_t freelist_free(phys_t addr, size_t num_pages) {
 void mem_phys_init(struct phys_mem* map, size_t length) {
     alloc_fn = freelist_alloc;
     free_fn = freelist_free;
+    bump_start->address = bump_mem.address;
+    bump_start->length = bump_mem.length;
 
     for (size_t i = 0; i < length; i++) {
         // Regions smaller than a page are useless.
@@ -145,6 +148,5 @@ void mem_phys_init(struct phys_mem* map, size_t length) {
     }
 
     const size_t free_bytes = (pmm_total_free * mem_page_size());
-    kprintf("Total physical memory: %zu MiB\n", free_bytes / 1024 / 1024);
-    kprintf("Available memory:      %zu MiB\n", (free_bytes - (bump_mem->address - bump_start)) / 1024 / 1024);
+    kprintf("Total available memory: %zu MiB\n", free_bytes / 1024 / 1024);
 }
