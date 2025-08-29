@@ -8,7 +8,7 @@ menix_status_t mem_pt_new_kernel(struct page_table* pt, enum alloc_flags flags) 
     ASSERT(!(flags & ALLOC_NOZERO), "Invalid flags combination");
 
     phys_t addr;
-    menix_status_t status = mem_page_alloc(1, flags, &addr);
+    menix_status_t status = mem_phys_alloc(1, flags, &addr);
     if (status != MENIX_OK)
         return status;
 
@@ -28,7 +28,7 @@ menix_status_t mem_pt_new_user(struct page_table* pt, enum alloc_flags flags) {
 static menix_status_t get_pte(struct page_table* pt, virt_t vaddr, bool user, bool check_only, pte_t** ret) {
     ASSERT(spin_locked(&pt->lock), "page table was not locked");
 
-    pte_t* current_head = mem_hhdm(pt->root);
+    pte_t* current_head = HHDM_PTR(pt->root);
     size_t index = 0;
 
     for (int8_t level = mem_num_levels() - 1; level >= 0; level--) {
@@ -45,22 +45,22 @@ static menix_status_t get_pte(struct page_table* pt, virt_t vaddr, bool user, bo
 
         enum pte_flags level_flags = PTE_DIR | (user ? PTE_USER : 0);
 
-        if (pte_is_present(pte)) {
+        if (mem_pte_is_present(pte)) {
             // Get the next level.
-            current_head = mem_hhdm(pte_address(pte));
-            *pte = pte_build(pte_address(pte), level_flags, CACHE_NONE);
+            current_head = HHDM_PTR(mem_pte_address(pte));
+            *pte = mem_pte_build(mem_pte_address(pte), level_flags, CACHE_NONE);
         } else {
             // If the current level isn't present, we can skip the rest.
             if (check_only)
                 return MENIX_ERR_NO_MEMORY;
 
             phys_t addr;
-            menix_status_t alloc_status = mem_page_alloc(1, 0, &addr);
+            menix_status_t alloc_status = mem_phys_alloc(1, 0, &addr);
             if (alloc_status != MENIX_OK)
                 return alloc_status;
 
-            *pte = pte_build(addr, level_flags, CACHE_NONE);
-            current_head = mem_hhdm(addr);
+            *pte = mem_pte_build(addr, level_flags, CACHE_NONE);
+            current_head = HHDM_PTR(addr);
         }
     }
 
@@ -83,7 +83,7 @@ menix_status_t mem_pt_map(
         goto fail;
     }
 
-    *pte = pte_build(paddr, flags, cache);
+    *pte = mem_pte_build(paddr, flags, cache);
 
 fail:
     spin_unlock(&pt->lock);

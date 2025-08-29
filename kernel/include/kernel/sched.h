@@ -1,5 +1,6 @@
 #pragma once
 
+#include <kernel/mem.h>
 #include <kernel/types.h>
 #include <bits/sched.h>
 #include <stddef.h>
@@ -11,11 +12,12 @@ ASSERT_TYPE(struct arch_task_context);
 typedef size_t tid_t;
 
 enum task_state {
-    TASK_STATE_RUNNING,
-    TASK_STATE_READY,
-    TASK_STATE_BLOCKED,
+    TASK_STATE_RUNNING, // Task is active and running.
+    TASK_STATE_READY,   // Task is active, but not currently scheduled.
+    TASK_STATE_BLOCKED, // Task is waiting on another object.
 };
 
+// A task is the smallest unit of the scheduler.
 struct task {
     tid_t id;
     struct process* process;
@@ -27,6 +29,7 @@ struct task {
     int8_t priority;
 };
 
+// Per-CPU data for scheduling.
 struct sched_percpu {
     struct task* current;
 };

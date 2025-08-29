@@ -1,7 +1,8 @@
 kernel_sources += files(
-    'buddy.c',
     'init.c',
-    'paging.c',
+    'pmm.c',
+    'pt.c',
     'slab.c',
     'user.c',
+    'vmm.c',
 )

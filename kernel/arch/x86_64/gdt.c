@@ -1,3 +1,4 @@
+#include <string.h>
 #include <x86_64/gdt.h>
 
 struct gdt main_gdt = {
@@ -11,3 +12,7 @@ struct gdt main_gdt = {
     .user_code64 = 0x0000fb0000000000,
     .tss = {0x0000890000000000, 0},
 };
+
+void gdt_new(struct gdt* gdt) {
+    memcpy(gdt, &main_gdt, sizeof(struct gdt));
+}

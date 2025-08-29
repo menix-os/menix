@@ -10,6 +10,7 @@
 
 const char menix_banner[] = "Menix " MENIX_VERSION " (" MENIX_ARCH ", " MENIX_COMPILER_ID ", " MENIX_LINKER_ID ")";
 
+[[__init]]
 void kernel_early_init() {
     percpu_init_bsp();
     percpu_get()->online = true;

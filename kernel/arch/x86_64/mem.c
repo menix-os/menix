@@ -22,7 +22,7 @@ void arch_pte_clear(pte_t* pte) {
     *pte = 0;
 }
 
-pte_t arch_pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
+pte_t arch_mem_pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
     pte_t result = ((pte_t)addr & ARCH_PTE_ADDR_MASK) | ARCH_FLAG_PRESENT;
 
     if (flags & PTE_USER)
@@ -39,15 +39,15 @@ pte_t arch_pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
     return result;
 }
 
-bool arch_pte_is_present(pte_t* pte) {
+bool arch_mem_pte_is_present(pte_t* pte) {
     return *pte & ARCH_FLAG_PRESENT;
 }
 
-bool arch_pte_is_dir(pte_t* pte) {
+bool arch_mem_pte_is_dir(pte_t* pte) {
     return *pte & ARCH_FLAG_SIZE;
 }
 
-phys_t arch_pte_address(pte_t* pte) {
+phys_t arch_mem_pte_address(pte_t* pte) {
     return (phys_t)(*pte & ARCH_PTE_ADDR_MASK);
 }
 

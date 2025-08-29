@@ -48,21 +48,37 @@ struct phys_mem {
     enum phys_mem_usage usage;
 };
 
+enum page_type {
+    PAGE_PHYS = 0, // Regular physical memory.
+};
+
 struct page {
-    size_t flags;
+    enum page_type type;
+    int32_t flags;
     size_t refcount;
     union {
         struct {
-            struct page* next;
-            size_t length;
+            struct page* next; // Pointer to the next chunk.
+            size_t count;      // Amount of free pages.
         } freelist;
     };
 };
 static_assert(0x1000 % sizeof(struct page) == 0, "struct must be a multiple of the page size!");
+static_assert(sizeof(struct page) <= 64, "struct must be smaller than 64 bytes!");
 
 extern struct page_table mem_kernel_table;
 
-void mem_init(struct phys_mem* map, size_t length, virt_t kernel_virt, phys_t kernel_phys, virt_t hhdm_address);
+// Base address of the `struct page` array.
+extern struct page* mem_pfndb;
+
+// Base address of the HHDM.
+extern virt_t mem_hhdm_base;
+#define HHDM_PTR(paddr) (void*)((paddr) + mem_hhdm_base)
+
+void mem_init(struct phys_mem* map, size_t length, virt_t kernel_virt, phys_t kernel_phys, virt_t tmp_hhdm);
+
+void mem_phys_bootstrap(struct phys_mem* mem);
+void mem_phys_init(struct phys_mem* map, size_t length);
 
 // Allocates a region of memory which can be smaller than the page size.
 // Returns `nullptr` if the allocator cannot provide an allocation for the
@@ -74,19 +90,10 @@ menix_status_t mem_alloc(size_t length, enum alloc_flags flags, void** out);
 menix_status_t mem_free(void* mem);
 
 // Allocates an amount of contiguous physical pages.
-menix_status_t mem_page_alloc(size_t num_pages, enum alloc_flags flags, phys_t* out);
+menix_status_t mem_phys_alloc(size_t num_pages, enum alloc_flags flags, phys_t* out);
 
 // Frees an allocated region of physical pages.
-menix_status_t mem_page_free(phys_t start, size_t num_pages);
-
-void mem_set_page_allocator(
-    menix_status_t (*alloc)(size_t, enum alloc_flags, phys_t*),
-    menix_status_t (*free)(phys_t, size_t)
-);
-
-// Returns a mapped address for the given physical address.
-// If `phys` is not a valid address, returns `nullptr`.
-void* mem_hhdm(phys_t phys);
+menix_status_t mem_phys_free(phys_t start, size_t num_pages);
 
 // Copies a block of data from user to kernel memory.
 void user_to_kernel(uint8_t* dst, const uint8_t __user* src, size_t num);
@@ -120,6 +127,21 @@ menix_status_t mem_pt_protect(struct page_table* pt, virt_t vaddr, enum pte_flag
 // Unmaps a page.
 menix_status_t mem_pt_unmap(struct page_table* pt, virt_t vaddr);
 
+// Base address used to access physical memory.
+static inline virt_t mem_hhdm_addr() {
+    return arch_mem_hhdm_addr();
+}
+
+// Base address used to access the page array.
+static inline virt_t mem_pfndb_addr() {
+    return arch_mem_pfndb_addr();
+}
+
+// Base address used to access kernel memory mappings.
+static inline virt_t mem_mapping_addr() {
+    return arch_mem_mapping_addr();
+}
+
 // Bit shift in a page.
 static inline size_t mem_page_bits() {
     return arch_mem_page_bits();
@@ -141,26 +163,26 @@ static inline size_t mem_num_levels() {
 }
 
 // Clears out a page table entry.
-static inline void pte_clear(pte_t* pte) {
+static inline void mem_pte_clear(pte_t* pte) {
     return arch_pte_clear(pte);
 }
 
 // Builds a page table entry from the given info.
-static inline pte_t pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
-    return arch_pte_build(addr, flags, cache);
+static inline pte_t mem_pte_build(phys_t addr, enum pte_flags flags, enum cache_mode cache) {
+    return arch_mem_pte_build(addr, flags, cache);
 }
 
 // Returns true if the given PTE is present and valid.
-static inline bool pte_is_present(pte_t* pte) {
-    return arch_pte_is_present(pte);
+static inline bool mem_pte_is_present(pte_t* pte) {
+    return arch_mem_pte_is_present(pte);
 }
 
 // Returns true if the given PTE contains another level.
-static inline bool pte_is_dir(pte_t* pte) {
-    return arch_pte_is_dir(pte);
+static inline bool mem_pte_is_dir(pte_t* pte) {
+    return arch_mem_pte_is_dir(pte);
 }
 
 // Returns the address component of the page table entry.
-static inline phys_t pte_address(pte_t* pte) {
-    return arch_pte_address(pte);
+static inline phys_t mem_pte_address(pte_t* pte) {
+    return arch_mem_pte_address(pte);
 }
