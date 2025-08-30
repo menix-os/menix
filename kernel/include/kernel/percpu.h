@@ -1,8 +1,8 @@
 #pragma once
 
 #include <kernel/compiler.h>
+#include <kernel/irq.h>
 #include <kernel/sched.h>
-#include <kernel/sys/irq.h>
 #include <bits/percpu.h>
 #include <stddef.h>
 

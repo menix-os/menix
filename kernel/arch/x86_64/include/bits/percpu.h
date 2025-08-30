@@ -1,6 +1,7 @@
 #pragma once
 
 #include <stdint.h>
+#include <x86_64/gdt.h>
 
 static inline struct percpu* arch_percpu_get() {
     struct percpu* __result;
@@ -10,4 +11,6 @@ static inline struct percpu* arch_percpu_get() {
 
 struct arch_percpu {
     uint32_t lapic_id;
+    struct gdt gdt;
+    struct tss tss;
 };

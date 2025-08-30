@@ -1,5 +1,5 @@
-#include <kernel/boot/cmdline.h>
-#include <kernel/sys/console.h>
+#include <kernel/cmdline.h>
+#include <kernel/console.h>
 #include <string.h>
 
 extern struct console* const __ld_earlycon_start[];

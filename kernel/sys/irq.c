@@ -1,5 +1,5 @@
+#include <kernel/irq.h>
 #include <kernel/percpu.h>
-#include <kernel/sys/irq.h>
 
 void irq_lock() {
     irq_set_state(false);

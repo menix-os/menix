@@ -1,11 +1,11 @@
 #include <kernel/assert.h>
-#include <kernel/boot/cmdline.h>
-#include <kernel/boot/init.h>
+#include <kernel/cmdline.h>
+#include <kernel/console.h>
+#include <kernel/init.h>
+#include <kernel/irq.h>
 #include <kernel/mem.h>
 #include <kernel/percpu.h>
 #include <kernel/print.h>
-#include <kernel/sys/console.h>
-#include <kernel/sys/irq.h>
 #include <config.h>
 
 const char menix_banner[] = "Menix " MENIX_VERSION " (" MENIX_ARCH ", " MENIX_COMPILER_ID ", " MENIX_LINKER_ID ")";

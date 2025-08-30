@@ -1,5 +1,5 @@
-#include <kernel/boot/init.h>
 #include <kernel/compiler.h>
+#include <kernel/init.h>
 #include <kernel/percpu.h>
 #include <menix/archctl.h>
 #include <menix/status.h>

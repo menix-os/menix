@@ -1,4 +1,4 @@
-#include <kernel/sys/spin.h>
+#include <kernel/spin.h>
 
 void spin_lock(struct spinlock* spin) {
     while (spin->locked) {}

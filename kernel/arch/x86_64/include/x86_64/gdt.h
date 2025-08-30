@@ -18,9 +18,11 @@ struct [[__packed]] gdt {
 
 struct [[__packed]] gdtr {
     uint16_t limit;
-    struct gdt* gdt;
+    struct gdt* base;
 };
 
-// Initializes a GDT with initial values.
-void gdt_new(struct gdt* gdt);
+// Initializes a GDT on the local core.
+void gdt_init();
+
+// Sets the Task State Segment in the given GDT.
 void gdt_set_tss(struct gdt* gdt, struct tss* tss);

@@ -2,7 +2,7 @@
 #include <kernel/compiler.h>
 #include <kernel/mem.h>
 #include <kernel/print.h>
-#include <kernel/sys/spin.h>
+#include <kernel/spin.h>
 #include <menix/status.h>
 #include <stdint.h>
 #include <string.h>

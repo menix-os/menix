@@ -1,7 +1,7 @@
 #include <kernel/assert.h>
 #include <kernel/mem.h>
 #include <kernel/print.h>
-#include <kernel/sys/spin.h>
+#include <kernel/spin.h>
 #include <menix/status.h>
 
 menix_status_t mem_pt_new_kernel(struct page_table* pt, enum alloc_flags flags) {

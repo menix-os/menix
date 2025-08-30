@@ -1,7 +1,7 @@
 #include <kernel/assert.h>
-#include <kernel/boot/cmdline.h>
-#include <kernel/boot/init.h>
+#include <kernel/cmdline.h>
 #include <kernel/common.h>
+#include <kernel/init.h>
 #include <kernel/mem.h>
 #include <kernel/print.h>
 #include "limine.h"

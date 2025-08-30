@@ -1,6 +1,6 @@
+#include <kernel/console.h>
 #include <kernel/panic.h>
 #include <kernel/print.h>
-#include <kernel/sys/console.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>

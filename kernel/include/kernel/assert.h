@@ -8,7 +8,7 @@
     ({ \
         if (__unlikely(!(expr))) { \
             kprintf( \
-                "Kernel panic - Environment is unsound!\n" \
+                "\e[31mKernel panic - Environment is unsound!\n" \
                 "In function \"%s\" (%s:%u):\n" \
                 "Assertion \"%s\" failed! " msg "\n", \
                 __FUNCTION__, \

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <kernel/compiler.h>
-#include <kernel/sys/spin.h>
+#include <kernel/spin.h>
 #include <kernel/types.h>
 #include <menix/status.h>
 #include <bits/mem.h>
