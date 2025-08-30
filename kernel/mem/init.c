@@ -39,7 +39,7 @@ void mem_init(struct phys_mem* map, size_t map_len, virt_t kernel_virt, phys_t k
             break;
         }
 
-        kprintf("[%4zu] %p - %p (%s)\n", i, (void*)map[i].address, (void*)(map[i].address + map[i].length - 1), label);
+        kprintf("[%p - %p] %s\n", (void*)map[i].address, (void*)(map[i].address + map[i].length - 1), label);
     }
 
     // Set up the bootstrap allocator.
@@ -128,7 +128,6 @@ void mem_init(struct phys_mem* map, size_t map_len, virt_t kernel_virt, phys_t k
 
     // Switch to our own page table.
     mem_pt_set(&mem_kernel_table);
-    kprintf("Kernel page table initialized\n");
 
     // We record metadata for every single page of available memory in a large array.
     // This array is contiguous in virtual memory, but is sparsely populated.
@@ -147,7 +146,6 @@ void mem_init(struct phys_mem* map, size_t map_len, virt_t kernel_virt, phys_t k
         }
     }
     mem_pfndb = (struct page*)mem_pfndb_addr();
-    kprintf("PFNDB at %p\n", mem_pfndb);
 
     // We don't need the bootstrap allocator from this point on.
     // Initialize the real page allocator.

@@ -35,7 +35,7 @@
 #error ""
 #endif
 
-#define ELF_MAG (const char[4]){0x7F, 'E', 'L', 'F'}
+constexpr char ELF_MAG[4] = {0x7F, 'E', 'L', 'F'};
 
 typedef uint64_t elf64_addr_t;
 typedef uint64_t elf64_off_t;

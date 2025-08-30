@@ -22,7 +22,7 @@ menix_status_t mem_phys_free(phys_t start, size_t num_pages) {
 }
 
 static struct phys_mem bump_mem = {0};
-static struct phys_mem* bump_start = nullptr;
+static struct phys_mem* bump_region = nullptr;
 
 static menix_status_t bump_alloc(size_t num_pages, enum alloc_flags flags, phys_t* out) {
     const size_t bytes = num_pages * mem_page_size();
@@ -48,8 +48,12 @@ static menix_status_t bump_free(phys_t addr, size_t num_pages) {
 void mem_phys_bootstrap(struct phys_mem* mem) {
     alloc_fn = bump_alloc;
     free_fn = bump_free;
+
+    // Save the region by reference and value.
+    // We can't directly modify the region by reference, because that
+    // interferes with e.g. HHDM mapping logic.
     bump_mem = *mem;
-    bump_start = mem;
+    bump_region = mem;
 }
 
 static __atomic(struct page*) pmm_head = nullptr;
@@ -132,8 +136,8 @@ static menix_status_t freelist_free(phys_t addr, size_t num_pages) {
 void mem_phys_init(struct phys_mem* map, size_t length) {
     alloc_fn = freelist_alloc;
     free_fn = freelist_free;
-    bump_start->address = bump_mem.address;
-    bump_start->length = bump_mem.length;
+    bump_region->address = bump_mem.address;
+    bump_region->length = bump_mem.length;
 
     for (size_t i = 0; i < length; i++) {
         // Regions smaller than a page are useless.
