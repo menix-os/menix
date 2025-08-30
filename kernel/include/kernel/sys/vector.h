@@ -1,6 +1,6 @@
 #pragma once
 
-#include <kernel/mem/alloc.h>
+#include <kernel/mem.h>
 #include <stddef.h>
 #include <string.h>
 
