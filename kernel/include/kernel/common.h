@@ -17,7 +17,7 @@
 #define _CONCAT(A, B) A##B
 
 // Creates a unique identifier for a compilation unit.
-#define UNIQUE_IDENT(ident) CONCAT(ident, __COUNTER__)
+#define UNIQUE_IDENT(ident) CONCAT(__unique_##ident, __COUNTER__)
 
 // Ensures that a type is properly defined at this point.
 // This is used to ensure that e.g. architecture-specific structures are defined.

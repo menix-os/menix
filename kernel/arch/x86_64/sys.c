@@ -12,7 +12,7 @@ void _start() {
     asm volatile("jmp %0" ::"r"(kernel_entry));
 }
 
-void percpu_init_bsp() {
+void percpu_bsp_early_init() {
     asm_wrmsr(MSR_GS_BASE, (uint64_t)&percpu_bsp);
     asm_wrmsr(MSR_FS_BASE, 0);
     asm_wrmsr(MSR_KERNEL_GS_BASE, 0);

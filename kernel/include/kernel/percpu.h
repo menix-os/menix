@@ -32,7 +32,4 @@ static inline struct percpu* percpu_get() {
 struct percpu* percpu_new();
 
 // Initializes the bootstrap processor.
-void percpu_init_bsp();
-
-// Initializes a CPU.
-void percpu_init_cpu(struct percpu* cpu);
+void percpu_bsp_early_init();

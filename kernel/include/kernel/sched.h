@@ -33,3 +33,5 @@ struct task {
 struct sched_percpu {
     struct task* current;
 };
+
+void sched_init();

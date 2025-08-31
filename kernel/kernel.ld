@@ -13,43 +13,44 @@ SECTIONS
     . = 0xffffffff80000000;
     __ld_kernel_start = .;
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
-
-    .text : {
+    .text ALIGN(CONSTANT(MAXPAGESIZE)) : {
         __ld_text_start = .;
+
         KEEP(*(.init.text))
         *(.text .text.*)
         *(.plt .plt.*)
+
         __ld_text_end = .;
     } :text
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
-
-    .rodata : {
+    .rodata ALIGN(CONSTANT(MAXPAGESIZE)) : {
         __ld_rodata_start = .;
-        *(.rodata .rodata.*)
-        *(.got .got.*)
-        __ld_rodata_end = .;
-    } :rodata
 
-    /* Command line options */
-    .cmdline : {
+        __ld_init_array_start = .;
+        KEEP(*(.init_array))
+        __ld_init_array_end = .;
+
         __ld_cmdline_start = .;
         KEEP(*(.cmdline))
         __ld_cmdline_end = .;
+
+        *(.rodata .rodata.*)
+        *(.got .got.*)
+
+        __ld_rodata_end = .;
     } :rodata
 
-    /* Early consoles */
-    .earlycon : {
+    .data ALIGN(CONSTANT(MAXPAGESIZE)) : {
+        __ld_data_start = .;
+
+        __ld_init_start = .;
+        *(.initgraph.nodes)
+        __ld_init_end = .;
+
         __ld_earlycon_start = .;
         KEEP(*(.earlycon))
         __ld_earlycon_end = .;
-    } :rodata
 
-    . = ALIGN(CONSTANT(MAXPAGESIZE));
-
-    __ld_data_start = .;
-    .data : {
         KEEP(*(SORT_BY_NAME(.init.data.*)))
         KEEP(*(.init.data))
         *(.data .data.*)
@@ -86,8 +87,9 @@ SECTIONS
         KEEP(*(.percpu))
         . = ALIGN(CONSTANT(MAXPAGESIZE));
         __ld_percpu_end = .;
+
+        __ld_data_end = .;
     } :percpu
-    __ld_data_end = .;
 
     __ld_kernel_end = .;
 

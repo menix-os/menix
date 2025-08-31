@@ -39,3 +39,7 @@ void kernel_early_init();
 // Initializes the kernel.
 [[noreturn]]
 void kernel_init(struct boot_info* info);
+
+// Main thread.
+[[noreturn]]
+void kernel_main();
