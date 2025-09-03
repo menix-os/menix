@@ -182,12 +182,13 @@ pub fn dispatch(
 
         // Scheduling
         numbers::SLEEP => sys_unimp!("sleep", Err(Errno::ENOSYS)),
-        numbers::YIELD => process::do_yield(),
+        numbers::YIELD => sys_unimp!("yield", Ok(0)),
         numbers::GETPRIORITY => sys_unimp!("getpriority", Err(Errno::ENOSYS)),
         numbers::SETPRIORITY => sys_unimp!("setpriority", Err(Errno::ENOSYS)),
         numbers::SCHED_GETPARAM => sys_unimp!("sched_getparam", Err(Errno::ENOSYS)),
         numbers::SCHED_SETPARAM => sys_unimp!("sched_setparam", Err(Errno::ENOSYS)),
         numbers::GETENTROPY => sys_unimp!("getentropy", Err(Errno::ENOSYS)),
+
         _ => {
             warn!("Unknown syscall {num}");
             Err(Errno::ENOSYS)

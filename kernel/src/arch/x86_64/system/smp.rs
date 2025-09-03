@@ -1,6 +1,6 @@
 use crate::{
     arch::{
-        virt::{PageTableEntry, get_level_bits, get_max_leaf_level, get_page_bits, get_page_size},
+        virt::{PageTableEntry, get_level_bits, get_max_leaf_level, get_page_bits},
         x86_64::{
             consts::{CR0_ET, CR0_PE, CR0_PG, CR4_PAE, MSR_EFER, MSR_EFER_LME, MSR_EFER_NXE},
             system::{

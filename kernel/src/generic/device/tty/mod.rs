@@ -4,7 +4,6 @@ use crate::generic::{
     memory::user::UserPtr,
     posix::errno::{EResult, Errno},
     process::PROCESS_STAGE,
-    sched::Scheduler,
     util::mutex::{Mutex, irq::IrqMutex},
     vfs::{File, VFS_DEV_MOUNT_STAGE, file::FileOps},
 };

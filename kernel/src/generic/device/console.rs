@@ -1,14 +1,9 @@
-use core::fmt::Write;
-
-use alloc::{string::String, sync::Arc};
-
 use crate::generic::{
     device::Device,
     log::GLOBAL_LOGGERS,
     memory::user::UserPtr,
     posix::errno::{EResult, Errno},
     process::{Identity, PROCESS_STAGE, Process},
-    sched::Scheduler,
     util::mutex::irq::IrqMutex,
     vfs::{
         self, File, VFS_DEV_MOUNT_STAGE,
@@ -16,6 +11,8 @@ use crate::generic::{
         inode::{Mode, NodeType},
     },
 };
+use alloc::{string::String, sync::Arc};
+use core::fmt::Write;
 
 #[derive(Debug)]
 struct Console;
@@ -48,11 +45,6 @@ impl FileOps for Console {
             _ => return Err(Errno::ENOSYS),
         }
         Ok(0)
-    }
-
-    fn poll(&self, file: &File, mask: u16) -> EResult<u16> {
-        _ = (file, mask);
-        Ok(mask)
     }
 }
 

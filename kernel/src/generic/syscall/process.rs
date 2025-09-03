@@ -41,8 +41,3 @@ pub fn fork(ctx: &Context) -> EResult<usize> {
 pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> {
     todo!()
 }
-
-pub fn do_yield() -> EResult<usize> {
-    // TODO
-    Ok(0)
-}

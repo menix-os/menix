@@ -391,6 +391,7 @@ impl AddressSpace {
     pub fn fork(&self) -> EResult<Self> {
         let page_size = arch::virt::get_page_size();
         let result = Self::new();
+
         let old_maps = self.mappings.lock();
         let mut new = result.mappings.lock();
 
