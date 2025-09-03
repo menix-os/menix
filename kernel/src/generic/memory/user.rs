@@ -20,24 +20,13 @@ impl<'a, T: Sized + Copy> UserPtr<'a, T> {
     }
 
     pub fn read(&self) -> Option<T> {
-        let current = Scheduler::get_current().get_process();
-        let space = &current.inner.lock().address_space;
-        if !space.is_mapped(self.addr, size_of::<T>()) {
-            None
-        } else {
-            Some(unsafe { self.addr.as_ptr::<T>().read_unaligned() })
-        }
+        // TODO: Mark the start of a user pointer access that can be checked in the PF handler.
+        Some(unsafe { self.addr.as_ptr::<T>().read_unaligned() })
     }
 
     pub fn write(&self, value: T) -> bool {
-        let current = Scheduler::get_current().get_process();
-        let space = &current.inner.lock().address_space;
-        if !space.is_mapped(self.addr, size_of::<T>()) {
-            false
-        } else {
-            unsafe { self.addr.as_ptr::<T>().write_unaligned(value) };
-            true
-        }
+        unsafe { self.addr.as_ptr::<T>().write_unaligned(value) };
+        true
     }
 }
 

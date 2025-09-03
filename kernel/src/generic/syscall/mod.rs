@@ -5,11 +5,11 @@ mod system;
 mod vfs;
 
 use super::posix::errno::Errno;
-use crate::arch::sched::Context;
+use crate::{arch::sched::Context, generic::clock};
 
 macro_rules! sys_unimp {
     ($name: literal, $sc: expr) => {{
-        warn!("Call to unimplemented syscall {}", $name);
+        //warn!("Call to unimplemented syscall {}", $name);
         $sc
     }};
 }
@@ -83,7 +83,7 @@ pub fn dispatch(
         numbers::OPENAT => vfs::openat(a0, a1, a2),
         numbers::CLOSE => vfs::close(a0),
         numbers::STAT => sys_unimp!("stat", Err(Errno::ENOSYS)),
-        numbers::FSTAT => sys_unimp!("fstat", Err(Errno::ENOSYS)),
+        numbers::FSTAT => vfs::fstat(a0, a1.into()),
         numbers::STATVFS => sys_unimp!("statvfs", Err(Errno::ENOSYS)),
         numbers::FSTATVFS => sys_unimp!("fstatvfs", Err(Errno::ENOSYS)),
         numbers::FACCESSAT => sys_unimp!("faccessat", Err(Errno::ENOSYS)),
