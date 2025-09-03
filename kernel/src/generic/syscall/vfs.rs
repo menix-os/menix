@@ -1,5 +1,8 @@
 use crate::generic::{
-    memory::{VirtAddr, user::UserSlice},
+    memory::{
+        VirtAddr,
+        user::{UserPtr, UserSlice},
+    },
     posix::errno::{EResult, Errno},
     sched::Scheduler,
     vfs::{
@@ -146,5 +149,10 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
     }
     buf[0..buffer.len() - cursor].copy_from_slice(&buffer[cursor..]);
 
+    Ok(0)
+}
+
+pub fn fstat(fd: usize, statbuf: UserPtr<uapi::stat>) -> EResult<usize> {
+    // TODO
     Ok(0)
 }
