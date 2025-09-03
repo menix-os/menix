@@ -6,7 +6,6 @@ use crate::{
     arch,
     generic::{
         memory::{VirtAddr, virt::mmu::PageTable},
-        sched::Scheduler,
         vfs::exec::elf::ElfAddr,
     },
 };

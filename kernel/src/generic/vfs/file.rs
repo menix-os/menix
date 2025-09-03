@@ -79,6 +79,18 @@ pub struct File {
     pub position: AtomicUsize,
 }
 
+impl Clone for File {
+    fn clone(&self) -> Self {
+        Self {
+            path: self.path.clone(),
+            ops: self.ops.clone(),
+            inode: self.inode.clone(),
+            flags: self.flags.clone(),
+            position: AtomicUsize::new(self.position.load(Ordering::Relaxed)),
+        }
+    }
+}
+
 /// Operations that can be performed on a file. Every trait function has a
 /// generic implementation, which treats it as unimplemented.
 /// Inputs have been sanitized when these functions are called.

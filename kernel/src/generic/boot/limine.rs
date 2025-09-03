@@ -129,7 +129,7 @@ extern "C" fn _start() -> ! {
     };
 
     // The RSDP is a physical address.
-    info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| (x.address().into()));
+    info.rsdp_addr = RSDP_REQUEST.get_response().map(|x| x.address().into());
 
     // The FDT is a virtual address.
     info.fdt_addr = DTB_REQUEST.get_response().map(|x| {

@@ -3,12 +3,12 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     sched::Scheduler,
     vfs::{
-        Entry, File,
+        File,
         file::{OpenFlags, SeekAnchor},
         inode::Mode,
     },
 };
-use alloc::{borrow::ToOwned, string::String};
+use alloc::borrow::ToOwned;
 use core::ffi::{CStr, c_char};
 
 pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
@@ -144,10 +144,6 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
         };
         current = res;
     }
-    log!(
-        "Path is: \"{}\"",
-        String::from_utf8_lossy(&buffer[cursor..])
-    );
     buf[0..buffer.len() - cursor].copy_from_slice(&buffer[cursor..]);
 
     Ok(0)

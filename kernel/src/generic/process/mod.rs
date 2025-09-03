@@ -95,7 +95,13 @@ impl Process {
                 root_dir: old_inner.root_dir.clone(),
                 working_dir: old_inner.root_dir.clone(),
                 identity: old_inner.identity.clone(),
-                open_files: old_inner.open_files.clone(),
+                open_files: {
+                    let mut files = BTreeMap::new();
+                    for (fd, file) in &old_inner.open_files {
+                        files.insert(*fd, Arc::new(file.as_ref().clone()));
+                    }
+                    files
+                },
                 mmap_head: old_inner.mmap_head.clone(),
             }),
         });
