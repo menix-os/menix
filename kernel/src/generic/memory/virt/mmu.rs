@@ -154,7 +154,9 @@ impl PageTable {
                     }
 
                     // Allocate a new level.
-                    let next_head = P::alloc(1, AllocFlags::Zeroed).unwrap().as_hhdm();
+                    let next_head = P::alloc(1, AllocFlags::Zeroed)
+                        .map_err(|_| PageTableError::OutOfMemory)?
+                        .as_hhdm();
 
                     // ptr::byte_sub() doesn't allow taking higher half addresses because it doesn't fit in an isize.
                     *pte = PageTableEntry::new(

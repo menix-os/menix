@@ -51,11 +51,10 @@ pub static RSDP_REQUEST: RsdpRequest = RsdpRequest::new();
 #[unsafe(link_section = ".boot")]
 pub static DTB_REQUEST: DeviceTreeBlobRequest = DeviceTreeBlobRequest::new();
 
-static mut MEMMAP_BUF: [PhysMemory; 128] = [PhysMemory::empty(); 128];
+static mut MEMMAP_BUF: [PhysMemory; 128] = [PhysMemory::empty(); _];
 static mut FILE_BUF: [BootFile; 32] = [BootFile::new(); _];
 
-#[unsafe(no_mangle)]
-extern "C" fn _start() -> ! {
+pub fn entry() -> ! {
     crate::arch::core::setup_bsp();
 
     // Start collecting boot info.
@@ -67,17 +66,17 @@ extern "C" fn _start() -> ! {
         // 128 entries should be enough for all use cases.
         let entries = MEMMAP_REQUEST.get_response().unwrap().entries();
         let mut total_entries = 0;
-        entries
-            .iter()
-            .filter(|x| x.entry_type == EntryType::USABLE)
-            .enumerate()
-            .for_each(|(i, entry)| unsafe {
-                MEMMAP_BUF[i] = PhysMemory {
-                    length: entry.length as usize,
-                    address: entry.base.into(),
-                };
-                total_entries += 1;
-            });
+        entries.iter().enumerate().for_each(|(i, entry)| unsafe {
+            MEMMAP_BUF[i] = PhysMemory {
+                length: entry.length as usize,
+                address: entry.base.into(),
+                usage: match entry.entry_type {
+                    EntryType::USABLE => super::PhysMemoryUsage::Usable,
+                    _ => super::PhysMemoryUsage::Reserved,
+                },
+            };
+            total_entries += 1;
+        });
 
         info.highest_phys = Some({
             let last = entries.iter().last().unwrap();

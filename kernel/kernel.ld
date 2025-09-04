@@ -86,6 +86,10 @@ SECTIONS
     .bss ALIGN(CONSTANT(MAXPAGESIZE)) : {
         *(.*bss .*bss.*)
         *(COMMON)
+
+        LD_STACK_BOTTOM = .;
+        . += 0x4000;
+        LD_STACK_TOP = .;
     } :data
 
     /* Per-CPU data block. MUST always come last. */

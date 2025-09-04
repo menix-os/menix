@@ -14,7 +14,27 @@ use crate::{
         posix::errno::{EResult, Errno},
     },
 };
-use core::{arch::asm, mem::offset_of, ptr::null_mut, sync::atomic::Ordering};
+use core::{
+    arch::{asm, naked_asm},
+    mem::offset_of,
+    ptr::null_mut,
+    sync::atomic::Ordering,
+};
+
+unsafe extern "C" {
+    unsafe static LD_STACK_TOP: u8;
+}
+
+#[unsafe(no_mangle)]
+#[unsafe(naked)]
+unsafe extern "C" fn _start() {
+    naked_asm!(
+        "lea rsp, [rip + {stack}]",
+        "jmp {entry}",
+        stack = sym LD_STACK_TOP,
+        entry = sym crate::generic::boot::entry
+    );
+}
 
 pub(in crate::arch) fn get_frame_pointer() -> usize {
     let mut fp: usize;

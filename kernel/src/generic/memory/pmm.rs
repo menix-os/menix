@@ -2,7 +2,7 @@ use super::PhysAddr;
 use crate::{
     arch,
     generic::{
-        boot::PhysMemory,
+        boot::{PhysMemory, PhysMemoryUsage},
         util::{divide_up, mutex::spin::SpinMutex},
     },
 };
@@ -167,7 +167,7 @@ pub fn init(memory_map: &[PhysMemory], pages: (*mut Page, usize)) {
 
     // Register free regions.
     for entry in memory_map.iter() {
-        if entry.length < arch::virt::get_page_size() {
+        if entry.length < arch::virt::get_page_size() || entry.usage != PhysMemoryUsage::Usable {
             continue;
         }
 
