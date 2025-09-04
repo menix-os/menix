@@ -72,6 +72,9 @@ pub fn entry() -> ! {
                 address: entry.base.into(),
                 usage: match entry.entry_type {
                     EntryType::USABLE => super::PhysMemoryUsage::Usable,
+                    EntryType::BOOTLOADER_RECLAIMABLE | EntryType::EXECUTABLE_AND_MODULES => {
+                        super::PhysMemoryUsage::Reclaimable
+                    }
                     _ => super::PhysMemoryUsage::Reserved,
                 },
             };
@@ -144,9 +147,11 @@ pub fn entry() -> ! {
         for (i, entry) in response.modules().iter().enumerate() {
             unsafe {
                 FILE_BUF[i] = BootFile {
-                    data: slice_from_raw_parts(entry.addr(), entry.size() as usize)
-                        .as_ref()
-                        .unwrap(),
+                    // We need files to be in physical form.
+                    data: (entry.addr() as usize)
+                        .wrapping_sub(info.hhdm_address.unwrap().value())
+                        .into(),
+                    length: entry.size() as usize,
                     // Split off any parts of the path that come before the actual file name.
                     name: entry.path().to_str().unwrap().rsplit_once('/').unwrap().1,
                 }

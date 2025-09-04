@@ -72,17 +72,19 @@ impl BootInfo {
     }
 }
 
-/// A file loaded by the bootloader. Memory is reclaimed after initialization.
+/// A file loaded by the bootloader. Memory may be reclaimed after initialization.
 #[derive(Clone, Copy, Debug)]
 pub struct BootFile {
-    pub data: &'static [u8],
+    pub data: PhysAddr,
+    pub length: usize,
     pub name: &'static str,
 }
 
 impl BootFile {
     pub const fn new() -> Self {
         Self {
-            data: &[],
+            data: PhysAddr::null(),
+            length: 0,
             name: "",
         }
     }
@@ -92,6 +94,7 @@ impl BootFile {
 pub enum PhysMemoryUsage {
     #[default]
     Reserved,
+    Reclaimable,
     Usable,
 }
 

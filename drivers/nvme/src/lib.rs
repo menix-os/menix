@@ -1,9 +1,15 @@
 #![no_std]
 
-use menix::system::pci::{
-    PciError,
-    device::PciDevice,
-    driver::{PciDriver, PciVariant},
+use menix::{
+    generic::memory::{
+        pmm::{AllocFlags, KernelAlloc, PageAllocator},
+        virt::{VmFlags, mmu::PageTable},
+    },
+    system::pci::{
+        PciError,
+        device::PciDevice,
+        driver::{PciDriver, PciVariant},
+    },
 };
 
 menix::module!("NVMe block devices", "Marvin Friedrich", main);
@@ -23,4 +29,9 @@ pub fn probe(_dev: &PciDevice) -> Result<(), PciError> {
 
 pub fn main() {
     _ = DRIVER.register();
+
+    let mem = KernelAlloc::alloc_bytes(0x1000, AllocFlags::Zeroed).unwrap();
+    PageTable::get_kernel()
+        .map_memory::<KernelAlloc>(mem, VmFlags::Read | VmFlags::Write, 0x1000)
+        .unwrap();
 }

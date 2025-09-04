@@ -187,7 +187,9 @@ fn INITRAMFS_STAGE() {
     .expect("Unable to open root directory");
 
     for file in BootInfo::get().files {
-        load(&proc_inner, root_dir.clone(), file.data)
-            .expect("Failed to load one of the provided initramfs archives");
+        load(&proc_inner, root_dir.clone(), unsafe {
+            core::slice::from_raw_parts(file.data.as_hhdm(), file.length)
+        })
+        .expect("Failed to load one of the provided initramfs archives");
     }
 }

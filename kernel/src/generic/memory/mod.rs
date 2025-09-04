@@ -233,53 +233,54 @@ pub fn MEMORY_STAGE() {
     // ------------------------------------
 
     // Remap the kernel in our own page table.
-    let table = unsafe {
-        log!("Using {}-level paging for page table", paging_level);
-        let table = PageTable::new_kernel::<BumpAllocator>(paging_level, AllocFlags::empty());
+    log!("Using {}-level paging for page table", paging_level);
+    let table = PageTable::new_kernel::<BumpAllocator>(paging_level, AllocFlags::empty());
 
-        let text_start = VirtAddr(&raw const virt::LD_TEXT_START as usize);
-        let text_end = VirtAddr(&raw const virt::LD_TEXT_END as usize);
-        let rodata_start = VirtAddr(&raw const virt::LD_RODATA_START as usize);
-        let rodata_end = VirtAddr(&raw const virt::LD_RODATA_END as usize);
-        let data_start = VirtAddr(&raw const virt::LD_DATA_START as usize);
-        let data_end = VirtAddr(&raw const virt::LD_DATA_END as usize);
-        let kernel_start = VirtAddr(&raw const virt::LD_KERNEL_START as usize);
+    let text_start = VirtAddr(&raw const virt::LD_TEXT_START as usize);
+    let text_end = VirtAddr(&raw const virt::LD_TEXT_END as usize);
+    let rodata_start = VirtAddr(&raw const virt::LD_RODATA_START as usize);
+    let rodata_end = VirtAddr(&raw const virt::LD_RODATA_END as usize);
+    let data_start = VirtAddr(&raw const virt::LD_DATA_START as usize);
+    let data_end = VirtAddr(&raw const virt::LD_DATA_END as usize);
+    let kernel_start = VirtAddr(&raw const virt::LD_KERNEL_START as usize);
 
-        log!("Kernel starts at: {:#018x}", kernel_phys.0);
+    log!("Kernel starts at: {:#018x}", kernel_phys.0);
 
-        table
-            .map_range::<BumpAllocator>(
-                text_start,
-                PhysAddr(text_start.0 - kernel_start.0 + kernel_phys.0),
-                VmFlags::Read | VmFlags::Exec,
-                text_end.0 - text_start.0,
-            )
-            .expect("Unable to map the text segment");
-        log!("Mapped text segment at {:#018x}", text_start.0);
+    table
+        .map_range::<BumpAllocator>(
+            text_start,
+            PhysAddr(text_start.0 - kernel_start.0 + kernel_phys.0),
+            VmFlags::Read | VmFlags::Exec,
+            text_end.0 - text_start.0,
+        )
+        .expect("Unable to map the text segment");
+    log!("Mapped text segment at {:#018x}", text_start.0);
 
-        table
-            .map_range::<BumpAllocator>(
-                rodata_start,
-                PhysAddr(rodata_start.0 - kernel_start.0 + kernel_phys.0),
-                VmFlags::Read,
-                rodata_end.0 - rodata_start.0,
-            )
-            .expect("Unable to map the rodata segment");
-        log!("Mapped rodata segment at {:#018x}", rodata_start.0);
+    table
+        .map_range::<BumpAllocator>(
+            rodata_start,
+            PhysAddr(rodata_start.0 - kernel_start.0 + kernel_phys.0),
+            VmFlags::Read,
+            rodata_end.0 - rodata_start.0,
+        )
+        .expect("Unable to map the rodata segment");
+    log!("Mapped rodata segment at {:#018x}", rodata_start.0);
 
-        table
-            .map_range::<BumpAllocator>(
-                data_start,
-                PhysAddr(data_start.0 - kernel_start.0 + kernel_phys.0),
-                VmFlags::Read | VmFlags::Write,
-                data_end.0 - data_start.0,
-            )
-            .expect("Unable to map the data segment");
-        log!("Mapped data segment at {:#018x}", data_start.0);
+    table
+        .map_range::<BumpAllocator>(
+            data_start,
+            PhysAddr(data_start.0 - kernel_start.0 + kernel_phys.0),
+            VmFlags::Read | VmFlags::Write,
+            data_end.0 - data_start.0,
+        )
+        .expect("Unable to map the data segment");
+    log!("Mapped data segment at {:#018x}", data_start.0);
 
-        // Map physical memory.
-        log!("Highest physical address is {:#018x}", highest_phys.0);
-        for entry in memory_map.iter() {
+    // Map physical memory.
+    memory_map
+        .iter()
+        .filter(|x| x.usage == PhysMemoryUsage::Usable || x.usage == PhysMemoryUsage::Reclaimable)
+        .for_each(|entry| {
             table
                 .map_range::<BumpAllocator>(
                     arch::virt::get_hhdm_base() + entry.address.value(),
@@ -288,53 +289,54 @@ pub fn MEMORY_STAGE() {
                     entry.length,
                 )
                 .expect("Unable to map HHDM region");
-        }
-        log!(
-            "Mapped HHDM segment at {:#018x}",
-            arch::virt::get_hhdm_base().value()
-        );
+        });
 
-        // Activate the new page table.
-        table.set_active();
-
-        log!("Kernel map is now active");
-        table
-    };
+    log!(
+        "Mapped HHDM segment at {:#018x}",
+        arch::virt::get_hhdm_base().value()
+    );
 
     // We record metadata for every single page of available memory in a large array.
     // This array is contiguous in virtual memory, but is sparsely populated.
     // Only those array entries which represent usable memory are mapped.
 
     // The offset where we start mapping the page array.
+    log!("Highest physical address is {:#018x}", highest_phys.0);
     let page_base = arch::virt::get_pfndb_base();
     let page_length = highest_phys.0 / size_of::<Page>();
-    for entry in memory_map.iter() {
-        if entry.length == 0 {
-            continue;
-        }
+    let page_size = get_page_size();
 
-        let page_size = get_page_size();
-        let length = align_up((entry.length / page_size) * size_of::<Page>(), page_size);
-        let virt = align_down(
-            (page_base + entry.address.0 / page_size * size_of::<Page>()).value(),
-            page_size,
-        );
+    memory_map
+        .iter()
+        .filter(|x| x.length != 0)
+        .for_each(|entry| {
+            let length = align_up((entry.length / page_size) * size_of::<Page>(), page_size);
+            let virt = align_down(
+                (page_base + entry.address.0 / page_size * size_of::<Page>()).value(),
+                page_size,
+            );
 
-        for page in (0..=length).step_by(page_size) {
-            table
-                .map_single::<BumpAllocator>(
-                    (virt + page).into(),
-                    BumpAllocator::alloc(1, AllocFlags::Zeroed).unwrap(),
-                    VmFlags::Read | VmFlags::Write,
-                )
-                .unwrap();
-        }
-    }
+            for page in (0..=length).step_by(page_size) {
+                table
+                    .map_single::<BumpAllocator>(
+                        (virt + page).into(),
+                        BumpAllocator::alloc(1, AllocFlags::Zeroed).unwrap(),
+                        VmFlags::Read | VmFlags::Write,
+                    )
+                    .unwrap();
+            }
+        });
 
     log!(
         "Initalized page array region at {:#018x}",
         page_base.value()
     );
+
+    // Activate the new page table.
+    unsafe { table.set_active() };
+    log!("Kernel map is now active");
+
+    unsafe { HHDM_START.init(arch::virt::get_hhdm_base()) };
 
     // Finally, make sure to mark the allocated memory as used before the real allocator looks at the memory map.
     let allocated_bytes = align_up(
