@@ -33,6 +33,18 @@ pub fn get_num_levels() -> usize {
     internal::virt::get_num_levels()
 }
 
+pub fn get_hhdm_base() -> VirtAddr {
+    internal::virt::get_hhdm_base()
+}
+
+pub fn get_pfndb_base() -> VirtAddr {
+    internal::virt::get_pfndb_base()
+}
+
+pub fn get_map_base() -> VirtAddr {
+    internal::virt::get_map_base()
+}
+
 /// Sets a given page table as the active one on this CPU.
 ///
 /// # Safety

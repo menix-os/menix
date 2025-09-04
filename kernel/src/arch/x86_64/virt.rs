@@ -120,3 +120,15 @@ pub(in crate::arch) const fn get_level_bits() -> usize {
 pub(in crate::arch) const fn get_num_levels() -> usize {
     4
 }
+
+pub(in crate::arch) fn get_hhdm_base() -> VirtAddr {
+    VirtAddr::new(0xFFFF_8000_0000_0000)
+}
+
+pub(in crate::arch) fn get_pfndb_base() -> VirtAddr {
+    VirtAddr::new(0xFFFF_A000_0000_0000)
+}
+
+pub(in crate::arch) fn get_map_base() -> VirtAddr {
+    VirtAddr::new(0xFFFF_C000_0000_0000)
+}

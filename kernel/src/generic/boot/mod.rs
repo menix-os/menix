@@ -88,6 +88,13 @@ impl BootFile {
     }
 }
 
+#[derive(Debug, Clone, Copy, Default, PartialEq, PartialOrd)]
+pub enum PhysMemoryUsage {
+    #[default]
+    Reserved,
+    Usable,
+}
+
 /// Describes a region of physical memory.
 #[derive(Clone, Copy, Debug, Default, PartialEq, PartialOrd)]
 pub struct PhysMemory {
@@ -95,6 +102,8 @@ pub struct PhysMemory {
     pub address: PhysAddr,
     /// Length of the memory region in bytes.
     pub length: usize,
+    /// How this memory is used.
+    pub usage: PhysMemoryUsage,
 }
 
 impl PhysMemory {
@@ -102,13 +111,21 @@ impl PhysMemory {
         Self {
             address: PhysAddr::null(),
             length: 0,
+            usage: PhysMemoryUsage::Reserved,
         }
     }
+}
 
-    pub const fn new(address: PhysAddr, length: usize) -> Self {
-        if length == 0 {
-            panic!("Can't construct a PhysMemory descriptor with empty size!");
-        }
-        Self { address, length }
-    }
+/// Generic entry point.
+pub fn entry() {
+    #[cfg(all(
+        feature = "boot_limine",
+        any(
+            target_arch = "x86_64",
+            target_arch = "aarch64",
+            target_arch = "riscv64",
+            target_arch = "loongarch64"
+        )
+    ))]
+    limine::entry();
 }

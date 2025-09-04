@@ -35,7 +35,7 @@ use core::hint;
 use generic::boot::BootInfo;
 
 /// Initializes all important kernel structures.
-/// This is invoked by the prekernel environment.
+/// This is invoked by the boot environment.
 pub fn init() -> ! {
     {
         let _irq = IrqMutex::lock();

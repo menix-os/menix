@@ -78,6 +78,7 @@ pub enum VmCacheType {}
 pub enum PageTableError {
     PageTableEntryMissing,
     NeedAllocation,
+    OutOfMemory,
 }
 
 pub(crate) static KERNEL_PAGE_TABLE: Once<Arc<PageTable>> = Once::new();

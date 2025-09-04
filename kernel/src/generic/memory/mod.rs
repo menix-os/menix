@@ -9,12 +9,9 @@ pub mod virt;
 
 use super::util::once::Once;
 use crate::{
-    arch::{
-        self,
-        virt::{get_level_bits, get_max_leaf_level, get_page_bits, get_page_size},
-    },
+    arch::{self, virt::get_page_size},
     generic::{
-        boot::BootInfo,
+        boot::{BootInfo, PhysMemoryUsage},
         memory::virt::mmu::PageTable,
         util::{align_down, align_up},
     },
@@ -207,18 +204,28 @@ pub fn MEMORY_STAGE() {
     let mut memory_map = info.memory_map.lock();
 
     // Print the memory map.
-    memory_map
-        .iter()
-        .for_each(|x| log!("[{:#018x} - {:#018x}]", x.address.0, x.address.0 + x.length));
+    memory_map.iter().for_each(|x| {
+        log!(
+            "{:#018x} - {:#018x} ({:?})",
+            x.address.0,
+            x.address.0 + x.length,
+            x.usage
+        )
+    });
 
     // Find the largest region there is for the bump allocator.
     let bump_region = memory_map
         .iter()
+        .filter(|x| x.usage == PhysMemoryUsage::Usable)
         .max_by(|x, y| x.length.cmp(&y.length))
         .unwrap();
 
     bump::BUMP_CURRENT.store(
         align_up(bump_region.address.value(), arch::virt::get_page_size()),
+        Ordering::Relaxed,
+    );
+    bump::BUMP_LENGTH.store(
+        align_down(bump_region.length, arch::virt::get_page_size()),
         Ordering::Relaxed,
     );
 
@@ -237,6 +244,8 @@ pub fn MEMORY_STAGE() {
         let data_start = VirtAddr(&raw const virt::LD_DATA_START as usize);
         let data_end = VirtAddr(&raw const virt::LD_DATA_END as usize);
         let kernel_start = VirtAddr(&raw const virt::LD_KERNEL_START as usize);
+
+        log!("Kernel starts at: {:#018x}", kernel_phys.0);
 
         table
             .map_range::<BumpAllocator>(
@@ -269,15 +278,21 @@ pub fn MEMORY_STAGE() {
         log!("Mapped data segment at {:#018x}", data_start.0);
 
         // Map physical memory.
-        table
-            .map_range::<BumpAllocator>(
-                hhdm_address,
-                PhysAddr::null(),
-                VmFlags::Read | VmFlags::Write,
-                highest_phys.0,
-            )
-            .expect("Unable to map HHDM region");
-        log!("Mapped HHDM segment at {:#018x}", hhdm_address.0);
+        log!("Highest physical address is {:#018x}", highest_phys.0);
+        for entry in memory_map.iter() {
+            table
+                .map_range::<BumpAllocator>(
+                    arch::virt::get_hhdm_base() + entry.address.value(),
+                    entry.address,
+                    VmFlags::Read | VmFlags::Write,
+                    entry.length,
+                )
+                .expect("Unable to map HHDM region");
+        }
+        log!(
+            "Mapped HHDM segment at {:#018x}",
+            arch::virt::get_hhdm_base().value()
+        );
 
         // Activate the new page table.
         table.set_active();
@@ -291,7 +306,7 @@ pub fn MEMORY_STAGE() {
     // Only those array entries which represent usable memory are mapped.
 
     // The offset where we start mapping the page array.
-    let page_base = align_up(hhdm_address.0 + highest_phys.0, 0x1000_0000_0000);
+    let page_base = arch::virt::get_pfndb_base();
     let page_length = highest_phys.0 / size_of::<Page>();
     for entry in memory_map.iter() {
         if entry.length == 0 {
@@ -301,16 +316,11 @@ pub fn MEMORY_STAGE() {
         let page_size = get_page_size();
         let length = align_up((entry.length / page_size) * size_of::<Page>(), page_size);
         let virt = align_down(
-            page_base + (entry.address.0 / page_size * size_of::<Page>()),
+            (page_base + entry.address.0 / page_size * size_of::<Page>()).value(),
             page_size,
         );
 
         for page in (0..=length).step_by(page_size) {
-            // We can't free any memory at this point, so we have to make sure we need every single one.
-            if table.is_mapped((virt + page).into()) {
-                continue;
-            }
-
             table
                 .map_single::<BumpAllocator>(
                     (virt + page).into(),
@@ -321,7 +331,10 @@ pub fn MEMORY_STAGE() {
         }
     }
 
-    log!("Initalized page array region at {:#018x}", page_base);
+    log!(
+        "Initalized page array region at {:#018x}",
+        page_base.value()
+    );
 
     // Finally, make sure to mark the allocated memory as used before the real allocator looks at the memory map.
     let allocated_bytes = align_up(
@@ -342,16 +355,12 @@ pub fn MEMORY_STAGE() {
     // ----------------------------------------
 
     // Initialize the physical memory allocator.
-    pmm::init(&memory_map, (page_base as *mut Page, page_length));
+    pmm::init(&memory_map, (page_base.as_ptr(), page_length));
 
     // Save the page table.
     unsafe { virt::KERNEL_PAGE_TABLE.init(Arc::new(table)) };
 
     // Set the MMAP base to right after the page table. Make sure this lands on a new PTE so we can map regular pages.
     // TODO: Use a virtual memory allocator instead.
-    let pte_size = 1 << (get_page_bits() + get_max_leaf_level() * get_level_bits());
-    let offset = align_up(0x1000_0000_0000, pte_size);
-
-    virt::KERNEL_MMAP_BASE_ADDR.store(page_base + offset, Ordering::Relaxed);
-    super::module::MODULE_ADDR.store(page_base + offset + offset, Ordering::Relaxed);
+    virt::KERNEL_MMAP_BASE_ADDR.store(arch::virt::get_map_base().value(), Ordering::Relaxed);
 }

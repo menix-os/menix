@@ -10,14 +10,10 @@ use super::{
 };
 use crate::{
     arch,
-    generic::memory::virt::{self, mmu::PageTable},
+    generic::memory::virt::{self, KERNEL_MMAP_BASE_ADDR, mmu::PageTable},
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
-use core::{
-    ffi::CStr,
-    slice,
-    sync::atomic::{AtomicUsize, Ordering},
-};
+use core::{ffi::CStr, slice, sync::atomic::Ordering};
 
 // TODO: This can use RwLocks.
 pub(crate) static SYMBOL_TABLE: SpinMutex<BTreeMap<String, (elf::ElfSym, Option<&ModuleInfo>)>> =
@@ -95,8 +91,6 @@ pub enum ModuleLoadError {
     SymbolNotFound,
 }
 
-pub static MODULE_ADDR: AtomicUsize = AtomicUsize::new(0);
-
 /// Loads a module from an ELF in memory.
 pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
     let elf_hdr: &ElfHdr = bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()])
@@ -161,7 +155,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
             elf::PT_LOAD => {
                 // Record where the first PHDR was loaded at.
                 if load_base == 0 {
-                    load_base = MODULE_ADDR.load(Ordering::Acquire);
+                    load_base = KERNEL_MMAP_BASE_ADDR.load(Ordering::Acquire);
                 }
 
                 let mut memsz = phdr.p_memsz as usize;
@@ -189,7 +183,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                         )
                         .map_err(|_| ModuleLoadError::AllocFailed)?;
 
-                    MODULE_ADDR.fetch_add(arch::virt::get_page_size(), Ordering::AcqRel);
+                    KERNEL_MMAP_BASE_ADDR.fetch_add(arch::virt::get_page_size(), Ordering::AcqRel);
                 }
 
                 let virt = load_base + phdr.p_vaddr as usize;
