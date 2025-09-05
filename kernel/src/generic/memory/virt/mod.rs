@@ -198,22 +198,14 @@ impl AddressSpace {
             if start_page <= mapping.start_page && end_page >= mapping.end_page {
                 for p in mapping.start_page..mapping.end_page {
                     let page_addr = (p * page_size).into();
-                    if self.table.is_mapped(page_addr) {
-                        self.table
-                            .unmap_single::<KernelAlloc>(page_addr)
-                            .map_err(|_| Errno::ENOMEM)?;
-                    }
+                    _ = self.table.unmap_single::<KernelAlloc>(page_addr);
                 }
             }
             // If new mapping partially shadows the old mapping.
             else {
                 for p in start_page.max(mapping.start_page)..end_page.min(mapping.end_page) {
                     let page_addr = (p * page_size).into();
-                    if self.table.is_mapped(page_addr) {
-                        self.table
-                            .unmap_single::<KernelAlloc>(page_addr)
-                            .map_err(|_| Errno::ENOMEM)?;
-                    }
+                    _ = self.table.unmap_single::<KernelAlloc>(page_addr);
                 }
 
                 let head_pages = if start_page < mapping.start_page {
