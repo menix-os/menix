@@ -1,5 +1,5 @@
 <p align="center">
-<img src="assets/menix.svg" width="20%"/>
+<img src="menix.svg" width="20%"/>
 </p>
 
 ![GitHub License](https://img.shields.io/github/license/menix-os/menix?style=flat&color=red)
