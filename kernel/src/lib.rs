@@ -52,13 +52,7 @@ static INIT: Once<Arc<Process>> = Once::new();
 /// The high-level kernel entry point.
 pub extern "C" fn main(_: usize, _: usize) {
     // Say hello to the console.
-    log!(
-        "{} {} {} {}",
-        generic::posix::utsname::SYSNAME,
-        generic::posix::utsname::RELEASE,
-        generic::posix::utsname::VERSION,
-        generic::posix::utsname::MACHINE
-    );
+    log!("Menix {}", env!("CARGO_PKG_VERSION"));
 
     log!("Command line: {}", BootInfo::get().command_line.inner());
 

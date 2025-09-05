@@ -6,7 +6,6 @@ use crate::generic::{
     fbcon::{FbColorBits, FrameBuffer},
     util::mutex::spin::SpinMutex,
 };
-use core::ptr::slice_from_raw_parts;
 use limine::{BaseRevision, memory_map::EntryType, paging::Mode, request::*};
 
 #[used]

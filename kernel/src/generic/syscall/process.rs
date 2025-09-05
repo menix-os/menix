@@ -1,6 +1,11 @@
 use crate::{
     arch::sched::Context,
-    generic::{memory::VirtAddr, percpu::CPU_DATA, posix::errno::EResult, sched::Scheduler},
+    generic::{
+        memory::VirtAddr,
+        percpu::CPU_DATA,
+        posix::errno::{EResult, Errno},
+        sched::Scheduler,
+    },
 };
 
 pub fn gettid() -> usize {
@@ -16,6 +21,39 @@ pub fn getppid() -> usize {
         .get_process()
         .get_parent()
         .map_or(0, |x| x.get_pid())
+}
+
+pub fn getuid() -> usize {
+    let proc = Scheduler::get_current().get_process();
+    let inner = proc.inner.lock();
+    inner.identity.user_id as usize
+}
+
+pub fn geteuid() -> usize {
+    let proc = Scheduler::get_current().get_process();
+    let inner = proc.inner.lock();
+    inner.identity.effective_user_id as usize
+}
+
+pub fn getgid() -> usize {
+    let proc = Scheduler::get_current().get_process();
+    let inner = proc.inner.lock();
+    inner.identity.group_id as usize
+}
+
+pub fn getegid() -> usize {
+    let proc = Scheduler::get_current().get_process();
+    let inner = proc.inner.lock();
+    inner.identity.effective_group_id as usize
+}
+
+pub fn getpgid(pid: usize) -> EResult<usize> {
+    if pid != 0 {
+        return Err(Errno::EINVAL);
+    }
+
+    let proc = Scheduler::get_current().get_process();
+    Ok(proc.get_pid())
 }
 
 pub fn exit(error: usize) -> ! {

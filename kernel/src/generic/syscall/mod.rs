@@ -5,11 +5,11 @@ mod system;
 mod vfs;
 
 use super::posix::errno::Errno;
-use crate::{arch::sched::Context, generic::clock};
+use crate::arch::sched::Context;
 
 macro_rules! sys_unimp {
     ($name: literal, $sc: expr) => {{
-        //warn!("Call to unimplemented syscall {}", $name);
+        warn!("Call to unimplemented syscall {}", $name);
         $sc
     }};
 }
@@ -32,14 +32,13 @@ pub fn dispatch(
     let result = match num {
         // System control
         numbers::SYSLOG => sys_unimp!("syslog", Ok(0)),
-        numbers::UNAME => system::uname(a0.into()),
+        numbers::GETUNAME => system::getuname(a0.into()),
+        numbers::SETUNAME => system::setuname(a0.into()),
         numbers::ARCHCTL => system::archctl(a0, a1),
         numbers::REBOOT => sys_unimp!("reboot", Err(Errno::ENOSYS)),
         numbers::GETCPU => sys_unimp!("getcpu", Err(Errno::ENOSYS)),
         numbers::SYSINFO => sys_unimp!("sysinfo", Err(Errno::ENOSYS)),
         numbers::PTRACE => sys_unimp!("ptrace", Err(Errno::ENOSYS)),
-        numbers::GETHOSTNAME => sys_unimp!("gethostname", Err(Errno::ENOSYS)),
-        numbers::SETHOSTNAME => sys_unimp!("sethostname", Err(Errno::ENOSYS)),
 
         // Mapped memory
         numbers::MMAP => memory::mmap(a0.into(), a1, a2 as _, a3 as _, a4 as _, a5 as _),
@@ -109,8 +108,8 @@ pub fn dispatch(
         numbers::UNLINKAT => sys_unimp!("unlinkat", Err(Errno::ENOSYS)),
         numbers::READLINKAT => sys_unimp!("readlinkat", Err(Errno::ENOSYS)),
         numbers::FLOCK => sys_unimp!("flock", Err(Errno::ENOSYS)),
-        numbers::POLL => sys_unimp!("poll", Err(Errno::ENOSYS)),
-        numbers::DUP => sys_unimp!("dup", Err(Errno::ENOSYS)),
+        numbers::PPOLL => sys_unimp!("ppoll", Err(Errno::ENOSYS)),
+        numbers::DUP => vfs::dup(a0),
         numbers::DUP3 => sys_unimp!("dup3", Err(Errno::ENOSYS)),
         numbers::SYNC => sys_unimp!("sync", Err(Errno::ENOSYS)),
         numbers::FSYNC => sys_unimp!("fsync", Err(Errno::ENOSYS)),
@@ -145,14 +144,14 @@ pub fn dispatch(
         numbers::GETSID => sys_unimp!("getsid", Err(Errno::ENOSYS)),
         numbers::SETSID => sys_unimp!("setsid", Err(Errno::ENOSYS)),
         numbers::SETUID => sys_unimp!("setuid", Err(Errno::ENOSYS)),
-        numbers::GETUID => sys_unimp!("getuid", Err(Errno::ENOSYS)),
+        numbers::GETUID => Ok(process::getuid()),
         numbers::SETGID => sys_unimp!("setgid", Err(Errno::ENOSYS)),
-        numbers::GETGID => sys_unimp!("getgid", Err(Errno::ENOSYS)),
-        numbers::GETEUID => sys_unimp!("geteuid", Err(Errno::ENOSYS)),
+        numbers::GETGID => Ok(process::getgid()),
+        numbers::GETEUID => Ok(process::geteuid()),
         numbers::SETEUID => sys_unimp!("seteuid", Err(Errno::ENOSYS)),
-        numbers::GETEGID => sys_unimp!("getegid", Err(Errno::ENOSYS)),
+        numbers::GETEGID => Ok(process::getegid()),
         numbers::SETEGID => sys_unimp!("setegid", Err(Errno::ENOSYS)),
-        numbers::GETPGID => sys_unimp!("getpgid", Err(Errno::ENOSYS)),
+        numbers::GETPGID => process::getpgid(a0),
         numbers::SETPGID => sys_unimp!("setpgid", Err(Errno::ENOSYS)),
         numbers::GETRESUID => sys_unimp!("getresuid", Err(Errno::ENOSYS)),
         numbers::SETRESUID => sys_unimp!("setresuid", Err(Errno::ENOSYS)),
