@@ -156,3 +156,10 @@ pub fn fstat(fd: usize, statbuf: UserPtr<uapi::stat>) -> EResult<usize> {
     // TODO
     Ok(0)
 }
+
+pub fn dup(fd: usize) -> EResult<usize> {
+    let proc = Scheduler::get_current().get_process();
+    let mut proc_inner = proc.inner.lock();
+    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+    proc_inner.open_file(file).ok_or(Errno::EMFILE)
+}
