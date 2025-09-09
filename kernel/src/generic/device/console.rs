@@ -35,10 +35,9 @@ impl FileOps for Console {
             uapi::TIOCGWINSZ => {
                 let arg: UserPtr<'_, uapi::winsize> = UserPtr::new(arg.into());
                 arg.write(uapi::winsize {
-                    ws_row: 80,
-                    ws_col: 25,
-                    ws_xpixel: 0, // Unused
-                    ws_ypixel: 0, // Unused
+                    ws_row: 25,
+                    ws_col: 80,
+                    ..Default::default()
                 })
                 .ok_or(Errno::EINVAL)?;
             }
