@@ -13,7 +13,7 @@ strip = false
 
 [profile.release]
 panic = "abort"
-opt-level = 1
-debug = true
+opt-level = 3
+debug = false
 overflow-checks = false
-strip = false
+strip = true
