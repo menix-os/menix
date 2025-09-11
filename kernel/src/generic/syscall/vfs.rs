@@ -6,23 +6,29 @@ use crate::generic::{
     posix::errno::{EResult, Errno},
     sched::Scheduler,
     vfs::{
-        File,
-        file::{OpenFlags, SeekAnchor},
-        inode::Mode,
+        self, File, PathNode,
+        cache::LookupFlags,
+        file::{FileDescription, OpenFlags, SeekAnchor},
+        inode::{INode, Mode, NodeOps, NodeType},
     },
 };
-use alloc::borrow::ToOwned;
-use core::ffi::{CStr, c_char};
+use alloc::{borrow::ToOwned, sync::Arc};
+use core::{ffi::CStr, sync::atomic::Ordering};
 
 pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     let slice = UserSlice::new(addr, len)
         .as_mut_slice()
         .ok_or(Errno::EINVAL)?;
-    let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
+    let file = {
+        let proc = Scheduler::get_current().get_process();
+        let proc_inner = proc.inner.lock();
+        proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
+    };
 
-    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-    drop(proc_inner);
+    let flags = file.flags.lock();
+    if !flags.contains(OpenFlags::ReadOnly) && !flags.contains(OpenFlags::ReadWrite) {
+        return Err(Errno::EBADF);
+    }
 
     file.read(slice)
 }
@@ -31,66 +37,90 @@ pub fn pread(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<is
     let slice = UserSlice::new(addr, len)
         .as_mut_slice()
         .ok_or(Errno::EINVAL)?;
-    let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
+    let file = {
+        let proc = Scheduler::get_current().get_process();
+        let proc_inner = proc.inner.lock();
+        proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
+    };
 
-    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-    drop(proc_inner);
+    let flags = file.flags.lock();
+    if !flags.contains(OpenFlags::ReadOnly) && !flags.contains(OpenFlags::ReadWrite) {
+        return Err(Errno::EBADF);
+    }
 
     file.pread(slice, offset as _)
 }
 
 pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     let slice = UserSlice::new(addr, len).as_slice().ok_or(Errno::EINVAL)?;
-    let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
+    let file = {
+        let proc = Scheduler::get_current().get_process();
+        let proc_inner = proc.inner.lock();
+        proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
+    };
 
-    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-    drop(proc_inner);
-
+    let flags = file.flags.lock();
+    if !flags.contains(OpenFlags::WriteOnly) && !flags.contains(OpenFlags::ReadWrite) {
+        return Err(Errno::EBADF);
+    }
     file.write(slice)
 }
 
 pub fn pwrite(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
     let slice = UserSlice::new(addr, len).as_slice().ok_or(Errno::EINVAL)?;
-    let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
+    let file = {
+        let proc = Scheduler::get_current().get_process();
+        let proc_inner = proc.inner.lock();
+        proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
+    };
 
-    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-    drop(proc_inner);
+    let flags = file.flags.lock();
+    if !flags.contains(OpenFlags::WriteOnly) && !flags.contains(OpenFlags::ReadWrite) {
+        return Err(Errno::EBADF);
+    }
 
     file.pwrite(slice, offset as _)
 }
 
-pub fn openat(fd: usize, path: usize, oflag: usize) -> EResult<usize> {
+pub fn openat(fd: usize, path: VirtAddr, oflag: usize /* mode */) -> EResult<usize> {
+    let path = unsafe { CStr::from_ptr(path.as_ptr()) };
+    let v = path.to_owned();
+
     let proc = Scheduler::get_current().get_process();
+    let mut proc_inner = proc.inner.lock();
     let parent = if fd == uapi::AT_FDCWD as _ {
         None
     } else {
-        Some(proc.inner.lock().get_fd(fd).ok_or(Errno::EBADF)?)
+        Some(proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file)
     };
-
-    // TODO: Use UserPtr instead.
-    let path = unsafe { CStr::from_ptr(path as *const c_char) };
-    let v = path.to_owned();
-    let mut proc_inner = proc.inner.lock();
 
     let file = File::open(
         &proc_inner,
         parent,
         v.to_bytes(),
-        OpenFlags::from_bits_truncate(oflag as _),
+        // O_CLOEXEC doesn't apply to a file, but rather its individual FD.
+        // This means that dup'ing a file doesn't share this flag.
+        OpenFlags::from_bits_truncate(oflag as _) & !OpenFlags::CloseOnExec,
         Mode::empty(),
         &proc_inner.identity,
     )?;
 
-    proc_inner.open_file(file).ok_or(Errno::EMFILE)
+    proc_inner
+        .open_file(
+            FileDescription {
+                file,
+                close_on_exec: OpenFlags::from_bits_truncate(oflag as _)
+                    .contains(OpenFlags::CloseOnExec),
+            },
+            0,
+        )
+        .ok_or(Errno::EMFILE)
 }
 
 pub fn seek(fd: usize, offset: usize, whence: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
-    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
     let anchor = match whence {
         0 => SeekAnchor::Start(offset as _),
         1 => SeekAnchor::Current(offset as _),
@@ -115,7 +145,7 @@ pub fn close(fd: usize) -> EResult<usize> {
 pub fn ioctl(fd: usize, request: usize, arg: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
-    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
     drop(proc_inner);
 
     file.ioctl(request, arg)
@@ -152,8 +182,67 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
     Ok(0)
 }
 
+fn write_stat(inode: &Arc<INode>, statbuf: UserPtr<uapi::stat>) {
+    let stat = uapi::stat {
+        st_dev: 0,
+        st_ino: inode.id,
+        st_mode: inode.mode.load(Ordering::Acquire),
+        st_nlink: Arc::strong_count(inode) as _,
+        st_uid: inode.uid.load(Ordering::Acquire) as _,
+        st_gid: inode.gid.load(Ordering::Acquire) as _,
+        st_rdev: 0,
+        st_size: inode.size.load(Ordering::Acquire) as _,
+        st_atim: inode.atime.lock().clone(),
+        st_mtim: inode.mtime.lock().clone(),
+        st_ctim: inode.ctime.lock().clone(),
+        st_blksize: 0,
+        st_blocks: 0,
+    };
+
+    statbuf.write(stat);
+}
+
 pub fn fstat(fd: usize, statbuf: UserPtr<uapi::stat>) -> EResult<usize> {
-    // TODO
+    let proc = Scheduler::get_current().get_process();
+    let proc_inner = proc.inner.lock();
+
+    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
+    let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
+
+    write_stat(inode, statbuf);
+
+    Ok(0)
+}
+
+pub fn fstatat(
+    at: usize,
+    path: VirtAddr,
+    statbuf: UserPtr<uapi::stat>,
+    flags: usize, // TODO
+) -> EResult<usize> {
+    let path = unsafe { CStr::from_ptr(path.as_ptr()) };
+    let v = path.to_owned();
+
+    let proc = Scheduler::get_current().get_process();
+    let proc_inner = proc.inner.lock();
+    let parent = if at == uapi::AT_FDCWD as _ {
+        None
+    } else {
+        Some(proc_inner.get_fd(at).ok_or(Errno::EBADF)?.file)
+    };
+
+    let file = File::open(
+        &proc_inner,
+        parent,
+        v.to_bytes(),
+        OpenFlags::ReadOnly,
+        Mode::empty(),
+        &proc_inner.identity,
+    )?;
+    let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
+
+    write_stat(inode, statbuf);
+
     Ok(0)
 }
 
@@ -161,5 +250,207 @@ pub fn dup(fd: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let mut proc_inner = proc.inner.lock();
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-    proc_inner.open_file(file).ok_or(Errno::EMFILE)
+    proc_inner.open_file(file, fd).ok_or(Errno::EMFILE)
+}
+
+pub fn dup3(fd1: usize, fd2: usize, flags: usize) -> EResult<usize> {
+    if fd1 == fd2 {
+        return Ok(fd1);
+    }
+
+    let proc = Scheduler::get_current().get_process();
+    let mut proc_inner = proc.inner.lock();
+
+    let file = proc_inner.get_fd(fd1).ok_or(Errno::EBADF)?;
+    proc_inner.open_files.insert(fd2, file);
+    Ok(fd2)
+}
+
+pub fn mkdirat(fd: usize, path: VirtAddr, mode: uapi::mode_t) -> EResult<usize> {
+    let path = unsafe { CStr::from_ptr(path.as_ptr()) };
+    let v = path.to_owned();
+
+    let proc = Scheduler::get_current().get_process();
+    let inner = proc.inner.lock();
+    let parent = if fd == uapi::AT_FDCWD as _ {
+        None
+    } else {
+        Some(inner.get_fd(fd).ok_or(Errno::EBADF)?.file)
+    };
+    vfs::mknod(
+        &inner,
+        parent,
+        v.as_bytes(),
+        NodeType::Directory,
+        Mode::from_bits(mode).ok_or(Errno::EINVAL)?,
+        None,
+        &inner.identity,
+    )?;
+
+    Ok(0)
+}
+
+pub fn chdir(path: VirtAddr) -> EResult<usize> {
+    let path = unsafe { CStr::from_ptr(path.as_ptr()) };
+    let v = path.to_owned();
+
+    let proc = Scheduler::get_current().get_process();
+    let mut inner = proc.inner.lock();
+    let node = PathNode::lookup(
+        &inner,
+        None,
+        v.as_bytes(),
+        &inner.identity,
+        LookupFlags::MustExist,
+    )?;
+    inner.working_dir = node;
+
+    Ok(0)
+}
+
+pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
+    let buf: &mut [u8] = UserSlice::new(addr, len)
+        .as_mut_slice()
+        .ok_or(Errno::EINVAL)?;
+
+    let proc = Scheduler::get_current().get_process();
+    let inner = proc.inner.lock();
+
+    // fd must be a valid descriptor open for reading.
+    let dir = inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
+    let flags = dir.flags.lock().clone();
+    if !flags.contains(OpenFlags::ReadOnly) && !flags.contains(OpenFlags::ReadWrite) {
+        return Err(Errno::EBADF);
+    }
+
+    // fd must be a directory.
+    let node = dir.inode.clone().ok_or(Errno::EBADF)?;
+    match &node.node_ops {
+        NodeOps::Directory(dir_ops) => {
+            // TODO: Probably need a getdents callback...
+        }
+        _ => return Err(Errno::ENOTDIR),
+    }
+
+    Ok(0)
+}
+
+pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> EResult<usize> {
+    let proc = Scheduler::get_current().get_process();
+    let mut proc_inner = proc.inner.lock();
+
+    match cmd as _ {
+        uapi::F_DUPFD => {
+            let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+            proc_inner.open_file(file, arg).ok_or(Errno::EMFILE)
+        }
+        uapi::F_DUPFD_CLOEXEC => {
+            let mut file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+            file.close_on_exec = true;
+            proc_inner.open_file(file, arg).ok_or(Errno::EMFILE)
+        }
+        uapi::F_GETFD => {
+            let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+            let mut flags = file.file.flags.lock().clone();
+            flags.set(OpenFlags::CloseOnExec, file.close_on_exec);
+            Ok(flags.bits() as _)
+        }
+        uapi::F_SETFD => {
+            warn!("fcntl F_SETFD is a stub!");
+            Ok(0)
+        }
+        uapi::F_GETFL => {
+            warn!("fcntl F_GETFL is a stub!");
+            Ok(0)
+        }
+        uapi::F_SETFL => {
+            warn!("fcntl F_SETFL is a stub!");
+            Ok(0)
+        }
+        uapi::F_GETOWN => {
+            warn!("fcntl F_GETOWN is a stub!");
+            Ok(0)
+        }
+        uapi::F_SETOWN => {
+            warn!("fcntl F_SETOWN is a stub!");
+            Ok(0)
+        }
+        uapi::F_GETOWN_EX => {
+            warn!("fcntl F_GETOWN_EX is a stub!");
+            Ok(0)
+        }
+        uapi::F_SETOWN_EX => {
+            warn!("fcntl F_SETOWN_EX is a stub!");
+            Ok(0)
+        }
+        uapi::F_GETLK => {
+            warn!("fcntl F_GETLK is a stub!");
+            Ok(0)
+        }
+        uapi::F_SETLK => {
+            warn!("fcntl F_SETLK is a stub!");
+            Ok(0)
+        }
+        uapi::F_SETLKW => {
+            warn!("fcntl F_SETLKW is a stub!");
+            Ok(0)
+        }
+        uapi::F_OFD_GETLK => {
+            warn!("fcntl F_OFD_GETLK is a stub!");
+            Ok(0)
+        }
+        uapi::F_OFD_SETLK => {
+            warn!("fcntl F_OFD_SETLK is a stub!");
+            Ok(0)
+        }
+        uapi::F_OFD_SETLKW => {
+            warn!("fcntl F_OFD_SETLKW is a stub!");
+            Ok(0)
+        }
+        _ => Err(Errno::EINVAL),
+    }
+}
+
+pub fn pselect(
+    fd: usize,
+    read_fds: VirtAddr,
+    write_fds: VirtAddr,
+    except_fds: VirtAddr,
+    timeout: UserPtr<uapi::timespec>,
+    sigmask: UserPtr<uapi::sigset_t>,
+) -> EResult<usize> {
+    // TODO
+    warn!("pselect is a stub!");
+    Ok(0)
+}
+
+pub fn pipe(filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
+    let fds = {
+        let proc = Scheduler::get_current().get_process();
+        let mut proc_inner = proc.inner.lock();
+        let (pipe1, pipe2) = vfs::pipe()?;
+        [
+            proc_inner
+                .open_file(
+                    FileDescription {
+                        file: pipe1,
+                        close_on_exec: false,
+                    },
+                    0,
+                )
+                .ok_or(Errno::EMFILE)? as _,
+            proc_inner
+                .open_file(
+                    FileDescription {
+                        file: pipe2,
+                        close_on_exec: false,
+                    },
+                    0,
+                )
+                .ok_or(Errno::EMFILE)? as _,
+        ]
+    };
+
+    filedes.write(fds);
+    Ok(0)
 }

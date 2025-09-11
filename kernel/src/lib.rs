@@ -28,7 +28,11 @@ pub mod system;
 use crate::generic::{
     process::{Identity, Process},
     util::{mutex::irq::IrqMutex, once::Once},
-    vfs::{File, file::OpenFlags, inode::Mode},
+    vfs::{
+        File,
+        file::{FileDescription, OpenFlags},
+        inode::Mode,
+    },
 };
 use alloc::{string::String, sync::Arc};
 use core::hint;
@@ -65,6 +69,16 @@ pub extern "C" fn main(_: usize, _: usize) {
 
     log!("Starting init \"{}\"", String::from_utf8_lossy(path));
 
+    let args = vec![path.to_vec()];
+    log!("With arguments:");
+    args.iter()
+        .for_each(|x| log!("    {}", String::from_utf8_lossy(x)));
+
+    let envs = vec![b"HOME=/".to_vec(), b"TERM=xterm-256color".to_vec()];
+    log!("With environment:");
+    envs.iter()
+        .for_each(|x| log!("    {}", String::from_utf8_lossy(x)));
+
     unsafe {
         INIT.init(Arc::new(
             Process::new("init".into(), None).expect("Unable to create init process"),
@@ -86,9 +100,15 @@ pub extern "C" fn main(_: usize, _: usize) {
         )
         .expect("Unable to open console for init");
 
-        init_inner.open_files.insert(0, console.clone());
-        init_inner.open_files.insert(1, console.clone());
-        init_inner.open_files.insert(2, console);
+        for i in 0..=2 {
+            init_inner.open_files.insert(
+                i,
+                FileDescription {
+                    file: console.clone(),
+                    close_on_exec: false,
+                },
+            );
+        }
     }
 
     let init_file = {
@@ -106,6 +126,6 @@ pub extern "C" fn main(_: usize, _: usize) {
 
     init_proc
         .clone()
-        .fexecve(init_file, &[path], &[])
+        .fexecve(init_file, args, envs)
         .expect("Unable to start the init process");
 }

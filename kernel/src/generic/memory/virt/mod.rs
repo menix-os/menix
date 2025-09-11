@@ -349,6 +349,11 @@ impl AddressSpace {
         Ok(())
     }
 
+    pub fn unmap(&self, addr: VirtAddr, len: NonZeroUsize) -> EResult<()> {
+        // TODO
+        Ok(())
+    }
+
     /// Checks if the entire range is mapped in this address space.
     pub fn is_mapped(&self, addr: VirtAddr, len: usize) -> bool {
         let page_size = arch::virt::get_page_size();

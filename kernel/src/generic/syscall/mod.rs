@@ -9,7 +9,7 @@ use crate::arch::sched::Context;
 
 macro_rules! sys_unimp {
     ($name: literal, $sc: expr) => {{
-        warn!("Call to unimplemented syscall {}", $name);
+        //warn!("Call to unimplemented syscall {}", $name);
         $sc
     }};
 }
@@ -42,7 +42,7 @@ pub fn dispatch(
 
         // Mapped memory
         numbers::MMAP => memory::mmap(a0.into(), a1, a2 as _, a3 as _, a4 as _, a5 as _),
-        numbers::MUNMAP => sys_unimp!("munmap", Err(Errno::ENOSYS)),
+        numbers::MUNMAP => memory::munmap(a0.into(), a1),
         numbers::MPROTECT => memory::mprotect(a0.into(), a1, a2 as _),
         numbers::MADVISE => sys_unimp!("madvise", Err(Errno::ENOSYS)),
 
@@ -63,7 +63,7 @@ pub fn dispatch(
         numbers::GETPID => Ok(process::getpid()),
         numbers::GETPPID => Ok(process::getppid()),
         numbers::WAITID => sys_unimp!("waitid", Err(Errno::ENOSYS)),
-        numbers::WAITPID => sys_unimp!("waitpid", Err(Errno::EINTR)),
+        numbers::WAITPID => process::waitpid(a0 as _, a1.into(), a2 as _),
 
         // Threads
         numbers::THREAD_CREATE => sys_unimp!("thread_create", Err(Errno::ENOSYS)),
@@ -79,26 +79,26 @@ pub fn dispatch(
         numbers::PWRITE => vfs::pwrite(a0, a1.into(), a2, a3).map(|x| x as _),
         numbers::SEEK => vfs::seek(a0, a1, a2),
         numbers::IOCTL => vfs::ioctl(a0, a1, a2),
-        numbers::OPENAT => vfs::openat(a0, a1, a2),
+        numbers::OPENAT => vfs::openat(a0, a1.into(), a2),
         numbers::CLOSE => vfs::close(a0),
-        numbers::STAT => sys_unimp!("stat", Err(Errno::ENOSYS)),
         numbers::FSTAT => vfs::fstat(a0, a1.into()),
+        numbers::FSTATAT => vfs::fstatat(a0, a1.into(), a2.into(), a3),
         numbers::STATVFS => sys_unimp!("statvfs", Err(Errno::ENOSYS)),
         numbers::FSTATVFS => sys_unimp!("fstatvfs", Err(Errno::ENOSYS)),
         numbers::FACCESSAT => sys_unimp!("faccessat", Err(Errno::ENOSYS)),
-        numbers::FCNTL => sys_unimp!("fcntl", Ok(0)),
+        numbers::FCNTL => vfs::fcntl(a0, a1, a2),
         numbers::FTRUNCATE => sys_unimp!("ftruncate", Err(Errno::ENOSYS)),
         numbers::FALLOCATE => sys_unimp!("fallocate", Err(Errno::ENOSYS)),
         numbers::UTIMENSAT => sys_unimp!("utimensat", Err(Errno::ENOSYS)),
-        numbers::PSELECT => sys_unimp!("pselect", Err(Errno::ENOSYS)),
+        numbers::PSELECT => vfs::pselect(a0, a1.into(), a2.into(), a3.into(), a4.into(), a5.into()),
         numbers::MKNODAT => sys_unimp!("mknodat", Err(Errno::ENOSYS)),
         numbers::READDIR => sys_unimp!("readdir", Err(Errno::ENOSYS)),
         numbers::GETCWD => vfs::getcwd(a0.into(), a1),
-        numbers::CHDIR => sys_unimp!("chdir", Err(Errno::ENOSYS)),
+        numbers::CHDIR => vfs::chdir(a0.into()),
         numbers::FCHDIR => sys_unimp!("fchdir", Err(Errno::ENOSYS)),
-        numbers::MKDIRAT => sys_unimp!("mkdirat", Err(Errno::ENOSYS)),
+        numbers::MKDIRAT => vfs::mkdirat(a0, a1.into(), a2 as _),
         numbers::RMDIRAT => sys_unimp!("rmdirat", Err(Errno::ENOSYS)),
-        numbers::GETDENTS => sys_unimp!("getdents", Err(Errno::ENOSYS)),
+        numbers::GETDENTS => vfs::getdents(a0, a1.into(), a2),
         numbers::RENAMEAT => sys_unimp!("renameat", Err(Errno::ENOSYS)),
         numbers::FCHMOD => sys_unimp!("fchmod", Err(Errno::ENOSYS)),
         numbers::FCHMODAT => sys_unimp!("fchmodat", Err(Errno::ENOSYS)),
@@ -110,14 +110,14 @@ pub fn dispatch(
         numbers::FLOCK => sys_unimp!("flock", Err(Errno::ENOSYS)),
         numbers::PPOLL => sys_unimp!("ppoll", Err(Errno::ENOSYS)),
         numbers::DUP => vfs::dup(a0),
-        numbers::DUP3 => sys_unimp!("dup3", Err(Errno::ENOSYS)),
+        numbers::DUP3 => vfs::dup3(a0, a1, a2),
         numbers::SYNC => sys_unimp!("sync", Err(Errno::ENOSYS)),
         numbers::FSYNC => sys_unimp!("fsync", Err(Errno::ENOSYS)),
         numbers::FDATASYNC => sys_unimp!("fdatasync", Err(Errno::ENOSYS)),
         numbers::CHROOT => sys_unimp!("chroot", Err(Errno::ENOSYS)),
         numbers::MOUNT => sys_unimp!("mount", Err(Errno::ENOSYS)),
         numbers::UMOUNT => sys_unimp!("umount", Err(Errno::ENOSYS)),
-        numbers::PIPE => sys_unimp!("pipe", Ok(0)),
+        numbers::PIPE => vfs::pipe(a0.into()),
         numbers::SWAPON => sys_unimp!("swapon", Err(Errno::ENOSYS)),
         numbers::SWAPOFF => sys_unimp!("swapoff", Err(Errno::ENOSYS)),
 

@@ -8,7 +8,12 @@ use crate::{
         posix::errno::{EResult, Errno},
         process::task::Task,
         util::{mutex::spin::SpinMutex, once::Once},
-        vfs::{self, cache::PathNode, exec::ExecInfo, file::File},
+        vfs::{
+            self,
+            cache::PathNode,
+            exec::ExecInfo,
+            file::{File, FileDescription},
+        },
     },
 };
 use alloc::{
@@ -51,7 +56,7 @@ pub struct InnerProcess {
     /// The user identity of this process.
     pub identity: Identity,
     /// A table of open file descriptors.
-    pub open_files: BTreeMap<usize, Arc<File>>,
+    pub open_files: BTreeMap<usize, FileDescription>,
     /// A pointer to the next free memory region.
     pub mmap_head: VirtAddr,
 }
@@ -95,13 +100,7 @@ impl Process {
                 root_dir: old_inner.root_dir.clone(),
                 working_dir: old_inner.root_dir.clone(),
                 identity: old_inner.identity.clone(),
-                open_files: {
-                    let mut files = BTreeMap::new();
-                    for (fd, file) in &old_inner.open_files {
-                        files.insert(*fd, Arc::new(file.as_ref().clone()));
-                    }
-                    files
-                },
+                open_files: old_inner.open_files.clone(),
                 mmap_head: old_inner.mmap_head.clone(),
             }),
         });
@@ -113,9 +112,7 @@ impl Process {
 
         // Create the main thread.
         let forked_thread = Arc::new(Task::new(to_user_context, raw_ctx as _, 0, &forked, true)?);
-
         forked.inner.lock().threads.push(forked_thread.clone());
-
         old_inner.children.push(forked.clone());
 
         Ok((forked, forked_thread))
@@ -173,8 +170,8 @@ impl Process {
     pub fn fexecve(
         self: Arc<Self>,
         file: Arc<File>,
-        argv: &[&[u8]],
-        envp: &[&[u8]],
+        argv: Vec<Vec<u8>>,
+        envp: Vec<Vec<u8>>,
     ) -> EResult<()> {
         let mut info = ExecInfo {
             executable: file.clone(),
@@ -204,15 +201,15 @@ impl Process {
 impl InnerProcess {
     /// Attempts to get the file corresponding to the given file descriptor.
     /// Note that this does not handle special FDs like [`uapi::AT_FDCWD`].
-    pub fn get_fd(&self, fd: usize) -> Option<Arc<File>> {
+    pub fn get_fd(&self, fd: usize) -> Option<FileDescription> {
         self.open_files.get(&fd).cloned()
     }
 
     /// Allocates a new descriptor for a file. Returns [`None`] if there are no more free FDs for this process.
-    pub fn open_file(&mut self, file: Arc<File>) -> Option<usize> {
+    pub fn open_file(&mut self, file: FileDescription, base: usize) -> Option<usize> {
         // TODO: OPEN_MAX
         // Find a free descriptor.
-        let mut last = 0;
+        let mut last = base;
         loop {
             if !self.open_files.contains_key(&last) {
                 break;

@@ -10,6 +10,7 @@
 #include "bits/poll.h"
 #include "bits/reboot.h"
 #include "bits/resource.h"
+#include "bits/signal.h"
 #include "bits/stat.h"
 #include "bits/statvfs.h"
 #include "bits/termios.h"

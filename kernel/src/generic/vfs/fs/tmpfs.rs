@@ -8,7 +8,7 @@ use crate::{
         memory::{PhysAddr, cache::MemoryObject},
         posix::errno::{EResult, Errno},
         process::Identity,
-        util::mutex::spin::SpinMutex,
+        util::mutex::{Mutex, spin::SpinMutex},
         vfs::{
             PathNode,
             cache::Entry,
@@ -130,7 +130,7 @@ impl DirectoryOps for TmpDir {
             path: Some(path),
             ops: Arc::new(TmpFile::default()),
             inode: Some(node.clone()),
-            flags,
+            flags: Mutex::new(flags),
             position: AtomicUsize::new(0),
         };
         return Ok(Arc::try_new(file)?);

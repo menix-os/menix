@@ -329,7 +329,8 @@ pub struct ElfHdr {
 static_assert!(size_of::<ElfHdr>() == 64);
 
 // Yes I know ELF already has "Format" in the name.
-struct ElfFormat;
+#[derive(Debug)]
+pub struct ElfFormat;
 
 struct ElfInfo {
     at_phdr: usize,
@@ -509,7 +510,7 @@ impl ExecFormat for ElfFormat {
         let mut envp_offsets = Vec::with_capacity(info.envp.len());
         let mut argv_offsets = Vec::with_capacity(info.argv.len());
 
-        for env in info.envp {
+        for env in &info.envp {
             stack_off -= 1;
             stack.write(&[0u8], stack_off);
             stack_off -= env.len();
@@ -517,7 +518,7 @@ impl ExecFormat for ElfFormat {
             envp_offsets.push(stack_start + stack_off);
         }
 
-        for arg in info.argv {
+        for arg in &info.argv {
             stack_off -= 1;
             stack.write(&[0u8], stack_off);
             stack_off -= arg.len();

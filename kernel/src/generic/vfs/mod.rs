@@ -3,6 +3,7 @@ pub mod exec;
 pub mod file;
 pub mod fs;
 pub mod inode;
+pub mod pipe;
 
 pub use cache::Entry;
 pub use cache::PathNode;
@@ -55,6 +56,7 @@ pub fn mknod(
         | NodeType::BlockDevice
         | NodeType::CharacterDevice
         | NodeType::FIFO => (),
+        // Anything else we disallow.
         _ => return Err(Errno::EINVAL),
     }
 
@@ -125,6 +127,14 @@ pub fn mmap(
 
 // TODO
 pub fn mount() {}
+
+pub fn pipe() -> EResult<(Arc<File>, Arc<File>)> {
+    let pipe = Arc::try_new(pipe::PipeBuffer::new())?;
+    let endpoint1 = File::open_disconnected(pipe.clone(), OpenFlags::ReadOnly)?;
+    let endpoint2 = File::open_disconnected(pipe, OpenFlags::WriteOnly)?;
+
+    Ok((endpoint1, endpoint2))
+}
 
 #[initgraph::task(
     name = "generic.vfs",

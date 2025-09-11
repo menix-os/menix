@@ -1,11 +1,13 @@
 //! Commonly needed data structures.
 
-use num_traits::PrimInt;
-
+pub mod event;
 pub mod mutex;
 pub mod once;
+pub mod ring;
 pub mod rwlock;
 pub mod spin;
+
+use num_traits::PrimInt;
 
 /// Aligns a value to the next higher multiple of `alignment`.
 #[inline]

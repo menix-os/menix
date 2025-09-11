@@ -61,7 +61,7 @@ pub fn mmap(
         }
     };
     crate::generic::vfs::mmap(
-        file,
+        file.map(|x| x.file),
         &proc_inner.address_space,
         addr,
         NonZeroUsize::new(length).ok_or(Errno::EINVAL)?,
@@ -87,4 +87,14 @@ pub fn mprotect(addr: VirtAddr, size: usize, prot: u32) -> EResult<usize> {
     )?;
 
     Ok(0)
+}
+
+pub fn munmap(addr: VirtAddr, size: usize) -> EResult<usize> {
+    let proc = Scheduler::get_current().get_process();
+    let inner = proc.inner.lock();
+
+    inner
+        .address_space
+        .unmap(addr, NonZeroUsize::new(size).ok_or(Errno::EINVAL)?)
+        .map(|_| 0)
 }

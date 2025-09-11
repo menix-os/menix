@@ -19,7 +19,6 @@ use core::{
 
 /// A standalone file system node, also commonly referred to as a vnode.
 /// It is used to represent a file or sized memory in a generic way.
-#[derive(Debug)]
 pub struct INode {
     /// Operations that only work on a certain type of node.
     pub node_ops: NodeOps,
@@ -106,7 +105,6 @@ pub trait CommonOps: Debug {
     fn sync(&self, node: &INode) -> EResult<()>;
 }
 
-#[derive(Debug)]
 pub enum NodeOps {
     Regular(Box<dyn RegularOps>),
     Directory(Box<dyn DirectoryOps>),
@@ -118,7 +116,7 @@ pub enum NodeOps {
 }
 
 /// Operations for directory [`INode`]s.
-pub trait DirectoryOps: Any + Debug {
+pub trait DirectoryOps: Any {
     /// Looks up all children in an `node` directory and caches them in `entry`.
     /// An implementation shall return [`Errno::ENOENT`] if a lookup fails and
     /// shall leave `entry` unchanged.
@@ -175,14 +173,14 @@ pub trait DirectoryOps: Any + Debug {
 }
 
 /// Operations for regular file [`INode`]s.
-pub trait RegularOps: Any + Debug {
+pub trait RegularOps: Any {
     /// Truncates the node to a given new_length in bytes.
     /// `new_length` must be equal or less than the current node size.
     fn truncate(&self, node: &INode, new_length: u64) -> EResult<()>;
 }
 
 /// Operations for symbolic link [`INode`]s.
-pub trait SymlinkOps: Any + Debug {
+pub trait SymlinkOps: Any {
     /// Reads the path of the symbolic link of the node.
     /// Returns amount of bytes read into the buffer.
     fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<u64>;

@@ -5,8 +5,11 @@ use crate::{
         percpu::CPU_DATA,
         posix::errno::{EResult, Errno},
         sched::Scheduler,
+        vfs::{File, file::OpenFlags, inode::Mode},
     },
 };
+use alloc::vec::Vec;
+use core::ffi::CStr;
 
 pub fn gettid() -> usize {
     Scheduler::get_current().get_id()
@@ -77,5 +80,47 @@ pub fn fork(ctx: &Context) -> EResult<usize> {
 }
 
 pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> {
-    todo!()
+    let proc = Scheduler::get_current().get_process();
+
+    let path_str = unsafe { CStr::from_ptr(path.as_ptr()) };
+
+    let args: Vec<_> = (0..)
+        .map(|i| unsafe { argv.as_ptr::<usize>().offset(i).read() })
+        .take_while(|&p| p != 0)
+        .map(|p| {
+            unsafe { CStr::from_ptr(p as *const i8) }
+                .to_bytes()
+                .to_vec()
+        })
+        .collect();
+
+    let envs: Vec<_> = (0..)
+        .map(|i| unsafe { envp.as_ptr::<usize>().offset(i).read() })
+        .take_while(|&p| p != 0)
+        .map(|p| {
+            unsafe { CStr::from_ptr(p as *const i8) }
+                .to_bytes()
+                .to_vec()
+        })
+        .collect();
+
+    let inner = proc.inner.lock();
+    let file = File::open(
+        &inner,
+        None,
+        path_str.to_bytes(),
+        OpenFlags::ReadOnly | OpenFlags::Executable,
+        Mode::empty(),
+        &inner.identity,
+    )?;
+    drop(inner);
+    proc.fexecve(file, args, envs)?;
+
+    // Unreachable.
+    Scheduler::kill_current();
+}
+
+pub fn waitpid(pid: uapi::pid_t, stat_loc: VirtAddr, options: i32) -> EResult<usize> {
+    // TODO
+    Ok(0)
 }

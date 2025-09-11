@@ -1,4 +1,7 @@
 pub mod elf;
+mod shebang;
+
+use core::fmt::Debug;
 
 use crate::generic::{
     memory::virt::AddressSpace,
@@ -11,11 +14,12 @@ use alloc::{
     collections::btree_map::BTreeMap,
     string::{String, ToString},
     sync::Arc,
+    vec::Vec,
 };
 
 /// Information passed to [`ExecFormat::load`].
 #[derive(Debug)]
-pub struct ExecInfo<'a> {
+pub struct ExecInfo {
     /// The excutable to load.
     pub executable: Arc<File>,
     /// An interpreter that's tasked with loading the given executable.
@@ -23,18 +27,18 @@ pub struct ExecInfo<'a> {
     /// An address space for the new process.
     pub space: AddressSpace,
     /// Arguments.
-    pub argv: &'a [&'a [u8]],
+    pub argv: Vec<Vec<u8>>,
     /// Environment variables.
-    pub envp: &'a [&'a [u8]],
+    pub envp: Vec<Vec<u8>>,
 }
 
 /// An executable format.
-pub trait ExecFormat {
+pub trait ExecFormat: Debug {
     /// Identifies whether a file is a valid executable of this format.
     fn identify(&self, file: &File) -> bool;
 
     /// Loads the executable and returns a new initial thread.
-    /// The implementation should not modify `old` at all.
+    /// The implementation should not modify `proc` at all.
     fn load(&self, proc: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task>;
 }
 

@@ -8,7 +8,7 @@ use crate::generic::{
 use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};
 use core::{fmt::Debug, hint::unlikely};
 
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub enum EntryState {
     /// Entry is positive and contains a link to the inode.
     Present(Arc<INode>),
@@ -69,10 +69,7 @@ impl Entry {
 
 impl Debug for Entry {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Entry")
-            .field("name", &self.name)
-            .field("inode", &self.inode)
-            .finish()
+        f.debug_struct("Entry").field("name", &self.name).finish()
     }
 }
 

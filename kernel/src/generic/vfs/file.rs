@@ -3,6 +3,7 @@ use crate::generic::{
     memory::cache::MemoryObject,
     posix::errno::{EResult, Errno},
     process::{Identity, InnerProcess},
+    util::mutex::Mutex,
     vfs::{
         cache::{LookupFlags, PathNode},
         inode::{Mode, NodeOps},
@@ -65,7 +66,6 @@ pub enum SeekAnchor {
 }
 
 /// The kernel representation of an open file.
-#[derive(Debug)]
 pub struct File {
     /// The cached entry for this file.
     pub path: Option<PathNode>,
@@ -74,7 +74,7 @@ pub struct File {
     /// The opened inode.
     pub inode: Option<Arc<INode>>,
     /// File open flags.
-    pub flags: OpenFlags,
+    pub flags: Mutex<OpenFlags>,
     /// The cursor of this file.
     pub position: AtomicUsize,
 }
@@ -85,16 +85,32 @@ impl Clone for File {
             path: self.path.clone(),
             ops: self.ops.clone(),
             inode: self.inode.clone(),
-            flags: self.flags.clone(),
+            flags: Mutex::new(self.flags.lock().clone()),
             position: AtomicUsize::new(self.position.load(Ordering::Relaxed)),
         }
     }
 }
 
+impl Debug for File {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.debug_struct("File")
+            .field("path", &self.path)
+            .field("flags", &self.flags)
+            .field("position", &self.position)
+            .finish()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct FileDescription {
+    pub file: Arc<File>,
+    pub close_on_exec: bool,
+}
+
 /// Operations that can be performed on a file. Every trait function has a
 /// generic implementation, which treats it as unimplemented.
 /// Inputs have been sanitized when these functions are called.
-pub trait FileOps: Debug {
+pub trait FileOps {
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
     fn read(&self, file: &File, buffer: &mut [u8], offset: uapi::off_t) -> EResult<isize> {
@@ -190,13 +206,25 @@ impl File {
                     path: Some(file_path),
                     ops: file_node.file_ops.clone(),
                     inode: Some(file_node),
-                    flags,
+                    flags: Mutex::new(flags),
                     position: AtomicUsize::new(0),
                 };
 
                 Ok(Arc::try_new(result)?)
             }
         }
+    }
+
+    pub fn open_disconnected(ops: Arc<dyn FileOps>, flags: OpenFlags) -> EResult<Arc<File>> {
+        let file = File {
+            path: None,
+            ops,
+            inode: None,
+            flags: Mutex::new(flags),
+            position: AtomicUsize::new(0),
+        };
+
+        Ok(Arc::try_new(file)?)
     }
 
     pub fn open_inode(
@@ -229,7 +257,7 @@ impl File {
                     path: Some(file_path),
                     ops: inode.file_ops.clone(),
                     inode: Some(inode.clone()),
-                    flags,
+                    flags: Mutex::new(flags),
                     position: AtomicUsize::new(0),
                 };
                 Ok(Arc::try_new(result)?)
@@ -242,7 +270,7 @@ impl File {
                     path: Some(file_path),
                     ops: dev.clone(),
                     inode: Some(inode.clone()),
-                    flags,
+                    flags: Mutex::new(flags),
                     position: AtomicUsize::new(0),
                 };
                 Ok(Arc::try_new(result)?)
@@ -254,7 +282,7 @@ impl File {
                     path: Some(file_path),
                     ops: dev.clone(),
                     inode: Some(inode.clone()),
-                    flags,
+                    flags: Mutex::new(flags),
                     position: AtomicUsize::new(0),
                 };
                 Ok(Arc::try_new(result)?)
@@ -264,15 +292,6 @@ impl File {
             // Doesn't make sense to call open() on anything else.
             _ => return Err(Errno::ENOTSUP),
         }
-    }
-
-    /// Reads directory entries into a buffer.
-    /// Returns actual bytes read.
-    pub fn read_dir(&self, buf: &mut [u8]) -> EResult<isize> {
-        if buf.is_empty() {
-            return Ok(0);
-        }
-        self.ops.read(self, buf, 0)
     }
 
     /// Reads into a buffer from a file.

@@ -10,7 +10,7 @@ typedef unsigned int __u32;
 typedef long __i64;
 typedef unsigned long __u64;
 typedef long __isize;
-typedef unsigned long __usize;
+typedef __SIZE_TYPE__ __usize;
 
 typedef long off_t;
 typedef long off64_t;
@@ -28,5 +28,6 @@ typedef __usize rlim_t;
 typedef __usize uid_t;
 typedef __usize fsblkcnt_t;
 typedef __usize fsfilcnt_t;
+typedef __usize pthread_attr_t;
 
 #endif
