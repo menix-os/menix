@@ -177,9 +177,11 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
         };
         current = res;
     }
-    buf[0..buffer.len() - cursor].copy_from_slice(&buffer[cursor..]);
 
-    Ok(0)
+    let len = buffer.len() - cursor;
+    buf[0..len].copy_from_slice(&buffer[cursor..]);
+
+    Ok(len)
 }
 
 fn write_stat(inode: &Arc<INode>, statbuf: UserPtr<uapi::stat>) {
