@@ -11,11 +11,7 @@ pub struct RingBuffer {
 impl RingBuffer {
     pub fn new(capacity: usize) -> Self {
         Self {
-            buf: {
-                let mut v = Vec::with_capacity(capacity);
-                v.resize(capacity, 0u8);
-                v
-            },
+            buf: vec![0u8; capacity],
             read_cursor: 0,
             write_cursor: 0,
         }
