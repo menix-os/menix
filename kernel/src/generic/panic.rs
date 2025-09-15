@@ -38,11 +38,10 @@ fn panic_handler(info: &PanicInfo) -> ! {
     unsafe { GLOBAL_LOGGERS.force_unlock() };
 
     // We write directly to the loggers because something might've happened to the timers.
-    log_panic!("Kernel panic - Environment is unsound!");
+    log_panic!("Kernel panic: {}", info.message());
     if let Some(location) = info.location() {
         log_panic!("at {}", location);
     }
-    log_panic!("{}", info.message());
 
     {
         log_panic!("----------");
