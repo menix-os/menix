@@ -162,26 +162,38 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
     let mut buffer = vec![0u8; uapi::PATH_MAX as _];
     let mut cursor = uapi::PATH_MAX as usize;
     let mut current = proc_inner.working_dir.clone();
-    while cursor > 0 {
-        let len = current.entry.name.len();
-        // Write the component to the buffer.
-        cursor -= len;
-        buffer[cursor..][..len].copy_from_slice(&current.entry.name);
 
-        // Write the path separator.
-        cursor -= 1;
-        buffer[cursor] = b'/';
+    // Walk up until we reach the root
+    while let Ok(parent) = current.lookup_parent() {
+        let name = &current.entry.name;
+        if !name.is_empty() {
+            // Copy name
+            let len = name.len();
+            cursor -= len;
+            buffer[cursor..cursor + len].copy_from_slice(&name);
 
-        let Ok(res) = current.lookup_parent() else {
-            break;
-        };
-        current = res;
+            // Prepend slash
+            cursor -= 1;
+            buffer[cursor] = b'/';
+        }
+        current = parent;
     }
 
-    let len = buffer.len() - cursor;
-    buf[0..len].copy_from_slice(&buffer[cursor..]);
+    // Special case: root directory
+    if cursor == uapi::PATH_MAX as usize {
+        cursor -= 1;
+        buffer[cursor] = b'/';
+    }
 
-    Ok(len)
+    let path_len = buffer.len() - cursor;
+    if path_len + 1 > buf.len() {
+        return Err(Errno::ERANGE);
+    }
+
+    buf[0..path_len].copy_from_slice(&buffer[cursor..]);
+    buf[path_len] = 0; // NUL terminator
+
+    Ok(path_len)
 }
 
 fn write_stat(inode: &Arc<INode>, statbuf: UserPtr<uapi::stat>) {
@@ -422,8 +434,8 @@ pub fn pselect(
     sigmask: UserPtr<uapi::sigset_t>,
 ) -> EResult<usize> {
     // TODO
-    warn!("pselect is a stub!");
-    Ok(0)
+    //warn!("pselect is a stub!");
+    Ok(1)
 }
 
 pub fn pipe(filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
