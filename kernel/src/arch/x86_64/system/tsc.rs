@@ -1,6 +1,9 @@
 use crate::{
     arch::x86_64::{asm, consts},
-    generic::clock::{self, ClockSource},
+    generic::{
+        boot::BootInfo,
+        clock::{self, ClockSource},
+    },
 };
 use alloc::boxed::Box;
 use core::sync::atomic::{AtomicU64, Ordering};
@@ -87,5 +90,12 @@ fn TSC_STAGE() {
     log!("Timer frequency is {} MHz ({} Hz)", freq / 1_000_000, freq);
     TSC_FREQUENCY.store(freq, Ordering::Relaxed);
 
-    clock::switch(Box::new(TscClock)).unwrap();
+    // TODO: Until the timestamp calculation is fixed, disable the TSC by default.
+    if BootInfo::get()
+        .command_line
+        .get_bool("tsc")
+        .unwrap_or(false)
+    {
+        clock::switch(Box::new(TscClock)).unwrap();
+    }
 }
