@@ -255,6 +255,8 @@ pub fn fstatat(
     )?;
     let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
 
+    drop(proc_inner);
+
     write_stat(inode, statbuf);
 
     Ok(0)
