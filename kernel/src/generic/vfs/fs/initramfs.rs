@@ -44,10 +44,10 @@ static_assert!(size_of::<FileHeader>() == 512);
 
 const REGULAR: u8 = 0;
 const NORMAL: u8 = b'0';
-const HARD_LINK: u8 = b'1';
 const SYM_LINK: u8 = b'2';
 const DIRECTORY: u8 = b'5';
 const CONTIGOUS: u8 = b'7';
+const LONG_LINK: u8 = b'L';
 
 /// Converts a 0-terminated octal string into a number.
 fn oct2bin(str: &[u8]) -> usize {
@@ -111,25 +111,27 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
     loop {
         let current_file: &FileHeader =
             bytemuck::try_from_bytes(&data[offset..][..size_of::<FileHeader>()]).unwrap();
-        if &current_file.signature != b"ustar\0" || &current_file.version != b"00" {
+        if &current_file.signature[0..5] != b"ustar" {
             break;
-        }
-
-        let mut file_name = CStr::from_bytes_until_nul(&current_file.name)
-            .unwrap()
-            .to_bytes();
-        if let Some(n) = name_override {
-            file_name = n;
-            name_override = None;
         }
 
         let file_mode = oct2bin(&current_file.mode);
         let file_size = oct2bin(&current_file.size);
 
-        // Create the folder structure for this file if it didn't exist already.
-        let (dir, file_name) = create_dirs(&proc_inner, target.clone(), file_name)?;
+        let file_name = match name_override {
+            Some(x) => {
+                name_override = None;
+                x
+            }
+            None => match CStr::from_bytes_until_nul(&current_file.name) {
+                Ok(x) => x.to_bytes(),
+                Err(_) => &current_file.name,
+            },
+        };
+
         match current_file.typ {
             REGULAR | NORMAL | CONTIGOUS => {
+                let (dir, file_name) = create_dirs(&proc_inner, target.clone(), file_name)?;
                 let file = File::open(
                     &proc_inner,
                     Some(dir),
@@ -139,8 +141,10 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
                     Identity::get_kernel(),
                 )?;
                 file.pwrite(&data[offset + 512..][..file_size], 0)?;
+                files_loaded += 1;
             }
             SYM_LINK => {
+                let (dir, file_name) = create_dirs(&proc_inner, target.clone(), file_name)?;
                 let link_len = current_file
                     .linkname
                     .iter()
@@ -153,14 +157,19 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
                     &current_file.linkname[0..link_len],
                     Identity::get_kernel(),
                 )?;
+                files_loaded += 1;
             }
             DIRECTORY => {
+                let (dir, file_name) = create_dirs(&proc_inner, target.clone(), file_name)?;
                 create_dirs(&proc_inner, dir.clone(), file_name)?;
+                files_loaded += 1;
+            }
+            LONG_LINK => {
+                name_override = Some(&data[offset + 512..][..file_size - 1]); // -1 for the NUL terminator.
             }
             _ => (),
         }
 
-        files_loaded += 1;
         offset += 512 + util::align_up(file_size, 512);
     }
 
