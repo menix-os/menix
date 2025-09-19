@@ -9,7 +9,7 @@ use crate::{
     },
 };
 use alloc::vec::Vec;
-use core::ffi::CStr;
+use core::ffi::{CStr, c_char};
 
 pub fn gettid() -> usize {
     Scheduler::get_current().get_id()
@@ -88,7 +88,7 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
         .map(|i| unsafe { argv.as_ptr::<usize>().offset(i).read() })
         .take_while(|&p| p != 0)
         .map(|p| {
-            unsafe { CStr::from_ptr(p as *const i8) }
+            unsafe { CStr::from_ptr(p as *const c_char) }
                 .to_bytes()
                 .to_vec()
         })
@@ -98,7 +98,7 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
         .map(|i| unsafe { envp.as_ptr::<usize>().offset(i).read() })
         .take_while(|&p| p != 0)
         .map(|p| {
-            unsafe { CStr::from_ptr(p as *const i8) }
+            unsafe { CStr::from_ptr(p as *const c_char) }
                 .to_bytes()
                 .to_vec()
         })

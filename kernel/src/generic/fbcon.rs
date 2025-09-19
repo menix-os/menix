@@ -13,7 +13,7 @@ use alloc::boxed::Box;
 #[allow(unused)]
 use alloc::vec;
 use core::{
-    ffi::c_void,
+    ffi::{c_char, c_void},
     ptr::null_mut,
     sync::atomic::{AtomicPtr, Ordering},
 };
@@ -72,7 +72,7 @@ impl LoggerSink for FbCon {
         unsafe {
             flanterm_write(
                 self.ctx.load(Ordering::Acquire),
-                input.as_ptr() as *const i8,
+                input.as_ptr() as *const c_char,
                 input.len(),
             )
         };
