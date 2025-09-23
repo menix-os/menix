@@ -10,7 +10,10 @@ use super::{
 };
 use crate::{
     arch,
-    generic::memory::virt::{self, KERNEL_MMAP_BASE_ADDR, mmu::PageTable},
+    generic::{
+        memory::virt::{self, KERNEL_MMAP_BASE_ADDR, mmu::PageTable},
+        posix::errno::{EResult, Errno},
+    },
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{ffi::CStr, slice, sync::atomic::Ordering};
@@ -82,43 +85,35 @@ fn MODULE_STAGE() {
     }
 }
 
-#[derive(Debug)]
-pub enum ModuleLoadError {
-    InvalidData,
-    BrokenModuleInfo,
-    AllocFailed,
-    UnsupportedRelocation,
-    SymbolNotFound,
-}
-
 /// Loads a module from an ELF in memory.
-pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
-    let elf_hdr: &ElfHdr = bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()])
-        .map_err(|_| ModuleLoadError::InvalidData)?;
+pub fn load(data: &[u8]) -> EResult<()> {
+    let elf_hdr: &ElfHdr =
+        bytemuck::try_from_bytes(&data[0..size_of::<ElfHdr>()]).map_err(|_| Errno::ENOEXEC)?;
 
     if elf_hdr.e_ident[0..4] != elf::ELF_MAG
         || elf_hdr.e_ident[elf::EI_VERSION] != elf::EV_CURRENT
-        || elf_hdr.e_ident[elf::EI_OSABI] != elf::ELFOSABI_SYSV
+        // TODO: This is set to _LINUX on my toolchain.
+        // || elf_hdr.e_ident[elf::EI_OSABI] != elf::ELFOSABI_SYSV
         || elf_hdr.e_machine != elf::EM_CURRENT
     {
-        return Err(ModuleLoadError::InvalidData);
+        return Err(Errno::ENOEXEC);
     }
 
     #[cfg(target_pointer_width = "32")]
     if elf_hdr.e_ident[elf::EI_CLASS] != elf::ELFCLASS32 {
-        return Err(ModuleLoadError::InvalidData);
+        return Err(Errno::ENOEXEC);
     }
     #[cfg(target_pointer_width = "64")]
     if elf_hdr.e_ident[elf::EI_CLASS] != elf::ELFCLASS64 {
-        return Err(ModuleLoadError::InvalidData);
+        return Err(Errno::ENOEXEC);
     }
     #[cfg(target_endian = "little")]
     if elf_hdr.e_ident[elf::EI_DATA] != elf::ELFDATA2LSB {
-        return Err(ModuleLoadError::InvalidData);
+        return Err(Errno::ENOEXEC);
     }
     #[cfg(target_endian = "big")]
     if elf_hdr.e_ident[EI_DATA] != ELFDATA2MSB {
-        return Err(ModuleLoadError::InvalidData);
+        return Err(Errno::ENOEXEC);
     }
 
     // Start by evaluating the program headers.
@@ -126,7 +121,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
         &data[elf_hdr.e_phoff as usize
             ..(elf_hdr.e_phoff as usize + elf_hdr.e_phnum as usize * size_of::<ElfPhdr>())],
     )
-    .map_err(|_| ModuleLoadError::InvalidData)?;
+    .map_err(|_| Errno::ENOEXEC)?;
 
     let mut load_base = 0;
     let mut info = ModuleInfo {
@@ -147,6 +142,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
     let mut dt_jmprel = None;
     let mut dt_init_array = None;
     let mut dt_hash = None;
+    let mut dt_soname = None;
     let mut dt_needed = Vec::new();
 
     for phdr in phdrs {
@@ -168,8 +164,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 }
 
                 // Allocate physical memory.
-                let phys = KernelAlloc::alloc_bytes(memsz, AllocFlags::Zeroed)
-                    .map_err(|_| ModuleLoadError::AllocFailed)?;
+                let phys = KernelAlloc::alloc_bytes(memsz, AllocFlags::Zeroed)?;
 
                 let page_table = PageTable::get_kernel();
 
@@ -181,7 +176,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                             phys + page,
                             VmFlags::Read | VmFlags::Write,
                         )
-                        .map_err(|_| ModuleLoadError::AllocFailed)?;
+                        .map_err(|_| Errno::ENOMEM)?;
 
                     KERNEL_MMAP_BASE_ADDR.fetch_add(arch::virt::get_page_size(), Ordering::AcqRel);
                 }
@@ -214,7 +209,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 let dyntab: &[elf::ElfDyn] = bytemuck::try_cast_slice(
                     &data[phdr.p_offset as usize..][..phdr.p_filesz as usize],
                 )
-                .map_err(|_| ModuleLoadError::InvalidData)?;
+                .map_err(|_| Errno::EINVAL)?;
 
                 for entry in dyntab {
                     match entry.d_tag as u32 {
@@ -228,6 +223,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                         elf::DT_INIT_ARRAY => dt_init_array = Some(entry.d_val),
                         elf::DT_HASH => dt_hash = Some(entry.d_val),
                         elf::DT_NEEDED => dt_needed.push(entry.d_val),
+                        elf::DT_SONAME => dt_soname = Some(entry.d_val),
                         elf::DT_NULL => break,
                         _ => (),
                     }
@@ -236,19 +232,19 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
             elf::PT_MODVERSION => {
                 info.version =
                     str::from_utf8(&data[phdr.p_offset as usize..][..phdr.p_filesz as usize])
-                        .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
+                        .map_err(|_| Errno::EBADMSG)?
                         .to_owned();
             }
             elf::PT_MODAUTHOR => {
                 info.author =
                     str::from_utf8(&data[phdr.p_offset as usize..][..phdr.p_filesz as usize])
-                        .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
+                        .map_err(|_| Errno::EBADMSG)?
                         .to_owned();
             }
             elf::PT_MODDESC => {
                 info.description =
                     str::from_utf8(&data[phdr.p_offset as usize..][..phdr.p_filesz as usize])
-                        .map_err(|_| ModuleLoadError::BrokenModuleInfo)?
+                        .map_err(|_| Errno::EBADMSG)?
                         .to_owned();
             }
             // Unknown or unhandled type. Do nothing.
@@ -281,18 +277,18 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
     let symtab_len = bytemuck::try_from_bytes::<ElfHashTable>(
         &data[dt_hash.unwrap() as usize..][..size_of::<ElfHashTable>()],
     )
-    .map_err(|_| ModuleLoadError::InvalidData)?
+    .map_err(|_| Errno::EINVAL)?
     .nchain as usize;
 
     let symtab: &[ElfSym] = bytemuck::try_cast_slice(
         &data[dt_symtab.unwrap() as usize..][..symtab_len * size_of::<ElfSym>()],
     )
-    .map_err(|_| ModuleLoadError::InvalidData)?;
+    .map_err(|_| Errno::EINVAL)?;
 
     // Handle relocations.
     let do_reloc = |addr: _, size: _| -> _ {
         let relas: &[ElfRela] = bytemuck::try_cast_slice(&data[addr as usize..][..size as usize])
-            .map_err(|_| ModuleLoadError::InvalidData)?;
+            .map_err(|_| Errno::EINVAL)?;
 
         for rela in relas {
             // The symbol index is stored in the upper 32 bits.
@@ -313,14 +309,10 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                     let resolved = if symbol.st_shndx == 0 {
                         // Get the symbol name.
                         let name = CStr::from_bytes_until_nul(&strtab[symbol.st_name as usize..])
-                            .map_err(|_| ModuleLoadError::InvalidData)?
+                            .map_err(|_| Errno::EINVAL)?
                             .to_str()
-                            .map_err(|_| ModuleLoadError::InvalidData)?;
-                        let kernel_symbol = SYMBOL_TABLE
-                            .lock()
-                            .get(name)
-                            .ok_or(ModuleLoadError::SymbolNotFound)?
-                            .0;
+                            .map_err(|_| Errno::EINVAL)?;
+                        let kernel_symbol = SYMBOL_TABLE.lock().get(name).ok_or(Errno::EINVAL)?.0;
 
                         kernel_symbol.st_value as usize
                     } else {
@@ -334,17 +326,17 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
                 elf::R_COMMON_RELATIVE => unsafe {
                     *location = load_base + rela.r_addend as usize;
                 },
-                _ => return Err(ModuleLoadError::UnsupportedRelocation),
+                _ => return Err(Errno::EINVAL),
             }
         }
         Ok(())
     };
 
     if let Some(addr) = dt_rela {
-        do_reloc(addr, dt_relasz.ok_or(ModuleLoadError::InvalidData)?)?;
+        do_reloc(addr, dt_relasz.ok_or(Errno::EINVAL)?)?;
     }
     if let Some(addr) = dt_jmprel {
-        do_reloc(addr, dt_pltrelsz.ok_or(ModuleLoadError::InvalidData)?)?;
+        do_reloc(addr, dt_pltrelsz.ok_or(Errno::EINVAL)?)?;
     }
 
     // Finally, remap everything so the permissions are as described.
@@ -354,7 +346,7 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
         for page in (0..length).step_by(arch::virt::get_page_size()) {
             page_table
                 .remap_single::<KernelAlloc>(*virt + page, *flags)
-                .map_err(|_| ModuleLoadError::AllocFailed)?;
+                .map_err(|_| Errno::ENOMEM)?;
         }
     }
 
@@ -376,12 +368,18 @@ pub fn load(name: &str, data: &[u8]) -> Result<(), ModuleLoadError> {
         .filter(|x| *x != "menix.kso")
         .collect::<Vec<_>>();
 
+    let name =
+        CStr::from_bytes_until_nul(&data[(dt_strtab.unwrap() + dt_soname.unwrap()) as usize..])
+            .unwrap()
+            .to_str()
+            .unwrap();
+
     log!("Loaded module \"{}\":", name);
-    log!("  Base Address | {:#x}", load_base);
-    log!("  Description  | {}", info.description);
-    log!("  Version      | {}", info.version);
-    log!("  Author(s)    | {}", info.author);
-    log!("  Dependencies | {:?}", dependencies);
+    log!("    Base Address | {:#x}", load_base);
+    log!("    Description  | {}", info.description);
+    log!("    Version      | {}", info.version);
+    log!("    Author(s)    | {}", info.author);
+    log!("    Dependencies | {:?}", dependencies);
 
     // TODO: Load dependencies
 

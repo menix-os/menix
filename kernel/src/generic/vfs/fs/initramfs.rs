@@ -6,6 +6,7 @@
 
 use crate::generic::{
     boot::BootInfo,
+    module,
     posix::errno::{EResult, Errno},
     process::{Identity, InnerProcess, Process},
     util::{self},
@@ -142,6 +143,15 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
                 )?;
                 file.pwrite(&data[offset + 512..][..file_size], 0)?;
                 files_loaded += 1;
+
+                if BootInfo::get()
+                    .command_line
+                    .get_bool("module_autoload")
+                    .unwrap_or(true)
+                    && file_name.ends_with(b".kso")
+                {
+                    module::load(&data[offset + 512..][..file_size]).unwrap();
+                }
             }
             SYM_LINK => {
                 let (dir, file_name) = create_dirs(&proc_inner, target.clone(), file_name)?;

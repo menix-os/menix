@@ -2,8 +2,6 @@ use crate::generic::util::{align_down, once::Once};
 use alloc::{boxed::Box, vec::Vec};
 
 pub mod common {
-    #![allow(unused)]
-
     use crate::generic::memory::mmio::{Field, Register};
 
     pub const REG0: Register<u32> = Register::new(0x00).with_le();
