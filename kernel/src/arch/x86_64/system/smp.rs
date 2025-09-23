@@ -203,7 +203,7 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
         "CPU is not present?"
     );
     assert!(cpu_ctx.online.load(Ordering::Acquire), "CPU is not online?");
-    status!("Hello from CPU {}", CpuData::get().id);
+    log!("CPU {}: online", CpuData::get().id);
 
     unsafe {
         // Let the BSP know that we're alive.
@@ -217,7 +217,7 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
 }
 
 fn start_ap(temp_cr3: u32, id: u32) {
-    log!("Starting AP {id}");
+    log!("CPU {id}: starting");
     let start = &raw const SMP_TRAMPOLINE_START; // Start of the trampoline.
     let data = &raw const SMP_TRAMPOLINE_DATA; // Start of the data passed to the trampoline.
     let end = &raw const SMP_TRAMPOLINE_END; // End of the trampoline.
