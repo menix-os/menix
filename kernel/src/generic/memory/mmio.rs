@@ -51,68 +51,36 @@ impl Mmio {
         return self.len;
     }
 
-    /// Reads data from a single field.
-    pub fn read<T: PrimInt>(&self, field: Register<T>) -> T {
-        let value = unsafe { (self.base as *mut T).byte_add(field.offset).read_volatile() };
-        return match field.native_endian {
+    /// Reads data from a register.
+    pub fn read<T: PrimInt>(&self, reg: Register<T>) -> T {
+        let value = unsafe { (self.base as *mut T).byte_add(reg.offset).read_volatile() };
+        return match reg.native_endian {
             true => value,
             false => value.swap_bytes(),
         };
     }
 
-    /// Writes data to a single field.
-    pub fn write<T: PrimInt>(&self, field: Register<T>, value: T) {
-        unsafe {
-            (self.base as *mut T).byte_add(field.offset).write_volatile(
-                match field.native_endian {
-                    true => value,
-                    false => value.swap_bytes(),
-                },
-            );
-        }
-    }
-
-    /// Reads multiple elements into a buffer.
-    pub fn read_array<T: PrimInt>(&self, vector: Array<T>, offset: usize, dest: &mut [T]) {
-        assert!(dest.len() == vector.count);
-        for (idx, elem) in dest.iter_mut().enumerate() {
-            *elem = self.read_at(vector, offset + idx);
-        }
-    }
-
-    /// Writes multiple array elements from a buffer.
-    pub fn write_array<T: PrimInt>(&self, vector: Array<T>, offset: usize, value: &[T]) {
-        assert!(value.len() == vector.count);
-        for (idx, elem) in value.iter().enumerate() {
-            self.write_at(vector, offset + idx, *elem);
-        }
-    }
-
-    /// Reads a single element from a vector.
-    pub fn read_at<T: PrimInt>(&self, vector: Array<T>, index: usize) -> T {
-        assert!(index < vector.count);
-        let value = unsafe {
-            (self.base as *const T)
-                .byte_add(vector.offset + (vector.stride * index))
-                .read_volatile()
-        };
-        return match vector.native_endian {
+    /// Writes data to a register.
+    pub fn write<T: PrimInt>(&self, reg: Register<T>, value: T) {
+        let value = match reg.native_endian {
             true => value,
             false => value.swap_bytes(),
         };
-    }
-
-    /// Writes a single element to a vector.
-    pub fn write_at<T: PrimInt>(&self, vector: Array<T>, index: usize, value: T) {
-        assert!(index < vector.count);
         unsafe {
             (self.base as *mut T)
-                .byte_add(vector.offset + (vector.stride * index))
-                .write_volatile(match vector.native_endian {
-                    true => value,
-                    false => value.swap_bytes(),
-                });
-        }
+                .byte_add(reg.offset)
+                .write_volatile(value)
+        };
+    }
+
+    /// Reads data from a field.
+    pub fn read_field<T: PrimInt + From<A>, A: PrimInt + From<T>>(&self, field: Field<T, A>) -> A {
+        todo!()
+    }
+
+    /// Writes data to a field.
+    pub fn write_field<T: PrimInt, A: PrimInt>(&self, field: Field<T, A>, value: A) {
+        todo!()
     }
 }
 
@@ -164,7 +132,8 @@ impl<T: PrimInt> Register<T> {
     }
 }
 
-/// `T` is a register type, while `A` is the relevant part of that register.
+/// A [`Field`] is a subtype contained in a [`Register`].
+/// `T` is a register type, and `A` is the type of the relevant part of that register.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Field<T: PrimInt, A: PrimInt> {
     field_offset: usize,
@@ -187,46 +156,6 @@ impl<T: PrimInt, A: PrimInt> Field<T, A> {
 
     pub const fn offset(&self) -> usize {
         self.register.offset() + self.field_offset
-    }
-}
-
-/// An array.
-#[derive(Debug, Clone, Copy)]
-pub struct Array<T> {
-    _p: PhantomData<T>,
-    offset: usize,
-    stride: usize,
-    count: usize,
-    native_endian: bool,
-}
-
-impl<T> Array<T> {
-    pub const fn new(offset: usize, count: usize) -> Self {
-        Self {
-            _p: PhantomData,
-            offset,
-            stride: size_of::<T>(),
-            count,
-            native_endian: true,
-        }
-    }
-
-    /// Marks this array as little endian.
-    pub const fn with_le(mut self) -> Self {
-        self.native_endian = is_little_endian();
-        self
-    }
-
-    /// Marks this array as little endian.
-    pub const fn with_be(mut self) -> Self {
-        self.native_endian = !is_little_endian();
-        self
-    }
-
-    pub const fn with_stride(mut self, stride: usize) -> Self {
-        assert!(stride >= size_of::<T>(), "Elements may not overlap");
-        self.stride = stride;
-        self
     }
 }
 

@@ -1,30 +1,35 @@
 #![no_std]
 
 use menix::{
-    generic::memory::{
-        pmm::{AllocFlags, KernelAlloc, PageAllocator},
-        virt::{VmFlags, mmu::PageTable},
+    generic::{
+        memory::{
+            pmm::{AllocFlags, KernelAlloc, PageAllocator},
+            virt::{VmFlags, mmu::PageTable},
+        },
+        posix::errno::EResult,
     },
+    log,
     system::pci::{
-        PciError,
-        device::PciDevice,
-        driver::{PciDriver, PciVariant},
+        device::Device,
+        driver::{Driver, PciVariant},
     },
 };
 
 menix::module!("NVMe block devices", "Marvin Friedrich", main);
 
-static DRIVER: PciDriver = PciDriver {
+static DRIVER: Driver = Driver {
     name: "nvme",
     probe: probe,
     remove: None,
     suspend: None,
-    sleep: None,
+    resume: None,
     variants: &[PciVariant::new().class(1).sub_class(8).function(2)],
 };
 
-pub fn probe(_dev: &PciDevice) -> Result<(), PciError> {
-    todo!();
+pub fn probe(dev: &Device) -> EResult<()> {
+    log!("Probing NVMe device on {}", dev.address);
+
+    Ok(())
 }
 
 pub fn main() {

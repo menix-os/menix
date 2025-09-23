@@ -1,5 +1,6 @@
 use crate::generic::util::{align_down, once::Once};
 use alloc::{boxed::Box, vec::Vec};
+use core::fmt::Display;
 
 pub mod common {
     use crate::generic::memory::mmio::{Field, Register};
@@ -13,6 +14,9 @@ pub mod common {
     pub const STATUS: Field<u32, u16> = Field::new(REG1, 2);
 
     pub const REG2: Register<u32> = Register::new(0x08).with_le();
+    pub const PROG_IF: Field<u32, u8> = Field::new(REG2, 0x01);
+    pub const SUB_CLASS: Field<u32, u8> = Field::new(REG2, 0x02);
+    pub const CLASS_CODE: Field<u32, u8> = Field::new(REG2, 0x03);
 
     pub const REG3: Register<u32> = Register::new(0x0C).with_le();
 }
@@ -46,42 +50,52 @@ pub mod generic {
 }
 
 #[derive(Copy, Clone, Debug)]
-pub struct PciAddress {
+pub struct Address {
     pub segment: u16,
     pub bus: u8,
     pub slot: u8,
     pub function: u8,
 }
 
-pub trait PciAccess {
+impl Display for Address {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_fmt(format_args!(
+            "{:04x}:{:02x}:{:02x}.{:02x}",
+            self.segment, self.bus, self.slot, self.function
+        ))
+    }
+}
+
+pub trait Access {
     fn segment(&self) -> u16;
     fn start_bus(&self) -> u8;
     fn end_bus(&self) -> u8;
-    fn read32(&self, addr: PciAddress, offset: u32) -> u32;
-    fn write32(&self, addr: PciAddress, offset: u32, value: u32);
+    fn read32(&self, addr: Address, offset: u32) -> u32;
+    fn write32(&self, addr: Address, offset: u32, value: u32);
 }
 
-impl dyn PciAccess {
-    pub fn decodes(&self, address: PciAddress) -> bool {
+impl dyn Access {
+    /// Returns true if this [`Access`] contains the device as addressed by `address`.
+    pub fn decodes(&self, address: Address) -> bool {
         self.segment() == address.segment
             && address.bus >= self.start_bus()
             && address.bus <= self.end_bus()
     }
 
-    pub fn read8(&self, addr: PciAddress, offset: u32) -> u8 {
+    pub fn read8(&self, addr: Address, offset: u32) -> u8 {
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let reg = self.read32(addr, aligned);
         (reg >> ((offset - aligned) * 8)) as u8
     }
 
-    pub fn read16(&self, addr: PciAddress, offset: u32) -> u16 {
+    pub fn read16(&self, addr: Address, offset: u32) -> u16 {
         assert!(offset % 2 == 0);
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let reg = self.read32(addr, aligned);
         (reg >> ((offset - aligned) * 8)) as u16
     }
 
-    pub fn write8(&self, addr: PciAddress, offset: u32, value: u8) {
+    pub fn write8(&self, addr: Address, offset: u32, value: u8) {
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let mut reg = self.read32(addr, aligned);
         reg &= !(0xFF << ((offset - aligned) * 8));
@@ -89,7 +103,7 @@ impl dyn PciAccess {
         self.write32(addr, aligned, reg);
     }
 
-    pub fn write16(&self, addr: PciAddress, offset: u32, value: u16) {
+    pub fn write16(&self, addr: Address, offset: u32, value: u16) {
         assert!(offset % 2 == 0);
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let mut reg = self.read32(addr, aligned);
@@ -106,7 +120,7 @@ pub struct EcamPciAccess {
     pub base: *mut u32,
 }
 
-impl PciAccess for EcamPciAccess {
+impl Access for EcamPciAccess {
     fn segment(&self) -> u16 {
         self.segment
     }
@@ -119,7 +133,7 @@ impl PciAccess for EcamPciAccess {
         self.end_bus
     }
 
-    fn read32(&self, addr: PciAddress, offset: u32) -> u32 {
+    fn read32(&self, addr: Address, offset: u32) -> u32 {
         unsafe {
             self.base
                 .byte_add(
@@ -132,7 +146,7 @@ impl PciAccess for EcamPciAccess {
         }
     }
 
-    fn write32(&self, addr: PciAddress, offset: u32, value: u32) {
+    fn write32(&self, addr: Address, offset: u32, value: u32) {
         unsafe {
             self.base
                 .byte_add(
@@ -146,4 +160,4 @@ impl PciAccess for EcamPciAccess {
     }
 }
 
-pub static ACCESS: Once<Vec<Box<dyn PciAccess>>> = Once::new();
+pub static ACCESS: Once<Vec<Box<dyn Access>>> = Once::new();

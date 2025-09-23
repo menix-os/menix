@@ -3,7 +3,7 @@ use crate::{
         pmm::KernelAlloc,
         virt::{VmFlags, mmu::PageTable},
     },
-    system::pci::config::{EcamPciAccess, PciAccess},
+    system::pci::config::{Access, EcamPciAccess},
 };
 use alloc::{boxed::Box, vec::Vec};
 use uacpi_sys::{
@@ -45,7 +45,7 @@ pub fn MCFG_STAGE() {
                 .map_memory::<KernelAlloc>(
                     (entry.address).into(),
                     VmFlags::Read | VmFlags::Write,
-                    ((entry.end_bus - entry.start_bus) as usize) << 20,
+                    ((entry.end_bus - entry.start_bus) as usize + 1) << 20, // + 1 because the range is inclusive
                 )
                 .unwrap();
 
@@ -54,7 +54,7 @@ pub fn MCFG_STAGE() {
                 segment: entry.segment,
                 start_bus: entry.start_bus,
                 end_bus: entry.end_bus,
-            }) as Box<dyn PciAccess>);
+            }) as Box<dyn Access>);
         }
         uacpi_table_unref(&mut table);
 

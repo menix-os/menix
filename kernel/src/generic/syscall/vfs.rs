@@ -344,6 +344,7 @@ pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
     match &node.node_ops {
         NodeOps::Directory(dir_ops) => {
             // TODO: Probably need a getdents callback...
+            todo!()
         }
         _ => return Err(Errno::ENOTDIR),
     }

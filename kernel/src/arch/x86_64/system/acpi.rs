@@ -1,5 +1,5 @@
 use super::super::asm;
-use crate::system::pci::config::{PciAccess, PciAddress};
+use crate::system::pci::config::{Access, Address};
 use alloc::boxed::Box;
 use uacpi_sys::{
     UACPI_STATUS_OK, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_u8, uacpi_u16,
@@ -98,7 +98,7 @@ extern "C" fn uacpi_kernel_io_unmap(handle: uacpi_handle) {
 struct PortIoAccess;
 
 impl PortIoAccess {
-    fn select(&self, addr: PciAddress, offset: u32) {
+    fn select(&self, addr: Address, offset: u32) {
         unsafe {
             asm::write32(
                 0xCF8,
@@ -112,7 +112,7 @@ impl PortIoAccess {
     }
 }
 
-impl PciAccess for PortIoAccess {
+impl Access for PortIoAccess {
     fn segment(&self) -> u16 {
         0
     }
@@ -125,12 +125,12 @@ impl PciAccess for PortIoAccess {
         255
     }
 
-    fn read32(&self, addr: PciAddress, offset: u32) -> u32 {
+    fn read32(&self, addr: Address, offset: u32) -> u32 {
         self.select(addr, offset);
         unsafe { asm::read32(0xCFC) }
     }
 
-    fn write32(&self, addr: PciAddress, offset: u32, value: u32) {
+    fn write32(&self, addr: Address, offset: u32, value: u32) {
         self.select(addr, offset);
         unsafe { asm::write32(0xCFC, value) }
     }

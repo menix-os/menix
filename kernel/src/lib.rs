@@ -129,3 +129,7 @@ pub extern "C" fn main(_: usize, _: usize) {
         .fexecve(init_file, args, envs)
         .expect("Unable to start the init process");
 }
+
+/// This stage should be used to express that the system must be initialized at this point.
+#[initgraph::task(name = "system")]
+pub fn INIT_STAGE() {}

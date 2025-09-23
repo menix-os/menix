@@ -44,6 +44,7 @@ pub fn TABLES_STAGE() {
         crate::generic::clock::CLOCK_STAGE,
         crate::generic::memory::MEMORY_STAGE,
     ],
+    entails = [crate::INIT_STAGE]
 )]
 pub fn INIT_STAGE() {
     let mut uacpi_status = unsafe { uacpi::uacpi_initialize(0) };

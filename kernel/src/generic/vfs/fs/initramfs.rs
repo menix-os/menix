@@ -190,7 +190,7 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
 
 #[initgraph::task(
     name = "generic.vfs.initramfs",
-    depends = [super::super::VFS_STAGE, crate::generic::sched::SCHEDULER_STAGE],
+    depends = [crate::INIT_STAGE],
 )]
 fn INITRAMFS_STAGE() {
     let proc_inner = Process::get_kernel().inner.lock();

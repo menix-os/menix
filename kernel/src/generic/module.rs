@@ -285,6 +285,36 @@ pub fn load(data: &[u8]) -> EResult<()> {
     )
     .map_err(|_| Errno::EINVAL)?;
 
+    let name =
+        CStr::from_bytes_until_nul(&data[(dt_strtab.unwrap() + dt_soname.unwrap()) as usize..])
+            .unwrap()
+            .to_str()
+            .unwrap();
+
+    let dependencies = dt_needed
+        .as_slice()
+        .iter()
+        .map(|x| {
+            CStr::from_bytes_until_nul(&data[(dt_strtab.unwrap() + *x) as usize..])
+                .unwrap()
+                .to_str()
+                .unwrap()
+        })
+        // "menix.kso" is the kernel itself. We don't actually have to load that :)
+        .filter(|x| *x != "menix.kso")
+        .collect::<Vec<_>>();
+
+    // TODO: Load dependencies
+    for dep in dependencies.iter() {
+        if !MODULE_TABLE.lock().contains_key(*dep) {
+            error!(
+                "Missing module dependency \"{}\", required to load \"{}\"",
+                dep, name
+            );
+            return Err(Errno::ENOENT);
+        }
+    }
+
     // Handle relocations.
     let do_reloc = |addr: _, size: _| -> _ {
         let relas: &[ElfRela] = bytemuck::try_cast_slice(&data[addr as usize..][..size as usize])
@@ -355,33 +385,12 @@ pub fn load(data: &[u8]) -> EResult<()> {
         // TODO: Add symbols
     }
 
-    let dependencies = dt_needed
-        .as_slice()
-        .iter()
-        .map(|x| {
-            CStr::from_bytes_until_nul(&data[(dt_strtab.unwrap() + *x) as usize..])
-                .unwrap()
-                .to_str()
-                .unwrap()
-        })
-        // "menix.kso" is the kernel itself. We don't actually have to load that :)
-        .filter(|x| *x != "menix.kso")
-        .collect::<Vec<_>>();
-
-    let name =
-        CStr::from_bytes_until_nul(&data[(dt_strtab.unwrap() + dt_soname.unwrap()) as usize..])
-            .unwrap()
-            .to_str()
-            .unwrap();
-
     log!("Loaded module \"{}\":", name);
     log!("    Base Address | {:#x}", load_base);
     log!("    Description  | {}", info.description);
     log!("    Version      | {}", info.version);
     log!("    Author(s)    | {}", info.author);
     log!("    Dependencies | {:?}", dependencies);
-
-    // TODO: Load dependencies
 
     // TODO: Call init array
 

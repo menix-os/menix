@@ -13,7 +13,7 @@ use crate::{
         },
         util::{self, spin::SpinLock},
     },
-    system::pci::config::{ACCESS, PciAccess, PciAddress},
+    system::pci::config::{ACCESS, Address, Access},
 };
 use alloc::{alloc::GlobalAlloc, boxed::Box};
 use core::{
@@ -68,7 +68,7 @@ extern "C" fn uacpi_kernel_pci_device_open(
     address: uacpi_pci_address,
     out_handle: *mut uacpi_handle,
 ) -> uacpi_status {
-    let address = Box::new(PciAddress {
+    let address = Box::new(Address {
         segment: address.segment,
         bus: address.bus,
         slot: address.device,
@@ -83,7 +83,7 @@ extern "C" fn uacpi_kernel_pci_device_close(arg1: uacpi_handle) {
     // This function intentionally left blank.
 }
 
-fn pci_access_from_address(address: PciAddress) -> Option<&'static dyn PciAccess> {
+fn pci_access_from_address(address: Address) -> Option<&'static dyn Access> {
     ACCESS
         .get()
         .iter()
@@ -97,7 +97,7 @@ extern "C" fn uacpi_kernel_pci_read8(
     offset: uacpi_size,
     value: *mut uacpi_u8,
 ) -> uacpi_status {
-    let ptr = device as *const PciAddress;
+    let ptr = device as *const Address;
     let address = unsafe { ptr.read() };
     let access = match pci_access_from_address(address) {
         Some(x) => x,
@@ -113,7 +113,7 @@ extern "C" fn uacpi_kernel_pci_read16(
     offset: uacpi_size,
     value: *mut uacpi_u16,
 ) -> uacpi_status {
-    let ptr = device as *const PciAddress;
+    let ptr = device as *const Address;
     let address = unsafe { ptr.read() };
     let access = match pci_access_from_address(address) {
         Some(x) => x,
@@ -129,7 +129,7 @@ extern "C" fn uacpi_kernel_pci_read32(
     offset: uacpi_size,
     value: *mut uacpi_u32,
 ) -> uacpi_status {
-    let ptr = device as *const PciAddress;
+    let ptr = device as *const Address;
     let address = unsafe { ptr.read() };
     let access = match pci_access_from_address(address) {
         Some(x) => x,
@@ -145,7 +145,7 @@ extern "C" fn uacpi_kernel_pci_write8(
     offset: uacpi_size,
     value: uacpi_u8,
 ) -> uacpi_status {
-    let ptr = device as *const PciAddress;
+    let ptr = device as *const Address;
     let address = unsafe { ptr.read() };
     let access = match pci_access_from_address(address) {
         Some(x) => x,
@@ -161,7 +161,7 @@ extern "C" fn uacpi_kernel_pci_write16(
     offset: uacpi_size,
     value: uacpi_u16,
 ) -> uacpi_status {
-    let ptr = device as *const PciAddress;
+    let ptr = device as *const Address;
     let address = unsafe { ptr.read() };
     let access = match pci_access_from_address(address) {
         Some(x) => x,
@@ -177,7 +177,7 @@ extern "C" fn uacpi_kernel_pci_write32(
     offset: uacpi_size,
     value: uacpi_u32,
 ) -> uacpi_status {
-    let ptr = device as *const PciAddress;
+    let ptr = device as *const Address;
     let address = unsafe { ptr.read() };
     let access = match pci_access_from_address(address) {
         Some(x) => x,

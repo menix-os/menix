@@ -1,52 +1,15 @@
-// PCI driver handling.
-
-use crate::generic::util::mutex::spin::SpinMutex;
-
-use super::{PciError, device::PciDevice};
+use super::device::Device;
+use crate::{
+    generic::{
+        posix::errno::{EResult, Errno},
+        util::mutex::spin::SpinMutex,
+    },
+    system::pci::{
+        config::{self, ACCESS},
+        device::DEVICES,
+    },
+};
 use alloc::collections::btree_map::BTreeMap;
-
-pub type PciDriverFn = fn(dev: &PciDevice) -> Result<(), PciError>;
-
-/// Represents a driver.
-#[derive(Debug, Clone, Copy)]
-pub struct PciDriver {
-    /// The name of this driver.
-    pub name: &'static str,
-    /// Called when a new device is being connected.
-    /// This function is mandatory.
-    pub probe: PciDriverFn,
-    ///  Called when a device is being removed.
-    pub remove: Option<PciDriverFn>,
-    ///  Called when a device is put to sleep.
-    pub suspend: Option<PciDriverFn>,
-    ///  Called when a device is woken up.
-    pub sleep: Option<PciDriverFn>,
-    /// Variants of devices that this driver can control.
-    pub variants: &'static [PciVariant],
-}
-
-static DRIVERS: SpinMutex<BTreeMap<&'static str, PciDriver>> = SpinMutex::new(BTreeMap::new());
-
-impl PciDriver {
-    pub fn register(self) -> Result<(), PciError> {
-        let mut drivers = DRIVERS.lock();
-
-        if drivers.contains_key(self.name) {
-            return Err(PciError::DriverAlreadyExists);
-        }
-
-        drivers.insert(self.name, self);
-
-        log!(
-            "Registered new PCI driver \"{}\" with {} variant{}",
-            self.name,
-            self.variants.len(),
-            if self.variants.len() != 1 { "s" } else { "" }
-        );
-
-        return Ok(());
-    }
-}
 
 /// Drivers can use this to create bindings.
 /// Any field that is a [`Some`] variant will be matched on.
@@ -114,5 +77,71 @@ impl PciVariant {
     pub const fn with_data(mut self, data: usize) -> Self {
         self.data = data;
         return self;
+    }
+}
+
+/// Represents a driver.
+#[derive(Debug, Clone, Copy)]
+pub struct Driver {
+    /// The name of this driver.
+    pub name: &'static str,
+    /// Called when a new device is being connected.
+    /// This function is mandatory.
+    pub probe: fn(dev: &Device) -> EResult<()>,
+    /// Called when a device is being removed.
+    pub remove: Option<fn(dev: &Device) -> EResult<()>>,
+    /// Called when a device is put to sleep.
+    pub suspend: Option<fn(dev: &Device) -> EResult<()>>,
+    /// Called when a device is woken up.
+    pub resume: Option<fn(dev: &Device) -> EResult<()>>,
+    /// Variants of devices that this driver can control.
+    pub variants: &'static [PciVariant],
+}
+
+static DRIVERS: SpinMutex<BTreeMap<&'static str, Driver>> = SpinMutex::new(BTreeMap::new());
+
+impl Driver {
+    pub fn register(self) -> EResult<()> {
+        let mut drivers = DRIVERS.lock();
+
+        if drivers.contains_key(self.name) {
+            return Err(Errno::EEXIST);
+        }
+
+        drivers.insert(self.name, self);
+
+        log!(
+            "Registered new PCI driver \"{}\" with {} variant(s)",
+            self.name,
+            self.variants.len()
+        );
+
+        // Probe matching PCI devices.
+        let devices = DEVICES.lock();
+        for dev in devices.iter() {
+            let access = ACCESS
+                .get()
+                .iter()
+                .find(|x| x.decodes(dev.address))
+                .unwrap();
+
+            let device_id = access.read16(dev.address, config::common::DEVICE_ID.offset() as _);
+            let vendor_id = access.read16(dev.address, config::common::VENDOR_ID.offset() as _);
+            let prog_if = access.read8(dev.address, config::common::PROG_IF.offset() as _);
+            let sub_class = access.read8(dev.address, config::common::SUB_CLASS.offset() as _);
+            let class = access.read8(dev.address, config::common::CLASS_CODE.offset() as _);
+
+            if let Some(_) = self.variants.iter().find(|v| {
+                v.device.is_none_or(|x| x == device_id)
+                    && v.vendor.is_none_or(|x| x == vendor_id)
+                    && v.prog_if.is_none_or(|x| x == prog_if)
+                    && v.sub_class.is_none_or(|x| x == sub_class)
+                    && v.class.is_none_or(|x| x == class)
+            }) {
+                (self.probe)(&dev)?;
+            }
+        }
+
+        Ok(())
     }
 }
