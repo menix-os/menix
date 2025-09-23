@@ -13,10 +13,12 @@ use crate::{
         },
         util::{self, spin::SpinLock},
     },
+    system::pci::config::{ACCESS, PciAccess, PciAddress},
 };
 use alloc::{alloc::GlobalAlloc, boxed::Box};
 use core::{
     ffi::{CStr, c_void},
+    mem::forget,
     ptr::null_mut,
 };
 
@@ -66,13 +68,27 @@ extern "C" fn uacpi_kernel_pci_device_open(
     address: uacpi_pci_address,
     out_handle: *mut uacpi_handle,
 ) -> uacpi_status {
-    // TODO
-    return UACPI_STATUS_UNIMPLEMENTED;
+    let address = Box::new(PciAddress {
+        segment: address.segment,
+        bus: address.bus,
+        slot: address.device,
+        function: address.function,
+    });
+    unsafe { out_handle.write_unaligned(Box::into_raw(address) as _) };
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
 extern "C" fn uacpi_kernel_pci_device_close(arg1: uacpi_handle) {
-    todo!()
+    // This function intentionally left blank.
+}
+
+fn pci_access_from_address(address: PciAddress) -> Option<&'static dyn PciAccess> {
+    ACCESS
+        .get()
+        .iter()
+        .find(|x| x.decodes(address))
+        .map(|x| x.as_ref())
 }
 
 #[unsafe(no_mangle)]
@@ -81,7 +97,14 @@ extern "C" fn uacpi_kernel_pci_read8(
     offset: uacpi_size,
     value: *mut uacpi_u8,
 ) -> uacpi_status {
-    todo!()
+    let ptr = device as *const PciAddress;
+    let address = unsafe { ptr.read() };
+    let access = match pci_access_from_address(address) {
+        Some(x) => x,
+        None => return UACPI_STATUS_NOT_FOUND,
+    };
+    unsafe { value.write(access.read8(address, offset as u32)) };
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -90,7 +113,14 @@ extern "C" fn uacpi_kernel_pci_read16(
     offset: uacpi_size,
     value: *mut uacpi_u16,
 ) -> uacpi_status {
-    todo!()
+    let ptr = device as *const PciAddress;
+    let address = unsafe { ptr.read() };
+    let access = match pci_access_from_address(address) {
+        Some(x) => x,
+        None => return UACPI_STATUS_NOT_FOUND,
+    };
+    unsafe { value.write(access.read16(address, offset as u32)) };
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -99,7 +129,14 @@ extern "C" fn uacpi_kernel_pci_read32(
     offset: uacpi_size,
     value: *mut uacpi_u32,
 ) -> uacpi_status {
-    todo!()
+    let ptr = device as *const PciAddress;
+    let address = unsafe { ptr.read() };
+    let access = match pci_access_from_address(address) {
+        Some(x) => x,
+        None => return UACPI_STATUS_NOT_FOUND,
+    };
+    unsafe { value.write(access.read32(address, offset as u32)) };
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -108,7 +145,14 @@ extern "C" fn uacpi_kernel_pci_write8(
     offset: uacpi_size,
     value: uacpi_u8,
 ) -> uacpi_status {
-    todo!()
+    let ptr = device as *const PciAddress;
+    let address = unsafe { ptr.read() };
+    let access = match pci_access_from_address(address) {
+        Some(x) => x,
+        None => return UACPI_STATUS_NOT_FOUND,
+    };
+    access.write8(address, offset as u32, value);
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -117,7 +161,14 @@ extern "C" fn uacpi_kernel_pci_write16(
     offset: uacpi_size,
     value: uacpi_u16,
 ) -> uacpi_status {
-    todo!()
+    let ptr = device as *const PciAddress;
+    let address = unsafe { ptr.read() };
+    let access = match pci_access_from_address(address) {
+        Some(x) => x,
+        None => return UACPI_STATUS_NOT_FOUND,
+    };
+    access.write16(address, offset as u32, value);
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]
@@ -126,7 +177,14 @@ extern "C" fn uacpi_kernel_pci_write32(
     offset: uacpi_size,
     value: uacpi_u32,
 ) -> uacpi_status {
-    todo!()
+    let ptr = device as *const PciAddress;
+    let address = unsafe { ptr.read() };
+    let access = match pci_access_from_address(address) {
+        Some(x) => x,
+        None => return UACPI_STATUS_NOT_FOUND,
+    };
+    access.write32(address, offset as u32, value);
+    return UACPI_STATUS_OK;
 }
 
 #[unsafe(no_mangle)]

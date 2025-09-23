@@ -1,16 +1,9 @@
-#![allow(unused)]
-
-use crate::{
-    generic::{
-        memory::PhysAddr,
-        util::{align_down, once::Once},
-    },
-    system::pci::device::PciDevice,
-};
-use alloc::vec::Vec;
-use uacpi_sys::{UACPI_STATUS_OK, uacpi_table, uacpi_table_find_by_signature};
+use crate::generic::util::{align_down, once::Once};
+use alloc::{boxed::Box, vec::Vec};
 
 pub mod common {
+    #![allow(unused)]
+
     use crate::generic::memory::mmio::{Field, Register};
 
     pub const REG0: Register<u32> = Register::new(0x00).with_le();
@@ -54,7 +47,7 @@ pub mod generic {
     pub const MAX_LATENCY: Field<u32, u8> = Field::new(REG14, 3);
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 pub struct PciAddress {
     pub segment: u16,
     pub bus: u8,
@@ -63,25 +56,34 @@ pub struct PciAddress {
 }
 
 pub trait PciAccess {
+    fn segment(&self) -> u16;
+    fn start_bus(&self) -> u8;
+    fn end_bus(&self) -> u8;
     fn read32(&self, addr: PciAddress, offset: u32) -> u32;
     fn write32(&self, addr: PciAddress, offset: u32, value: u32);
 }
 
 impl dyn PciAccess {
-    fn read8(&self, addr: PciAddress, offset: u32) -> u8 {
+    pub fn decodes(&self, address: PciAddress) -> bool {
+        self.segment() == address.segment
+            && address.bus >= self.start_bus()
+            && address.bus <= self.end_bus()
+    }
+
+    pub fn read8(&self, addr: PciAddress, offset: u32) -> u8 {
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let reg = self.read32(addr, aligned);
         (reg >> ((offset - aligned) * 8)) as u8
     }
 
-    fn read16(&self, addr: PciAddress, offset: u32) -> u16 {
+    pub fn read16(&self, addr: PciAddress, offset: u32) -> u16 {
         assert!(offset % 2 == 0);
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let reg = self.read32(addr, aligned);
         (reg >> ((offset - aligned) * 8)) as u16
     }
 
-    fn write8(&self, addr: PciAddress, offset: u32, value: u8) {
+    pub fn write8(&self, addr: PciAddress, offset: u32, value: u8) {
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let mut reg = self.read32(addr, aligned);
         reg &= !(0xFF << ((offset - aligned) * 8));
@@ -89,7 +91,7 @@ impl dyn PciAccess {
         self.write32(addr, aligned, reg);
     }
 
-    fn write16(&self, addr: PciAddress, offset: u32, value: u16) {
+    pub fn write16(&self, addr: PciAddress, offset: u32, value: u16) {
         assert!(offset % 2 == 0);
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let mut reg = self.read32(addr, aligned);
@@ -99,8 +101,51 @@ impl dyn PciAccess {
     }
 }
 
-pub static ACCESS: Once<&dyn PciAccess> = Once::new();
-
-pub fn scan_config_space() -> Vec<PciDevice> {
-    todo!()
+pub struct EcamPciAccess {
+    pub segment: u16,
+    pub start_bus: u8,
+    pub end_bus: u8,
+    pub base: *mut u32,
 }
+
+impl PciAccess for EcamPciAccess {
+    fn segment(&self) -> u16 {
+        self.segment
+    }
+
+    fn start_bus(&self) -> u8 {
+        self.start_bus
+    }
+
+    fn end_bus(&self) -> u8 {
+        self.end_bus
+    }
+
+    fn read32(&self, addr: PciAddress, offset: u32) -> u32 {
+        unsafe {
+            self.base
+                .byte_add(
+                    (addr.bus as usize) << 20
+                        | (addr.slot as usize) << 15
+                        | (addr.function as usize) << 12
+                        | offset as usize & 0xFFF,
+                )
+                .read_volatile()
+        }
+    }
+
+    fn write32(&self, addr: PciAddress, offset: u32, value: u32) {
+        unsafe {
+            self.base
+                .byte_add(
+                    (addr.bus as usize) << 20
+                        | (addr.slot as usize) << 15
+                        | (addr.function as usize) << 12
+                        | offset as usize & 0xFFF,
+                )
+                .write_volatile(value)
+        }
+    }
+}
+
+pub static ACCESS: Once<Vec<Box<dyn PciAccess>>> = Once::new();

@@ -61,6 +61,7 @@ pub fn INIT_STAGE() {
             "acpi: Namespace loading failed with error \"{}\"!",
             uacpi_status
         );
+        return;
     } else {
         unsafe { uacpi::uacpi_namespace_initialize() };
     }

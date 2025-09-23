@@ -1,6 +1,6 @@
-use crate::system::pci::config::{PciAccess, PciAddress};
-
 use super::super::asm;
+use crate::system::pci::config::{PciAccess, PciAddress};
+use alloc::boxed::Box;
 use uacpi_sys::{
     UACPI_STATUS_OK, uacpi_handle, uacpi_io_addr, uacpi_size, uacpi_status, uacpi_u8, uacpi_u16,
     uacpi_u32,
@@ -113,6 +113,18 @@ impl PortIoAccess {
 }
 
 impl PciAccess for PortIoAccess {
+    fn segment(&self) -> u16 {
+        0
+    }
+
+    fn start_bus(&self) -> u8 {
+        0
+    }
+
+    fn end_bus(&self) -> u8 {
+        255
+    }
+
     fn read32(&self, addr: PciAddress, offset: u32) -> u32 {
         self.select(addr, offset);
         unsafe { asm::read32(0xCFC) }
@@ -126,8 +138,9 @@ impl PciAccess for PortIoAccess {
 
 #[initgraph::task(
     name = "arch.x86_64.acpi",
-    entails = [crate::system::acpi::TABLES_STAGE]
+    entails = [crate::system::acpi::TABLES_STAGE],
+    depends = [crate::generic::memory::MEMORY_STAGE],
 )]
 fn ACPI_STAGE() {
-    unsafe { crate::system::pci::config::ACCESS.init(&PortIoAccess) };
+    unsafe { crate::system::pci::config::ACCESS.init(vec![Box::new(PortIoAccess)]) };
 }
