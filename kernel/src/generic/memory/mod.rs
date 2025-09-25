@@ -33,7 +33,7 @@ static HHDM_START: Once<VirtAddr> = Once::new();
 
 /// Represents a physical address. It can't be directly read from or written to.
 #[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, AnyBitPattern)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, AnyBitPattern)]
 pub struct PhysAddr(usize);
 
 impl PhysAddr {
@@ -46,7 +46,7 @@ impl PhysAddr {
 /// Note: Not the same as a pointer. A `VirtAddr` might point into another
 /// process's memory that is not mapped in the kernel.
 #[repr(transparent)]
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, AnyBitPattern)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, AnyBitPattern)]
 pub struct VirtAddr(usize);
 
 impl VirtAddr {
@@ -145,6 +145,12 @@ macro_rules! addr_impl {
 
             fn sub(self, rhs: usize) -> Self::Output {
                 Self(self.0 - rhs)
+            }
+        }
+
+        impl core::fmt::Debug for $ty {
+            fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+                f.write_fmt(format_args!("{:#x}", self.0))
             }
         }
     };

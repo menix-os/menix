@@ -13,6 +13,14 @@ mod internal {
     pub use super::x86_64::*;
 }
 
+#[cfg(target_arch = "riscv64")]
+mod riscv64;
+
+#[cfg(target_arch = "riscv64")]
+mod internal {
+    pub use super::riscv64::*;
+}
+
 pub mod core;
 pub mod irq;
 pub mod sched;

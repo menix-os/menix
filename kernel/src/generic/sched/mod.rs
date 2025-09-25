@@ -108,9 +108,7 @@ impl Scheduler {
                 let from_proc = (*from).get_process();
                 let to_proc = (*to).get_process();
                 if !Arc::ptr_eq(&from_proc, &to_proc) {
-                    arch::virt::set_page_table(
-                        to_proc.inner.lock().address_space.table.get_head_addr(),
-                    );
+                    to_proc.inner.lock().address_space.table.set_active();
                 }
 
                 let cpu = CPU_DATA.get();

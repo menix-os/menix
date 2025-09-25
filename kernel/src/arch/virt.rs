@@ -1,5 +1,5 @@
 use super::internal;
-use crate::generic::memory::{PhysAddr, VirtAddr};
+use crate::generic::memory::{VirtAddr, virt::mmu::PageTable};
 pub use internal::virt::PageTableEntry;
 
 /// Gets the page size for a given level.
@@ -50,8 +50,8 @@ pub fn get_map_base() -> VirtAddr {
 /// # Safety
 ///
 /// The caller must make sure that all kernel pages are still mapped as they were before.
-pub unsafe fn set_page_table(phys: PhysAddr) {
-    unsafe { internal::virt::set_page_table(phys) };
+pub unsafe fn set_page_table(pt: &PageTable) {
+    unsafe { internal::virt::set_page_table(pt) };
 }
 
 /// Invalidates a TLB entry cache.

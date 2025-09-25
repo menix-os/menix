@@ -2,13 +2,16 @@ use super::internal;
 use crate::generic::memory::VirtAddr;
 use crate::generic::posix::errno::EResult;
 use crate::generic::process::task::Task;
+use core::fmt::Debug;
 
 pub use internal::sched::Context;
+assert_trait_impl!(TaskContext, Debug);
 assert_trait_impl!(Context, Default);
 assert_trait_impl!(Context, Clone);
 assert_trait_impl!(Context, Copy);
 
 pub use internal::sched::TaskContext;
+assert_trait_impl!(TaskContext, Debug);
 assert_trait_impl!(TaskContext, Default);
 assert_trait_impl!(TaskContext, Clone);
 

@@ -16,12 +16,17 @@ pub trait LoggerSink: Send {
     fn write(&mut self, input: &[u8]);
 }
 
+const MAX_LOGGERS: usize = 16;
+
 pub struct Logger {
-    pub sinks: [Option<Box<dyn LoggerSink>>; 16],
+    pub sinks: [Option<Box<dyn LoggerSink>>; MAX_LOGGERS],
 }
 
 /// Adds a sink to the logger.
-pub fn add_sink(sink: Box<dyn LoggerSink>) {
+pub fn add_sink(mut sink: Box<dyn LoggerSink>) {
+    // Clear the output of the logger.
+    sink.write(b"\x1bc");
+
     let name = sink.name();
     {
         let mut logger = GLOBAL_LOGGERS.lock();
@@ -49,8 +54,6 @@ pub fn remove_sink(name: &str) {
         }
     }
 }
-
-const MAX_LOGGERS: usize = 16;
 
 /// The global registry for loggers.
 pub static GLOBAL_LOGGERS: SpinMutex<Logger> = SpinMutex::new(Logger {

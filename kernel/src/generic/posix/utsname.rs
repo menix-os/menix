@@ -20,7 +20,14 @@ pub static UTSNAME: SpinMutex<uapi::utsname> = SpinMutex::new(uapi::utsname {
     version: to_char_array(env!("MENIX_VERSION")),
     machine: {
         #[cfg(target_arch = "x86_64")]
-        to_char_array("x86_64")
+        {
+            to_char_array("x86_64")
+        }
+
+        #[cfg(target_arch = "riscv64")]
+        {
+            to_char_array("riscv64")
+        }
     },
     domainname: to_char_array("(none)"),
 });

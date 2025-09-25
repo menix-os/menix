@@ -26,6 +26,6 @@ impl SpinLock {
 
     #[inline(always)]
     pub fn is_locked(&self) -> bool {
-        self.0.load(Ordering::Acquire)
+        self.0.load(Ordering::Relaxed)
     }
 }

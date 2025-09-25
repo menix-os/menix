@@ -87,6 +87,7 @@ SECTIONS
         *(.*bss .*bss.*)
         *(COMMON)
 
+        . = ALIGN(16);
         LD_STACK_BOTTOM = .;
         . += 0x4000;
         LD_STACK_TOP = .;

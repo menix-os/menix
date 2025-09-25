@@ -26,9 +26,13 @@ fn main() {
     .flag("-ffreestanding")
     .flag("-nostdlib");
 
-    if std::env::var("CARGO_CFG_TARGET_ARCH").unwrap() == "x86_64" {
-        b.flag("-mgeneral-regs-only");
-        b.flag("-mno-red-zone");
+    match std::env::var("CARGO_CFG_TARGET_ARCH").unwrap().as_str() {
+        "x86_64" => {
+            b.flag("-mgeneral-regs-only");
+            b.flag("-mno-red-zone");
+        }
+        "riscv64" => {}
+        _ => (),
     }
 
     b.compile("uacpi");

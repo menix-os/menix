@@ -94,13 +94,12 @@ impl PageTable {
     /// All parts of the kernel must still be mapped for this call to be safe.
     pub unsafe fn set_active(&self) {
         unsafe {
-            arch::virt::set_page_table(*self.head.lock());
+            arch::virt::set_page_table(self);
         }
     }
 
     /// Gets the page table entry pointed to by `virt`.
     /// Allocates new levels if necessary and requested.
-    /// `target_level`: The level to get for the PTE.
     pub fn get_pte<P: PageAllocator>(
         &self,
         virt: VirtAddr,

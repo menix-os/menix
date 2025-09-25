@@ -87,8 +87,7 @@ unsafe impl<T> Sync for SpinMutex<T> {}
 
 impl<T: ?Sized + Debug> Debug for SpinMutex<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let guard = self.lock();
-        Debug::fmt(&*guard, f)
+        Debug::fmt(&self.is_locked(), f)
     }
 }
 
