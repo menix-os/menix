@@ -53,7 +53,7 @@ impl Scheduler {
 
     /// Returns the task currently running on this CPU.
     pub fn get_current() -> Arc<Task> {
-        let ptr = arch::sched::get_task();
+        let ptr = CPU_DATA.get().scheduler.current.load(Ordering::Acquire);
         debug_assert!(!ptr.is_null());
         let task = unsafe { Arc::from_raw(ptr) };
         let result = task.clone();

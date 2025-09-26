@@ -109,19 +109,6 @@ impl core::fmt::Debug for Context {
     }
 }
 
-pub fn get_task() -> *const Task {
-    unsafe {
-        let task: *const Task;
-        asm!(
-            "mov {cpu}, gs:[{this}]",
-            cpu = out(reg) task,
-            this = const offset_of!(CpuData, scheduler.current),
-            options(nostack, preserves_flags),
-        );
-        return task;
-    }
-}
-
 /// The task frame consists of registers that the C ABI marks as callee-saved.
 /// If we don't save them, these registers are lost during a context switch.
 /// The order of these fields is important.

@@ -26,6 +26,7 @@ pub mod generic;
 pub mod system;
 
 use crate::generic::{
+    percpu::CPU_DATA,
     process::{Identity, Process},
     util::{mutex::irq::IrqMutex, once::Once},
     vfs::{
@@ -47,6 +48,7 @@ pub fn init() -> ! {
     }
 
     loop {
+        CPU_DATA.get().scheduler.reschedule();
         hint::spin_loop();
     }
 }

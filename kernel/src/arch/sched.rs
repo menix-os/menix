@@ -15,15 +15,6 @@ assert_trait_impl!(TaskContext, Debug);
 assert_trait_impl!(TaskContext, Default);
 assert_trait_impl!(TaskContext, Clone);
 
-/// Returns the current task running on this CPU.
-/// DO NOT USE THIS DIRECTLY. Use [`crate::generic::sched::Scheduler::get_current`] instead.
-/// # Safety
-/// The implementation of this function must be an atomic operation for this to be memory safe!
-#[inline]
-pub fn get_task() -> *const Task {
-    internal::sched::get_task()
-}
-
 /// Disables preemption.
 /// # Safety
 /// The implementation of this function must be an atomic operation for this to be memory safe!
