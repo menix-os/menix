@@ -99,9 +99,9 @@ pub(in crate::arch) fn flush_tlb(addr: VirtAddr) {
     }
 }
 
-pub(in crate::arch) unsafe fn set_page_table(addr: PhysAddr) {
+pub(in crate::arch) unsafe fn set_page_table(pt: &PageTable) {
     unsafe {
-        asm!("mov cr3, {addr}", addr = in(reg) addr.value());
+        asm!("mov cr3, {addr}", addr = in(reg) pt.get_head_addr().value());
     }
 }
 
