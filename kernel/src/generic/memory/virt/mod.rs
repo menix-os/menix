@@ -350,6 +350,8 @@ impl AddressSpace {
     }
 
     pub fn unmap(&self, addr: VirtAddr, len: NonZeroUsize) -> EResult<()> {
+        let _ = len;
+        let _ = addr;
         // TODO
         Ok(())
     }

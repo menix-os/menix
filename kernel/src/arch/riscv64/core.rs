@@ -36,6 +36,7 @@ pub fn get_per_cpu() -> *mut CpuData {
 }
 
 pub fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
+    let _ = arg;
     match cmd {
         _ => Err(Errno::EINVAL),
     }

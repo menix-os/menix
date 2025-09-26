@@ -1,3 +1,5 @@
+mod io;
+
 use crate::generic::{
     device::Device,
     log::GLOBAL_LOGGERS,
@@ -35,13 +37,7 @@ impl FileOps for Tty {
         match request as _ {
             uapi::TIOCGWINSZ => {
                 let arg: UserPtr<'_, uapi::winsize> = UserPtr::new(arg.into());
-                arg.write(uapi::winsize {
-                    ws_row: 80,
-                    ws_col: 25,
-                    ws_xpixel: 0, // Unused
-                    ws_ypixel: 0, // Unused
-                })
-                .ok_or(Errno::EINVAL)?;
+                self.tiocgwinsz(arg)?;
             }
             _ => return self.driver.ioctl(file, request, arg),
         }

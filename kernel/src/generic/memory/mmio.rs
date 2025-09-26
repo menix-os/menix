@@ -75,11 +75,14 @@ impl Mmio {
 
     /// Reads data from a field.
     pub fn read_field<T: PrimInt + From<A>, A: PrimInt + From<T>>(&self, field: Field<T, A>) -> A {
+        let _ = field;
         todo!()
     }
 
     /// Writes data to a field.
     pub fn write_field<T: PrimInt, A: PrimInt>(&self, field: Field<T, A>, value: A) {
+        let _ = value;
+        let _ = field;
         todo!()
     }
 }
