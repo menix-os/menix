@@ -36,7 +36,6 @@ use crate::generic::{
     },
 };
 use alloc::{string::String, sync::Arc};
-use core::hint;
 use generic::boot::BootInfo;
 
 /// Initializes all important kernel structures.
@@ -47,10 +46,8 @@ pub fn init() -> ! {
         generic::init::run();
     }
 
-    loop {
-        CPU_DATA.get().scheduler.reschedule();
-        hint::spin_loop();
-    }
+    CPU_DATA.get().scheduler.reschedule();
+    unreachable!();
 }
 
 static INIT: Once<Arc<Process>> = Once::new();
