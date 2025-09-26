@@ -1,4 +1,7 @@
-use crate::generic::memory::{PhysAddr, VirtAddr, virt::PteFlags};
+use crate::generic::memory::{
+    PhysAddr, VirtAddr,
+    virt::{PteFlags, mmu::PageTable},
+};
 use bitflags::bitflags;
 use core::arch::asm;
 
