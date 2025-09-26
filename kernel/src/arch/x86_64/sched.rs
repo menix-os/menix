@@ -21,6 +21,7 @@ use crate::{
         percpu::CpuData,
         posix::errno::EResult,
         process::task::Task,
+        sched::Scheduler,
         util::mutex::irq::IrqMutex,
     },
 };
@@ -286,7 +287,7 @@ pub unsafe fn remote_reschedule(cpu: u32) {
 pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
     unsafe {
         assert!(
-            (*get_task()).is_user(),
+            Scheduler::get_current().is_user(),
             "Attempted to perform a user jump on a kernel task!"
         );
     }
@@ -319,7 +320,7 @@ pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
 pub(in crate::arch) unsafe fn jump_to_user_context(context: *mut Context) -> ! {
     unsafe {
         assert!(
-            (*get_task()).is_user(),
+            Scheduler::get_current().is_user(),
             "Attempted to perform a user jump on a kernel task!"
         );
 
