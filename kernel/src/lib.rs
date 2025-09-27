@@ -7,6 +7,7 @@
 #![feature(slice_split_once)]
 #![feature(bool_to_result)]
 #![feature(box_into_inner)]
+#![feature(slice_as_array)]
 #![no_builtins]
 // Clippy lints
 #![allow(clippy::needless_return)]
@@ -32,6 +33,7 @@ use crate::generic::{
     vfs::{
         File,
         file::{FileDescription, OpenFlags},
+        fs::initramfs::load,
         inode::Mode,
     },
 };
@@ -56,8 +58,29 @@ static INIT: Once<Arc<Process>> = Once::new();
 pub extern "C" fn main(_: usize, _: usize) {
     // Say hello to the console.
     log!("Menix {}", env!("CARGO_PKG_VERSION"));
-
     log!("Command line: {}", BootInfo::get().command_line.inner());
+
+    // Load the initramfs.
+    {
+        let proc_inner = Process::get_kernel().inner.lock();
+        // Load the initramfs into the root directory.
+        let root_dir = File::open(
+            &proc_inner,
+            None,
+            b"/",
+            OpenFlags::Directory,
+            Mode::empty(),
+            Identity::get_kernel(),
+        )
+        .expect("Unable to open root directory");
+
+        for file in BootInfo::get().files {
+            load(&proc_inner, root_dir.clone(), unsafe {
+                core::slice::from_raw_parts(file.data.as_hhdm(), file.length)
+            })
+            .expect("Failed to load one of the provided initramfs archives");
+        }
+    }
 
     // Find user space init. If no path is given, search a few select directories.
     let path = match BootInfo::get().command_line.get_string("init") {
@@ -85,7 +108,6 @@ pub extern "C" fn main(_: usize, _: usize) {
     };
 
     let init_proc = INIT.get();
-
     // Open /dev/console for stdio for init.
     {
         let mut init_inner = init_proc.inner.lock();

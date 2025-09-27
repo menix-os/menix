@@ -187,28 +187,3 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
 
     return Ok(());
 }
-
-#[initgraph::task(
-    name = "generic.vfs.initramfs",
-    depends = [crate::INIT_STAGE],
-)]
-fn INITRAMFS_STAGE() {
-    let proc_inner = Process::get_kernel().inner.lock();
-    // Load the initramfs into the root directory.
-    let root_dir = File::open(
-        &proc_inner,
-        None,
-        b"/",
-        OpenFlags::Directory,
-        Mode::empty(),
-        Identity::get_kernel(),
-    )
-    .expect("Unable to open root directory");
-
-    for file in BootInfo::get().files {
-        load(&proc_inner, root_dir.clone(), unsafe {
-            core::slice::from_raw_parts(file.data.as_hhdm(), file.length)
-        })
-        .expect("Failed to load one of the provided initramfs archives");
-    }
-}

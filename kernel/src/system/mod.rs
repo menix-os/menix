@@ -8,5 +8,5 @@
     feature = "acpi"
 ))]
 pub mod acpi;
-pub mod openfw;
+pub mod dt;
 pub mod pci;

@@ -1,10 +1,10 @@
 // We don't want to use the bump allocator anywhere after initial setup.
 mod bump;
 pub mod cache;
-pub mod mmio;
 pub mod pmm;
 pub mod slab;
 pub mod user;
+pub mod view;
 pub mod virt;
 
 use super::util::once::Once;
@@ -185,6 +185,7 @@ pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
 #[initgraph::task(
     name = "generic.memory",
     depends = [crate::arch::EARLY_INIT_STAGE],
+    entails = [crate::INIT_STAGE]
 )]
 pub fn MEMORY_STAGE() {
     let info = BootInfo::get();
