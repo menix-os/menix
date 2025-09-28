@@ -5,7 +5,7 @@ use crate::{
         util::mutex::spin::SpinMutex,
     },
     system::pci::{
-        config::{self, ACCESS},
+        config::{self, ACCESS, Access},
         device::DEVICES,
     },
 };
@@ -83,7 +83,7 @@ pub struct Driver {
     pub name: &'static str,
     /// Called when a new device is being connected.
     /// This function is mandatory.
-    pub probe: fn(dev: &Device) -> EResult<()>,
+    pub probe: fn(dev: &Device, access: &dyn Access) -> EResult<()>,
     /// Called when a device is being removed.
     pub remove: Option<fn(dev: &Device) -> EResult<()>>,
     /// Called when a device is put to sleep.
@@ -135,7 +135,12 @@ impl Driver {
                     && v.sub_class.is_none_or(|x| x == sub_class)
                     && v.class.is_none_or(|x| x == class)
             }) {
-                (self.probe)(&dev)?;
+                if let Err(err) = (self.probe)(&dev, access.as_ref()) {
+                    error!(
+                        "Driver \"{}\" failed to probe device {}: {:?}",
+                        self.name, dev.address, err
+                    );
+                }
             }
         }
 

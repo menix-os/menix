@@ -72,7 +72,7 @@ pub trait Access {
     fn write32(&self, addr: Address, offset: u32, value: u32);
 }
 
-impl dyn Access {
+impl dyn Access + '_ {
     /// Returns true if this [`Access`] contains the device as addressed by `address`.
     pub fn decodes(&self, address: Address) -> bool {
         self.segment() == address.segment
