@@ -13,7 +13,7 @@ use crate::{
         irq::{IrqHandler, IrqStatus},
         memory::{
             PhysAddr,
-            mmio::{Mmio, Register},
+            view::{MemoryView, MmioView, Register},
         },
         percpu::CpuData,
         util::mutex::spin::SpinMutex,
@@ -31,7 +31,7 @@ pub struct LocalApic {
     ticks_per_10ms: AtomicU32,
     /// If [`Some`], points to the xAPIC MMIO space.
     /// Otherwise, it's an x2APIC.
-    xapic_regs: SpinMutex<Option<Mmio>>,
+    xapic_regs: SpinMutex<Option<MmioView>>,
 }
 
 per_cpu! {
@@ -39,7 +39,7 @@ per_cpu! {
 }
 
 mod regs {
-    use crate::generic::memory::mmio::Register;
+    use crate::generic::memory::view::Register;
 
     pub const ID: Register<u32> = Register::new(0x20);
     pub const TPR: Register<u32> = Register::new(0x80);
@@ -116,7 +116,7 @@ impl LocalApic {
                 apic_msr |= 1 << 10;
                 None
             } else {
-                Some(unsafe { Mmio::new_mmio(PhysAddr::from(apic_msr & 0xFFFFF000), 0x1000) })
+                Some(unsafe { MmioView::new(PhysAddr::from(apic_msr & 0xFFFFF000), 0x1000) })
             }
         };
 
@@ -163,9 +163,10 @@ impl LocalApic {
         match &*self.xapic_regs.lock() {
             Some(x) => {
                 if reg == regs::ICR {
-                    x.read(regs::ICR) as u64 | (x.read(regs::ICR_HI) as u64) << 32
+                    x.read_reg(regs::ICR).unwrap() as u64
+                        | (x.read_reg(regs::ICR_HI).unwrap() as u64) << 32
                 } else {
-                    x.read(reg).into()
+                    x.read_reg(reg).unwrap().into()
                 }
             }
             None => unsafe { asm::rdmsr(0x800 + (reg.offset() as u32 >> 4)) },
@@ -173,13 +174,13 @@ impl LocalApic {
     }
 
     fn write_reg(&self, reg: Register<u32>, value: u64) {
-        match &*self.xapic_regs.lock() {
+        match &mut *self.xapic_regs.lock() {
             Some(x) => {
                 if reg == regs::ICR {
-                    x.write(regs::ICR_HI, (value >> 32) as u32);
-                    x.write(regs::ICR, value as u32);
+                    x.write_reg(regs::ICR_HI, (value >> 32) as u32).unwrap();
+                    x.write_reg(regs::ICR, value as u32).unwrap();
                 } else {
-                    x.write(reg, value as u32)
+                    x.write_reg(reg, value as u32).unwrap()
                 }
             }
             None => unsafe { asm::wrmsr(0x800 + (reg.offset() as u32 >> 4), value) },
