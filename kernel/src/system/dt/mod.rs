@@ -34,18 +34,18 @@ impl<'a> DeviceTree<'a> {
     pub const FDT_END: u32 = 0x00000009;
 
     pub fn try_new(data: &'a [u8]) -> Option<Self> {
-        if data.read_reg(Self::MAGIC)? != Self::MAGIC_VALUE {
+        if data.read_reg(Self::MAGIC)?.value() != Self::MAGIC_VALUE {
             return None;
         }
 
         Some(Self {
-            version: data.read_reg(Self::VERSION)?,
-            compat_version: data.read_reg(Self::COMPAT_VERSION)?,
-            boot_cpuid: data.read_reg(Self::BOOT_CPUID)?,
-            structs: &data[data.read_reg(Self::STRUCTS_OFFSET)? as _..]
-                [..data.read_reg(Self::STRUCTS_SIZE)? as _],
-            strings: &data[data.read_reg(Self::STRINGS_OFFSET)? as _..]
-                [..data.read_reg(Self::STRINGS_SIZE)? as _],
+            version: data.read_reg(Self::VERSION)?.value(),
+            compat_version: data.read_reg(Self::COMPAT_VERSION)?.value(),
+            boot_cpuid: data.read_reg(Self::BOOT_CPUID)?.value(),
+            structs: &data[data.read_reg(Self::STRUCTS_OFFSET)?.value() as _..]
+                [..data.read_reg(Self::STRUCTS_SIZE)?.value() as _],
+            strings: &data[data.read_reg(Self::STRINGS_OFFSET)?.value() as _..]
+                [..data.read_reg(Self::STRINGS_SIZE)?.value() as _],
         })
     }
 
@@ -58,7 +58,8 @@ impl<'a> DeviceTree<'a> {
         assert_eq!(
             self.structs
                 .read_reg(Register::<u32>::new(0).with_be())
-                .unwrap(),
+                .unwrap()
+                .value(),
             Self::FDT_BEGIN_NODE
         );
 
@@ -182,14 +183,16 @@ impl<'a, 'b> Iterator for NodeIter<'a, 'b> {
         while self.offset < self.end {
             let tag = structs
                 .read_reg(Register::<u32>::new(self.offset).with_be())
-                .unwrap();
+                .unwrap()
+                .value();
             self.offset += 4;
 
             match tag {
                 DeviceTree::FDT_PROP => {
                     let len = structs
                         .read_reg(Register::<u32>::new(self.offset).with_be())
-                        .unwrap();
+                        .unwrap()
+                        .value();
                     self.offset += 8 + ((len as usize + 3) & !3);
                 }
                 DeviceTree::FDT_NOP => {}
@@ -254,17 +257,20 @@ impl<'a, 'b> Iterator for PropertyIter<'a, 'b> {
         while self.offset < self.node.end {
             let tag = structs
                 .read_reg(Register::<u32>::new(self.offset).with_be())
-                .unwrap();
+                .unwrap()
+                .value();
             self.offset += 4;
 
             match tag {
                 DeviceTree::FDT_PROP => {
                     let len = structs
                         .read_reg(Register::<u32>::new(self.offset).with_be())
-                        .unwrap();
+                        .unwrap()
+                        .value();
                     let nameoff = structs
                         .read_reg(Register::<u32>::new(self.offset + 4).with_be())
-                        .unwrap();
+                        .unwrap()
+                        .value();
 
                     let data_start = self.offset + 8;
                     let data_end = data_start + len as usize;
@@ -298,7 +304,8 @@ fn find_node_end(structs: &[u8], mut offset: usize) -> usize {
     while offset < structs.len() {
         let tag = structs
             .read_reg(Register::<u32>::new(offset).with_be())
-            .unwrap();
+            .unwrap()
+            .value();
         offset += 4;
 
         match tag {
@@ -314,7 +321,8 @@ fn find_node_end(structs: &[u8], mut offset: usize) -> usize {
             DeviceTree::FDT_PROP => {
                 let len = structs
                     .read_reg(Register::<u32>::new(offset).with_be())
-                    .unwrap();
+                    .unwrap()
+                    .value();
                 offset += 8 + ((len as usize + 3) & !3);
             }
             DeviceTree::FDT_NOP => {}
@@ -355,7 +363,7 @@ fn TREE_STAGE() {
 
     unsafe {
         let slice = slice::from_raw_parts_mut(fdt_addr.as_hhdm(), 8);
-        let len = slice.read_reg(DeviceTree::TOTAL_SIZE).unwrap();
+        let len = slice.read_reg(DeviceTree::TOTAL_SIZE).unwrap().value();
         let slice = slice::from_raw_parts_mut(fdt_addr.as_hhdm(), len as _);
 
         TREE.init(DeviceTree::try_new(slice).expect("Failed to parse DTB"));

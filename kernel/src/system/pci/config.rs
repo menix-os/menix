@@ -1,6 +1,10 @@
-use crate::generic::util::{align_down, once::Once};
+use crate::generic::{
+    memory::view::{BitValue, MemoryView, Register},
+    util::{align_down, once::Once},
+};
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt::Display;
+use num_traits::{FromBytes, NumCast, PrimInt, ToBytes};
 
 pub mod common {
     use crate::generic::memory::view::{Field, Register};
@@ -73,6 +77,14 @@ pub trait Access {
 }
 
 impl dyn Access + '_ {
+    /// Returns a [`MemoryView`] that can be used to access the device config space.
+    pub fn view_for_device(&self, address: Address) -> Option<DeviceView<'_, Self>> {
+        self.decodes(address).then(|| DeviceView {
+            access: self,
+            address,
+        })
+    }
+
     /// Returns true if this [`Access`] contains the device as addressed by `address`.
     pub fn decodes(&self, address: Address) -> bool {
         self.segment() == address.segment
@@ -108,6 +120,48 @@ impl dyn Access + '_ {
         reg &= !(0xFFFF << ((offset - aligned) * 8));
         reg |= (value as u32) << ((offset - aligned) * 8);
         self.write32(addr, aligned, reg);
+    }
+}
+
+pub struct DeviceView<'a, A: Access + ?Sized> {
+    access: &'a A,
+    address: Address,
+}
+
+impl<'a, A: Access + ?Sized> DeviceView<'a, A> {
+    pub fn access(&self) -> &'a A {
+        self.access
+    }
+
+    pub fn address(&self) -> Address {
+        self.address
+    }
+}
+
+impl<'a, A: Access + ?Sized> MemoryView for DeviceView<'a, A> {
+    fn read_reg<T: PrimInt + FromBytes>(&self, reg: Register<T>) -> Option<BitValue<T>>
+    where
+        T::Bytes: Default,
+    {
+        if size_of::<T>() != size_of::<u32>() {
+            return None;
+        }
+        Some(BitValue::new(T::from(
+            self.access.read32(self.address, reg.offset() as u32),
+        )?))
+    }
+
+    fn write_reg<T: PrimInt + ToBytes>(&mut self, reg: Register<T>, value: T) -> Option<()>
+    where
+        T::Bytes: Default,
+    {
+        if size_of::<T>() != size_of::<u32>() {
+            return None;
+        }
+        let value = <u32 as NumCast>::from(value)?;
+        self.access
+            .write32(self.address, reg.offset() as u32, value);
+        Some(())
     }
 }
 

@@ -34,8 +34,8 @@ impl ClockSource for Hpet {
     }
 
     fn get_elapsed_ns(&self) -> usize {
-        return (self.regs.read_reg(regs::MAIN_COUNTER).unwrap() * self.period as u64 / 1_000_000)
-            as usize;
+        let counter = self.regs.read_reg(regs::MAIN_COUNTER).unwrap().value();
+        return (counter * self.period as u64 / 1_000_000) as usize;
     }
 }
 
@@ -56,10 +56,12 @@ impl Hpet {
         // Enable timer.
         mmio.write_reg(
             regs::CONFIGURATION,
-            mmio.read_reg(regs::CONFIGURATION).unwrap() | 1,
+            mmio.read_reg(regs::CONFIGURATION).unwrap().value() | 1,
         )
         .unwrap();
-        let period = (mmio.read_reg(regs::CAPABILITIES).unwrap() >> 32) as u32;
+
+        let caps = mmio.read_reg(regs::CAPABILITIES).unwrap().value();
+        let period = (caps >> 32) as u32;
 
         return Ok(Hpet { regs: mmio, period });
     }

@@ -163,10 +163,12 @@ impl LocalApic {
         match &*self.xapic_regs.lock() {
             Some(x) => {
                 if reg == regs::ICR {
-                    x.read_reg(regs::ICR).unwrap() as u64
-                        | (x.read_reg(regs::ICR_HI).unwrap() as u64) << 32
+                    let lo = x.read_reg(regs::ICR).unwrap().value();
+                    let hi = x.read_reg(regs::ICR_HI).unwrap().value();
+
+                    (hi as u64) << 32 | (lo as u64)
                 } else {
-                    x.read_reg(reg).unwrap().into()
+                    x.read_reg(reg).unwrap().value().into()
                 }
             }
             None => unsafe { asm::rdmsr(0x800 + (reg.offset() as u32 >> 4)) },
