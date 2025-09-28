@@ -1,8 +1,8 @@
 [package]
-name = "nvme"
+name = "ns16550a"
 version = "0.1.0"
 edition = "2024"
-build = "../build.rs"
+build = "../../build.rs"
 
 [lib]
 crate-type = ["dylib"]

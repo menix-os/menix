@@ -7,10 +7,10 @@ use menix::{
     system::dt::{Node, driver::Driver},
 };
 
-menix::module!("Serial devices", "Marvin Friedrich", main);
+menix::module!("NS16550a serial driver", "Marvin Friedrich", main);
 
 static DRIVER: Driver = Driver {
-    name: "serial",
+    name: "ns16550a",
     compatible: &[b"ns16550a"],
     probe,
 };

@@ -24,7 +24,7 @@ rustc-demangle = { version = "0.1.24" }
 intrusive-collections = { version = "0.9.7", features = ["nightly"] }
 
 [features]
-default = ["acpi", "boot_limine"]
+default = ["boot_limine"]
 
 # Boot protocols
 boot_limine = ["dep:limine"]
