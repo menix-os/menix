@@ -2,12 +2,48 @@
 
 use super::{PhysAddr, VirtAddr, pmm::KernelAlloc, virt::VmFlags};
 use crate::generic::memory::virt::mmu::PageTable;
-use core::marker::PhantomData;
+use core::{marker::PhantomData, ops::RangeInclusive};
 use num_traits::{FromBytes, PrimInt, ToBytes};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct BitValue<T: PrimInt> {
+    value: T,
+}
+
+fn field_mask<T: PrimInt, A: PrimInt + Into<T>>(field: Field<T, A>) -> T {
+    let mask: T = A::one().into();
+    (mask << field.bit_width) - A::one().into()
+}
+
+impl<T: PrimInt> BitValue<T> {
+    pub const fn new(value: T) -> Self {
+        Self { value }
+    }
+
+    pub const fn value(&self) -> T {
+        self.value
+    }
+
+    pub fn read_field<A: PrimInt + TryFrom<T> + Into<T>>(self, field: Field<T, A>) -> BitValue<A> {
+        let value = (self.value >> field.field_offset) & field_mask(field);
+        BitValue::new(value.try_into().ok().unwrap())
+    }
+
+    pub fn write_field<A: PrimInt + From<T>>(self, field: Field<T, A>, value: A) -> Self
+    where
+        T: From<A>,
+    {
+        let value: T = value.into();
+        BitValue::new(
+            (self.value & !(field_mask(field) << field.field_offset))
+                | (value << field.field_offset),
+        )
+    }
+}
 
 pub trait MemoryView {
     /// Reads data from a register.
-    fn read_reg<T: PrimInt + FromBytes>(&self, reg: Register<T>) -> Option<T>
+    fn read_reg<T: PrimInt + FromBytes>(&self, reg: Register<T>) -> Option<BitValue<T>>
     where
         T::Bytes: Default;
 
@@ -15,39 +51,6 @@ pub trait MemoryView {
     fn write_reg<T: PrimInt + ToBytes>(&mut self, reg: Register<T>, value: T) -> Option<()>
     where
         T::Bytes: Default;
-
-    /// Reads data from a field.
-    fn read_field<T: PrimInt + From<A> + FromBytes, A: PrimInt + From<T> + FromBytes>(
-        &self,
-        field: Field<T, A>,
-    ) -> Option<A>
-    where
-        T::Bytes: Default,
-        A::Bytes: Default,
-    {
-        let reg = self.read_reg(field.register)?;
-        let t: A = (reg >> (8 * field.field_offset)).into();
-        Some(t & A::max_value())
-    }
-
-    /// Reads data to a field.
-    fn write_field<T: PrimInt + ToBytes + FromBytes + From<A>, A: PrimInt + ToBytes>(
-        &mut self,
-        field: Field<T, A>,
-        value: A,
-    ) -> Option<()>
-    where
-        <T as ToBytes>::Bytes: Default,
-        <T as FromBytes>::Bytes: Default,
-        A::Bytes: Default,
-    {
-        let reg = self.read_reg(field.register)?;
-        let mut mask: T = (A::max_value()).into();
-        mask = mask << (field.offset() * 8);
-        let mut value: T = value.into();
-        value = value << (field.offset() * 8);
-        self.write_reg(field.register, (reg & !mask) | value)
-    }
 }
 
 /// A hardware register mapped in the current address space.
@@ -93,6 +96,7 @@ impl<T: PrimInt> Register<T> {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Field<T: PrimInt, A: PrimInt> {
     field_offset: usize,
+    bit_width: usize,
     register: Register<T>,
     _p: PhantomData<T>,
     _a: PhantomData<A>,
@@ -106,12 +110,38 @@ impl<T: PrimInt, A: PrimInt> Field<T, A> {
             _p: PhantomData,
             _a: PhantomData,
             register,
-            field_offset,
+            field_offset: field_offset * 8,
+            bit_width: size_of::<A>() * 8,
         }
     }
 
-    pub const fn offset(&self) -> usize {
-        self.register.offset() + self.field_offset
+    /// Creates a new field spanning the given bit range (inclusive).
+    pub const fn new_bit(register: Register<T>, range: RangeInclusive<usize>) -> Self {
+        let start = *range.start();
+        let end = *range.end();
+        assert!(start <= end);
+        assert!(end < size_of::<T>() * u8::BITS as usize);
+        let width = end - start + 1;
+        assert!(width <= size_of::<A>() * u8::BITS as usize);
+        Self {
+            _a: PhantomData,
+            _p: PhantomData,
+            register,
+            field_offset: start,
+            bit_width: width,
+        }
+    }
+
+    pub const fn byte_offset(&self) -> usize {
+        self.register.offset() + (self.field_offset / 8)
+    }
+
+    pub const fn bit_offset(&self) -> usize {
+        self.field_offset
+    }
+
+    pub const fn bit_width(&self) -> usize {
+        self.bit_width
     }
 }
 
@@ -123,7 +153,7 @@ const fn is_little_endian() -> bool {
 }
 
 impl MemoryView for [u8] {
-    fn read_reg<T: PrimInt + FromBytes>(&self, reg: Register<T>) -> Option<T>
+    fn read_reg<T: PrimInt + FromBytes>(&self, reg: Register<T>) -> Option<BitValue<T>>
     where
         T::Bytes: Default,
     {
@@ -134,7 +164,7 @@ impl MemoryView for [u8] {
         if !reg.native_endian {
             num = num.swap_bytes();
         }
-        Some(num)
+        Some(BitValue::new(num))
     }
 
     fn write_reg<T: PrimInt + ToBytes>(&mut self, reg: Register<T>, value: T) -> Option<()>
@@ -188,16 +218,17 @@ impl Drop for MmioView {
 }
 
 impl MemoryView for MmioView {
-    fn read_reg<T: PrimInt>(&self, reg: Register<T>) -> Option<T> {
+    fn read_reg<T: PrimInt>(&self, reg: Register<T>) -> Option<BitValue<T>> {
         if reg.offset() + size_of::<T>() > self.len {
             return None;
         }
 
-        let value = unsafe { (self.base as *mut T).byte_add(reg.offset).read_volatile() };
-        return Some(match reg.native_endian {
-            true => value,
-            false => value.swap_bytes(),
-        });
+        let mut value = unsafe { (self.base as *mut T).byte_add(reg.offset).read_volatile() };
+        if !reg.native_endian {
+            value = value.swap_bytes();
+        }
+
+        Some(BitValue::new(value))
     }
 
     fn write_reg<T: PrimInt>(&mut self, reg: Register<T>, value: T) -> Option<()> {

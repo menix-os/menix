@@ -1,11 +1,14 @@
 use alloc::vec::Vec;
 
-use crate::system::pci::{
-    config::{
-        ACCESS, Access, Address,
-        common::{DEVICE_ID, VENDOR_ID},
+use crate::{
+    generic::memory::view::MemoryView,
+    system::pci::{
+        config::{
+            ACCESS, Access, Address, DeviceView,
+            common::{DEVICE_ID, REG0, VENDOR_ID},
+        },
+        device::{DEVICES, Device},
     },
-    device::{DEVICES, Device},
 };
 
 pub mod config;
@@ -34,20 +37,26 @@ pub fn PCI_STAGE() {
                     slot,
                     function: 0,
                 };
-                scan_device(addr, access.as_ref(), &mut devices);
+                scan_device(addr, access.view_for_device(addr).unwrap(), &mut devices);
             }
         }
     }
 }
 
-fn scan_device(addr: Address, access: &'static dyn Access, devices: &mut Vec<Device>) {
-    let vendor_id = access.read16(addr.clone(), VENDOR_ID.offset() as _);
-    if vendor_id == 0xFFFF {
+fn scan_device<A: Access + ?Sized>(
+    addr: Address,
+    view: DeviceView<'_, A>,
+    devices: &mut Vec<Device>,
+) {
+    let reg0 = view.read_reg(REG0).unwrap();
+
+    let vendor_id = reg0.read_field(VENDOR_ID).value();
+    if vendor_id == 0xFFFF || vendor_id == 0 {
         return;
     }
 
-    let device_id = access.read16(addr.clone(), DEVICE_ID.offset() as _);
-    if device_id == 0xFFFF {
+    let device_id = reg0.read_field(DEVICE_ID).value();
+    if device_id == 0xFFFF || device_id == 0 {
         return;
     }
 

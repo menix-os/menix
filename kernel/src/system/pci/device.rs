@@ -50,12 +50,13 @@ impl Device {
         let is_mmio64 = is_mmio && ((bar >> 1) & 0x3) == 0x2;
         let is_prefetchable = is_mmio && (bar & (1 << 3) != 0);
 
-        let command_register = access.read16(self.address, config::common::COMMAND.offset() as u32);
+        let command_register =
+            access.read16(self.address, config::common::COMMAND.byte_offset() as u32);
 
         // Disable IO and memory decoding while probing BAR sizes.
         access.write16(
             self.address,
-            config::common::COMMAND.offset() as u32,
+            config::common::COMMAND.byte_offset() as u32,
             command_register & !(1 << 0 | 1 << 1),
         );
 
@@ -102,7 +103,7 @@ impl Device {
         // Restore the command register.
         access.write16(
             self.address,
-            config::common::COMMAND.offset() as u32,
+            config::common::COMMAND.byte_offset() as u32,
             command_register,
         );
 

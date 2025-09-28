@@ -1,11 +1,12 @@
 use super::device::Device;
 use crate::{
     generic::{
+        memory::view::MemoryView,
         posix::errno::{EResult, Errno},
         util::mutex::spin::SpinMutex,
     },
     system::pci::{
-        config::{self, ACCESS, Access},
+        config::{self, ACCESS, Access, DeviceView},
         device::DEVICES,
     },
 };
@@ -83,7 +84,7 @@ pub struct Driver {
     pub name: &'static str,
     /// Called when a new device is being connected.
     /// This function is mandatory.
-    pub probe: fn(dev: &Device, access: &dyn Access) -> EResult<()>,
+    pub probe: fn(dev: &Device, access: DeviceView<'static, dyn Access>) -> EResult<()>,
     /// Called when a device is being removed.
     pub remove: Option<fn(dev: &Device) -> EResult<()>>,
     /// Called when a device is put to sleep.
@@ -116,17 +117,21 @@ impl Driver {
         // Probe matching PCI devices.
         let devices = DEVICES.lock();
         for dev in devices.iter() {
-            let access = ACCESS
+            let view = ACCESS
                 .get()
                 .iter()
-                .find(|x| x.decodes(dev.address))
+                .filter_map(|x| x.view_for_device(dev.address))
+                .next()
                 .unwrap();
 
-            let device_id = access.read16(dev.address, config::common::DEVICE_ID.offset() as _);
-            let vendor_id = access.read16(dev.address, config::common::VENDOR_ID.offset() as _);
-            let prog_if = access.read8(dev.address, config::common::PROG_IF.offset() as _);
-            let sub_class = access.read8(dev.address, config::common::SUB_CLASS.offset() as _);
-            let class = access.read8(dev.address, config::common::CLASS_CODE.offset() as _);
+            let reg0 = view.read_reg(config::common::REG0).unwrap();
+            let reg2 = view.read_reg(config::common::REG2).unwrap();
+
+            let device_id = reg0.read_field(config::common::DEVICE_ID).value();
+            let vendor_id = reg0.read_field(config::common::VENDOR_ID).value();
+            let prog_if = reg2.read_field(config::common::PROG_IF).value();
+            let sub_class = reg2.read_field(config::common::SUB_CLASS).value();
+            let class = reg2.read_field(config::common::CLASS_CODE).value();
 
             if let Some(_) = self.variants.iter().find(|v| {
                 v.device.is_none_or(|x| x == device_id)
@@ -135,7 +140,7 @@ impl Driver {
                     && v.sub_class.is_none_or(|x| x == sub_class)
                     && v.class.is_none_or(|x| x == class)
             }) {
-                if let Err(err) = (self.probe)(&dev, access.as_ref()) {
+                if let Err(err) = (self.probe)(&dev, view) {
                     error!(
                         "Driver \"{}\" failed to probe device {}: {:?}",
                         self.name, dev.address, err

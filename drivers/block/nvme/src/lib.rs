@@ -10,7 +10,7 @@ use menix::{
     },
     log,
     system::pci::{
-        config::Access,
+        config::{Access, DeviceView},
         device::Device,
         driver::{Driver, PciVariantBuilder},
     },
@@ -30,7 +30,7 @@ static DRIVER: Driver = Driver {
         .nvm_express_controller()],
 };
 
-pub fn probe(dev: &Device, access: &dyn Access) -> EResult<()> {
+pub fn probe(dev: &Device, view: DeviceView<'static, dyn Access>) -> EResult<()> {
     log!("Probing NVMe device on {}", dev.address);
 
     Ok(())
