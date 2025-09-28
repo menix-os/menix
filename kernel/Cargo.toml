@@ -25,7 +25,7 @@ intrusive-collections = { version = "0.9.7", features = ["nightly"] }
 kernel_proc = { path = "crates/kernel_proc" }
 
 [features]
-default = ["boot_limine"]
+default = ["acpi", "boot_limine"]
 
 # Boot protocols
 boot_limine = ["dep:limine"]
