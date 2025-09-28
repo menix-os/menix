@@ -1,11 +1,11 @@
-use core::ffi::CStr;
+pub mod driver;
 
 use crate::generic::{
     boot::BootInfo,
     memory::view::{MemoryView, Register},
     util::once::Once,
 };
-use alloc::{slice, string::String};
+use alloc::{slice, string::String, vec::Vec};
 
 pub struct DeviceTree<'a> {
     version: u32,
@@ -53,37 +53,80 @@ impl<'a> DeviceTree<'a> {
         self.version
     }
 
-    pub fn root(&self) -> Node<'_> {
+    pub fn root(&self) -> Node<'a, '_> {
+        // first tag must be FDT_BEGIN_NODE
+        assert_eq!(
+            self.structs
+                .read_reg(Register::<u32>::new(0).with_be())
+                .unwrap(),
+            Self::FDT_BEGIN_NODE
+        );
+
+        // parse root name
+        let mut end = 4;
+        while end < self.structs.len() && self.structs[end] != 0 {
+            end += 1;
+        }
+        let name = &self.structs[4..end];
+        let start = (end + 4) & !3;
+        let end = find_node_end(self.structs, start);
+
         Node {
             tree: self,
-            name: b"/",
-            start: 8,
+            name,
+            start,
+            end,
         }
+    }
+
+    pub fn find_node(&self, path: &[u8]) -> Option<Node<'_, '_>> {
+        // Resolve aliases.
+        let (path, mut node) = if *path.get(0)? == b'/' {
+            (&path[1..], self.root())
+        } else {
+            let (alias, rest) =
+                path.split_at(path.iter().position(|x| *x == b'/').unwrap_or(path.len()));
+            let aliases = self.root().nodes().find(|x| x.name() == b"aliases")?;
+            let alias_prop = aliases.properties().find(|x| x.name() == alias)?;
+            (rest, self.find_node(alias_prop.as_str().next()?)?)
+        };
+
+        if path.is_empty() {
+            return Some(node);
+        }
+
+        for comp in path.split(|x| *x == b'/') {
+            node = node.nodes().find(|x| x.name() == comp)?;
+        }
+
+        return Some(node);
     }
 }
 
-pub struct Node<'a> {
-    tree: &'a DeviceTree<'a>,
+/// A node in the device tree.
+#[derive(Clone)]
+pub struct Node<'a, 'b> {
+    tree: &'b DeviceTree<'a>,
     name: &'a [u8],
-    /// The offset where this node starts at, relative to the [`DeviceTree::structs`] field.
-    start: usize,
+    start: usize, // offset of first property/child
+    end: usize,   // offset of matching FDT_END_NODE
 }
 
-impl<'a> Node<'a> {
-    pub fn get_name(&self) -> &[u8] {
+impl<'a, 'b> Node<'a, 'b> {
+    pub fn name(&self) -> &[u8] {
         self.name
     }
 
-    pub fn nodes(&self) -> NodeIter<'_> {
+    pub fn nodes(&self) -> NodeIter<'a, 'b> {
         NodeIter {
-            node: self,
-            offset: self.start, // begin scanning right after node start
+            tree: self.tree,
+            offset: self.start,
+            end: self.end,
             depth: 0,
-            done: false,
         }
     }
 
-    pub fn properties(&self) -> PropertyIter<'_> {
+    pub fn properties(&'b self) -> PropertyIter<'a, 'b> {
         PropertyIter {
             node: self,
             offset: self.start,
@@ -91,128 +134,16 @@ impl<'a> Node<'a> {
     }
 }
 
-/// Iterates over child nodes
-pub struct NodeIter<'a> {
-    node: &'a Node<'a>,
-    offset: usize,
-    depth: usize,
-    done: bool,
-}
-
-impl<'a> Iterator for NodeIter<'a> {
-    type Item = Node<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let structs = self.node.tree.structs;
-
-        while !self.done && self.offset < structs.len() {
-            let tag = structs.read_reg(Register::<u32>::new(self.offset).with_be())?;
-            self.offset += 4;
-
-            match tag {
-                DeviceTree::FDT_BEGIN_NODE => {
-                    // parse name (NUL-terminated string)
-                    let mut end = self.offset;
-                    while end < structs.len() && structs[end] != 0 {
-                        end += 1;
-                    }
-                    let name = &structs[self.offset..end];
-                    self.offset = (end + 4) & !3; // align to 4
-                    self.depth += 1;
-
-                    return Some(Node {
-                        tree: self.node.tree,
-                        name,
-                        start: self.offset,
-                    });
-                }
-                DeviceTree::FDT_END_NODE => {
-                    if self.depth == 0 {
-                        self.done = true;
-                        return None;
-                    }
-                    self.depth -= 1;
-                }
-                DeviceTree::FDT_PROP => {
-                    let len = structs.read_reg(Register::<u32>::new(self.offset).with_be())?;
-                    let nameoff =
-                        structs.read_reg(Register::<u32>::new(self.offset + 4).with_be())?;
-                    self.offset += 8 + ((len as usize + 3) & !3);
-                }
-                DeviceTree::FDT_NOP => {}
-                DeviceTree::FDT_END => {
-                    self.done = true;
-                    return None;
-                }
-                _ => panic!("unknown FDT tag {:#x}", tag),
-            }
-        }
-
-        None
-    }
-}
-
-/// Iterates over properties of a node
-pub struct PropertyIter<'a> {
-    node: &'a Node<'a>,
-    offset: usize,
-}
-
-impl<'a> Iterator for PropertyIter<'a> {
-    type Item = Property<'a>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let structs = self.node.tree.structs;
-
-        while self.offset < structs.len() {
-            let tag = structs.read_reg(Register::<u32>::new(self.offset).with_be())?;
-            self.offset += 4;
-
-            match tag {
-                DeviceTree::FDT_PROP => {
-                    let len = structs.read_reg(Register::<u32>::new(self.offset).with_be())?;
-                    let nameoff =
-                        structs.read_reg(Register::<u32>::new(self.offset + 4).with_be())?;
-                    let data_start = self.offset + 8;
-                    let data_end = data_start + len as usize;
-                    let data = &structs[data_start..data_end];
-                    self.offset = (data_end + 3) & !3; // align to 4
-
-                    let name = get_str(self.node.tree.strings, nameoff)?;
-                    return Some(Property {
-                        tree: self.node.tree,
-                        node: self.node,
-                        name,
-                        data,
-                    });
-                }
-                DeviceTree::FDT_BEGIN_NODE => {
-                    // skip node and descend into children.
-                    return None;
-                }
-                DeviceTree::FDT_END_NODE => {
-                    return None;
-                }
-                DeviceTree::FDT_NOP => {
-                    continue;
-                }
-                DeviceTree::FDT_END => return None,
-                _ => panic!("unknown FDT tag in property iter"),
-            }
-        }
-
-        None
-    }
-}
-
-pub struct Property<'a> {
-    tree: &'a DeviceTree<'a>,
-    node: &'a Node<'a>,
+/// A property inside a node.
+#[derive(Clone)]
+pub struct Property<'a, 'b> {
+    tree: &'b DeviceTree<'a>,
+    node: &'b Node<'a, 'b>,
     name: &'a [u8],
     data: &'a [u8],
 }
 
-impl<'a> Property<'a> {
+impl<'a, 'b> Property<'a, 'b> {
     pub fn name(&self) -> &[u8] {
         self.name
     }
@@ -221,8 +152,8 @@ impl<'a> Property<'a> {
         self.data
     }
 
-    pub fn as_str(&self) -> Option<&[&CStr]> {
-        todo!()
+    pub fn as_str(&self) -> impl Iterator<Item = &[u8]> {
+        self.data.split(|&b| b == 0).filter(|s| !s.is_empty())
     }
 
     pub fn as_u32(&self) -> Option<&[u32]> {
@@ -234,6 +165,173 @@ impl<'a> Property<'a> {
     }
 }
 
+/// Iterates over direct child nodes.
+pub struct NodeIter<'a, 'b> {
+    tree: &'b DeviceTree<'a>,
+    offset: usize,
+    end: usize,
+    depth: usize,
+}
+
+impl<'a, 'b> Iterator for NodeIter<'a, 'b> {
+    type Item = Node<'a, 'b>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let structs = self.tree.structs;
+
+        while self.offset < self.end {
+            let tag = structs
+                .read_reg(Register::<u32>::new(self.offset).with_be())
+                .unwrap();
+            self.offset += 4;
+
+            match tag {
+                DeviceTree::FDT_PROP => {
+                    let len = structs
+                        .read_reg(Register::<u32>::new(self.offset).with_be())
+                        .unwrap();
+                    self.offset += 8 + ((len as usize + 3) & !3);
+                }
+                DeviceTree::FDT_NOP => {}
+                DeviceTree::FDT_BEGIN_NODE => {
+                    if self.depth == 0 {
+                        // parse child name
+                        let mut end = self.offset;
+                        while end < structs.len() && structs[end] != 0 {
+                            end += 1;
+                        }
+                        let name = &structs[self.offset..end];
+                        let start = (end + 4) & !3;
+                        let child_end = find_node_end(structs, start);
+
+                        self.offset = child_end; // skip over child for next iteration
+
+                        return Some(Node {
+                            tree: self.tree,
+                            name,
+                            start,
+                            end: child_end,
+                        });
+                    } else {
+                        self.depth += 1;
+                        // skip nested
+                        let mut end = self.offset;
+                        while end < structs.len() && structs[end] != 0 {
+                            end += 1;
+                        }
+                        self.offset = (end + 4) & !3;
+                    }
+                }
+                DeviceTree::FDT_END_NODE => {
+                    if self.depth > 0 {
+                        self.depth -= 1;
+                    } else {
+                        // end of parent node
+                        return None;
+                    }
+                }
+                DeviceTree::FDT_END => return None,
+                _ => panic!("unknown FDT tag {:#x}", tag),
+            }
+        }
+
+        None
+    }
+}
+
+/// Iterates over properties of a node.
+pub struct PropertyIter<'a, 'b> {
+    node: &'b Node<'a, 'b>,
+    offset: usize,
+}
+
+impl<'a, 'b> Iterator for PropertyIter<'a, 'b> {
+    type Item = Property<'a, 'b>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let structs = self.node.tree.structs;
+
+        while self.offset < self.node.end {
+            let tag = structs
+                .read_reg(Register::<u32>::new(self.offset).with_be())
+                .unwrap();
+            self.offset += 4;
+
+            match tag {
+                DeviceTree::FDT_PROP => {
+                    let len = structs
+                        .read_reg(Register::<u32>::new(self.offset).with_be())
+                        .unwrap();
+                    let nameoff = structs
+                        .read_reg(Register::<u32>::new(self.offset + 4).with_be())
+                        .unwrap();
+
+                    let data_start = self.offset + 8;
+                    let data_end = data_start + len as usize;
+                    let data = &structs[data_start..data_end];
+                    self.offset = (data_end + 3) & !3;
+
+                    let name = get_str(self.node.tree.strings, nameoff).unwrap();
+
+                    return Some(Property {
+                        tree: self.node.tree,
+                        node: self.node,
+                        name,
+                        data,
+                    });
+                }
+                DeviceTree::FDT_BEGIN_NODE | DeviceTree::FDT_END_NODE | DeviceTree::FDT_END => {
+                    return None;
+                }
+                DeviceTree::FDT_NOP => continue,
+                _ => panic!("unknown FDT tag {:#x}", tag),
+            }
+        }
+
+        None
+    }
+}
+
+/// Find matching FDT_END_NODE for a node body.
+fn find_node_end(structs: &[u8], mut offset: usize) -> usize {
+    let mut depth = 0;
+    while offset < structs.len() {
+        let tag = structs
+            .read_reg(Register::<u32>::new(offset).with_be())
+            .unwrap();
+        offset += 4;
+
+        match tag {
+            DeviceTree::FDT_BEGIN_NODE => {
+                depth += 1;
+                // skip name
+                let mut end = offset;
+                while end < structs.len() && structs[end] != 0 {
+                    end += 1;
+                }
+                offset = (end + 4) & !3;
+            }
+            DeviceTree::FDT_PROP => {
+                let len = structs
+                    .read_reg(Register::<u32>::new(offset).with_be())
+                    .unwrap();
+                offset += 8 + ((len as usize + 3) & !3);
+            }
+            DeviceTree::FDT_NOP => {}
+            DeviceTree::FDT_END_NODE => {
+                if depth == 0 {
+                    return offset;
+                }
+                depth -= 1;
+            }
+            DeviceTree::FDT_END => return offset,
+            _ => panic!("unknown FDT tag {:#x}", tag),
+        }
+    }
+    panic!("unterminated FDT node");
+}
+
+/// Look up a string in the strings block.
 fn get_str<'a>(strings: &'a [u8], off: u32) -> Option<&'a [u8]> {
     let mut end = off as usize;
     while end < strings.len() && strings[end] != 0 {
@@ -243,6 +341,7 @@ fn get_str<'a>(strings: &'a [u8], off: u32) -> Option<&'a [u8]> {
 }
 
 pub static TREE: Once<DeviceTree> = Once::new();
+pub static DEVICES: Once<Vec<&Node>> = Once::new();
 
 #[initgraph::task(
     name = "system.dt.parse-blob",
@@ -264,16 +363,19 @@ fn TREE_STAGE() {
 
     let root = TREE.get().root();
     let model = root.properties().find(|x| x.name() == b"model").unwrap();
-    log!("Running on {}", String::from_utf8_lossy(model.data()));
+    log!("Running on \"{}\"", String::from_utf8_lossy(model.data()));
 
-    log!("Found devices:");
-    for node in root.nodes() {
-        if let Some(dev) = node.properties().find(|x| x.name() == b"compatible") {
-            log!(
-                "{{ {}, compatible = \"{}\" }}",
-                String::from_utf8_lossy(node.get_name()),
-                String::from_utf8_lossy(dev.data)
-            );
-        }
-    }
+    let chosen = TREE.get().find_node(b"/chosen").unwrap();
+    log!(
+        "stdout is: \"{}\"",
+        String::from_utf8_lossy(
+            chosen
+                .properties()
+                .find(|x| x.name() == b"stdout-path")
+                .unwrap()
+                .as_str()
+                .next()
+                .unwrap()
+        )
+    );
 }
