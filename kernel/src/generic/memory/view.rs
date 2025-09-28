@@ -23,17 +23,31 @@ pub trait MemoryView {
     ) -> Option<A>
     where
         T::Bytes: Default,
-        A::Bytes: Default;
+        A::Bytes: Default,
+    {
+        let reg = self.read_reg(field.register)?;
+        let t: A = (reg >> (8 * field.field_offset)).into();
+        Some(t & A::max_value())
+    }
 
-    /// Writes data to a field.
-    fn write_field<T: PrimInt + FromBytes, A: PrimInt + FromBytes>(
-        &self,
+    /// Reads data to a field.
+    fn write_field<T: PrimInt + ToBytes + FromBytes + From<A>, A: PrimInt + ToBytes>(
+        &mut self,
         field: Field<T, A>,
         value: A,
     ) -> Option<()>
     where
-        T::Bytes: Default,
-        A::Bytes: Default;
+        <T as ToBytes>::Bytes: Default,
+        <T as FromBytes>::Bytes: Default,
+        A::Bytes: Default,
+    {
+        let reg = self.read_reg(field.register)?;
+        let mut mask: T = (A::max_value()).into();
+        mask = mask << (field.offset() * 8);
+        let mut value: T = value.into();
+        value = value << (field.offset() * 8);
+        self.write_reg(field.register, (reg & !mask) | value)
+    }
 }
 
 /// A hardware register mapped in the current address space.
@@ -136,17 +150,6 @@ impl MemoryView for [u8] {
         buf.copy_from_slice(bytes.as_ref());
         Some(())
     }
-
-    fn read_field<T: PrimInt + From<A>, A: PrimInt + From<T>>(
-        &self,
-        field: Field<T, A>,
-    ) -> Option<A> {
-        todo!()
-    }
-
-    fn write_field<T: PrimInt, A: PrimInt>(&self, field: Field<T, A>, value: A) -> Option<()> {
-        todo!()
-    }
 }
 
 /// Represents a region of memory mapped IO.
@@ -212,16 +215,5 @@ impl MemoryView for MmioView {
                 .write_volatile(value)
         };
         Some(())
-    }
-
-    fn read_field<T: PrimInt + From<A>, A: PrimInt + From<T>>(
-        &self,
-        field: Field<T, A>,
-    ) -> Option<A> {
-        todo!()
-    }
-
-    fn write_field<T: PrimInt, A: PrimInt>(&self, field: Field<T, A>, value: A) -> Option<()> {
-        todo!()
     }
 }
