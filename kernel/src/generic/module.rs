@@ -256,9 +256,10 @@ pub fn load(data: &[u8]) -> EResult<()> {
     let fix_addr = |opt: &mut Option<_>| {
         if let Some(x) = opt {
             for phdr in phdrs {
-                if phdr.p_vaddr <= *x && phdr.p_vaddr + phdr.p_filesz > *x {
+                if *x >= phdr.p_vaddr && *x < phdr.p_vaddr + phdr.p_filesz {
                     *x -= phdr.p_vaddr;
                     *x += phdr.p_offset;
+                    break;
                 }
             }
         }
@@ -285,17 +286,16 @@ pub fn load(data: &[u8]) -> EResult<()> {
     )
     .map_err(|_| Errno::EINVAL)?;
 
-    let name =
-        CStr::from_bytes_until_nul(&data[(dt_strtab.unwrap() + dt_soname.unwrap()) as usize..])
-            .unwrap()
-            .to_str()
-            .unwrap();
+    let name = CStr::from_bytes_until_nul(&strtab[dt_soname.unwrap() as usize..])
+        .unwrap()
+        .to_str()
+        .unwrap();
 
     let dependencies = dt_needed
         .as_slice()
         .iter()
         .map(|x| {
-            CStr::from_bytes_until_nul(&data[(dt_strtab.unwrap() + *x) as usize..])
+            CStr::from_bytes_until_nul(&strtab[(*x) as usize..])
                 .unwrap()
                 .to_str()
                 .unwrap()
