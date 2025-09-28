@@ -98,10 +98,11 @@ pub struct Driver {
     pub variants: &'static [PciVariant],
 }
 
-static DRIVERS: SpinMutex<BTreeMap<&'static str, Driver>> = SpinMutex::new(BTreeMap::new());
+static DRIVERS: SpinMutex<BTreeMap<&'static str, &'static Driver>> =
+    SpinMutex::new(BTreeMap::new());
 
 impl Driver {
-    pub fn register(self) -> EResult<()> {
+    pub fn register(&'static self) -> EResult<()> {
         let mut drivers = DRIVERS.lock();
 
         if drivers.contains_key(self.name) {
