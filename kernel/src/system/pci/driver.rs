@@ -11,6 +11,20 @@ use crate::{
 };
 use alloc::collections::btree_map::BTreeMap;
 
+kernel_proc::pci_variant_builders! {
+    MassStorageController = 0x01 {
+        SerialAtaController = 0x06 {},
+        NonVolatileMemoryController = 0x08 {
+            NvmExpressController = 0x02,
+        },
+    },
+    SerialBusController = 0x0C {
+        UsbController = 0x03 {
+            XhciController = 0x30,
+        },
+    },
+}
+
 /// Drivers can use this to create bindings.
 /// Any field that is a [`Some`] variant will be matched on.
 #[derive(Debug, Clone, Copy)]
@@ -19,10 +33,6 @@ pub struct PciVariant {
     vendor: Option<u16>,
     /// Match the primary device ID.
     device: Option<u16>,
-    /// Match the secondary vendor ID.
-    sub_vendor: Option<u16>,
-    /// Match the secondary device ID.
-    sub_device: Option<u16>,
     /// Match a generic class.
     class: Option<u8>,
     /// Match a generic sub-class.
@@ -38,25 +48,11 @@ impl PciVariant {
         Self {
             vendor: None,
             device: None,
-            sub_vendor: None,
-            sub_device: None,
             class: None,
             sub_class: None,
             prog_if: None,
             data: 0,
         }
-    }
-
-    pub const fn id(mut self, vendor: u16, device: u16) -> Self {
-        self.vendor = Some(vendor);
-        self.device = Some(device);
-        return self;
-    }
-
-    pub const fn sub_id(mut self, sub_vendor: u16, sub_device: u16) -> Self {
-        self.sub_vendor = Some(sub_vendor);
-        self.sub_device = Some(sub_device);
-        return self;
     }
 
     pub const fn class(mut self, class: u8) -> Self {

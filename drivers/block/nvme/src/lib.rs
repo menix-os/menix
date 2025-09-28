@@ -11,7 +11,7 @@ use menix::{
     log,
     system::pci::{
         device::Device,
-        driver::{Driver, PciVariant},
+        driver::{Driver, PciVariantBuilder},
     },
 };
 
@@ -23,7 +23,10 @@ static DRIVER: Driver = Driver {
     remove: None,
     suspend: None,
     resume: None,
-    variants: &[PciVariant::new().class(1).sub_class(8).function(2)],
+    variants: &[PciVariantBuilder::new()
+        .mass_storage_controller()
+        .non_volatile_memory_controller()
+        .nvm_express_controller()],
 };
 
 pub fn probe(dev: &Device) -> EResult<()> {

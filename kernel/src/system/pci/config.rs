@@ -34,8 +34,6 @@ pub mod generic {
     pub const CARDBUS_CIS_PTR: Register<u32> = Register::new(0x28).with_le();
 
     pub const REG11: Register<u32> = Register::new(0x2C).with_le();
-    pub const SUBSYSTEM_VENDOR_ID: Field<u32, u16> = Field::new(REG11, 0);
-    pub const SUBSYSTEM_ID: Field<u32, u16> = Field::new(REG11, 2);
 
     pub const EXPANSION_ROM: Register<u32> = Register::new(0x30).with_le();
 
