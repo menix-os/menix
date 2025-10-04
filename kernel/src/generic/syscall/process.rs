@@ -109,7 +109,7 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
         &inner,
         None,
         path_str.to_bytes(),
-        OpenFlags::ReadOnly | OpenFlags::Executable,
+        OpenFlags::Read | OpenFlags::Executable,
         Mode::empty(),
         &inner.identity,
     )?;

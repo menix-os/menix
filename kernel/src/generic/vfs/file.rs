@@ -41,8 +41,8 @@ bitflags::bitflags! {
         /// Don't update the access time.
         const NoAccessTime = uapi::O_NOATIME as _;
         const Temporary = uapi::O_TMPFILE as _;
-        const ReadOnly = uapi::O_RDONLY as _;
-        const WriteOnly = uapi::O_WRONLY as _;
+        const Read = uapi::O_RDONLY as _;
+        const Write = uapi::O_WRONLY as _;
         const ReadWrite = uapi::O_RDWR as _;
         const Executable = uapi::O_EXEC as _;
     }

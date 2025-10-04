@@ -50,7 +50,7 @@ impl ExecFormat for ShebangFormat {
                 &inner,
                 None,
                 &interp_path,
-                OpenFlags::ReadOnly | OpenFlags::Executable,
+                OpenFlags::Read | OpenFlags::Executable,
                 Mode::UserRead | Mode::UserExec,
                 &inner.identity,
             )?;

@@ -3,33 +3,32 @@
 
 #include "types.h"
 
-#define O_PATH 010000000
-
-#define O_ACCMODE (03 | O_PATH)
-#define O_RDONLY 00
-#define O_WRONLY 01
-#define O_RDWR 02
-
-#define O_CREAT 0100
-#define O_EXCL 0200
-#define O_NOCTTY 0400
-#define O_TRUNC 01000
-#define O_APPEND 02000
-#define O_NONBLOCK 04000
-#define O_DSYNC 010000
-#define O_ASYNC 020000
-#define O_DIRECT 040000
-#define O_DIRECTORY 0200000
-#define O_NOFOLLOW 0400000
-#define O_CLOEXEC 02000000
-#define O_SYNC 04010000
-#define O_RSYNC 04010000
-#define O_LARGEFILE 0100000
-#define O_NOATIME 01000000
-#define O_TMPFILE 020000000
+#define O_RDONLY (1 << 0)
+#define O_WRONLY (1 << 1)
+#define O_CREAT (1 << 6)
+#define O_EXCL (1 << 7)
+#define O_NOCTTY (1 << 8)
+#define O_TRUNC (1 << 9)
+#define O_APPEND (1 << 10)
+#define O_NONBLOCK (1 << 11)
+#define O_DSYNC (1 << 12)
+#define O_ASYNC (1 << 13)
+#define O_DIRECT (1 << 14)
+#define O_LARGEFILE (1 << 15)
+#define O_DIRECTORY (1 << 16)
+#define O_NOFOLLOW (1 << 17)
+#define O_NOATIME (1 << 18)
+#define O_CLOEXEC (1 << 19)
+#define O_PATH (1 << 21)
+#define O_TMPFILE (1 << 22)
+#define O_SYNC (O_DIRECTORY | O_TMPFILE)
+#define O_RSYNC O_SYNC
 
 #define O_EXEC O_PATH
 #define O_SEARCH O_PATH
+
+#define O_RDWR (O_RDONLY | O_WRONLY)
+#define O_ACCMODE (O_RDWR | O_PATH)
 
 #define F_DUPFD 0
 #define F_GETFD 1
@@ -62,10 +61,10 @@
 #define F_ADD_SEALS 1033
 #define F_GET_SEALS 1034
 
-#define F_SEAL_SEAL 0x0001
-#define F_SEAL_SHRINK 0x0002
-#define F_SEAL_GROW 0x0004
-#define F_SEAL_WRITE 0x0008
+#define F_SEAL_SEAL (1 << 0)
+#define F_SEAL_SHRINK (1 << 1)
+#define F_SEAL_GROW (1 << 2)
+#define F_SEAL_WRITE (1 << 3)
 
 #define F_OFD_GETLK 36
 #define F_OFD_SETLK 37
@@ -77,18 +76,19 @@
 
 #define FD_CLOEXEC 1
 
-#define AT_FDCWD -100
-#define AT_SYMLINK_NOFOLLOW 0x100
-#define AT_REMOVEDIR 0x200
-#define AT_SYMLINK_FOLLOW 0x400
-#define AT_EACCESS 0x200
-#define AT_NO_AUTOMOUNT 0x800
-#define AT_EMPTY_PATH 0x1000
+#define AT_FDCWD 0x7FFFFFFF
+
+#define AT_SYMLINK_NOFOLLOW (1 << 8)
+#define AT_REMOVEDIR (1 << 9)
+#define AT_SYMLINK_FOLLOW (1 << 10)
+#define AT_EACCESS (1 << 11)
+#define AT_NO_AUTOMOUNT (1 << 12)
+#define AT_EMPTY_PATH (1 << 13)
 
 #define AT_STATX_SYNC_AS_STAT 0x0000
-#define AT_STATX_FORCE_SYNC 0x2000
-#define AT_STATX_DONT_SYNC 0x4000
-#define AT_STATX_SYNC_TYPE 0x6000
+#define AT_STATX_FORCE_SYNC (1 << 14)
+#define AT_STATX_DONT_SYNC (1 << 15)
+#define AT_STATX_SYNC_TYPE (AT_STATX_FORCE_SYNC | AT_STATX_DONT_SYNC)
 
 struct f_owner_ex {
   int type;

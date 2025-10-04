@@ -138,7 +138,7 @@ pub extern "C" fn main(_: usize, _: usize) {
             &init_inner,
             None,
             path,
-            OpenFlags::ReadOnly | OpenFlags::Executable,
+            OpenFlags::Read | OpenFlags::Executable,
             Mode::empty(),
             &Identity::get_kernel(),
         )

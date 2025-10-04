@@ -25,8 +25,8 @@ pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
         proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
     };
 
-    let flags = file.flags.lock();
-    if !flags.contains(OpenFlags::ReadOnly) && !flags.contains(OpenFlags::ReadWrite) {
+    let flags = *file.flags.lock();
+    if !flags.contains(OpenFlags::Read) {
         return Err(Errno::EBADF);
     }
 
@@ -43,8 +43,8 @@ pub fn pread(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<is
         proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
     };
 
-    let flags = file.flags.lock();
-    if !flags.contains(OpenFlags::ReadOnly) && !flags.contains(OpenFlags::ReadWrite) {
+    let flags = *file.flags.lock();
+    if !flags.contains(OpenFlags::Read) {
         return Err(Errno::EBADF);
     }
 
@@ -59,8 +59,8 @@ pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
         proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
     };
 
-    let flags = file.flags.lock();
-    if !flags.contains(OpenFlags::WriteOnly) && !flags.contains(OpenFlags::ReadWrite) {
+    let flags = *file.flags.lock();
+    if !flags.contains(OpenFlags::Write) {
         return Err(Errno::EBADF);
     }
     file.write(slice)
@@ -74,8 +74,8 @@ pub fn pwrite(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<i
         proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
     };
 
-    let flags = file.flags.lock();
-    if !flags.contains(OpenFlags::WriteOnly) && !flags.contains(OpenFlags::ReadWrite) {
+    let flags = *file.flags.lock();
+    if !flags.contains(OpenFlags::Write) {
         return Err(Errno::EBADF);
     }
 
@@ -249,7 +249,7 @@ pub fn fstatat(
         &proc_inner,
         parent,
         v.to_bytes(),
-        OpenFlags::ReadOnly,
+        OpenFlags::Read,
         Mode::empty(),
         &proc_inner.identity,
     )?;
@@ -335,7 +335,7 @@ pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
     // fd must be a valid descriptor open for reading.
     let dir = inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
     let flags = dir.flags.lock().clone();
-    if !flags.contains(OpenFlags::ReadOnly) && !flags.contains(OpenFlags::ReadWrite) {
+    if !flags.contains(OpenFlags::Read) {
         return Err(Errno::EBADF);
     }
 
@@ -344,7 +344,7 @@ pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
     match &node.node_ops {
         NodeOps::Directory(dir_ops) => {
             // TODO: Probably need a getdents callback...
-            todo!()
+            return Err(Errno::ENOSYS);
         }
         _ => return Err(Errno::ENOTDIR),
     }

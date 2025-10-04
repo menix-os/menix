@@ -432,7 +432,7 @@ impl ElfFormat {
                         inner,
                         Some(file.clone()),
                         &interp_name,
-                        OpenFlags::ReadOnly | OpenFlags::Executable,
+                        OpenFlags::Read | OpenFlags::Executable,
                         Mode::empty(),
                         &inner.identity,
                     )?)

@@ -93,7 +93,7 @@ pub fn symlink(
         .entry
         .get_inode()
         .ok_or(Errno::ENOENT)?;
-    parent_inode.try_access(identity, OpenFlags::WriteOnly, false)?;
+    parent_inode.try_access(identity, OpenFlags::Write, false)?;
 
     // Create the symlink in the parent directory.
     match &parent_inode.node_ops {
@@ -130,8 +130,8 @@ pub fn mount() {}
 
 pub fn pipe() -> EResult<(Arc<File>, Arc<File>)> {
     let pipe = Arc::try_new(pipe::PipeBuffer::new())?;
-    let endpoint1 = File::open_disconnected(pipe.clone(), OpenFlags::ReadOnly)?;
-    let endpoint2 = File::open_disconnected(pipe, OpenFlags::WriteOnly)?;
+    let endpoint1 = File::open_disconnected(pipe.clone(), OpenFlags::Read)?;
+    let endpoint2 = File::open_disconnected(pipe, OpenFlags::Write)?;
 
     Ok((endpoint1, endpoint2))
 }
