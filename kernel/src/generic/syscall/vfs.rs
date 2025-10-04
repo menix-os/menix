@@ -335,7 +335,7 @@ pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
     // fd must be a valid descriptor open for reading.
     let dir = inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
     let flags = dir.flags.lock().clone();
-    if !flags.contains(OpenFlags::Read) {
+    if !flags.contains(OpenFlags::Directory) {
         return Err(Errno::EBADF);
     }
 
