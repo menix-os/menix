@@ -1,23 +1,44 @@
 #ifndef _MENIX_TYPES_H
 #define _MENIX_TYPES_H
 
-#include <uapi/menix/types.h>
+#include <menix/compiler.h>
+#include <stddef.h>
+#include <stdint.h>
 
-typedef __i8 i8;
-typedef __u8 u8;
+__MENIX_CDECL_START
 
-typedef __i16 i16;
-typedef __u16 u16;
+// A generic object handle.
+typedef uint32_t menix_handle_t;
+typedef uint32_t menix_handle_type_t;
 
-typedef __i32 i32;
-typedef __u32 u32;
+#define MENIX_HANDLE_INVALID ((menix_handle_t)0)
 
-typedef __i64 i64;
-typedef __u64 u64;
+enum menix_port_flags {
+    MENIX_PORT_FLAG_NONE = 0,
+    // Allow sending messages even if one endpoint is not connected.
+    MENIX_PORT_FLAG_ALLOW_UNCONNECTED = 1 << 0,
+};
 
-typedef __iptr iptr;
-typedef __uptr uptr;
+// Virtual memory flags.
+enum menix_vm_flags {
+    MENIX_VM_READ = 1 << 0,
+    MENIX_VM_WRITE = 1 << 1,
+    MENIX_VM_EXEC = 1 << 2,
+    MENIX_VM_SHARED = 1 << 3,
+};
 
-typedef __usize usize;
+enum menix_cache_type {
+    // Generic memory
+    MENIX_CACHE_NORMAL,
+    // Write combining
+    MENIX_CACHE_WC,
+    // Memory-mapped IO
+    MENIX_CACHE_MMIO,
+};
+
+typedef uintptr_t menix_virt_t;
+typedef uintptr_t menix_phys_t;
+
+__MENIX_CDECL_END
 
 #endif

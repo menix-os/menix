@@ -1,24 +1,14 @@
 option(
-	'headers_only',
-	type: 'boolean',
-	value: false,
-	description: 'Only install kernel headers',
-)
-
-# Boot
-
-option(
-	'boot_protocol',
-	type: 'combo',
-	choices: ['limine', 'uefi'],
-	value: 'limine',
-	description: 'The protocol to use for booting',
+    'headers_only',
+    type: 'boolean',
+    value: false,
+    description: 'Only install headers',
 )
 
 option(
-	'example',
-	type: 'combo',
-	choices: ['y', 'm', 'n'],
-	value: 'm',
-	description: 'An example module',
+    'boot_protocol',
+    type: 'combo',
+    choices: ['limine', 'uefi'],
+    value: 'limine',
+    description: 'The boot protocol to start the kernel with',
 )

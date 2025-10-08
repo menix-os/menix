@@ -1,8 +1,16 @@
-#ifndef _MENIX_BIT_PERCPU_H
-#define _MENIX_BIT_PERCPU_H
+#pragma once
 
-#define __percpu_read(field) ()
+#include <stdint.h>
+#include <x86_64/gdt.h>
 
-struct arch_percpu {};
+static inline struct percpu* arch_percpu_get() {
+    struct percpu* __result;
+    asm volatile("mov %0, gs:0" : "=r"(__result)::"memory");
+    return __result;
+}
 
-#endif
+struct arch_percpu {
+    uint32_t lapic_id;
+    struct gdt gdt;
+    struct tss tss;
+};

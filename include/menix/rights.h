@@ -1,0 +1,30 @@
+#ifndef _MENIX_RIGHTS_H
+#define _MENIX_RIGHTS_H
+
+#include <menix/compiler.h>
+#include <stdint.h>
+
+__MENIX_CDECL_START
+
+typedef enum {
+    MENIX_RIGHT_NONE = 0u,
+    MENIX_RIGHT_IDENTICAL = 1u << 31,
+    MENIX_RIGHT_READ = 1u << 0,
+    MENIX_RIGHT_WRITE = 1u << 1,
+    MENIX_RIGHT_EXECUTE = 1u << 2,
+    MENIX_RIGHT_MAP = 1u << 3,
+    MENIX_RIGHT_MOVE = 1u << 4,
+    MENIX_RIGHT_CLONE = 1u << 5,
+    MENIX_RIGHT_DELETE = 1u << 6,
+    MENIX_RIGHT_WAIT = 1u << 7,
+    MENIX_RIGHT_SIGNAL = 1u << 8,
+    MENIX_RIGHT_MODIFY_THREAD = 1u << 9,
+    MENIX_RIGHT_MODIFY_PROCESS = 1u << 10,
+} menix_rights_t;
+
+#define MENIX_RIGHTS_COMMON (MENIX_RIGHT_MOVE | MENIX_RIGHT_CLONE | MENIX_RIGHT_WAIT)
+#define MENIX_RIGHTS_RW     (MENIX_RIGHT_READ | MENIX_RIGHT_WRITE)
+
+__MENIX_CDECL_END
+
+#endif

@@ -3,48 +3,39 @@ project(
     'c',
     license: 'BSD-3',
     license_files: ['LICENSE'],
-    default_options: ['c_std=gnu23'],
-    version: '0.1.0',
+    default_options: [
+        'c_std=gnu23',
+    ],
+    version: '0.0.1',
     meson_version: '>=1.1.0',
 )
 
-# Install headers
+# Install public headers
 if get_option('headers_only') == true
-    install_subdir('include' / 'uapi', install_dir: get_option('includedir'))
+    install_subdir('include', install_dir: get_option('includedir'))
     subdir_done()
 endif
 
 common_c_args = [
-    '-ffreestanding',
-    '-fno-stack-protector',
-    '-fno-omit-frame-pointer',
     '-funsigned-char',
-    '-nostdinc',
     '-Wall',
     '-Werror',
+    '-Wno-unused',
 ]
-
 common_link_args = [
-    '-nostdlib',
     '-znoexecstack',
-    '-Wl,-nostdlib',
     '-Wl,--gc-sections',
     '-Wl,--build-id=none',
 ]
 
 common_includes = include_directories('include')
+common_cfg = configuration_data()
+
+common_cfg.set_quoted('MENIX_VERSION', meson.project_version())
+common_cfg.set_quoted('MENIX_ARCH', target_machine.cpu_family())
+c_compiler = meson.get_compiler('c')
+common_cfg.set_quoted('MENIX_COMPILER_ID', c_compiler.get_id() + ' ' + c_compiler.version())
+common_cfg.set_quoted('MENIX_LINKER_ID', c_compiler.get_linker_id())
 
 subdir('kernel')
-subdir('drivers')
-subdir('vdso')
-
-executable(
-    'menix',
-    include_directories: kernel_includes,
-    sources: kernel_sources,
-    c_args: kernel_c_args,
-    link_args: kernel_link_args,
-    install: true,
-    install_dir: get_option('datadir') / 'menix',
-    pie: false,
-)
+subdir('servers')

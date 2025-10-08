@@ -1,5 +1,11 @@
 ---
 AlignAfterOpenBracket: BlockIndent
+BinPackArguments: false
+BinPackParameters: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AllowAllArgumentsOnNextLine: false
+BreakAfterReturnType: Automatic
+PenaltyReturnTypeOnItsOwnLine: 1000
 AlignArrayOfStructures: None
 IndentWidth: 4
 InsertNewlineAtEOF: true
@@ -9,21 +15,13 @@ IndentCaseBlocks: false
 IndentCaseLabels: false
 IndentPPDirectives: None
 IndentGotoLabels: false
-UseTab: Always
 TabWidth: 4
 Standard: Latest
 Language: Cpp
 LineEnding: LF
-AttributeMacros:
-  - __init
-  - __initdata
-  - __user
-  - __mmio
 AlignOperands: DontAlign
 BitFieldColonSpacing: None
 ColumnLimit: 120
-IncludeBlocks: Merge
-SortIncludes: Never
 MaxEmptyLinesToKeep: 1
 PointerAlignment: Left
 QualifierAlignment: Leave
@@ -32,7 +30,6 @@ SpaceAfterCStyleCast: false
 AllowShortEnumsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortBlocksOnASingleLine: Empty
-AllowAllArgumentsOnNextLine: true
 BreakAfterAttributes: Always
 BreakConstructorInitializers: BeforeComma
 BreakBeforeBraces: Attach
@@ -51,3 +48,14 @@ SpacesInParens: Never
 SpaceBeforeSquareBrackets: false
 SpaceInEmptyBlock: false
 SpacesBeforeTrailingComments: 1
+IncludeBlocks: Merge
+IncludeCategories:
+  - Regex: "^<kernel/.*>"
+    Priority: 1
+  - Regex: "^<menix/.*>"
+    Priority: 2
+  - Regex: '^<.*\.h>'
+    Priority: 3
+  - Regex: '^".*\.h"'
+    Priority: 4
+SortIncludes: CaseInsensitive

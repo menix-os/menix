@@ -1,4 +1,4 @@
-<img src="assets/menix.svg" width="10%"/>
+<img src="menix.svg" width="10%"/>
 
 ![GitHub License](https://img.shields.io/github/license/menix-os/menix?style=flat&color=red)
 ![GitHub Repo stars](https://img.shields.io/github/stars/menix-os/menix?style=flat)
@@ -6,10 +6,8 @@
 ![GitHub Issues or Pull Requests](https://img.shields.io/github/issues/menix-os/menix?style=flat)
 
 # Menix
-Menix is a lightweight modular kernel targeting modern 64-bit devices.
 
-It provides a familiar POSIX/Linux-like user interface with an
-easy to follow code structure and an emphasis on stable operation.
+Menix is a lightweight Unix-like microkernel targeting modern 64-bit devices.
 
 > [!IMPORTANT]
 > Please note that this project is a work in progress.
@@ -22,12 +20,16 @@ easy to follow code structure and an emphasis on stable operation.
 > If you want to get a bootable image, you might want to check out
 > **https://github.com/menix-os/bootstrap** instead.
 
-To build the kernel you need `meson` and either `gcc` or `clang`
+To build the kernel you need `meson` and either a `gcc` or `clang`
+cross-compiler which understands the `menix` OS.
 
-And to build:
-
+To configure, run:
 ```sh
 meson setup $build_dir
+```
+
+And to build:
+```sh
 meson compile -C $build_dir
 ```
 

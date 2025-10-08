@@ -1,85 +1,105 @@
-PHDRS
-{
-	itext	PT_LOAD		FLAGS(5);
-	idata	PT_LOAD		FLAGS(6);
-	text	PT_LOAD		FLAGS(5);
-	rodata	PT_LOAD		FLAGS(4);
-	data	PT_LOAD		FLAGS(6);
-	dynamic	PT_DYNAMIC	FLAGS(6);
-	percpu	PT_LOAD		FLAGS(6);
+ENTRY(_start)
+
+PHDRS {
+    text    PT_LOAD     FLAGS(5);
+    rodata  PT_LOAD     FLAGS(4);
+    data    PT_LOAD     FLAGS(6);
+    dynamic PT_DYNAMIC  FLAGS(6);
+    percpu  PT_LOAD     FLAGS(6);
 }
 
 SECTIONS
 {
-	. = 0xffffffff80000000;
-	_LD_KERNEL_START = .;
+    . = 0xffffffff80000000;
+    __ld_kernel_start = .;
 
-	. = ALIGN(CONSTANT(MAXPAGESIZE));
+    .text ALIGN(CONSTANT(MAXPAGESIZE)) : {
+        __ld_text_start = .;
 
-	.init.text : {
-		KEEP(*(.init.text))
-	} :itext
+        KEEP(*(.init.text))
+        *(.text .text.*)
+        *(.plt .plt.*)
 
-	. = ALIGN(CONSTANT(MAXPAGESIZE));
+        __ld_text_end = .;
+    } :text
 
-	.init.data : {
-		KEEP(*(SORT_BY_NAME(.init.data.*)))
-		KEEP(*(.init.data))
-	} :idata
+    .rodata ALIGN(CONSTANT(MAXPAGESIZE)) : {
+        __ld_rodata_start = .;
 
-	. = ALIGN(CONSTANT(MAXPAGESIZE));
+        __ld_init_array_start = .;
+        KEEP(*(.init_array))
+        __ld_init_array_end = .;
 
-	_LD_TEXT_START = .;
-	.text : {
-		*(.text .text.*)
-		*(.plt .plt.*)
-	} :text
-	_LD_TEXT_END = .;
+        __ld_cmdline_start = .;
+        KEEP(*(.cmdline))
+        __ld_cmdline_end = .;
 
-	. = ALIGN(CONSTANT(MAXPAGESIZE));
+        *(.rodata .rodata.*)
+        *(.got .got.*)
 
-	_LD_RODATA_START = .;
-	.rodata : {
-		*(.rodata .rodata.*)
-		*(.got .got.*)
-	} :rodata
-	_LD_RODATA_END = .;
+        __ld_rodata_end = .;
+    } :rodata
 
-	. = ALIGN(CONSTANT(MAXPAGESIZE));
+    .data ALIGN(CONSTANT(MAXPAGESIZE)) : {
+        __ld_data_start = .;
 
-	_LD_DATA_START = .;
-	.data : {
-		*(.data .data.*)
-	} :data
+        __ld_init_start = .;
+        *(.initgraph.nodes)
+        __ld_init_end = .;
 
-	.dynamic : {
-		*(.dynamic)
-	} :data :dynamic
+        __ld_earlycon_start = .;
+        KEEP(*(.earlycon))
+        __ld_earlycon_end = .;
 
-	.bss ALIGN(CONSTANT(MAXPAGESIZE)) : {
-		*(.*bss .*bss.*)
-		*(COMMON)
-	} :data
+        KEEP(*(SORT_BY_NAME(.init.data.*)))
+        KEEP(*(.init.data))
+        *(.data .data.*)
+    } :data
 
-	/* Per-CPU data block. MUST always come last. */
-	.percpu ALIGN(CONSTANT(MAXPAGESIZE)) : {
-		_LD_PERCPU_START = .;
-		*(.percpu.init)
-		*(.percpu)
-		. = ALIGN(CONSTANT(MAXPAGESIZE));
-		_LD_PERCPU_END = .;
-	} :percpu
-	_LD_DATA_END = .;
+    .dynsym : {
+        __ld_dynsym_start = .;
+        *(.dynsym)
+        __ld_dynsym_end = .;
+    } :data
 
-	_LD_KERNEL_END = .;
+    .dynstr : {
+        __ld_dynstr_start = .;
+        *(.dynstr)
+        __ld_dynstr_end = .;
+    } :data
 
-	/DISCARD/ :
-	{
-		*(.comment*)
-		*(.eh_frame*)
-		*(.rel.eh_frame*)
-		*(.gcc_except_table*)
-		*(.note*)
-		*(.interp)
-	}
+    .dynamic : {
+        *(.dynamic)
+    } :data :dynamic
+
+    .bss : {
+        /* Small stack to bootstrap the allocator */
+        __ld_stack_bottom = .;
+        . += 0x2000;
+        __ld_stack_top = .;
+        *(.*bss .*bss.*)
+        *(COMMON)
+    } :data
+
+    /* Per-CPU data block. MUST always come last. */
+    .percpu ALIGN(CONSTANT(MAXPAGESIZE)) : {
+        __ld_percpu_start = .;
+        KEEP(*(.percpu))
+        . = ALIGN(CONSTANT(MAXPAGESIZE));
+        __ld_percpu_end = .;
+
+        __ld_data_end = .;
+    } :percpu
+
+    __ld_kernel_end = .;
+
+    /DISCARD/ :
+    {
+        *(.comment*)
+        *(.eh_frame*)
+        *(.rel.eh_frame*)
+        *(.gcc_except_table*)
+        *(.note*)
+        *(.interp)
+    }
 }

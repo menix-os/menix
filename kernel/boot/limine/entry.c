@@ -1,26 +1,22 @@
-#include <menix/acpi.h>
-#include <menix/cmdline.h>
-#include <menix/init.h>
-#include <menix/boot/file.h>
-#include <menix/mem/init.h>
-#include <menix/mm.h>
-#include <menix/log.h>
-#include <menix/util.h>
-#include <menix/hint.h>
-#include <string.h>
-
+#include <kernel/assert.h>
+#include <kernel/cmdline.h>
+#include <kernel/common.h>
+#include <kernel/init.h>
+#include <kernel/mem.h>
+#include <kernel/print.h>
 #include "limine.h"
 
-__initdata_prio(0) static volatile LIMINE_REQUESTS_START_MARKER;
-__initdata_prio(1) static volatile LIMINE_BASE_REVISION(3);
-__initdata_prio(2) static volatile LIMINE_REQUESTS_END_MARKER;
+[[__initdata_sorted("limine.0")]] static volatile LIMINE_REQUESTS_START_MARKER;
+[[__initdata_sorted("limine.1")]] static volatile LIMINE_BASE_REVISION(3);
+[[__initdata_sorted("limine.2")]] static volatile LIMINE_REQUESTS_END_MARKER;
 
 #define LIMINE_REQUEST(request, tag, rev) \
-	__initdata_prio(1) static volatile struct limine_##request request = { \
-		.id = tag, \
-		.revision = rev, \
-		.response = nullptr, \
-	}
+    [[__initdata_sorted("limine.1")]] \
+    static volatile struct limine_##request request = { \
+        .id = tag, \
+        .revision = rev, \
+        .response = nullptr, \
+    }
 
 LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST, 0);
 LIMINE_REQUEST(hhdm_request, LIMINE_HHDM_REQUEST, 0);
@@ -28,66 +24,57 @@ LIMINE_REQUEST(executable_address_request, LIMINE_EXECUTABLE_ADDRESS_REQUEST, 0)
 LIMINE_REQUEST(executable_file_request, LIMINE_EXECUTABLE_FILE_REQUEST, 0);
 LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 1);
 LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);
-LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);
 LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);
+LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);
 
-__init void _start() {
-	kassert(memmap_request.response, "Unable to get memory map!");
-	kassert(hhdm_request.response, "Unable to get HHDM response!");
-	kassert(executable_address_request.response, "Unable to get kernel address info!");
-	kassert(executable_file_request.response, "Unable to get kernel file info!");
+[[__initdata]]
+static struct phys_mem mem[128];
+[[__initdata]]
+static struct boot_file files[8];
 
-	// Get the memory map.
-	struct limine_memmap_response* const mm_res = memmap_request.response;
-	usize map_size = min(mm_res->entry_count, array_size(mem_map));
-	if (mm_res->entry_count > map_size)
-		kwarn("Truncating %zu memory map entries!", mm_res->entry_count - map_size);
+[[__init]]
+void kernel_entry() {
+    kernel_early_init();
 
-	for (usize i = 0; i < map_size; i++) {
-		mem_map[i].address = mm_res->entries[i]->base;
-		mem_map[i].length = mm_res->entries[i]->length;
+    struct boot_info info;
 
-		switch (mm_res->entries[i]->type) {
-		case LIMINE_MEMMAP_USABLE:
-			mem_map[i].usage = PHYS_USABLE;
-			break;
-		case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
-		case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
-			mem_map[i].usage = PHYS_RECLAIMABLE;
-			break;
-		default:
-			mem_map[i].usage = PHYS_RESERVED;
-			break;
-		}
-	}
+    struct limine_memmap_response* mm_res = memmap_request.response;
+    struct limine_module_response* module_res = module_request.response;
+    struct limine_executable_address_response* exec_res = executable_address_request.response;
+    struct limine_executable_file_response* exec_file_res = executable_file_request.response;
 
-	// Get modules.
-	if (module_request.response == nullptr)
-		kerror("limine: Unable to get modules, or none were provided!\n");
-	else {
-		const struct limine_module_response* module_res = module_request.response;
-		klog("limine: Got %zu module(s)\n", module_res->module_count);
-		boot_files_count = min(module_res->module_count, array_size(boot_files));
-		for (usize i = 0; i < boot_files_count; i++) {
-			boot_files[i].data = module_res->modules[i]->address;
-			boot_files[i].length = module_res->modules[i]->size;
-			boot_files[i].path = module_res->modules[i]->path;
-			kmsg(
-				"limine: [%zu] Address = 0x%p, Size = 0x%zx, Path = \"%s\"\n", i, boot_files[i].data,
-				boot_files[i].length, boot_files[i].path
-			);
-		}
-	}
+    info.cmdline = exec_file_res->executable_file->string;
 
-	mem_kernel_phys_base = (phys_t)executable_address_request.response->physical_base;
-	mem_kernel_virt_base = (virt_t)executable_address_request.response->virtual_base;
-	mem_hhdm_base = (virt_t)hhdm_request.response->offset;
+    info.num_mem_maps = MIN(ARRAY_SIZE(mem), mm_res->entry_count);
+    for (size_t i = 0; i < info.num_mem_maps; i++) {
+        mem[i].address = mm_res->entries[i]->base;
+        mem[i].length = mm_res->entries[i]->length;
 
-	const char* cmdline = executable_file_request.response->executable_file->string;
-	memcpy(cmdline_buffer, cmdline, min(strlen(cmdline), array_size(cmdline_buffer)));
+        switch (mm_res->entries[i]->type) {
+        case LIMINE_MEMMAP_USABLE:
+            mem[i].usage = PHYS_USABLE;
+            break;
+        case LIMINE_MEMMAP_ACPI_RECLAIMABLE:
+        case LIMINE_MEMMAP_BOOTLOADER_RECLAIMABLE:
+            mem[i].usage = PHYS_RECLAIMABLE;
+            break;
+        default:
+            mem[i].usage = PHYS_RESERVED;
+            break;
+        }
+    }
 
-	if (rsdp_request.response)
-		acpi_rsdp_address = (phys_t)rsdp_request.response->address;
+    info.num_files = MIN(ARRAY_SIZE(files), module_res->module_count);
+    for (size_t i = 0; i < info.num_files; i++) {
+        files[i].data = module_res->modules[i]->address;
+        files[i].length = module_res->modules[i]->size;
+        files[i].path = module_res->modules[i]->path;
+    }
 
-	kmain();
+    info.mem_map = mem;
+    info.phys_base = (phys_t)exec_res->physical_base;
+    info.virt_base = (virt_t)exec_res->virtual_base;
+    info.hhdm_base = (virt_t)hhdm_request.response->offset;
+
+    kernel_init(&info);
 }
