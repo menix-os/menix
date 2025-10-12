@@ -76,7 +76,7 @@
 
 #define FD_CLOEXEC 1
 
-#define AT_FDCWD 0x7FFFFFFF
+#define AT_FDCWD (-100)
 
 #define AT_SYMLINK_NOFOLLOW (1 << 8)
 #define AT_REMOVEDIR (1 << 9)
