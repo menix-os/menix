@@ -80,7 +80,7 @@ impl PageTable {
 impl PageTable {
     /// Returns the physical address of the top level.
     pub fn get_head_addr(&self) -> PhysAddr {
-        *self.head.lock()
+        unsafe { *self.head.raw_inner() }
     }
 
     pub const fn root_level(&self) -> usize {

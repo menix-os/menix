@@ -9,6 +9,7 @@ use alloc::sync::Arc;
 use core::num::NonZeroUsize;
 
 /// Abstract information about a page fault.
+#[derive(Debug)]
 pub struct PageFaultInfo {
     /// The instruction pointer address at the point of the page fault.
     pub ip: VirtAddr,

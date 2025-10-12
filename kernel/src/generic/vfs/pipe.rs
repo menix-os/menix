@@ -50,8 +50,10 @@ impl FileOps for PipeBuffer {
 
         let read = self.rd_queue.guard();
         loop {
-            let mut inner = self.inner.lock();
-            let len = inner.buffer.read(buf);
+            let len = {
+                let mut inner = self.inner.lock();
+                inner.buffer.read(buf)
+            };
 
             // If there was at least one byte written to the pipe
             if len > 0 {
@@ -79,15 +81,17 @@ impl FileOps for PipeBuffer {
 
         let write = self.wr_queue.guard();
         loop {
-            let mut inner = self.inner.lock();
+            let len = {
+                let mut inner = self.inner.lock();
 
-            // TODO
-            //if inner.readers == 0 {
-            //    // TODO: Kill
-            //    return Err(Errno::EPIPE);
-            //}
+                // TODO
+                //if inner.readers == 0 {
+                //    // TODO: Kill
+                //    return Err(Errno::EPIPE);
+                //}
 
-            let len = inner.buffer.write(buf);
+                inner.buffer.write(buf)
+            };
             if len > 0 {
                 self.rd_queue.wake_one();
                 return Ok(len as _);

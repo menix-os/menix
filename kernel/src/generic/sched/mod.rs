@@ -108,7 +108,14 @@ impl Scheduler {
                 let from_proc = (*from).get_process();
                 let to_proc = (*to).get_process();
                 if !Arc::ptr_eq(&from_proc, &to_proc) {
-                    to_proc.inner.lock().address_space.table.set_active();
+                    to_proc
+                        .inner
+                        .raw_inner()
+                        .as_ref()
+                        .unwrap()
+                        .address_space
+                        .table
+                        .set_active();
                 }
 
                 let cpu = CPU_DATA.get();
@@ -131,9 +138,10 @@ impl Scheduler {
     /// Kills the currently running task.
     pub fn kill_current() -> ! {
         let task = Scheduler::get_current();
-        let mut inner = task.inner.lock();
-        inner.state = TaskState::Dead;
-        drop(inner);
+        {
+            let mut inner = task.inner.lock();
+            inner.state = TaskState::Dead;
+        }
         CPU_DATA.get().scheduler.do_yield();
         unreachable!("The scheduler did not kill this task");
     }
