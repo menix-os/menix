@@ -61,7 +61,7 @@ pub fn mmap(
         }
     };
     crate::generic::vfs::mmap(
-        file.map(|x| x.file),
+        file.map(|x| x.file.clone()),
         &proc_inner.address_space,
         addr,
         NonZeroUsize::new(length).ok_or(Errno::EINVAL)?,

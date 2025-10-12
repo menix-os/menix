@@ -13,7 +13,10 @@ use crate::generic::{
     },
 };
 use alloc::{borrow::ToOwned, sync::Arc};
-use core::{ffi::CStr, sync::atomic::Ordering};
+use core::{
+    ffi::CStr,
+    sync::atomic::{AtomicBool, Ordering},
+};
 
 pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     let slice = UserSlice::new(addr, len)
@@ -109,8 +112,9 @@ pub fn openat(fd: usize, path: VirtAddr, oflag: usize /* mode */) -> EResult<usi
         .open_file(
             FileDescription {
                 file,
-                close_on_exec: OpenFlags::from_bits_truncate(oflag as _)
-                    .contains(OpenFlags::CloseOnExec),
+                close_on_exec: AtomicBool::new(
+                    OpenFlags::from_bits_truncate(oflag as _).contains(OpenFlags::CloseOnExec),
+                ),
             },
             0,
         )
@@ -203,7 +207,16 @@ fn write_stat(inode: &Arc<INode>, statbuf: UserPtr<uapi::stat>) {
     let stat = uapi::stat {
         st_dev: 0,
         st_ino: inode.id,
-        st_mode: inode.mode.load(Ordering::Acquire),
+        st_mode: inode.mode.load(Ordering::Acquire)
+            | match inode.node_ops {
+                NodeOps::Regular(_) => uapi::S_IFREG,
+                NodeOps::Directory(_) => uapi::S_IFDIR,
+                NodeOps::SymbolicLink(_) => uapi::S_IFLNK,
+                NodeOps::FIFO => uapi::S_IFIFO,
+                NodeOps::BlockDevice(_) => uapi::S_IFBLK,
+                NodeOps::CharacterDevice(_) => uapi::S_IFCHR,
+                NodeOps::Socket => uapi::S_IFSOCK,
+            },
         st_nlink: Arc::strong_count(inode) as _,
         st_uid: inode.uid.load(Ordering::Acquire) as _,
         st_gid: inode.gid.load(Ordering::Acquire) as _,
@@ -365,23 +378,24 @@ pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> EResult<usize> {
             proc_inner.open_file(file, arg).ok_or(Errno::EMFILE)
         }
         uapi::F_DUPFD_CLOEXEC => {
-            let mut file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-            file.close_on_exec = true;
+            let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+            file.close_on_exec.store(true, Ordering::Release);
             proc_inner.open_file(file, arg).ok_or(Errno::EMFILE)
         }
         uapi::F_GETFD => {
             let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-            let mut flags = file.file.flags.lock().clone();
-            flags.set(OpenFlags::CloseOnExec, file.close_on_exec);
+            let mut flags = OpenFlags::empty();
+            flags.set(
+                OpenFlags::CloseOnExec,
+                file.close_on_exec.load(Ordering::Acquire),
+            );
             Ok(flags.bits() as _)
         }
-        uapi::F_SETFD => {
-            warn!("fcntl F_SETFD is a stub!");
-            Ok(0)
-        }
+        uapi::F_SETFD => Ok(0),
         uapi::F_GETFL => {
-            warn!("fcntl F_GETFL is a stub!");
-            Ok(0)
+            let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
+            let flags = file.file.flags.lock().clone();
+            Ok(flags.bits() as _)
         }
         uapi::F_SETFL => {
             warn!("fcntl F_SETFL is a stub!");
@@ -454,7 +468,7 @@ pub fn pipe(filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
                 .open_file(
                     FileDescription {
                         file: pipe1,
-                        close_on_exec: false,
+                        close_on_exec: AtomicBool::new(false),
                     },
                     0,
                 )
@@ -463,7 +477,7 @@ pub fn pipe(filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
                 .open_file(
                     FileDescription {
                         file: pipe2,
-                        close_on_exec: false,
+                        close_on_exec: AtomicBool::new(false),
                     },
                     0,
                 )

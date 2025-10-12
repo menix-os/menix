@@ -26,6 +26,8 @@ pub mod arch;
 pub mod generic;
 pub mod system;
 
+use core::sync::atomic::AtomicBool;
+
 use crate::generic::{
     percpu::CPU_DATA,
     process::{Identity, Process},
@@ -126,7 +128,7 @@ pub extern "C" fn main(_: usize, _: usize) {
                 i,
                 FileDescription {
                     file: console.clone(),
-                    close_on_exec: false,
+                    close_on_exec: AtomicBool::new(false),
                 },
             );
         }

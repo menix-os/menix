@@ -13,7 +13,7 @@ use alloc::sync::Arc;
 use core::{
     fmt::Debug,
     num::NonZeroUsize,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
 };
 
 bitflags::bitflags! {
@@ -89,10 +89,19 @@ impl Debug for File {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct FileDescription {
     pub file: Arc<File>,
-    pub close_on_exec: bool,
+    pub close_on_exec: AtomicBool,
+}
+
+impl Clone for FileDescription {
+    fn clone(&self) -> Self {
+        Self {
+            file: self.file.clone(),
+            close_on_exec: AtomicBool::new(self.close_on_exec.load(Ordering::Acquire)),
+        }
+    }
 }
 
 /// Operations that can be performed on a file. Every trait function has a

@@ -35,10 +35,11 @@ pub fn clock_get(clockid: uapi::clockid_t, tp: UserPtr<uapi::timespec>) -> EResu
     let _ = clockid; // TODO: Respect clockid
 
     let elapsed = clock::get_elapsed();
+    const NS_TO_SEC: usize = 1000 * 1000 * 1000;
 
     tp.write(uapi::timespec {
-        tv_sec: (elapsed / 1000 / 1000 / 1000) as _,
-        tv_nsec: elapsed as _,
+        tv_sec: (elapsed / NS_TO_SEC) as _,
+        tv_nsec: (elapsed % NS_TO_SEC) as _,
     })
     .ok_or(Errno::EINVAL)?;
 
