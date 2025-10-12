@@ -44,15 +44,16 @@ impl INode {
     /// Checks if the node can be accessed with the given identity.
     /// Returns [`Errno::EACCES`] if an access is not allowed.
     pub fn try_access(&self, ident: &Identity, flags: OpenFlags, use_real: bool) -> EResult<()> {
+        let mode = self.get_mode();
+
         if ident.effective_user_id == 0 {
             // If this file is not able to be executed, always fail.
             if flags.contains(OpenFlags::Executable)
-                && !self
-                    .get_mode()
-                    .contains(Mode::UserExec | Mode::GroupExec | Mode::OtherExec)
+                && !mode.contains(Mode::UserExec | Mode::GroupExec | Mode::OtherExec)
             {
                 return Err(Errno::EACCES);
             }
+
             return Ok(());
         }
 

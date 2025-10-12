@@ -136,7 +136,10 @@ pub fn close(fd: usize) -> EResult<usize> {
 
     match proc_inner.open_files.remove_entry(&fd) {
         // If removal was successful, the close worked.
-        Some(_) => Ok(0),
+        Some((_, desc)) => {
+            desc.file.ops.release(&desc.file)?;
+            Ok(0)
+        }
         // If it wasn't, the FD argument is invalid.
         None => Err(Errno::EBADF),
     }

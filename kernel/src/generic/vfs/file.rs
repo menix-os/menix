@@ -79,18 +79,6 @@ pub struct File {
     pub position: AtomicUsize,
 }
 
-impl Clone for File {
-    fn clone(&self) -> Self {
-        Self {
-            path: self.path.clone(),
-            ops: self.ops.clone(),
-            inode: self.inode.clone(),
-            flags: Mutex::new(self.flags.lock().clone()),
-            position: AtomicUsize::new(self.position.load(Ordering::Relaxed)),
-        }
-    }
-}
-
 impl Debug for File {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("File")
@@ -111,6 +99,18 @@ pub struct FileDescription {
 /// generic implementation, which treats it as unimplemented.
 /// Inputs have been sanitized when these functions are called.
 pub trait FileOps {
+    /// Called when the file is being opened.
+    fn acquire(&self, file: &File) -> EResult<()> {
+        let _ = file;
+        Ok(())
+    }
+
+    /// Called when the file is being closed.
+    fn release(&self, file: &File) -> EResult<()> {
+        let _ = file;
+        Ok(())
+    }
+
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
     fn read(&self, file: &File, buffer: &mut [u8], offset: uapi::off_t) -> EResult<isize> {
@@ -209,7 +209,7 @@ impl File {
                     flags: Mutex::new(flags),
                     position: AtomicUsize::new(0),
                 };
-
+                result.ops.acquire(&result)?;
                 Ok(Arc::try_new(result)?)
             }
         }
@@ -224,6 +224,7 @@ impl File {
             position: AtomicUsize::new(0),
         };
 
+        file.ops.acquire(&file)?;
         Ok(Arc::try_new(file)?)
     }
 
@@ -250,9 +251,9 @@ impl File {
             }
         }
 
-        match &inode.node_ops {
+        inode.try_access(identity, flags, false)?;
+        let file = match &inode.node_ops {
             NodeOps::Regular(_) => {
-                inode.try_access(identity, flags, false)?;
                 let result = File {
                     path: Some(file_path),
                     ops: inode.file_ops.clone(),
@@ -260,12 +261,11 @@ impl File {
                     flags: Mutex::new(flags),
                     position: AtomicUsize::new(0),
                 };
-                Ok(Arc::try_new(result)?)
+                Arc::try_new(result)?
             }
-            NodeOps::Directory(dir) => dir.open(inode, file_path, flags, identity),
+            NodeOps::Directory(dir) => dir.open(inode, file_path, flags, identity)?,
             NodeOps::BlockDevice(dev) => {
                 dev.open()?;
-                inode.try_access(identity, flags, false)?;
                 let result = File {
                     path: Some(file_path),
                     ops: dev.clone(),
@@ -273,11 +273,10 @@ impl File {
                     flags: Mutex::new(flags),
                     position: AtomicUsize::new(0),
                 };
-                Ok(Arc::try_new(result)?)
+                Arc::try_new(result)?
             }
             NodeOps::CharacterDevice(dev) => {
                 dev.open()?;
-                inode.try_access(identity, flags, false)?;
                 let result = File {
                     path: Some(file_path),
                     ops: dev.clone(),
@@ -285,13 +284,16 @@ impl File {
                     flags: Mutex::new(flags),
                     position: AtomicUsize::new(0),
                 };
-                Ok(Arc::try_new(result)?)
+                Arc::try_new(result)?
             }
             NodeOps::FIFO => todo!(),
             NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
             // Doesn't make sense to call open() on anything else.
             _ => return Err(Errno::ENOTSUP),
-        }
+        };
+
+        file.ops.acquire(&file)?;
+        Ok(file)
     }
 
     /// Reads into a buffer from a file.
@@ -368,5 +370,10 @@ impl File {
         } else {
             Ok(cache)
         }
+    }
+
+    pub fn close(&self) -> EResult<()> {
+        self.ops.release(self)?;
+        Ok(())
     }
 }

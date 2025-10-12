@@ -43,6 +43,34 @@ impl PipeBuffer {
 }
 
 impl FileOps for PipeBuffer {
+    fn acquire(&self, file: &File) -> EResult<()> {
+        let mut inner = self.inner.lock();
+        let flags = *file.flags.lock();
+
+        if flags.contains(OpenFlags::Read) {
+            inner.readers += 1;
+        }
+        if flags.contains(OpenFlags::Write) {
+            inner.writers += 1;
+        }
+
+        Ok(())
+    }
+
+    fn release(&self, file: &File) -> EResult<()> {
+        let mut inner = self.inner.lock();
+        let flags = *file.flags.lock();
+
+        if flags.contains(OpenFlags::Read) {
+            inner.readers -= 1;
+        }
+        if flags.contains(OpenFlags::Write) {
+            inner.writers -= 1;
+        }
+
+        Ok(())
+    }
+
     fn read(&self, file: &File, buf: &mut [u8], _off: uapi::off_t) -> EResult<isize> {
         if unlikely(buf.is_empty()) {
             return Ok(0);
@@ -50,10 +78,8 @@ impl FileOps for PipeBuffer {
 
         let read = self.rd_queue.guard();
         loop {
-            let len = {
-                let mut inner = self.inner.lock();
-                inner.buffer.read(buf)
-            };
+            let mut inner = self.inner.lock();
+            let len = inner.buffer.read(buf);
 
             // If there was at least one byte written to the pipe
             if len > 0 {
@@ -61,14 +87,14 @@ impl FileOps for PipeBuffer {
                 return Ok(len as _);
             }
 
-            // TODO
-            //if inner.writers == 0 {
-            //    return Ok(0);
-            //}
+            if inner.writers == 0 {
+                return Ok(0);
+            }
 
             if file.flags.lock().contains(OpenFlags::NonBlocking) {
                 return Err(Errno::EAGAIN);
             } else {
+                drop(inner);
                 read.wait();
             }
         }
@@ -84,11 +110,10 @@ impl FileOps for PipeBuffer {
             let len = {
                 let mut inner = self.inner.lock();
 
-                // TODO
-                //if inner.readers == 0 {
-                //    // TODO: Kill
-                //    return Err(Errno::EPIPE);
-                //}
+                if inner.readers == 0 {
+                    // TODO: Kill
+                    return Err(Errno::EPIPE);
+                }
 
                 inner.buffer.write(buf)
             };
