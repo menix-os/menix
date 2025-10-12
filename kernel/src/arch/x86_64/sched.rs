@@ -285,12 +285,10 @@ pub unsafe fn remote_reschedule(cpu: u32) {
 }
 
 pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
-    unsafe {
-        assert!(
-            Scheduler::get_current().is_user(),
-            "Attempted to perform a user jump on a kernel task!"
-        );
-    }
+    assert!(
+        Scheduler::get_current().is_user(),
+        "Attempted to perform a user jump on a kernel task!"
+    );
 
     // Create a new context for the user jump.
     let mut context = Context::default();
