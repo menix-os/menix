@@ -176,7 +176,7 @@ pub fn dispatch(
         numbers::TIMER_DELETE => sys_unimp!("timer_delete", Err(Errno::ENOSYS)),
         numbers::ITIMER_GET => sys_unimp!("itimer_get", Err(Errno::ENOSYS)),
         numbers::ITIMER_SET => sys_unimp!("itimer_set", Err(Errno::ENOSYS)),
-        numbers::CLOCK_GET => sys_unimp!("clock_get", Err(Errno::ENOSYS)),
+        numbers::CLOCK_GET => system::clock_get(a0 as _, a1.into()),
         numbers::CLOCK_GETRES => sys_unimp!("clock_getres", Err(Errno::ENOSYS)),
 
         // Scheduling
