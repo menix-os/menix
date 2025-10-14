@@ -2,6 +2,7 @@ kernel_c_args = [
     '-ffreestanding',
     '-fno-stack-protector',
     '-fno-omit-frame-pointer',
+    '-fno-pie',
     '-nostdinc',
     '-D__KERNEL__=1',
 ]
