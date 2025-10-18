@@ -1,10 +1,5 @@
-#ifndef _MENIX_RIGHTS_H
-#define _MENIX_RIGHTS_H
-
-#include <menix/compiler.h>
-#include <stdint.h>
-
-__MENIX_CDECL_START
+#ifndef __MENIX_RIGHTS_H
+#define __MENIX_RIGHTS_H
 
 typedef enum {
     MENIX_RIGHT_NONE = 0u,
@@ -24,7 +19,5 @@ typedef enum {
 
 #define MENIX_RIGHTS_COMMON (MENIX_RIGHT_MOVE | MENIX_RIGHT_CLONE | MENIX_RIGHT_WAIT)
 #define MENIX_RIGHTS_RW     (MENIX_RIGHT_READ | MENIX_RIGHT_WRITE)
-
-__MENIX_CDECL_END
 
 #endif

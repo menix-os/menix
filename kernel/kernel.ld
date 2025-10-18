@@ -47,9 +47,9 @@ SECTIONS
         *(.initgraph.nodes)
         __ld_init_end = .;
 
-        __ld_earlycon_start = .;
-        KEEP(*(.earlycon))
-        __ld_earlycon_end = .;
+        __ld_console_start = .;
+        KEEP(*(.console))
+        __ld_console_end = .;
 
         KEEP(*(SORT_BY_NAME(.init.data.*)))
         KEEP(*(.init.data))

@@ -1,4 +1,5 @@
-#include <menix/menix.h>
+#include <menix/status.h>
+#include <menix/syscalls.h>
 #include <menix/types.h>
 
 int main(int argc, const char** argv) {

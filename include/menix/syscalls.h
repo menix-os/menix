@@ -1,8 +1,7 @@
-#ifndef _MENIX_MENIX_H
-#define _MENIX_MENIX_H
+#ifndef __MENIX_SYSCALLS_H
+#define __MENIX_SYSCALLS_H
 
 #include <menix/archctl.h>
-#include <menix/compiler.h>
 #include <menix/rights.h>
 #include <menix/status.h>
 #include <menix/syscall_numbers.h>
@@ -10,13 +9,9 @@
 #include <menix/types.h>
 #include <stddef.h>
 
-__MENIX_CDECL_START
-
 // Panics and returns an error status to the parent process.
-[[noreturn]]
 static inline void menix_panic(menix_status_t status) {
     menix_syscall1(MENIX_SYSCALL_PANIC, (menix_arg_t)status);
-    unreachable();
 }
 
 static inline void menix_log(const char* message, size_t length) {
@@ -71,29 +66,27 @@ static inline menix_status_t menix_port_create(
 // There may only be one message buffer per thread.
 static inline menix_status_t menix_port_connect(
     menix_handle_t port,
-    menix_handle_t* handles_buffer,
     size_t num_handles,
-    void* data_buffer,
-    size_t num_bytes
+    size_t num_bytes,
+    menix_handle_t** out_handle_buf,
+    void** out_data_buf
 ) {
     return menix_syscall5(
         MENIX_SYSCALL_PORT_CONNECT,
         (menix_arg_t)port,
-        (menix_arg_t)handles_buffer,
         (menix_arg_t)num_handles,
-        (menix_arg_t)data_buffer,
-        (menix_arg_t)num_bytes
+        (menix_arg_t)num_bytes,
+        (menix_arg_t)out_handle_buf,
+        (menix_arg_t)out_data_buf
     );
 }
 
+static inline menix_status_t menix_port_action(menix_handle_t port, menix_port_action_t action) {
+    return menix_syscall2(MENIX_SYSCALL_PORT_ACTION, (menix_arg_t)port, (menix_arg_t)action);
+}
+
 static inline menix_status_t menix_port_write(menix_handle_t port) {
-    return menix_syscall1(MENIX_SYSCALL_PORT_WRITE, (menix_arg_t)port);
+    return menix_syscall1(MENIX_SYSCALL_PORT_ACTION, (menix_arg_t)port);
 }
-
-static inline menix_status_t menix_port_read(menix_handle_t port) {
-    return menix_syscall1(MENIX_SYSCALL_PORT_READ, (menix_arg_t)port);
-}
-
-__MENIX_CDECL_END
 
 #endif

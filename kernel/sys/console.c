@@ -1,37 +1,43 @@
 #include <kernel/cmdline.h>
 #include <kernel/console.h>
+#include <kernel/print.h>
 #include <string.h>
 
-extern struct console* const __ld_earlycon_start[];
-extern struct console* const __ld_earlycon_end[];
+extern struct console* const __ld_console_start[];
+extern struct console* const __ld_console_end[];
 
-struct console* earlycon = nullptr;
+struct console* active = nullptr;
 
 void console_write(const char* buf, size_t len) {
-    if (earlycon) {
-        earlycon->write(earlycon, buf, len);
+    if (active) {
+        active->write(active, buf, len);
     }
 }
 
-void console_add(struct console* con) {}
-void console_remove(struct console* con) {}
-
-static void earlycon_setup(const char* value) {
+static void console_setup(const char* value) {
     if (!value)
         return;
 
     // Find a suitable boot console.
-    struct console* const* cur = __ld_earlycon_start;
-    while (cur < __ld_earlycon_end) {
+    struct console* const* cur = __ld_console_start;
+    while (cur < __ld_console_end) {
         if (!strcmp(value, (*cur)->name)) {
-            earlycon = *cur;
+            active = *cur;
         }
         cur++;
     }
 }
-CMDLINE_OPTION("earlycon", earlycon_setup);
+CMDLINE_OPTION("console", console_setup);
 
-void earlycon_init() {
-    if (earlycon)
-        earlycon->init(earlycon);
+void console_init() {
+    // If we have no console set and at least one set, use that as a default.
+    if (!active && &__ld_console_start[0] != &__ld_console_end[0])
+        active = __ld_console_start[0];
+
+    if (active) {
+        if (active->init(active) == false)
+            active = nullptr;
+        else
+            kprintf("Logging on console \"%s\"\n", active->name);
+    }
 }

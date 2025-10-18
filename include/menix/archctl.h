@@ -1,9 +1,5 @@
-#ifndef _MENIX_ARCHCTL_H
-#define _MENIX_ARCHCTL_H
-
-#include <menix/compiler.h>
-
-__MENIX_CDECL_START
+#ifndef __MENIX_ARCHCTL_H
+#define __MENIX_ARCHCTL_H
 
 typedef enum {
 #ifdef __x86_64__
@@ -12,7 +8,5 @@ typedef enum {
 #error "Unsupported architecture!"
 #endif
 } menix_archctl_t;
-
-__MENIX_CDECL_END
 
 #endif

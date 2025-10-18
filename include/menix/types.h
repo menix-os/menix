@@ -1,23 +1,23 @@
-#ifndef _MENIX_TYPES_H
-#define _MENIX_TYPES_H
+#ifndef __MENIX_TYPES_H
+#define __MENIX_TYPES_H
 
-#include <menix/compiler.h>
-#include <stddef.h>
+#include <menix/status.h>
 #include <stdint.h>
-
-__MENIX_CDECL_START
 
 // A generic object handle.
 typedef uint32_t menix_handle_t;
 typedef uint32_t menix_handle_type_t;
 
-#define MENIX_HANDLE_INVALID ((menix_handle_t)0)
+#define MENIX_HANDLE_INVALID   ((menix_handle_t)0)
+#define MENIX_HANDLE_INIT_PORT ((menix_handle_t) - 1)
 
 enum menix_port_flags {
     MENIX_PORT_FLAG_NONE = 0,
     // Allow sending messages even if one endpoint is not connected.
     MENIX_PORT_FLAG_ALLOW_UNCONNECTED = 1 << 0,
 };
+
+typedef menix_status_t (*menix_port_action_t)(menix_handle_t);
 
 // Virtual memory flags.
 enum menix_vm_flags {
@@ -38,7 +38,5 @@ enum menix_cache_type {
 
 typedef uintptr_t menix_virt_t;
 typedef uintptr_t menix_phys_t;
-
-__MENIX_CDECL_END
 
 #endif

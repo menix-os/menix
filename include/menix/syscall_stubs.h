@@ -1,11 +1,8 @@
-#ifndef _MENIX_SYSCALL_STUBS_H
-#define _MENIX_SYSCALL_STUBS_H
+#ifndef __MENIX_SYSCALL_STUBS_H
+#define __MENIX_SYSCALL_STUBS_H
 
-#include <menix/compiler.h>
 #include <menix/status.h>
 #include <stdint.h>
-
-__MENIX_CDECL_START
 
 #ifdef __x86_64__
 #define MENIX_ASM_REG_NUM "rax"
@@ -166,5 +163,4 @@ static inline menix_status_t menix_syscall6(
     return value;
 }
 
-__MENIX_CDECL_END
 #endif

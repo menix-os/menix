@@ -17,7 +17,7 @@ static void serial_write(struct console* con, const char* buf, size_t count) {
     }
 }
 
-void serial_setup(struct console* con) {
+bool serial_setup(struct console* con) {
     asm_outb(COM1_BASE + 1, 0x00); // Disable interrupts
     asm_outb(COM1_BASE + 3, 0x80); // Enable DLAB (set baud rate divisor)
     asm_outb(COM1_BASE, 0x01);     // Set divisor low byte (115200 baud if 1)
@@ -31,12 +31,12 @@ void serial_setup(struct console* con) {
 
     // If we don't get the same value back, this serial port doesn't work.
     if (asm_inb(COM1_BASE) != 0xAE) {
-        return;
+        return false;
     }
 
     asm_outb(COM1_BASE + 4, 0x0F); // Disable loopback mode.
 
-    console_add(con);
+    return true;
 }
 
 static struct console serial_con = {
@@ -44,4 +44,4 @@ static struct console serial_con = {
     .write = serial_write,
     .init = serial_setup,
 };
-DEFINE_EARLYCON(serial_con);
+DEFINE_CONSOLE(serial_con);

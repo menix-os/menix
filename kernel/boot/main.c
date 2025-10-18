@@ -21,12 +21,14 @@ void kernel_early_init() {
 [[noreturn]]
 void kernel_init(struct boot_info* info) {
     cmdline_parse(info->cmdline);
-    earlycon_init();
+    console_init();
     kprintf("%s\n", menix_banner); // Say hello!
     mem_init(info->mem_map, info->num_mem_maps, info->virt_base, info->phys_base, info->hhdm_base);
 
     sched_init();
     irq_unlock();
+
+    ASSERT(false, "");
 
     while (1) {}
 }
