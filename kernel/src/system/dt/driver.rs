@@ -17,18 +17,20 @@ pub struct Driver {
 
 impl Driver {
     pub fn register(&'static self) -> EResult<()> {
-        let mut drivers = DRIVERS.lock();
+        // We need a device tree to do the compat-string matching.
+        let dt = TREE.get().as_ref().ok_or(Errno::EACCES)?;
 
+        // Insert the driver if it's not been loaded yet.
+        let mut drivers = DRIVERS.lock();
         if drivers.contains_key(self.name) {
             return Err(Errno::EEXIST);
         }
-
         drivers.insert(self.name, self);
 
         // Probe the driver.
         let mut queue = VecDeque::new();
 
-        queue.push_back(TREE.get().root());
+        queue.push_back(dt.root());
 
         while let Some(node) = queue.pop_front() {
             if let Some(compatible_prop) =

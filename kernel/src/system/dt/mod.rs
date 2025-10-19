@@ -54,7 +54,7 @@ impl<'a> DeviceTree<'a> {
     }
 
     pub fn root(&self) -> Node<'a, '_> {
-        // first tag must be FDT_BEGIN_NODE
+        // First tag must be FDT_BEGIN_NODE.
         assert_eq!(
             self.structs
                 .read_reg(Register::<u32>::new(0).with_be())
@@ -63,7 +63,7 @@ impl<'a> DeviceTree<'a> {
             Self::FDT_BEGIN_NODE
         );
 
-        // parse root name
+        // Parse root name.
         let mut end = 4;
         while end < self.structs.len() && self.structs[end] != 0 {
             end += 1;
@@ -145,6 +145,14 @@ pub struct Property<'a, 'b> {
 }
 
 impl<'a, 'b> Property<'a, 'b> {
+    pub fn tree(&self) -> &'b DeviceTree<'a> {
+        self.tree
+    }
+
+    pub fn node(&self) -> &'b Node<'a, 'b> {
+        self.node
+    }
+
     pub fn name(&self) -> &[u8] {
         self.name
     }
@@ -348,7 +356,7 @@ fn get_str<'a>(strings: &'a [u8], off: u32) -> Option<&'a [u8]> {
     Some(&strings[off as usize..end])
 }
 
-pub static TREE: Once<DeviceTree> = Once::new();
+pub static TREE: Once<Option<DeviceTree>> = Once::new();
 pub static DEVICES: Once<Vec<&Node>> = Once::new();
 
 #[initgraph::task(
@@ -357,23 +365,25 @@ pub static DEVICES: Once<Vec<&Node>> = Once::new();
     entails = [crate::INIT_STAGE]
 )]
 fn TREE_STAGE() {
-    let Some(fdt_addr) = BootInfo::get().fdt_addr else {
-        return;
+    let dt = match BootInfo::get().fdt_addr {
+        Some(fdt_addr) => unsafe {
+            let slice = slice::from_raw_parts_mut(fdt_addr.as_hhdm(), 8);
+            let len = slice.read_reg(DeviceTree::TOTAL_SIZE).unwrap().value();
+            let slice = slice::from_raw_parts_mut(fdt_addr.as_hhdm(), len as _);
+
+            DeviceTree::try_new(slice).expect("Failed to parse DTB")
+        },
+        None => unsafe {
+            TREE.init(None);
+            return;
+        },
     };
 
-    unsafe {
-        let slice = slice::from_raw_parts_mut(fdt_addr.as_hhdm(), 8);
-        let len = slice.read_reg(DeviceTree::TOTAL_SIZE).unwrap().value();
-        let slice = slice::from_raw_parts_mut(fdt_addr.as_hhdm(), len as _);
-
-        TREE.init(DeviceTree::try_new(slice).expect("Failed to parse DTB"));
-    }
-
-    let root = TREE.get().root();
+    let root = dt.root();
     let model = root.properties().find(|x| x.name() == b"model").unwrap();
     log!("Running on \"{}\"", String::from_utf8_lossy(model.data()));
 
-    let chosen = TREE.get().find_node(b"/chosen").unwrap();
+    let chosen = dt.find_node(b"/chosen").unwrap();
     log!(
         "stdout is: \"{}\"",
         String::from_utf8_lossy(
@@ -386,4 +396,6 @@ fn TREE_STAGE() {
                 .unwrap()
         )
     );
+
+    unsafe { TREE.init(Some(dt)) };
 }

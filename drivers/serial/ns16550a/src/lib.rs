@@ -22,5 +22,8 @@ fn probe(node: &Node) -> EResult<()> {
 }
 
 pub fn main() {
-    DRIVER.register().unwrap();
+    match DRIVER.register() {
+        Ok(_) => (),
+        Err(e) => menix::error!("Unable to load driver: {:?}", e),
+    }
 }
