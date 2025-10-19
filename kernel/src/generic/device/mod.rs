@@ -1,6 +1,5 @@
 mod console;
 mod memfiles;
-mod tty;
 
 use crate::generic::{posix::errno::EResult, vfs::file::FileOps};
 use core::fmt::Debug;

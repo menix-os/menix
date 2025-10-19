@@ -381,7 +381,7 @@ pub fn load(data: &[u8]) -> EResult<()> {
     }
 
     // Register newly added symbols for dependencies.
-    for symbol in symtab {
+    for _symbol in symtab {
         // TODO: Add symbols
     }
 

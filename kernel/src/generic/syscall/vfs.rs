@@ -248,7 +248,7 @@ pub fn fstatat(
     at: usize,
     path: VirtAddr,
     statbuf: UserPtr<uapi::stat>,
-    flags: usize, // TODO
+    _flags: usize, // TODO
 ) -> EResult<usize> {
     let path = unsafe { CStr::from_ptr(path.as_ptr()) };
     let v = path.to_owned();
@@ -285,7 +285,7 @@ pub fn dup(fd: usize) -> EResult<usize> {
     proc_inner.open_file(file, fd).ok_or(Errno::EMFILE)
 }
 
-pub fn dup3(fd1: usize, fd2: usize, flags: usize) -> EResult<usize> {
+pub fn dup3(fd1: usize, fd2: usize, _flags: usize) -> EResult<usize> {
     if fd1 == fd2 {
         return Ok(fd1);
     }
@@ -359,13 +359,13 @@ pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
     let node = dir.inode.clone().ok_or(Errno::EBADF)?;
     match &node.node_ops {
         NodeOps::Directory(dir_ops) => {
-            // TODO: Probably need a getdents callback...
-            return Err(Errno::ENOSYS);
+            // TODO: VFS Probably need a getdents callback...
+            _ = (buf, dir_ops);
         }
         _ => return Err(Errno::ENOTDIR),
     }
 
-    Ok(0)
+    Ok(0) // TODO
 }
 
 pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> EResult<usize> {
@@ -453,8 +453,8 @@ pub fn pselect(
     timeout: UserPtr<uapi::timespec>,
     sigmask: UserPtr<uapi::sigset_t>,
 ) -> EResult<usize> {
+    let _ = (except_fds, sigmask, timeout, write_fds, read_fds, fd);
     // TODO
-    //warn!("pselect is a stub!");
     Ok(1)
 }
 

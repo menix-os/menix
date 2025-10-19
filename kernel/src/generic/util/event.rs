@@ -30,7 +30,7 @@ impl Event {
             task: Scheduler::get_current(),
         }));
 
-        return EventGuard { parent: self };
+        return EventGuard { _parent: self };
     }
 
     pub fn wake_one(&self) {
@@ -50,7 +50,7 @@ impl Event {
 }
 
 pub struct EventGuard<'n> {
-    parent: &'n Event,
+    _parent: &'n Event, // TODO: Use this
 }
 
 impl<'n> EventGuard<'n> {

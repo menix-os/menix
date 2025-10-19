@@ -8,7 +8,7 @@ use crate::generic::{
     boot::BootInfo,
     module,
     posix::errno::{EResult, Errno},
-    process::{Identity, InnerProcess, Process},
+    process::{Identity, InnerProcess},
     util::{self},
     vfs::{
         file::{File, OpenFlags},

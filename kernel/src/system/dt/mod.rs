@@ -9,8 +9,8 @@ use alloc::{slice, string::String, vec::Vec};
 
 pub struct DeviceTree<'a> {
     version: u32,
-    compat_version: u32,
-    boot_cpuid: u32,
+    _compat_version: u32,
+    _boot_cpuid: u32,
     structs: &'a [u8],
     strings: &'a [u8],
 }
@@ -40,8 +40,8 @@ impl<'a> DeviceTree<'a> {
 
         Some(Self {
             version: data.read_reg(Self::VERSION)?.value(),
-            compat_version: data.read_reg(Self::COMPAT_VERSION)?.value(),
-            boot_cpuid: data.read_reg(Self::BOOT_CPUID)?.value(),
+            _compat_version: data.read_reg(Self::COMPAT_VERSION)?.value(),
+            _boot_cpuid: data.read_reg(Self::BOOT_CPUID)?.value(),
             structs: &data[data.read_reg(Self::STRUCTS_OFFSET)?.value() as _..]
                 [..data.read_reg(Self::STRUCTS_SIZE)?.value() as _],
             strings: &data[data.read_reg(Self::STRINGS_OFFSET)?.value() as _..]

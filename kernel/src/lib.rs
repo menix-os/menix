@@ -2,7 +2,6 @@
 #![feature(negative_impls)]
 #![feature(allocator_api)]
 #![feature(str_from_raw_parts)]
-#![feature(new_zeroed_alloc)]
 #![feature(likely_unlikely)]
 #![feature(slice_split_once)]
 #![feature(bool_to_result)]

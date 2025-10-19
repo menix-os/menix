@@ -122,5 +122,6 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
 
 pub fn waitpid(pid: uapi::pid_t, stat_loc: VirtAddr, options: i32) -> EResult<usize> {
     // TODO
+    let _ = (pid, stat_loc, options);
     Ok(0)
 }

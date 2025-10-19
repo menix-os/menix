@@ -44,6 +44,7 @@ impl INode {
     /// Checks if the node can be accessed with the given identity.
     /// Returns [`Errno::EACCES`] if an access is not allowed.
     pub fn try_access(&self, ident: &Identity, flags: OpenFlags, use_real: bool) -> EResult<()> {
+        let _ = use_real; // TODO
         let mode = self.get_mode();
 
         if ident.effective_user_id == 0 {
@@ -140,6 +141,7 @@ pub trait DirectoryOps: Any {
         target_path: &[u8],
         identity: &Identity,
     ) -> EResult<()> {
+        let _ = identity; // TODO
         let sym_inode = node.sb.clone().create_inode(
             NodeType::SymbolicLink,
             Mode::from_bits_truncate(0o777),

@@ -31,6 +31,7 @@ static DRIVER: Driver = Driver {
 };
 
 pub fn probe(dev: &Device, view: DeviceView<'static, dyn Access>) -> EResult<()> {
+    let _ = view;
     log!("Probing NVMe device on {}", dev.address);
 
     Ok(())
