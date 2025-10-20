@@ -46,12 +46,11 @@ macro_rules! log_inner {
             let _lock = $crate::generic::util::mutex::irq::IrqMutex::lock();
             let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
             _ = writer.write_fmt(format_args!(
-                "[{:5}.{:06}] ",
+                "[{:5}.{:06}] \x1b[1;34m{}:\x1b[0m ",
                 current_time / 1_000_000_000,
-                (current_time / 1000) % 1_000_000
+                (current_time / 1000) % 1_000_000,
+                $crate::current_module_name!()
             ));
-            const NAME: &str = $crate::current_module_name!();
-            _ = writer.write_fmt(format_args!("{}: ", NAME));
             _ = writer.write_fmt(format_args!($prefix));
             _ = writer.write_fmt(format_args!($($arg)*));
             _ = writer.write_fmt(format_args!($suffix));
@@ -69,21 +68,21 @@ macro_rules! log {
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)*) => ({
-        $crate::log_inner!("\x1b[1;33m", "\x1b[0m\n", $($arg)*);
+        $crate::log_inner!("\x1b[33m", "\x1b[0m\n", $($arg)*);
     });
 }
 
 #[macro_export]
 macro_rules! status {
     ($($arg:tt)*) => ({
-        $crate::log_inner!("\x1b[1;32m", "\x1b[0m\n", $($arg)*);
+        $crate::log_inner!("\x1b[32m", "\x1b[0m\n", $($arg)*);
     });
 }
 
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => ({
-        $crate::log_inner!("\x1b[1;31m", "\x1b[0m\n", $($arg)*);
+        $crate::log_inner!("\x1b[31m", "\x1b[0m\n", $($arg)*);
     });
 }
 

@@ -385,12 +385,13 @@ pub fn load(data: &[u8]) -> EResult<()> {
         // TODO: Add symbols
     }
 
-    log!("Loaded module \"{}\":", name);
-    log!("    Base Address | {:#x}", load_base);
-    log!("    Description  | {}", info.description);
-    log!("    Version      | {}", info.version);
-    log!("    Author(s)    | {}", info.author);
-    log!("    Dependencies | {:?}", dependencies);
+    log!(
+        "Loaded module \"{}\" ({}, {}) at {:#x}",
+        name,
+        info.description,
+        info.version,
+        load_base
+    );
 
     // TODO: Call init array
 

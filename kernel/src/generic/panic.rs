@@ -22,8 +22,7 @@ macro_rules! log_panic {
     ($($arg:tt)*) => ({
         use core::fmt::Write;
         let mut writer = GLOBAL_LOGGERS.lock();
-        _ = writer.write_fmt(format_args!("[    !!!!    ] "));
-        _ = writer.write_fmt(format_args!("\x1b[1;31m"));
+        _ = writer.write_fmt(format_args!("[    !!!!    ] \x1b[31m"));
         _ = writer.write_fmt(format_args!($($arg)*));
         _ = writer.write_fmt(format_args!("\x1b[0m\n"));
     });
