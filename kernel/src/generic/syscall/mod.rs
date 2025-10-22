@@ -142,7 +142,7 @@ pub fn dispatch(
         numbers::GETGROUPS => sys_unimp!("getgroups", Err(Errno::ENOSYS)),
         numbers::SETGROUPS => sys_unimp!("setgroups", Err(Errno::ENOSYS)),
         numbers::GETSID => sys_unimp!("getsid", Err(Errno::ENOSYS)),
-        numbers::SETSID => sys_unimp!("setsid", Err(Errno::ENOSYS)),
+        numbers::SETSID => sys_unimp!("setsid", Ok(0)),
         numbers::SETUID => sys_unimp!("setuid", Err(Errno::ENOSYS)),
         numbers::GETUID => Ok(process::getuid()),
         numbers::SETGID => sys_unimp!("setgid", Err(Errno::ENOSYS)),
