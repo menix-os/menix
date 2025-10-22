@@ -149,7 +149,7 @@ pub trait FileOps: Debug {
     /// Seeks in the file and returns the new absolute offset.
     fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64> {
         _ = (file, offset);
-        Ok(0)
+        Err(Errno::ESPIPE)
     }
 }
 
