@@ -10,7 +10,7 @@ use crate::generic::{
         file::{File, FileOps, OpenFlags},
     },
 };
-use alloc::{boxed::Box, sync::Arc};
+use alloc::sync::Arc;
 use core::{
     any::Any,
     fmt::Debug,

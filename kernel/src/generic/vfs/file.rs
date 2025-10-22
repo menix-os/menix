@@ -13,7 +13,7 @@ use alloc::sync::Arc;
 use core::{
     fmt::Debug,
     num::NonZeroUsize,
-    sync::atomic::{AtomicBool, AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 bitflags::bitflags! {
