@@ -22,7 +22,7 @@ use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use core::{
     any::Any,
     slice,
-    sync::atomic::{AtomicU32, AtomicUsize, Ordering},
+    sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering},
 };
 
 #[derive(Debug)]
@@ -74,15 +74,29 @@ impl SuperBlock for TmpSuper {
         mode: Mode,
         device: Option<Arc<dyn Device>>,
     ) -> EResult<Arc<INode>> {
-        let node_ops = match node_type {
-            NodeType::Regular => NodeOps::Regular(Box::new(TmpRegular::default())),
-            NodeType::SymbolicLink => NodeOps::SymbolicLink(Box::new(TmpRegular::default())),
-            NodeType::Directory => NodeOps::Directory(Box::new(TmpDir::default())),
-            NodeType::CharacterDevice => NodeOps::CharacterDevice(device.ok_or(Errno::ENODEV)?),
-            NodeType::BlockDevice => NodeOps::BlockDevice(device.ok_or(Errno::ENODEV)?),
+        let (node_ops, file_ops): (_, Arc<dyn FileOps>) = match node_type {
+            NodeType::Regular => {
+                let reg = Arc::new(TmpRegular::default());
+                (NodeOps::Regular(reg.clone()), reg)
+            }
+            NodeType::SymbolicLink => {
+                let reg = Arc::new(TmpSymlink::default());
+                (NodeOps::SymbolicLink(reg.clone()), reg)
+            }
+            NodeType::Directory => {
+                let reg = Arc::new(TmpDir::default());
+                (NodeOps::Directory(reg.clone()), reg)
+            }
+            NodeType::CharacterDevice => {
+                let dev = device.ok_or(Errno::ENODEV)?;
+                (NodeOps::CharacterDevice(dev.clone()), dev)
+            }
+            NodeType::BlockDevice => {
+                let dev = device.ok_or(Errno::ENODEV)?;
+                (NodeOps::BlockDevice(dev.clone()), dev)
+            }
             _ => return Err(Errno::EINVAL),
         };
-        let file_ops = Arc::try_new(TmpFile::default())?;
 
         Ok(Arc::try_new(INode {
             id: self.inode_counter.fetch_add(1, Ordering::Acquire) as u64,
@@ -128,10 +142,9 @@ impl DirectoryOps for TmpDir {
     ) -> EResult<Arc<File>> {
         let file = File {
             path: Some(path),
-            ops: Arc::new(TmpFile::default()),
+            ops: node.file_ops.clone(),
             inode: Some(node.clone()),
             flags: Mutex::new(flags),
-            position: AtomicUsize::new(0),
         };
         return Ok(Arc::try_new(file)?);
     }
@@ -157,15 +170,9 @@ impl DirectoryOps for TmpDir {
 }
 
 #[derive(Debug, Default)]
-struct TmpRegular {}
+struct TmpSymlink {}
 
-impl RegularOps for TmpRegular {
-    fn truncate(&self, node: &INode, length: u64) -> EResult<()> {
-        todo!()
-    }
-}
-
-impl SymlinkOps for TmpRegular {
+impl SymlinkOps for TmpSymlink {
     fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<u64> {
         let copy_size = buf.len().min(node.len());
         node.cache.read(&mut buf[0..copy_size], 0);
@@ -173,42 +180,75 @@ impl SymlinkOps for TmpRegular {
     }
 }
 
-#[derive(Debug, Default)]
-struct TmpFile;
-impl FileOps for TmpFile {
-    fn read(&self, file: &File, buffer: &mut [u8], offset: uapi::off_t) -> EResult<isize> {
-        let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
+impl FileOps for TmpSymlink {}
+impl FileOps for TmpDir {}
 
-        if offset as usize >= inode.len() {
+#[derive(Debug, Default)]
+struct TmpRegular {
+    position: AtomicU64,
+}
+
+impl RegularOps for TmpRegular {
+    fn truncate(&self, node: &INode, length: u64) -> EResult<()> {
+        todo!()
+    }
+}
+
+impl FileOps for TmpRegular {
+    fn release(&self, file: &File) -> EResult<()> {
+        self.position.store(0, Ordering::Release);
+        Ok(())
+    }
+
+    fn read(&self, file: &File, buffer: &mut [u8], offset: Option<u64>) -> EResult<isize> {
+        let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
+        let start = offset.unwrap_or(self.position.load(Ordering::Acquire) as _);
+
+        if start as usize >= inode.len() {
             return Ok(0);
         }
 
-        let copy_size = buffer.len().min(inode.len() - offset as usize);
-        let actual = inode.cache.read(&mut buffer[0..copy_size], offset as usize);
+        let copy_size = buffer.len().min(inode.len() - start as usize);
+        let actual = inode.cache.read(&mut buffer[0..copy_size], start as usize) as _;
+
+        // If there was no offset specified, advance the internal cursor.
+        if offset.is_none() {
+            self.position.fetch_add(actual, Ordering::AcqRel);
+        }
+
         Ok(actual as _)
     }
 
-    fn write(&self, file: &File, buffer: &[u8], offset: uapi::off_t) -> EResult<isize> {
+    fn write(&self, file: &File, buffer: &[u8], offset: Option<u64>) -> EResult<isize> {
         let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
-        let actual = inode.cache.write(buffer, offset as usize);
+        let start = offset.unwrap_or(self.position.load(Ordering::Acquire));
+        let actual = inode.cache.write(buffer, start as usize);
         inode.size.store(actual, Ordering::Release);
+
+        // If there was no offset specified, advance the internal cursor.
+        if offset.is_none() {
+            self.position.fetch_add(actual as _, Ordering::AcqRel);
+        }
+
         Ok(actual as _)
     }
 
-    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<uapi::off_t> {
-        match offset {
-            SeekAnchor::Start(x) => Ok(file.position.swap(x as usize, Ordering::AcqRel) as _),
+    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64> {
+        let new = match offset {
+            SeekAnchor::Start(x) => {
+                self.position.store(x, Ordering::Release);
+                Ok(x)
+            }
             SeekAnchor::Current(x) => {
-                let x = x as isize;
+                let x = x as i64;
                 let old = if x.is_negative() {
-                    file.position.fetch_sub(x.unsigned_abs(), Ordering::AcqRel)
+                    self.position.fetch_sub(x.unsigned_abs(), Ordering::AcqRel)
                 } else {
-                    file.position.fetch_add(x as _, Ordering::AcqRel)
+                    self.position.fetch_add(x as _, Ordering::AcqRel)
                 };
-                Ok((old + x as usize) as _)
+                old.checked_add_signed(x).ok_or(Errno::EOVERFLOW)
             }
             SeekAnchor::End(x) => {
-                let x = x as isize;
                 let size = file
                     .inode
                     .as_ref()
@@ -217,15 +257,16 @@ impl FileOps for TmpFile {
                     .load(Ordering::Acquire);
 
                 let new = if x.is_negative() {
-                    size.checked_add_signed(x).ok_or(Errno::EINVAL)?
+                    size.checked_add_signed(x as _).ok_or(Errno::EINVAL)?
                 } else {
-                    size.checked_add_signed(x).ok_or(Errno::EOVERFLOW)?
+                    size.checked_add_signed(x as _).ok_or(Errno::EOVERFLOW)?
                 };
 
-                file.position.store(new, Ordering::Release);
+                self.position.store(new as _, Ordering::Release);
                 Ok(new as _)
             }
-        }
+        };
+        new
     }
 }
 

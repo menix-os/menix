@@ -56,6 +56,7 @@ bitflags::bitflags! {
     }
 }
 
+#[derive(Debug)]
 pub enum SeekAnchor {
     /// Seek relative to the start of the file.
     Start(u64),
@@ -75,8 +76,6 @@ pub struct File {
     pub inode: Option<Arc<INode>>,
     /// File open flags.
     pub flags: Mutex<OpenFlags>,
-    /// The cursor of this file.
-    pub position: AtomicUsize,
 }
 
 impl Debug for File {
@@ -84,7 +83,7 @@ impl Debug for File {
         f.debug_struct("File")
             .field("path", &self.path)
             .field("flags", &self.flags)
-            .field("position", &self.position)
+            .field("ops", &self.ops)
             .finish()
     }
 }
@@ -107,7 +106,7 @@ impl Clone for FileDescription {
 /// Operations that can be performed on a file. Every trait function has a
 /// generic implementation, which treats it as unimplemented.
 /// Inputs have been sanitized when these functions are called.
-pub trait FileOps {
+pub trait FileOps: Debug {
     /// Called when the file is being opened.
     fn acquire(&self, file: &File) -> EResult<()> {
         let _ = file;
@@ -122,14 +121,14 @@ pub trait FileOps {
 
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
-    fn read(&self, file: &File, buffer: &mut [u8], offset: uapi::off_t) -> EResult<isize> {
+    fn read(&self, file: &File, buffer: &mut [u8], offset: Option<u64>) -> EResult<isize> {
         let _ = (offset, buffer, file);
         Ok(0)
     }
 
     /// Writes a buffer to the file.
     /// Returns actual bytes written.
-    fn write(&self, file: &File, buffer: &[u8], offset: uapi::off_t) -> EResult<isize> {
+    fn write(&self, file: &File, buffer: &[u8], offset: Option<u64>) -> EResult<isize> {
         let _ = (offset, buffer, file);
         Ok(0)
     }
@@ -147,9 +146,10 @@ pub trait FileOps {
         Ok(mask)
     }
 
-    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<uapi::off_t> {
+    /// Seeks in the file and returns the new absolute offset.
+    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64> {
         _ = (file, offset);
-        Err(Errno::ESPIPE)
+        Ok(0)
     }
 }
 
@@ -216,7 +216,6 @@ impl File {
                     ops: file_node.file_ops.clone(),
                     inode: Some(file_node),
                     flags: Mutex::new(flags),
-                    position: AtomicUsize::new(0),
                 };
                 result.ops.acquire(&result)?;
                 Ok(Arc::try_new(result)?)
@@ -230,7 +229,6 @@ impl File {
             ops,
             inode: None,
             flags: Mutex::new(flags),
-            position: AtomicUsize::new(0),
         };
 
         file.ops.acquire(&file)?;
@@ -268,7 +266,6 @@ impl File {
                     ops: inode.file_ops.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
-                    position: AtomicUsize::new(0),
                 };
                 Arc::try_new(result)?
             }
@@ -280,7 +277,6 @@ impl File {
                     ops: dev.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
-                    position: AtomicUsize::new(0),
                 };
                 Arc::try_new(result)?
             }
@@ -291,7 +287,6 @@ impl File {
                     ops: dev.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
-                    position: AtomicUsize::new(0),
                 };
                 Arc::try_new(result)?
             }
@@ -311,8 +306,7 @@ impl File {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops
-            .read(self, buf, self.position.load(Ordering::Acquire) as _)
+        self.ops.read(self, buf, None)
     }
 
     /// Reads into a buffer from a file at a specified offset.
@@ -321,7 +315,7 @@ impl File {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops.read(self, buf, offset as _)
+        self.ops.read(self, buf, Some(offset))
     }
 
     /// Writes a buffer to a file.
@@ -330,8 +324,7 @@ impl File {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops
-            .write(self, buf, self.position.load(Ordering::Acquire) as _)
+        self.ops.write(self, buf, None)
     }
 
     /// Writes a buffer to a file at a specified offset.
@@ -340,14 +333,14 @@ impl File {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops.write(self, buf, offset as _)
+        self.ops.write(self, buf, Some(offset))
     }
 
     pub fn poll(&self, mask: u16) -> EResult<u16> {
         self.ops.poll(self, mask)
     }
 
-    pub fn seek(&self, offset: SeekAnchor) -> EResult<uapi::off_t> {
+    pub fn seek(&self, offset: SeekAnchor) -> EResult<u64> {
         self.ops.seek(self, offset)
     }
 

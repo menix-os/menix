@@ -12,6 +12,7 @@ struct Waiter {
 
 intrusive_adapter!(WaitersLinkAdapter = Box<Waiter>: Waiter { waiters_link: LinkedListAtomicLink });
 
+#[derive(Debug)]
 pub struct Event {
     waiters: SpinMutex<LinkedList<WaitersLinkAdapter>>,
 }

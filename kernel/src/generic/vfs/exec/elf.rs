@@ -372,7 +372,7 @@ impl ElfFormat {
             let mut phdr_data = vec![0u8; elf_hdr.e_phentsize as usize];
             file.pread(
                 &mut phdr_data,
-                elf_hdr.e_phoff as u64 + elf_hdr.e_phentsize as u64 * i as u64,
+                elf_hdr.e_phoff + (elf_hdr.e_phentsize as u64 * i as u64),
             )?;
             let phdr = bytemuck::pod_read_unaligned::<ElfPhdr>(&phdr_data);
 
@@ -426,7 +426,7 @@ impl ElfFormat {
                 }
                 PT_INTERP => {
                     let mut interp_name = vec![0u8; phdr.p_filesz as usize - 1]; // Minus the trailing NUL.
-                    file.pread(&mut interp_name, phdr.p_offset)?;
+                    file.pread(&mut interp_name, phdr.p_offset as _)?;
                     // Open the interpreter and save it in the info.
                     info.interpreter = Some(File::open(
                         inner,

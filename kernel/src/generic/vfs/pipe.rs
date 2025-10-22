@@ -10,6 +10,7 @@ use crate::generic::{
 };
 use core::hint::unlikely;
 
+#[derive(Debug)]
 pub struct PipeBuffer {
     // Using a spin mutex here is fine because the tasks are preempted by the events.
     inner: SpinMutex<PipeInner>,
@@ -17,6 +18,7 @@ pub struct PipeBuffer {
     wr_queue: Event,
 }
 
+#[derive(Debug)]
 struct PipeInner {
     buffer: RingBuffer,
     readers: usize,
@@ -71,7 +73,7 @@ impl FileOps for PipeBuffer {
         Ok(())
     }
 
-    fn read(&self, file: &File, buf: &mut [u8], _off: uapi::off_t) -> EResult<isize> {
+    fn read(&self, file: &File, buf: &mut [u8], _off: Option<u64>) -> EResult<isize> {
         if unlikely(buf.is_empty()) {
             return Ok(0);
         }
@@ -100,7 +102,7 @@ impl FileOps for PipeBuffer {
         }
     }
 
-    fn write(&self, file: &File, buf: &[u8], _off: uapi::off_t) -> EResult<isize> {
+    fn write(&self, file: &File, buf: &[u8], _off: Option<u64>) -> EResult<isize> {
         if unlikely(buf.is_empty()) {
             return Ok(0);
         }
@@ -130,7 +132,7 @@ impl FileOps for PipeBuffer {
         }
     }
 
-    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<uapi::off_t> {
+    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64> {
         _ = (file, offset);
         Err(Errno::ESPIPE)
     }

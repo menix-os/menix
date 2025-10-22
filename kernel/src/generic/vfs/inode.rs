@@ -108,9 +108,9 @@ pub trait CommonOps: Debug {
 }
 
 pub enum NodeOps {
-    Regular(Box<dyn RegularOps>),
-    Directory(Box<dyn DirectoryOps>),
-    SymbolicLink(Box<dyn SymlinkOps>),
+    Regular(Arc<dyn RegularOps>),
+    Directory(Arc<dyn DirectoryOps>),
+    SymbolicLink(Arc<dyn SymlinkOps>),
     FIFO,
     BlockDevice(Arc<dyn Device>),
     CharacterDevice(Arc<dyn Device>),

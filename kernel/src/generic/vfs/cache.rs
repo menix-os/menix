@@ -5,7 +5,7 @@ use crate::generic::{
     util::mutex::spin::SpinMutex,
     vfs::{File, file::OpenFlags, fs::Mount, inode::NodeOps},
 };
-use alloc::{collections::btree_map::BTreeMap, sync::Arc, vec::Vec};
+use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
 use core::{fmt::Debug, hint::unlikely};
 
 #[derive(Default)]
@@ -69,7 +69,9 @@ impl Entry {
 
 impl Debug for Entry {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("Entry").field("name", &self.name).finish()
+        f.debug_struct("Entry")
+            .field("name", &String::from_utf8_lossy(&self.name))
+            .finish()
     }
 }
 
