@@ -12,13 +12,13 @@ use crate::{
         posix::errno::{EResult, Errno},
     },
 };
-use core::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+use core::sync::atomic::{AtomicBool, AtomicPtr, AtomicUsize, Ordering};
 
 /// Common processor-local information.
 #[derive(Debug)]
 pub struct CpuData {
     /// A pointer to this exact structure.
-    pub this: *const CpuData,
+    pub this: AtomicPtr<CpuData>,
     /// The ID of this CPU.
     pub id: usize,
     /// Stack pointer for kernel mode. Only used for task switching.
@@ -85,12 +85,11 @@ pub struct PerCpuData<T: 'static> {
     storage: T,
 }
 
-// We guarantee that this data is only ever accessed by one CPU.
-unsafe impl<T> Sync for PerCpuData<T> {}
-
 unsafe extern "C" {
     pub unsafe static LD_PERCPU_START: u8;
     pub unsafe static LD_PERCPU_END: u8;
+    pub unsafe static LD_PERCPU_CTORS_START: u8;
+    pub unsafe static LD_PERCPU_CTORS_END: u8;
 }
 
 impl<T> PerCpuData<T> {
@@ -109,7 +108,7 @@ impl<T> PerCpuData<T> {
     pub fn get_for(&self, context: &'static CpuData) -> &'static T {
         unsafe {
             let start = &raw const LD_PERCPU_START as usize;
-            (context.this as *mut T)
+            (context.this.load(Ordering::Acquire) as *mut T)
                 .byte_add(&raw const self.storage as usize - start)
                 .as_mut()
                 .unwrap()
@@ -117,11 +116,13 @@ impl<T> PerCpuData<T> {
     }
 }
 
+pub type PerCpuCtor = fn(cpu_data: &'static CpuData);
+
 // This variable must come first, so put it in a special section that is guaranteed to be put before `.percpu`.
 #[used]
 #[unsafe(link_section = ".percpu.init")]
 pub static CPU_DATA: PerCpuData<CpuData> = PerCpuData::new(CpuData {
-    this: &raw const LD_PERCPU_START as *mut CpuData,
+    this: AtomicPtr::new(&raw const LD_PERCPU_START as *mut CpuData),
     id: 0,
     kernel_stack: AtomicUsize::new(0),
     user_stack: AtomicUsize::new(0),
@@ -154,9 +155,27 @@ pub(crate) fn allocate_cpu() -> EResult<&'static CpuData> {
 
     unsafe {
         let this_ptr = percpu_new as *mut CpuData;
-        (*this_ptr).this = this_ptr;
-        (*this_ptr).id = id;
+        this_ptr.write(CpuData {
+            this: AtomicPtr::new(this_ptr),
+            id,
+            kernel_stack: AtomicUsize::new(0),
+            user_stack: AtomicUsize::new(0),
+            online: AtomicBool::new(false),
+            present: AtomicBool::new(false),
+            scheduler: Scheduler::new(),
+        });
         let new_context = this_ptr.as_ref().unwrap();
+
+        // We need to call functions to create default values.
+        let start = &raw const LD_PERCPU_CTORS_START as *const PerCpuCtor;
+        let end = &raw const LD_PERCPU_CTORS_END as *const PerCpuCtor;
+
+        let mut ctor = start;
+        while (ctor as usize) < (end as usize) {
+            (*ctor)(new_context);
+            ctor = ctor.add(1);
+        }
+
         return Ok(new_context);
     }
 }

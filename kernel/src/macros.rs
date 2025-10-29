@@ -11,8 +11,34 @@ macro_rules! per_cpu {
     () => {};
     ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => {
         #[unsafe(link_section = ".percpu")]
-        $vis static $name: $crate::generic::percpu::PerCpuData<$t> =
-            $crate::generic::percpu::PerCpuData::new($init);
+        $vis static $name: $crate::generic::percpu::PerCpuData<$t> = {
+            const fn get_init() -> $t {
+                $init
+            }
+            $crate::generic::percpu::PerCpuData::new(get_init())
+        };
+
+        // Each per_cpu variable gets a unique initializer in the linker section.
+        const _: () = {
+            #[unsafe(link_section = ".percpu.ctors")]
+            #[used]
+            static PER_CPU_CTOR: $crate::generic::percpu::PerCpuCtor = {
+                fn init_ctor(cpu_data: &'static $crate::generic::percpu::CpuData) {
+                    const fn get_init() -> $t {
+                        $init
+                    }
+                    let start = &raw const $crate::generic::percpu::LD_PERCPU_START as usize;
+                    let offset = &raw const $name as usize - start;
+                    let target_ptr = unsafe { (cpu_data.this.load(::core::sync::atomic::Ordering::Acquire) as *mut $t).byte_add(offset) };
+                    unsafe {
+                        ::core::ptr::write(target_ptr, get_init());
+                    }
+                }
+                init_ctor
+            };
+        };
+
+        per_cpu!($($rest)*);
     };
 }
 

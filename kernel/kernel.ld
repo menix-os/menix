@@ -45,6 +45,10 @@ SECTIONS
         *(.initgraph.ctors)
         LD_INIT_CTORS_END = .;
 
+        LD_PERCPU_CTORS_START = .;
+        *(.percpu.ctors)
+        LD_PERCPU_CTORS_END = .;
+
         *(.rodata .rodata.*)
         *(.got .got.*)
         LD_RODATA_END = .;

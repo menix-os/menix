@@ -82,7 +82,10 @@ pub(super) fn setup_core(context: &'static CpuData) {
         // Slightly misleading, but KERNEL_GS_BASE is the currently inactive GSBASE value.
         super::asm::wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
         // We will save a reference to this struct in GS_BASE.
-        super::asm::wrmsr(consts::MSR_GS_BASE, context.this as u64);
+        super::asm::wrmsr(
+            consts::MSR_GS_BASE,
+            context.this.load(Ordering::Acquire) as u64,
+        );
         super::asm::wrmsr(consts::MSR_FS_BASE, 0);
     }
 
