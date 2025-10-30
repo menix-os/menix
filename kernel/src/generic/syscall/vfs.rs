@@ -141,7 +141,10 @@ pub fn close(fd: usize) -> EResult<usize> {
     match proc_inner.open_files.remove_entry(&fd) {
         // If removal was successful, the close worked.
         Some((_, desc)) => {
-            desc.file.ops.release(&desc.file)?;
+            // If this is the last reference to the underlying file, close it for good.
+            if Arc::strong_count(&desc.file) == 1 {
+                desc.file.close()?;
+            }
             Ok(0)
         }
         // If it wasn't, the FD argument is invalid.
