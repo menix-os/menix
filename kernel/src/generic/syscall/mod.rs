@@ -42,20 +42,20 @@ pub fn dispatch(
 
         // Mapped memory
         numbers::MMAP => memory::mmap(a0.into(), a1, a2 as _, a3 as _, a4 as _, a5 as _),
-        numbers::MUNMAP => memory::munmap(a0.into(), a1),
+        numbers::MUNMAP => sys_unimp!("munmap", memory::munmap(a0.into(), a1)),
         numbers::MPROTECT => memory::mprotect(a0.into(), a1, a2 as _),
         numbers::MADVISE => sys_unimp!("madvise", Err(Errno::ENOSYS)),
 
         // Signals
-        numbers::SIGPROCMASK => sys_unimp!("sigprocmask", Err(Errno::ENOSYS)),
-        numbers::SIGSUSPEND => sys_unimp!("sigsuspend", Err(Errno::ENOSYS)),
-        numbers::SIGPENDING => sys_unimp!("sigpending", Err(Errno::ENOSYS)),
-        numbers::SIGACTION => sys_unimp!("sigaction", Err(Errno::ENOSYS)),
+        numbers::SIGPROCMASK => sys_unimp!("sigprocmask", Ok(0)),
+        numbers::SIGSUSPEND => sys_unimp!("sigsuspend", Ok(0)),
+        numbers::SIGPENDING => sys_unimp!("sigpending", Ok(0)),
+        numbers::SIGACTION => sys_unimp!("sigaction", Ok(0)),
         numbers::SIGTIMEDWAIT => sys_unimp!("sigtimedwait", Err(Errno::ENOSYS)),
         numbers::SIGALTSTACK => sys_unimp!("sigaltstack", Err(Errno::ENOSYS)),
 
         // Processes
-        numbers::EXIT => process::exit(a0),
+        numbers::EXIT => sys_unimp!("exit", process::exit(a0)),
         numbers::EXECVE => process::execve(a0.into(), a1.into(), a2.into()),
         numbers::FORK => process::fork(frame),
         numbers::KILL => sys_unimp!("kill", Err(Errno::ENOSYS)),
@@ -63,7 +63,7 @@ pub fn dispatch(
         numbers::GETPID => Ok(process::getpid()),
         numbers::GETPPID => Ok(process::getppid()),
         numbers::WAITID => sys_unimp!("waitid", Err(Errno::ENOSYS)),
-        numbers::WAITPID => process::waitpid(a0 as _, a1.into(), a2 as _),
+        numbers::WAITPID => sys_unimp!("waitpid", process::waitpid(a0 as _, a1.into(), a2 as _)),
 
         // Threads
         numbers::THREAD_CREATE => sys_unimp!("thread_create", Err(Errno::ENOSYS)),
@@ -96,9 +96,9 @@ pub fn dispatch(
         numbers::GETCWD => vfs::getcwd(a0.into(), a1),
         numbers::CHDIR => vfs::chdir(a0.into()),
         numbers::FCHDIR => sys_unimp!("fchdir", Err(Errno::ENOSYS)),
-        numbers::MKDIRAT => vfs::mkdirat(a0, a1.into(), a2 as _),
+        numbers::MKDIRAT => sys_unimp!("mkdirat", vfs::mkdirat(a0, a1.into(), a2 as _)),
         numbers::RMDIRAT => sys_unimp!("rmdirat", Err(Errno::ENOSYS)),
-        numbers::GETDENTS => vfs::getdents(a0, a1.into(), a2),
+        numbers::GETDENTS => sys_unimp!("getdents", vfs::getdents(a0, a1.into(), a2)),
         numbers::RENAMEAT => sys_unimp!("renameat", Err(Errno::ENOSYS)),
         numbers::FCHMOD => sys_unimp!("fchmod", Err(Errno::ENOSYS)),
         numbers::FCHMODAT => sys_unimp!("fchmodat", Err(Errno::ENOSYS)),
@@ -139,7 +139,7 @@ pub fn dispatch(
         numbers::RECVFROM => sys_unimp!("recvfrom", Err(Errno::ENOSYS)),
 
         // Identity
-        numbers::GETGROUPS => sys_unimp!("getgroups", Err(Errno::ENOSYS)),
+        numbers::GETGROUPS => sys_unimp!("getgroups", Ok(0)),
         numbers::SETGROUPS => sys_unimp!("setgroups", Err(Errno::ENOSYS)),
         numbers::GETSID => sys_unimp!("getsid", Err(Errno::ENOSYS)),
         numbers::SETSID => sys_unimp!("setsid", Ok(0)),
@@ -186,7 +186,7 @@ pub fn dispatch(
         numbers::SETPRIORITY => sys_unimp!("setpriority", Err(Errno::ENOSYS)),
         numbers::SCHED_GETPARAM => sys_unimp!("sched_getparam", Err(Errno::ENOSYS)),
         numbers::SCHED_SETPARAM => sys_unimp!("sched_setparam", Err(Errno::ENOSYS)),
-        numbers::GETENTROPY => sys_unimp!("getentropy", Err(Errno::ENOSYS)),
+        numbers::GETENTROPY => sys_unimp!("getentropy", Ok(0)),
 
         _ => {
             warn!("Unknown syscall {num}");
