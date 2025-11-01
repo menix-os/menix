@@ -4,9 +4,10 @@ use crate::{
     arch::sched::Context,
     generic::{
         memory::{VirtAddr, virt::AddressSpace},
-        percpu::CPU_DATA,
+        percpu::CpuData,
         posix::errno::{EResult, Errno},
         process::task::Task,
+        sched::Scheduler,
         util::{mutex::spin::SpinMutex, once::Once},
         vfs::{
             self,
@@ -185,16 +186,55 @@ impl Process {
         let init = Arc::try_new(format.load(&self, &mut info)?)?;
 
         // If we get here, then the loading of the executable was successful.
-        let mut inner = self.inner.lock();
-        inner.threads.clear();
-        inner.threads.push(init.clone());
-        inner.address_space = Arc::try_new(info.space)?;
-        drop(inner);
+        {
+            let mut inner = self.inner.lock();
+            inner.threads.clear();
+            inner.threads.push(init.clone());
+            inner.address_space = Arc::try_new(info.space)?;
+        }
 
-        // TODO: Not sure if this can be done in a better way.
-        CPU_DATA.get().scheduler.add_task(init);
+        CpuData::get().scheduler.add_task(init);
 
         Ok(())
+    }
+
+    pub fn exit(self: Arc<Self>, code: u8) {
+        let mut inner = self.inner.lock();
+
+        // Kill all threads.
+        for thread in inner.threads.iter() {
+            let mut thread_inner = thread.inner.lock();
+            thread_inner.state = task::TaskState::Dead;
+        }
+        inner.threads.clear();
+
+        // Close all files.
+        let fds = inner.open_files.keys().cloned().collect::<Vec<_>>();
+        for fd in fds {
+            let desc = inner.open_files.remove(&fd);
+            if let Some(desc) = desc {
+                if Arc::strong_count(&desc.file) == 1 {
+                    _ = desc.file.close();
+                }
+            }
+        }
+        inner.open_files.clear();
+
+        if let Some(parent) = &self.parent.as_ref().and_then(|x| x.upgrade()) {
+            // Remove the child from the parent list.
+            let mut parent_inner = parent.inner.lock();
+            let child_idx = parent_inner
+                .children
+                .iter()
+                .position(|x| Arc::ptr_eq(x, &self))
+                .unwrap();
+            parent_inner.children.remove(child_idx);
+
+            // TODO: Signal exit to the parent.
+            _ = code;
+        }
+
+        Scheduler::kill_current();
     }
 }
 

@@ -2,7 +2,6 @@ use crate::{
     arch::sched::Context,
     generic::{
         memory::VirtAddr,
-        percpu::CPU_DATA,
         posix::errno::{EResult, Errno},
         sched::Scheduler,
         vfs::{File, file::OpenFlags, inode::Mode},
@@ -66,7 +65,9 @@ pub fn exit(error: usize) -> ! {
         panic!("Attempted to kill init with error code {error}");
     }
 
-    Scheduler::kill_current();
+    // TODO
+    proc.exit(error as _);
+    unreachable!();
 }
 
 pub fn fork(ctx: &Context) -> EResult<usize> {
@@ -74,7 +75,7 @@ pub fn fork(ctx: &Context) -> EResult<usize> {
 
     // Fork the current process. This puts both processes at this point in code.
     let (new_proc, new_task) = old.fork(ctx)?;
-    CPU_DATA.get().scheduler.add_task(new_task.clone());
+    Scheduler::add_task_to_best_cpu(new_task.clone());
 
     Ok(new_proc.get_pid())
 }

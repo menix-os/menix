@@ -6,6 +6,7 @@ use crate::{
     arch,
     generic::{
         memory::{VirtAddr, virt::mmu::PageTable},
+        percpu::CpuData,
         vfs::exec::elf::ElfAddr,
     },
 };
@@ -37,7 +38,11 @@ fn panic_handler(info: &PanicInfo) -> ! {
     unsafe { GLOBAL_LOGGERS.force_unlock() };
 
     // We write directly to the loggers because something might've happened to the timers.
-    log_panic!("Kernel panic: {}", info.message());
+    log_panic!(
+        "Kernel panic on CPU {}: {}",
+        CpuData::get().id,
+        info.message()
+    );
     if let Some(location) = info.location() {
         log_panic!("at {}", location);
     }

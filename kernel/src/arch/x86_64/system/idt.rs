@@ -144,7 +144,7 @@ unsafe extern "C" fn idt_handler(context: *const Context) {
         // Unhandled exceptions.
         0x00..0x20 => {
             error!("{:?}", context);
-            panic!("Got an exception {} on CPU {}", isr, CpuData::get().id);
+            panic!("Got an exception {}", isr);
         }
         // IPIs
         consts::IDT_RESCHED => {

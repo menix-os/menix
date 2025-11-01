@@ -28,7 +28,7 @@ pub mod system;
 use core::sync::atomic::AtomicBool;
 
 use crate::generic::{
-    percpu::CPU_DATA,
+    percpu::CpuData,
     process::{Identity, Process},
     util::{mutex::irq::IrqMutex, once::Once},
     vfs::{
@@ -49,8 +49,8 @@ pub fn init() -> ! {
         generic::init::run();
     }
 
-    CPU_DATA.get().scheduler.reschedule();
-    unreachable!();
+    CpuData::get().scheduler.do_yield();
+    unreachable!("The scheduler got back to menix::init?");
 }
 
 static INIT: Once<Arc<Process>> = Once::new();

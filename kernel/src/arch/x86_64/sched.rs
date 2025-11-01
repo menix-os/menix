@@ -22,7 +22,7 @@ use crate::{
         posix::errno::EResult,
         process::task::Task,
         sched::Scheduler,
-        util::mutex::irq::IrqMutex,
+        util::mutex::irq::{IrqGuard, IrqMutex},
     },
 };
 use core::{
@@ -124,10 +124,11 @@ struct TaskFrame {
     rip: u64,
 }
 
-pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
+pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task, irq_guard: IrqGuard) {
     unsafe {
-        let mut from_inner = (*from).inner.lock();
-        let to_inner = (*to).inner.lock();
+        // Safety: We can do this here because we can guarantee that both tasks are not "running" here.
+        let from_inner = (*from).inner.raw_inner().as_mut().unwrap();
+        let to_inner = (*to).inner.raw_inner().as_mut().unwrap();
 
         let cpu = ARCH_DATA.get();
         cpu.tss.lock().rsp0 = (to_inner.kernel_stack + KERNEL_STACK_SIZE).value() as _;
@@ -161,18 +162,16 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task) {
             wrmsr(consts::MSR_KERNEL_GS_BASE, to_context.gsbase);
         }
 
-        drop(from_inner);
-        drop(to_inner);
+        let old_rsp = &raw mut from_inner.task_context.rsp;
+        let new_rsp = &raw mut to_inner.task_context.rsp;
 
-        let old_rsp = &raw mut (*(*from).inner.raw_inner()).task_context.rsp;
-        let new_rsp = &raw mut (*(*to).inner.raw_inner()).task_context.rsp;
-
+        drop(irq_guard);
         perform_switch(old_rsp, new_rsp);
     }
 }
 
 #[unsafe(naked)]
-pub unsafe extern "C" fn perform_switch(old_rsp: *mut u64, new_rsp: *mut u64) {
+unsafe extern "C" fn perform_switch(old_rsp: *mut u64, new_rsp: *mut u64) {
     naked_asm!(
         "sub rsp, 0x30", // Make room for all regs (except RIP).
         "mov [rsp + {rbx}], rbx",

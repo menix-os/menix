@@ -21,10 +21,12 @@ use crate::{
             virt::{KERNEL_STACK_SIZE, PteFlags, mmu::PageTable},
         },
         percpu::{self, CpuData},
+        process::{Process, task::Task},
+        sched,
         util::mutex::spin::SpinMutex,
     },
 };
-use alloc::vec::Vec;
+use alloc::{sync::Arc, vec::Vec};
 use bytemuck::{Pod, Zeroable};
 use core::{arch::global_asm, mem::offset_of, sync::atomic::Ordering};
 use uacpi_sys::{UACPI_STATUS_OK, acpi_entry_hdr, acpi_madt_lapic, acpi_madt_x2apic, uacpi_table};
@@ -198,6 +200,21 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
     let cpu_ctx = percpu::allocate_cpu().expect("Unable to allocate per-CPU context");
     super::super::core::setup_core(cpu_ctx);
 
+    // Create a new idle task for this CPU.
+    let idle_task =
+        Arc::new(Task::new(sched::idle_fn, 0, 0, &Process::get_kernel(), false).unwrap());
+    cpu_ctx
+        .scheduler
+        .idle_task
+        .store(Arc::into_raw(idle_task) as *mut _, Ordering::Release);
+
+    // Create a dummy task to drop right after the first reschedule.
+    let dummy = Arc::new(Task::new(sched::dummy_fn, 0, 0, &Process::get_kernel(), false).unwrap());
+    cpu_ctx
+        .scheduler
+        .current
+        .store(Arc::into_raw(dummy) as *mut _, Ordering::Release);
+
     assert!(
         cpu_ctx.present.load(Ordering::Acquire),
         "CPU is not present?"
@@ -212,7 +229,7 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
     }
 
     loop {
-        unsafe { core::arch::asm!("hlt") };
+        unsafe { core::arch::asm!("sti;hlt") };
     }
 }
 
@@ -298,7 +315,6 @@ fn start_ap(temp_cr3: u32, id: u32) {
     while unsafe { booted.read_volatile() } == 0 {
         clock::block_ns(1_000_000).unwrap();
     }
-
     unsafe { KernelAlloc::dealloc(mem, 1) };
 }
 
@@ -361,7 +377,7 @@ fn DISCOVER_APS_STAGE() {
 
 #[initgraph::task(
     name = "arch.x86_64.init-aps",
-    depends = [DISCOVER_APS_STAGE, crate::generic::clock::CLOCK_STAGE],
+    depends = [DISCOVER_APS_STAGE, crate::generic::clock::CLOCK_STAGE, crate::generic::sched::SCHEDULER_STAGE],
     entails = [crate::arch::INIT_STAGE],
 )]
 fn INIT_APS_STAGE() {
