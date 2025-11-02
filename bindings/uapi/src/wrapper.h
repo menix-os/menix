@@ -1,6 +1,7 @@
 #include "bits/types.h"
 
 #include "bits/archctl.h"
+#include "bits/dirent.h"
 #include "bits/errno.h"
 #include "bits/fcntl.h"
 #include "bits/ioctls.h"
