@@ -1,4 +1,3 @@
-use super::file::SeekAnchor;
 use crate::generic::{
     memory::{VirtAddr, user::UserPtr},
     posix::errno::{EResult, Errno},
@@ -73,7 +72,7 @@ impl FileOps for PipeBuffer {
         Ok(())
     }
 
-    fn read(&self, file: &File, buf: &mut [u8], _off: Option<u64>) -> EResult<isize> {
+    fn read(&self, file: &File, buf: &mut [u8], _off: u64) -> EResult<isize> {
         if unlikely(buf.is_empty()) {
             return Ok(0);
         }
@@ -102,7 +101,7 @@ impl FileOps for PipeBuffer {
         }
     }
 
-    fn write(&self, file: &File, buf: &[u8], _off: Option<u64>) -> EResult<isize> {
+    fn write(&self, file: &File, buf: &[u8], _off: u64) -> EResult<isize> {
         if unlikely(buf.is_empty()) {
             return Ok(0);
         }
@@ -130,11 +129,6 @@ impl FileOps for PipeBuffer {
                 write.wait();
             }
         }
-    }
-
-    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64> {
-        _ = (file, offset);
-        Err(Errno::ESPIPE)
     }
 
     fn poll(&self, _file: &File, _mask: u16) -> EResult<u16> {

@@ -76,6 +76,8 @@ pub struct File {
     pub inode: Option<Arc<INode>>,
     /// File open flags.
     pub flags: Mutex<OpenFlags>,
+    /// Byte offset into the file.
+    pub offset: Mutex<u64>,
 }
 
 impl Debug for File {
@@ -121,14 +123,14 @@ pub trait FileOps: Debug {
 
     /// Reads from the file into a buffer.
     /// Returns actual bytes read and the new offset.
-    fn read(&self, file: &File, buffer: &mut [u8], offset: Option<u64>) -> EResult<isize> {
+    fn read(&self, file: &File, buffer: &mut [u8], offset: u64) -> EResult<isize> {
         let _ = (offset, buffer, file);
         Ok(0)
     }
 
     /// Writes a buffer to the file.
     /// Returns actual bytes written.
-    fn write(&self, file: &File, buffer: &[u8], offset: Option<u64>) -> EResult<isize> {
+    fn write(&self, file: &File, buffer: &[u8], offset: u64) -> EResult<isize> {
         let _ = (offset, buffer, file);
         Ok(0)
     }
@@ -144,12 +146,6 @@ pub trait FileOps: Debug {
     fn poll(&self, file: &File, mask: u16) -> EResult<u16> {
         _ = (file, mask);
         Ok(mask)
-    }
-
-    /// Seeks in the file and returns the new absolute offset.
-    fn seek(&self, file: &File, offset: SeekAnchor) -> EResult<u64> {
-        _ = (file, offset);
-        Err(Errno::ESPIPE)
     }
 }
 
@@ -216,6 +212,7 @@ impl File {
                     ops: file_node.file_ops.clone(),
                     inode: Some(file_node),
                     flags: Mutex::new(flags),
+                    offset: Mutex::new(0),
                 };
                 result.ops.acquire(&result)?;
                 Ok(Arc::try_new(result)?)
@@ -229,19 +226,11 @@ impl File {
             ops,
             inode: None,
             flags: Mutex::new(flags),
+            offset: Mutex::new(0),
         };
 
         file.ops.acquire(&file)?;
         Ok(Arc::try_new(file)?)
-    }
-
-    pub fn open_inode(
-        path: PathNode,
-        inode: &Arc<INode>,
-        flags: OpenFlags,
-        identity: &Identity,
-    ) -> EResult<Arc<Self>> {
-        Self::do_open_inode(path, inode, flags, identity)
     }
 
     fn do_open_inode(
@@ -266,6 +255,7 @@ impl File {
                     ops: inode.file_ops.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
+                    offset: Mutex::new(0),
                 };
                 Arc::try_new(result)?
             }
@@ -277,6 +267,7 @@ impl File {
                     ops: dev.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
+                    offset: Mutex::new(0),
                 };
                 Arc::try_new(result)?
             }
@@ -287,6 +278,7 @@ impl File {
                     ops: dev.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
+                    offset: Mutex::new(0),
                 };
                 Arc::try_new(result)?
             }
@@ -306,7 +298,12 @@ impl File {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops.read(self, buf, None)
+
+        let mut offset = self.offset.lock();
+        let read = self.ops.read(self, buf, *offset)?;
+        *offset = offset.checked_add(read as u64).ok_or(Errno::EOVERFLOW)?;
+
+        Ok(read)
     }
 
     /// Reads into a buffer from a file at a specified offset.
@@ -315,7 +312,8 @@ impl File {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops.read(self, buf, Some(offset))
+
+        self.ops.read(self, buf, offset)
     }
 
     /// Writes a buffer to a file.
@@ -324,7 +322,12 @@ impl File {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops.write(self, buf, None)
+
+        let mut offset = self.offset.lock();
+        let written = self.ops.write(self, buf, *offset)?;
+        *offset = offset.checked_add(written as u64).ok_or(Errno::EOVERFLOW)?;
+
+        Ok(written)
     }
 
     /// Writes a buffer to a file at a specified offset.
@@ -333,7 +336,8 @@ impl File {
         if buf.is_empty() {
             return Ok(0);
         }
-        self.ops.write(self, buf, Some(offset))
+
+        self.ops.write(self, buf, offset)
     }
 
     pub fn poll(&self, mask: u16) -> EResult<u16> {
@@ -341,7 +345,38 @@ impl File {
     }
 
     pub fn seek(&self, offset: SeekAnchor) -> EResult<u64> {
-        self.ops.seek(self, offset)
+        let mut position = self.offset.lock();
+
+        match &self.inode.as_ref().ok_or(Errno::EINVAL)?.node_ops {
+            NodeOps::CharacterDevice(_) => return Err(Errno::ESPIPE),
+            NodeOps::Socket | NodeOps::FIFO => return Err(Errno::ESPIPE),
+            _ => (),
+        }
+
+        match offset {
+            SeekAnchor::Start(x) => {
+                *position = x;
+                Ok(x)
+            }
+            SeekAnchor::Current(x) => position.checked_add_signed(x).ok_or(Errno::EOVERFLOW),
+            SeekAnchor::End(x) => {
+                let size = self
+                    .inode
+                    .as_ref()
+                    .ok_or(Errno::EINVAL)?
+                    .size
+                    .load(Ordering::Acquire);
+
+                let new = if x.is_negative() {
+                    size.checked_add_signed(x as _).ok_or(Errno::EINVAL)?
+                } else {
+                    size.checked_add_signed(x as _).ok_or(Errno::EOVERFLOW)?
+                };
+
+                *position = new as _;
+                Ok(new as _)
+            }
+        }
     }
 
     pub fn ioctl(&self, request: usize, arg: usize) -> EResult<usize> {

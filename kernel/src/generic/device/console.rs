@@ -18,11 +18,11 @@ use core::fmt::Write;
 struct Console;
 
 impl FileOps for Console {
-    fn read(&self, _: &File, _: &mut [u8], _: Option<u64>) -> EResult<isize> {
+    fn read(&self, _: &File, _: &mut [u8], _: u64) -> EResult<isize> {
         Ok(0)
     }
 
-    fn write(&self, _: &File, buffer: &[u8], _: Option<u64>) -> EResult<isize> {
+    fn write(&self, _: &File, buffer: &[u8], _: u64) -> EResult<isize> {
         let _lock = IrqMutex::lock();
         let mut writer = GLOBAL_LOGGERS.lock();
         _ = writer.write_str(&String::from_utf8_lossy(buffer));

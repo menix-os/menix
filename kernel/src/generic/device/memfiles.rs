@@ -4,7 +4,7 @@ use crate::generic::{
     process::{Identity, PROCESS_STAGE, Process},
     vfs::{
         self, File, VFS_DEV_MOUNT_STAGE,
-        file::{FileOps, SeekAnchor},
+        file::FileOps,
         inode::{Mode, NodeType},
     },
 };
@@ -14,15 +14,11 @@ use alloc::sync::Arc;
 pub struct NullFile;
 
 impl FileOps for NullFile {
-    fn seek(&self, _: &File, _: SeekAnchor) -> EResult<u64> {
+    fn read(&self, _: &File, _: &mut [u8], _: u64) -> EResult<isize> {
         Ok(0)
     }
 
-    fn read(&self, _: &File, _: &mut [u8], _: Option<u64>) -> EResult<isize> {
-        Ok(0)
-    }
-
-    fn write(&self, _: &File, buffer: &[u8], _: Option<u64>) -> EResult<isize> {
+    fn write(&self, _: &File, buffer: &[u8], _: u64) -> EResult<isize> {
         Ok(buffer.len() as _)
     }
 }
@@ -41,16 +37,12 @@ impl Device for NullFile {
 pub struct ZeroFile;
 
 impl FileOps for ZeroFile {
-    fn seek(&self, _: &File, _: SeekAnchor) -> EResult<u64> {
-        Ok(0)
-    }
-
-    fn read(&self, _: &File, buffer: &mut [u8], _: Option<u64>) -> EResult<isize> {
+    fn read(&self, _: &File, buffer: &mut [u8], _: u64) -> EResult<isize> {
         buffer.fill(0);
         Ok(buffer.len() as _)
     }
 
-    fn write(&self, _: &File, buffer: &[u8], _: Option<u64>) -> EResult<isize> {
+    fn write(&self, _: &File, buffer: &[u8], _: u64) -> EResult<isize> {
         Ok(buffer.len() as _)
     }
 }
@@ -69,16 +61,12 @@ impl Device for ZeroFile {
 pub struct FullFile;
 
 impl FileOps for FullFile {
-    fn seek(&self, _: &File, _: SeekAnchor) -> EResult<u64> {
-        Ok(0)
-    }
-
-    fn read(&self, _: &File, buffer: &mut [u8], _: Option<u64>) -> EResult<isize> {
+    fn read(&self, _: &File, buffer: &mut [u8], _: u64) -> EResult<isize> {
         buffer.fill(0);
         Ok(buffer.len() as _)
     }
 
-    fn write(&self, _: &File, _: &[u8], _: Option<u64>) -> EResult<isize> {
+    fn write(&self, _: &File, _: &[u8], _: u64) -> EResult<isize> {
         Err(Errno::ENOSPC)
     }
 }
