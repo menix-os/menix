@@ -27,21 +27,24 @@ void gdt_init() {
     };
 
     asm volatile("lgdt [%0]" ::"r"(&gdtr));
-    // Save the contents of MSR_GS_BASE, they get cleared by a write to `gs`.
+
+    // Save the contents of MSR_GS_BASE, as they get cleared by a write to `gs`.
     virt_t gs = asm_rdmsr(MSR_GS_BASE);
-    asm volatile("push %0\n"
-                 "lea rax, [rip + 1f]\n"
-                 "push rax\n"
-                 "retfq\n"
-                 "1:\n"
-                 "mov ax, %1\n"
-                 "mov ds, ax\n"
-                 "mov es, ax\n"
-                 "mov fs, ax\n"
-                 "mov gs, ax\n"
-                 "mov ss, ax\n"
-                 :
-                 : "i"(offsetof(struct gdt, kernel_code64)), "i"(offsetof(struct gdt, kernel_data64))
-                 : "rax", "memory");
+    asm volatile(
+        "push %0\n"
+        "lea rax, [rip + 1f]\n"
+        "push rax\n"
+        "retfq\n"
+        "1:\n"
+        "mov ax, %1\n"
+        "mov ds, ax\n"
+        "mov es, ax\n"
+        "mov fs, ax\n"
+        "mov gs, ax\n"
+        "mov ss, ax\n"
+        :
+        : "i"(offsetof(struct gdt, kernel_code64)), "i"(offsetof(struct gdt, kernel_data64))
+        : "rax", "memory"
+    );
     asm_wrmsr(MSR_GS_BASE, gs);
 }

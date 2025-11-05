@@ -4,8 +4,6 @@
 typedef enum {
 #ifdef __x86_64__
     MENIX_ARCHCTL_SET_FSBASE = 0,
-#else
-#error "Unsupported architecture!"
 #endif
 } menix_archctl_t;
 

@@ -30,6 +30,7 @@ SpaceAfterCStyleCast: false
 AllowShortEnumsOnASingleLine: false
 AllowShortFunctionsOnASingleLine: Empty
 AllowShortBlocksOnASingleLine: Empty
+AlwaysBreakBeforeMultilineStrings: true
 BreakAfterAttributes: Always
 BreakConstructorInitializers: BeforeComma
 BreakBeforeBraces: Attach
