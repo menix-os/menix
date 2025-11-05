@@ -2,6 +2,7 @@ use crate::generic::{
     memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
     posix::errno::EResult,
     process::task::Task,
+    util::mutex::irq::IrqGuard,
 };
 use core::{
     arch::{asm, naked_asm},
@@ -85,10 +86,11 @@ pub unsafe fn preempt_enable() -> bool {
     true
 }
 
-pub unsafe fn switch(from: *const Task, to: *const Task) {
+pub unsafe fn switch(from: *const Task, to: *const Task, irq_guard: IrqGuard) {
     unsafe {
         let old_sp = &raw mut (*(*from).inner.raw_inner()).task_context.sp;
         let new_sp = &raw mut (*(*to).inner.raw_inner()).task_context.sp;
+        drop(irq_guard);
         perform_switch(old_sp, new_sp);
     }
 }
