@@ -6,9 +6,12 @@
 #include <kernel/print.h>
 #include "limine.h"
 
-[[__initdata_sorted("limine.0")]] static volatile LIMINE_REQUESTS_START_MARKER;
-[[__initdata_sorted("limine.1")]] static volatile LIMINE_BASE_REVISION(3);
-[[__initdata_sorted("limine.2")]] static volatile LIMINE_REQUESTS_END_MARKER;
+[[__initdata_sorted("limine.0")]]
+static volatile uint64_t limine_start[] = LIMINE_REQUESTS_START_MARKER;
+[[__initdata_sorted("limine.1")]]
+static volatile uint64_t limine_revision[] = LIMINE_BASE_REVISION(4);
+[[__initdata_sorted("limine.2")]]
+static volatile uint64_t limine_end[] = LIMINE_REQUESTS_END_MARKER;
 
 #define LIMINE_REQUEST(request, tag, rev) \
     [[__initdata_sorted("limine.1")]] \
@@ -18,14 +21,14 @@
         .response = nullptr, \
     }
 
-LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST, 0);
-LIMINE_REQUEST(hhdm_request, LIMINE_HHDM_REQUEST, 0);
-LIMINE_REQUEST(executable_address_request, LIMINE_EXECUTABLE_ADDRESS_REQUEST, 0);
-LIMINE_REQUEST(executable_file_request, LIMINE_EXECUTABLE_FILE_REQUEST, 0);
-LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST, 1);
-LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST, 0);
-LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST, 0);
-LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST, 0);
+LIMINE_REQUEST(memmap_request, LIMINE_MEMMAP_REQUEST_ID, 0);
+LIMINE_REQUEST(hhdm_request, LIMINE_HHDM_REQUEST_ID, 0);
+LIMINE_REQUEST(executable_address_request, LIMINE_EXECUTABLE_ADDRESS_REQUEST_ID, 0);
+LIMINE_REQUEST(executable_file_request, LIMINE_EXECUTABLE_FILE_REQUEST_ID, 0);
+LIMINE_REQUEST(framebuffer_request, LIMINE_FRAMEBUFFER_REQUEST_ID, 1);
+LIMINE_REQUEST(module_request, LIMINE_MODULE_REQUEST_ID, 0);
+LIMINE_REQUEST(dtb_request, LIMINE_DTB_REQUEST_ID, 0);
+LIMINE_REQUEST(rsdp_request, LIMINE_RSDP_REQUEST_ID, 0);
 
 [[__initdata]]
 static struct phys_mem mem[128];
@@ -64,11 +67,13 @@ void kernel_entry() {
         }
     }
 
-    info.num_files = MIN(ARRAY_SIZE(files), module_res->module_count);
-    for (size_t i = 0; i < info.num_files; i++) {
-        files[i].data = module_res->modules[i]->address;
-        files[i].length = module_res->modules[i]->size;
-        files[i].path = module_res->modules[i]->path;
+    if (module_res) {
+        info.num_files = MIN(ARRAY_SIZE(files), module_res->module_count);
+        for (size_t i = 0; i < info.num_files; i++) {
+            files[i].data = module_res->modules[i]->address;
+            files[i].length = module_res->modules[i]->size;
+            files[i].path = module_res->modules[i]->path;
+        }
     }
 
     info.mem_map = mem;
