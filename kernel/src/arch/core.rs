@@ -20,7 +20,12 @@ pub fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
     internal::core::archctl(cmd, arg)
 }
 
-/// Stops execution on all CPUs.
+/// Stop all other CPUs.
+pub fn halt_others() {
+    internal::core::halt_others()
+}
+
+/// Stop this CPU.
 pub fn halt() -> ! {
     internal::core::halt()
 }

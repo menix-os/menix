@@ -30,6 +30,13 @@ use core::sync::atomic::{AtomicUsize, Ordering};
 pub type Pid = usize;
 
 #[derive(Debug)]
+pub enum ProcessState {
+    Running,
+    Exited(u8),
+    // TODO: SIGSTOP
+}
+
+#[derive(Debug)]
 pub struct Process {
     /// The unique identifier of this process.
     id: Pid,
@@ -44,6 +51,7 @@ pub struct Process {
 /// The lockable, mutable part of a process.
 #[derive(Debug)]
 pub struct InnerProcess {
+    pub status: ProcessState,
     /// A list of associated tasks.
     pub threads: Vec<Arc<Task>>,
     /// Child processes of this process.
@@ -95,6 +103,7 @@ impl Process {
             name: self.name.clone(),
             parent: Some(Arc::downgrade(&self)),
             inner: SpinMutex::new(InnerProcess {
+                status: ProcessState::Running,
                 threads: Vec::new(),
                 children: Vec::new(),
                 address_space: Arc::new(old_inner.address_space.fork()?),
@@ -146,6 +155,7 @@ impl Process {
             name,
             parent: parent.map(|x| Arc::downgrade(&x)),
             inner: SpinMutex::new(InnerProcess {
+                status: ProcessState::Running,
                 threads: Vec::new(),
                 children: Vec::new(),
                 address_space: space,
@@ -153,8 +163,8 @@ impl Process {
                 working_dir: cwd,
                 identity,
                 open_files: BTreeMap::new(),
-                // TODO
-                mmap_head: VirtAddr::new(0x1000_0000),
+                // TODO: This address should be determined from the highest loaded segment.
+                mmap_head: VirtAddr::new(0x1_0000_0000),
             }),
         })
     }
@@ -220,20 +230,8 @@ impl Process {
         }
         inner.open_files.clear();
 
-        if let Some(parent) = &self.parent.as_ref().and_then(|x| x.upgrade()) {
-            // Remove the child from the parent list.
-            let mut parent_inner = parent.inner.lock();
-            let child_idx = parent_inner
-                .children
-                .iter()
-                .position(|x| Arc::ptr_eq(x, &self))
-                .unwrap();
-            parent_inner.children.remove(child_idx);
-
-            // TODO: Signal exit to the parent.
-            _ = code;
-        }
-
+        inner.status = ProcessState::Exited(code);
+        drop(inner);
         Scheduler::kill_current();
     }
 }

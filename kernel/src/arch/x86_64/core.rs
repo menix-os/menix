@@ -5,7 +5,7 @@ use crate::{
         consts::{self, MSR_FS_BASE},
         irq,
         system::{
-            apic::{self, LocalApic},
+            apic::{self, LAPIC, LocalApic},
             gdt, idt,
         },
     },
@@ -196,8 +196,19 @@ pub(super) fn setup_core(context: &'static CpuData) {
     context.online.store(true, Ordering::Release);
 }
 
+pub(in crate::arch) fn halt_others() {
+    LAPIC.get().send_ipi(
+        apic::IpiTarget::AllButThisCpu,
+        consts::IDT_IPI_PANIC,
+        apic::DeliveryMode::Fixed,
+        apic::DestinationMode::Logical,
+        apic::DeliveryStatus::Idle,
+        apic::Level::Assert,
+        apic::TriggerMode::Edge,
+    );
+}
+
 pub(in crate::arch) fn halt() -> ! {
-    // TODO: Send panic IPI to actually store all CPUs.
     loop {
         unsafe {
             core::arch::asm!("cli; hlt");

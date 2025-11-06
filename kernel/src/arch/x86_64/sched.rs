@@ -195,7 +195,7 @@ unsafe extern "C" fn perform_switch(old_rsp: *mut u64, new_rsp: *mut u64) {
         r12 = const offset_of!(TaskFrame, r12),
         r13 = const offset_of!(TaskFrame, r13),
         r14 = const offset_of!(TaskFrame, r14),
-        r15 = const offset_of!(TaskFrame, r15)
+        r15 = const offset_of!(TaskFrame, r15),
     );
 }
 
@@ -234,7 +234,7 @@ pub(in crate::arch) fn init_task(
     Ok(())
 }
 
-/// This function only calls [`crate::generic::process::sched::task_entry`] by moving values from callee saved regs to use the C ABI.
+/// This function only calls [`crate::generic::sched::task_entry`] by moving values from callee saved regs to use the C ABI.
 #[unsafe(naked)]
 unsafe extern "C" fn task_entry_thunk() -> ! {
     naked_asm!(
@@ -274,7 +274,7 @@ pub unsafe fn remote_reschedule(cpu: u32) {
     let lapic = LAPIC.get();
     lapic.send_ipi(
         apic::IpiTarget::Specific(cpu as u32),
-        consts::IDT_RESCHED,
+        consts::IDT_IPI_RESCHED,
         apic::DeliveryMode::Fixed,
         apic::DestinationMode::Logical,
         apic::DeliveryStatus::Pending,
@@ -321,6 +321,7 @@ pub(in crate::arch) unsafe fn jump_to_user_context(context: *mut Context) -> ! {
             "Attempted to perform a user jump on a kernel task!"
         );
 
+        IrqMutex::set_interrupted(false);
         asm!(
             "mov rsp, {context}",
             "jmp {interrupt_return}",

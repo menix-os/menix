@@ -1,8 +1,10 @@
 use crate::{
     arch::sched::Context,
     generic::{
-        memory::VirtAddr,
+        memory::{VirtAddr, user::UserPtr},
+        percpu::CpuData,
         posix::errno::{EResult, Errno},
+        process::ProcessState,
         sched::Scheduler,
         vfs::{File, file::OpenFlags, inode::Mode},
     },
@@ -65,7 +67,6 @@ pub fn exit(error: usize) -> ! {
         panic!("Attempted to kill init with error code {error}");
     }
 
-    // TODO
     proc.exit(error as _);
     unreachable!();
 }
@@ -121,8 +122,59 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
     Scheduler::kill_current();
 }
 
-pub fn waitpid(pid: uapi::pid_t, stat_loc: VirtAddr, options: i32) -> EResult<usize> {
-    // TODO
-    let _ = (pid, stat_loc, options);
-    Ok(0)
+pub fn waitpid(pid: uapi::pid_t, stat_loc: UserPtr<i32>, _options: i32) -> EResult<usize> {
+    let proc = Scheduler::get_current().get_process();
+
+    loop {
+        let mut inner = proc.inner.lock();
+        if inner.children.is_empty() {
+            return Err(Errno::ECHILD);
+        }
+        match pid as isize {
+            // Any child process whose process group ID is equal to the absolute value of pid.
+            ..=-2 => {
+                todo!();
+            }
+            -1 | 0 => {
+                let mut waitee = None;
+                for (idx, child) in inner.children.iter().enumerate() {
+                    let child_inner = child.inner.lock();
+                    match child_inner.status {
+                        ProcessState::Exited(code) => {
+                            stat_loc.write((code as i32) << 8);
+                            waitee = Some(idx);
+                        }
+                        _ => (),
+                    }
+                }
+
+                if let Some(w) = waitee {
+                    inner.children.remove(w);
+                }
+            }
+            _ => {
+                let mut waitee = None;
+                for (idx, child) in inner.children.iter().enumerate() {
+                    if child.get_pid() != pid as usize {
+                        continue;
+                    }
+
+                    let child_inner = child.inner.lock();
+                    match child_inner.status {
+                        ProcessState::Exited(code) => {
+                            stat_loc.write((code as i32) << 8);
+                            waitee = Some(idx);
+                        }
+                        _ => (),
+                    }
+                }
+
+                if let Some(w) = waitee {
+                    inner.children.remove(w);
+                }
+            }
+        }
+        drop(inner);
+        CpuData::get().scheduler.reschedule();
+    }
 }

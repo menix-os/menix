@@ -228,9 +228,8 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
         booted.write_volatile(1);
     }
 
-    loop {
-        unsafe { core::arch::asm!("sti;hlt") };
-    }
+    CpuData::get().scheduler.reschedule();
+    loop {}
 }
 
 fn start_ap(temp_cr3: u32, id: u32) {

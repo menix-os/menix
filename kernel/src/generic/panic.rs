@@ -31,11 +31,8 @@ macro_rules! log_panic {
 
 #[panic_handler]
 fn panic_handler(info: &PanicInfo) -> ! {
-    // TODO: Do this on all CPUs.
     unsafe { arch::irq::set_irq_state(false) };
-
-    // Force unlock output in cases like panics during printing.
-    unsafe { GLOBAL_LOGGERS.force_unlock() };
+    arch::core::halt_others();
 
     // We write directly to the loggers because something might've happened to the timers.
     log_panic!(
