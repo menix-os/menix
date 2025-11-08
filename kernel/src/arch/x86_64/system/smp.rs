@@ -12,7 +12,7 @@ use crate::{
             },
         },
     },
-    generic::{
+    {
         boot::BootInfo,
         clock,
         memory::{
@@ -322,9 +322,9 @@ static FOUND_APS: SpinMutex<Vec<u32>> = SpinMutex::new(Vec::new());
 #[initgraph::task(
     name = "arch.x86_64.discover-aps",
     depends = [
-        crate::generic::memory::MEMORY_STAGE,
+        crate::memory::MEMORY_STAGE,
         crate::system::acpi::TABLES_STAGE,
-        crate::generic::clock::CLOCK_STAGE,
+        crate::clock::CLOCK_STAGE,
     ],
     entails = [crate::arch::INIT_STAGE],
 )]
@@ -376,7 +376,7 @@ fn DISCOVER_APS_STAGE() {
 
 #[initgraph::task(
     name = "arch.x86_64.init-aps",
-    depends = [DISCOVER_APS_STAGE, crate::generic::clock::CLOCK_STAGE, crate::generic::sched::SCHEDULER_STAGE],
+    depends = [DISCOVER_APS_STAGE, crate::clock::CLOCK_STAGE, crate::sched::SCHEDULER_STAGE],
     entails = [crate::arch::INIT_STAGE],
 )]
 fn INIT_APS_STAGE() {

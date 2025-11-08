@@ -1,5 +1,5 @@
 use crate::{
-    generic::{
+    {
         posix::errno::{EResult, Errno},
         util::mutex::spin::SpinMutex,
     },

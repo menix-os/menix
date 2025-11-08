@@ -1,6 +1,6 @@
 use crate::{
     arch::x86_64::asm::{read8, write8},
-    generic::log::{self, LoggerSink},
+    log::{self, LoggerSink},
 };
 use alloc::boxed::Box;
 

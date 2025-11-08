@@ -1,5 +1,5 @@
 use crate::{
-    generic::memory::{
+    memory::{
         pmm::KernelAlloc,
         virt::{VmFlags, mmu::PageTable},
     },
@@ -15,7 +15,7 @@ use uacpi_sys::{
     name = "system.acpi.mcfg",
     depends = [
         super::TABLES_STAGE,
-        crate::generic::memory::MEMORY_STAGE
+        crate::memory::MEMORY_STAGE
     ],
     entails = [super::INIT_STAGE]
 )]

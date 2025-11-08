@@ -2,8 +2,8 @@
 
 use menix::{
     alloc::string::String,
-    generic::posix::errno::EResult,
     log,
+    posix::errno::EResult,
     system::dt::{Node, driver::Driver},
 };
 

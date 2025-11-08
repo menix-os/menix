@@ -11,23 +11,23 @@ macro_rules! per_cpu {
     () => {};
     ($(#[$attr:meta])* $vis:vis static $name:ident: $t:ty = $init:expr; $($rest:tt)*) => {
         #[unsafe(link_section = ".percpu")]
-        $vis static $name: $crate::generic::percpu::PerCpuData<$t> = {
+        $vis static $name: $crate::percpu::PerCpuData<$t> = {
             const fn get_init() -> $t {
                 $init
             }
-            $crate::generic::percpu::PerCpuData::new(get_init())
+            $crate::percpu::PerCpuData::new(get_init())
         };
 
         // Each per_cpu variable gets a unique initializer in the linker section.
         const _: () = {
             #[unsafe(link_section = ".percpu.ctors")]
             #[used]
-            static PER_CPU_CTOR: $crate::generic::percpu::PerCpuCtor = {
-                fn init_ctor(cpu_data: &'static $crate::generic::percpu::CpuData) {
+            static PER_CPU_CTOR: $crate::percpu::PerCpuCtor = {
+                fn init_ctor(cpu_data: &'static $crate::percpu::CpuData) {
                     const fn get_init() -> $t {
                         $init
                     }
-                    let start = &raw const $crate::generic::percpu::LD_PERCPU_START as usize;
+                    let start = &raw const $crate::percpu::LD_PERCPU_START as usize;
                     let offset = &raw const $name as usize - start;
                     let target_ptr = unsafe { (cpu_data.this.load(::core::sync::atomic::Ordering::Acquire) as *mut $t).byte_add(offset) };
                     unsafe {
@@ -68,9 +68,9 @@ macro_rules! log_inner {
     ($prefix:expr, $suffix:literal, $($arg:tt)*) => ({
         use ::core::fmt::Write;
         {
-            let current_time = $crate::generic::clock::get_elapsed();
-            let _lock = $crate::generic::util::mutex::irq::IrqMutex::lock();
-            let mut writer = $crate::generic::log::GLOBAL_LOGGERS.lock();
+            let current_time = $crate::clock::get_elapsed();
+            let _lock = $crate::util::mutex::irq::IrqMutex::lock();
+            let mut writer = $crate::log::GLOBAL_LOGGERS.lock();
             _ = writer.write_fmt(format_args!(
                 "[{:5}.{:06}] \x1b[1;34m{}:\x1b[0m ",
                 current_time / 1_000_000_000,

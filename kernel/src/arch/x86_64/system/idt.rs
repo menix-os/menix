@@ -9,13 +9,10 @@ use crate::{
             system::apic::LAPIC,
         },
     },
-    generic::{
-        self,
-        irq::IrqHandlerKind,
-        memory::{VirtAddr, virt::fault::PageFaultInfo},
-        percpu::CpuData,
-        util::mutex::irq::IrqMutex,
-    },
+    irq::IrqHandlerKind,
+    memory::{VirtAddr, virt::fault::PageFaultInfo},
+    percpu::CpuData,
+    util::mutex::irq::IrqMutex,
 };
 use core::{
     arch::{asm, naked_asm},
@@ -193,7 +190,7 @@ fn page_fault_handler(context: &Context) {
         addr: cr2.into(),
     };
 
-    generic::memory::virt::fault::handler(&info);
+    crate::memory::virt::fault::handler(&info);
 }
 
 // There are some interrupts which generate an error code on the stack, while others do not.

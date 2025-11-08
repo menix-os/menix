@@ -12,7 +12,7 @@ use crate::{
             system::apic::LAPIC,
         },
     },
-    generic::{
+    {
         memory::{
             VirtAddr,
             pmm::{AllocFlags, KernelAlloc, PageAllocator},
@@ -234,7 +234,7 @@ pub(in crate::arch) fn init_task(
     Ok(())
 }
 
-/// This function only calls [`crate::generic::sched::task_entry`] by moving values from callee saved regs to use the C ABI.
+/// This function only calls [`crate::sched::task_entry`] by moving values from callee saved regs to use the C ABI.
 #[unsafe(naked)]
 unsafe extern "C" fn task_entry_thunk() -> ! {
     naked_asm!(
@@ -243,7 +243,7 @@ unsafe extern "C" fn task_entry_thunk() -> ! {
         "mov rdx, r13",
         "push 0", // Make sure to zero this so stack tracing stops here.
         "jmp {task_thunk}",
-        task_thunk = sym crate::generic::sched::task_entry,
+        task_thunk = sym crate::sched::task_entry,
     );
 }
 

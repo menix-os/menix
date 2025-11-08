@@ -22,12 +22,30 @@ pub extern crate core;
 #[macro_use]
 pub mod macros;
 pub mod arch;
-pub mod generic;
+pub mod boot;
+pub mod clock;
+pub mod cmdline;
+pub mod device;
+pub mod fbcon;
+pub mod init;
+pub mod irq;
+pub mod log;
+pub mod memory;
+pub mod module;
+pub mod panic;
+pub mod percpu;
+pub mod posix;
+pub mod process;
+pub mod sched;
+pub mod syscall;
+pub mod util;
+pub mod vfs;
+
 pub mod system;
 
 use core::sync::atomic::AtomicBool;
 
-use crate::generic::{
+use crate::{
     percpu::CpuData,
     process::{Identity, Process},
     util::{mutex::irq::IrqMutex, once::Once},
@@ -39,14 +57,14 @@ use crate::generic::{
     },
 };
 use alloc::{string::String, sync::Arc};
-use generic::boot::BootInfo;
+use boot::BootInfo;
 
 /// Initializes all important kernel structures.
 /// This is invoked by the boot environment.
 pub fn init() -> ! {
     {
         let _irq = IrqMutex::lock();
-        generic::init::run();
+        init::run();
     }
 
     CpuData::get().scheduler.do_yield();

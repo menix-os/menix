@@ -4,7 +4,7 @@
 
 use crate::{
     arch,
-    generic::{
+    {
         clock,
         memory::{
             free, malloc,

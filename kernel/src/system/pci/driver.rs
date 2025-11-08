@@ -1,5 +1,5 @@
 use crate::{
-    generic::{
+    {
         memory::view::MemoryView,
         posix::errno::{EResult, Errno},
         util::mutex::spin::SpinMutex,

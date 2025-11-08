@@ -1,6 +1,6 @@
 pub mod driver;
 
-use crate::generic::{
+use crate::{
     boot::BootInfo,
     memory::view::{MemoryView, Register},
     util::once::Once,
@@ -361,7 +361,7 @@ pub static DEVICES: Once<Vec<&Node>> = Once::new();
 
 #[initgraph::task(
     name = "system.dt.parse-blob",
-    depends = [crate::generic::memory::MEMORY_STAGE],
+    depends = [crate::memory::MEMORY_STAGE],
     entails = [crate::INIT_STAGE]
 )]
 fn TREE_STAGE() {

@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use menix::generic::memory::{Field, Register};
+use menix::memory::{Field, Register};
 
 /// Generic Command Set
 pub mod cmd {
@@ -23,7 +23,7 @@ pub mod admin_cmd {
 
 /// Submission queue entry.
 pub mod sq_entry {
-    use menix::generic::memory::{Field, Register};
+    use menix::memory::{Field, Register};
 
     pub const CDW0: Register<u32> = Register::new(0).with_le();
 
@@ -52,7 +52,7 @@ pub mod sq_entry {
 }
 
 pub mod regs {
-    use menix::generic::memory::{Field, Register};
+    use menix::memory::{Field, Register};
 
     /// Controller Capabilities
     pub const CAP: Register<u64> = Register::new(0x00).with_le();

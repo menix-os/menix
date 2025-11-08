@@ -1,5 +1,5 @@
 use super::internal;
-use crate::generic::{percpu::CpuData, posix::errno::EResult};
+use crate::{percpu::CpuData, posix::errno::EResult};
 
 pub fn setup_bsp() {
     internal::core::setup_bsp()

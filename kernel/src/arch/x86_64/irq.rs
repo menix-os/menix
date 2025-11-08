@@ -1,8 +1,7 @@
 use super::{consts, sched::Context};
-use crate::arch::x86_64::consts::CPL_USER;
 use crate::{
-    arch::x86_64::system::gdt::Gdt,
-    generic::{self, percpu::CpuData},
+    arch::x86_64::{consts::CPL_USER, system::gdt::Gdt},
+    percpu::CpuData,
 };
 use core::{
     arch::{asm, naked_asm},
@@ -107,7 +106,7 @@ extern "C" fn syscall_handler(frame: *mut Context) {
 
         // Arguments use the SYSV C ABI.
         // Except for a3, since RCX is needed for sysret, we need a different register.
-        let result = generic::syscall::dispatch(
+        let result = crate::syscall::dispatch(
             frame,
             frame.rax as usize,
             frame.rdi as usize,

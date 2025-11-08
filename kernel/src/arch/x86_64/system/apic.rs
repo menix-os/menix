@@ -8,7 +8,7 @@ use crate::{
             consts::{self, IDT_IPI_RESCHED},
         },
     },
-    generic::{
+    {
         clock,
         irq::{IrqHandler, IrqStatus},
         memory::{
@@ -39,7 +39,7 @@ per_cpu! {
 }
 
 mod regs {
-    use crate::generic::memory::view::Register;
+    use crate::memory::view::Register;
 
     pub const ID: Register<u32> = Register::new(0x20);
     pub const TPR: Register<u32> = Register::new(0x80);

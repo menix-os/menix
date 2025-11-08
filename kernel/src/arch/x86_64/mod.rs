@@ -6,7 +6,7 @@ pub mod sched;
 pub mod system;
 pub mod virt;
 
-use crate::generic::{
+use crate::{
     irq::IrqHandlerKind,
     util::{mutex::spin::SpinMutex, once::Once},
 };

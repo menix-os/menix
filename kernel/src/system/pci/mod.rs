@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::{
-    generic::memory::view::MemoryView,
+    memory::view::MemoryView,
     system::pci::config::common::{DEVICE_ID, REG0, VENDOR_ID},
 };
 

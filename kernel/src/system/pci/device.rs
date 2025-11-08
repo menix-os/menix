@@ -1,5 +1,5 @@
 use crate::{
-    generic::{posix::errno::EResult, util::mutex::spin::SpinMutex},
+    {posix::errno::EResult, util::mutex::spin::SpinMutex},
     system::pci::{config::Address, driver::Driver},
 };
 use alloc::{sync::Arc, vec::Vec};

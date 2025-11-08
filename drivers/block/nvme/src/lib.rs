@@ -2,12 +2,12 @@
 
 use menix::{
     alloc::sync::Arc,
-    generic::{
+    log,
+    system::pci::{self, Address, DeviceView, Driver, PciBar, PciVariant},
+    {
         memory::{MemoryView, MmioView, PhysAddr},
         posix::errno::{EResult, Errno},
     },
-    log,
-    system::pci::{self, Address, DeviceView, Driver, PciBar, PciVariant},
 };
 
 mod commands;

@@ -1,16 +1,16 @@
 use crate::{
-    generic::{
+    system::pci::{config, device::PciBar},
+    {
         memory::view::{BitValue, MemoryView, Register},
         util::{align_down, once::Once},
     },
-    system::pci::{config, device::PciBar},
 };
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt::Display;
 use num_traits::{FromBytes, NumCast, PrimInt, ToBytes};
 
 pub mod common {
-    use crate::generic::memory::view::{Field, Register};
+    use crate::memory::view::{Field, Register};
 
     pub const REG0: Register<u32> = Register::new(0x00).with_le();
     pub const VENDOR_ID: Field<u32, u16> = Field::new(REG0, 0);
@@ -29,7 +29,7 @@ pub mod common {
 }
 
 pub mod generic {
-    use crate::generic::memory::view::{Field, Register};
+    use crate::memory::view::{Field, Register};
 
     pub const BAR0: Register<u32> = Register::new(0x10).with_le();
     pub const BAR1: Register<u32> = Register::new(0x14).with_le();

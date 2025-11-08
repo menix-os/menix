@@ -1,4 +1,4 @@
-use crate::generic::memory::{
+use crate::memory::{
     PhysAddr, VirtAddr,
     virt::{PteFlags, mmu::PageTable},
 };

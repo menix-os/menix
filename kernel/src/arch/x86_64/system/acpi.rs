@@ -139,7 +139,7 @@ impl Access for PortIoAccess {
 #[initgraph::task(
     name = "arch.x86_64.acpi",
     entails = [crate::system::acpi::INIT_STAGE],
-    depends = [crate::generic::memory::MEMORY_STAGE],
+    depends = [crate::memory::MEMORY_STAGE],
 )]
 fn ACPI_STAGE() {
     unsafe { crate::system::pci::ACCESS.init(vec![Box::new(PortIoAccess)]) };
