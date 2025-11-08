@@ -570,13 +570,7 @@ impl ExecFormat for ElfFormat {
         assert!(stack_off % 16 == 0);
 
         // Create the main thread.
-        Task::new(
-            to_user,
-            entry,
-            highest - stack_size + stack_off,
-            &proc,
-            true,
-        )
+        Task::new(to_user, entry, highest - stack_size + stack_off, proc, true)
     }
 }
 

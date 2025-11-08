@@ -394,7 +394,7 @@ impl File {
             .inode
             .as_ref()
             .ok_or(Errno::ENOENT)
-            .and_then(|x| Ok(x.cache.clone()))?;
+            .map(|x| x.cache.clone())?;
 
         if private {
             // Private mapping means we need to do a unique allocation.

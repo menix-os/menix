@@ -35,7 +35,7 @@ impl PageTable {
                 KERNEL_PAGE_TABLE.get().head.lock().as_hhdm(),
                 arch::virt::get_page_size(),
             );
-            user_l1_slice.copy_from_slice(&kernel_l1_slice);
+            user_l1_slice.copy_from_slice(kernel_l1_slice);
         }
         Self {
             head: SpinMutex::new(user_l1),

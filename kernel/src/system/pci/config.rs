@@ -82,7 +82,7 @@ pub trait Access {
 impl dyn Access + '_ {
     /// Returns a [`MemoryView`] that can be used to access the device config space.
     pub fn view_for_device(&self, address: Address) -> Option<DeviceView<'_>> {
-        self.decodes(address).then(|| DeviceView {
+        self.decodes(address).then_some(DeviceView {
             access: self,
             address,
         })
@@ -102,7 +102,7 @@ impl dyn Access + '_ {
     }
 
     pub fn read16(&self, addr: Address, offset: u32) -> u16 {
-        assert!(offset % 2 == 0);
+        assert!(offset.is_multiple_of(2));
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let reg = self.read32(addr, aligned);
         (reg >> ((offset - aligned) * 8)) as u16
@@ -117,7 +117,7 @@ impl dyn Access + '_ {
     }
 
     pub fn write16(&self, addr: Address, offset: u32, value: u16) {
-        assert!(offset % 2 == 0);
+        assert!(offset.is_multiple_of(2));
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let mut reg = self.read32(addr, aligned);
         reg &= !(0xFFFF << ((offset - aligned) * 8));

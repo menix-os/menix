@@ -84,7 +84,7 @@ impl SuperBlock for TmpSuper {
                 (NodeOps::SymbolicLink(reg.clone()), reg)
             }
             NodeType::Directory => {
-                let reg = Arc::new(TmpDir::default());
+                let reg = Arc::new(TmpDir);
                 (NodeOps::Directory(reg.clone()), reg)
             }
             NodeType::CharacterDevice => {

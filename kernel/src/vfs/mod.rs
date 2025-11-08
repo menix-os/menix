@@ -170,7 +170,7 @@ pub fn VFS_DEV_MOUNT_STAGE() {
         NodeType::Directory,
         Mode::UserRead | Mode::UserWrite,
         None,
-        &Identity::get_kernel(),
+        Identity::get_kernel(),
     )
     .expect("Unable to create /dev");
 
@@ -178,7 +178,7 @@ pub fn VFS_DEV_MOUNT_STAGE() {
         &kernel,
         None,
         b"/dev",
-        &Identity::get_kernel(),
+        Identity::get_kernel(),
         LookupFlags::MustExist,
     )
     .expect("Lookup for /dev failed");

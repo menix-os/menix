@@ -199,18 +199,18 @@ pub extern "C" fn dummy_fn(_: usize, _: usize) {
 pub fn SCHEDULER_STAGE() {
     // Set up scheduler.
     let bsp = &CpuData::get().scheduler;
-    let idle_task = Arc::new(Task::new(idle_fn, 0, 0, &Process::get_kernel(), false).unwrap());
+    let idle_task = Arc::new(Task::new(idle_fn, 0, 0, Process::get_kernel(), false).unwrap());
 
     // Create a new idle task.
     bsp.idle_task
         .store(Arc::into_raw(idle_task) as *mut _, Ordering::Release);
 
     // Create a dummy task to drop right after the first reschedule.
-    let dummy = Arc::new(Task::new(dummy_fn, 0, 0, &Process::get_kernel(), false).unwrap());
+    let dummy = Arc::new(Task::new(dummy_fn, 0, 0, Process::get_kernel(), false).unwrap());
 
     // Add the main function as the first task.
     let initial_task =
-        Arc::new(Task::new(crate::main, 0, 0, &Process::get_kernel(), false).unwrap());
+        Arc::new(Task::new(crate::main, 0, 0, Process::get_kernel(), false).unwrap());
     bsp.add_task(initial_task);
     bsp.set_task(dummy);
 }

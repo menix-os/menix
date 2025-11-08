@@ -202,14 +202,14 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
 
     // Create a new idle task for this CPU.
     let idle_task =
-        Arc::new(Task::new(sched::idle_fn, 0, 0, &Process::get_kernel(), false).unwrap());
+        Arc::new(Task::new(sched::idle_fn, 0, 0, Process::get_kernel(), false).unwrap());
     cpu_ctx
         .scheduler
         .idle_task
         .store(Arc::into_raw(idle_task) as *mut _, Ordering::Release);
 
     // Create a dummy task to drop right after the first reschedule.
-    let dummy = Arc::new(Task::new(sched::dummy_fn, 0, 0, &Process::get_kernel(), false).unwrap());
+    let dummy = Arc::new(Task::new(sched::dummy_fn, 0, 0, Process::get_kernel(), false).unwrap());
     cpu_ctx
         .scheduler
         .current

@@ -180,7 +180,7 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
             // Copy name
             let len = name.len();
             cursor -= len;
-            buffer[cursor..cursor + len].copy_from_slice(&name);
+            buffer[cursor..cursor + len].copy_from_slice(name);
 
             // Prepend slash
             cursor -= 1;
@@ -225,9 +225,9 @@ fn write_stat(inode: &Arc<INode>, statbuf: UserPtr<uapi::stat>) {
         st_gid: inode.gid.load(Ordering::Acquire) as _,
         st_rdev: 0,
         st_size: inode.size.load(Ordering::Acquire) as _,
-        st_atim: inode.atime.lock().clone(),
-        st_mtim: inode.mtime.lock().clone(),
-        st_ctim: inode.ctime.lock().clone(),
+        st_atim: *inode.atime.lock(),
+        st_mtim: *inode.mtime.lock(),
+        st_ctim: *inode.ctime.lock(),
         st_blksize: 0,
         st_blocks: 0,
     };
@@ -353,7 +353,7 @@ pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
 
     // fd must be a valid descriptor open for reading.
     let dir = inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
-    let flags = dir.flags.lock().clone();
+    let flags = *dir.flags.lock();
     if !flags.contains(OpenFlags::Read | OpenFlags::Directory) {
         return Err(Errno::EBADF);
     }
@@ -397,7 +397,7 @@ pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> EResult<usize> {
         uapi::F_SETFD => Ok(0),
         uapi::F_GETFL => {
             let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-            let flags = file.file.flags.lock().clone();
+            let flags = *file.file.flags.lock();
             Ok(flags.bits() as _)
         }
         uapi::F_SETFL => {

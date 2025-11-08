@@ -143,7 +143,7 @@ unsafe impl GlobalAlloc for SlabAllocator {
         if let Some(s) = slab {
             // The allocation fits within our defined slabs.
             let result = s.alloc();
-            debug_assert!(result as usize % layout.align() == 0);
+            debug_assert!((result as usize).is_multiple_of(layout.align()));
             return result;
         }
 

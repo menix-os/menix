@@ -111,12 +111,12 @@ impl Process {
                 working_dir: old_inner.root_dir.clone(),
                 identity: old_inner.identity.clone(),
                 open_files: old_inner.open_files.clone(),
-                mmap_head: old_inner.mmap_head.clone(),
+                mmap_head: old_inner.mmap_head,
             }),
         });
 
         // Create a heap allocated context that we can pass to the entry point.
-        let mut forked_ctx = Box::new(context.clone());
+        let mut forked_ctx = Box::new(*context);
         forked_ctx.set_return(0, 0); // User mode returns 0 for forked processes.
         let raw_ctx = Box::into_raw(forked_ctx);
 
@@ -222,10 +222,10 @@ impl Process {
         let fds = inner.open_files.keys().cloned().collect::<Vec<_>>();
         for fd in fds {
             let desc = inner.open_files.remove(&fd);
-            if let Some(desc) = desc {
-                if Arc::strong_count(&desc.file) == 1 {
-                    _ = desc.file.close();
-                }
+            if let Some(desc) = desc
+                && Arc::strong_count(&desc.file) == 1
+            {
+                _ = desc.file.close();
             }
         }
         inner.open_files.clear();

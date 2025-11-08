@@ -43,13 +43,13 @@ impl ExecFormat for ShebangFormat {
 
         info.argv = args;
 
-        let interp_path = info.argv.get(0).ok_or(Errno::EINVAL)?;
+        let interp_path = info.argv.first().ok_or(Errno::EINVAL)?;
         {
             let inner = proc.inner.lock();
             info.executable = File::open(
                 &inner,
                 None,
-                &interp_path,
+                interp_path,
                 OpenFlags::Read | OpenFlags::Executable,
                 Mode::UserRead | Mode::UserExec,
                 &inner.identity,

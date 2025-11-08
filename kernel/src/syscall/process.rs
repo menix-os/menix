@@ -139,12 +139,9 @@ pub fn waitpid(pid: uapi::pid_t, stat_loc: UserPtr<i32>, _options: i32) -> EResu
                 let mut waitee = None;
                 for (idx, child) in inner.children.iter().enumerate() {
                     let child_inner = child.inner.lock();
-                    match child_inner.status {
-                        ProcessState::Exited(code) => {
-                            stat_loc.write((code as i32) << 8);
-                            waitee = Some(idx);
-                        }
-                        _ => (),
+                    if let ProcessState::Exited(code) = child_inner.status {
+                        stat_loc.write((code as i32) << 8);
+                        waitee = Some(idx);
                     }
                 }
 
@@ -160,12 +157,9 @@ pub fn waitpid(pid: uapi::pid_t, stat_loc: UserPtr<i32>, _options: i32) -> EResu
                     }
 
                     let child_inner = child.inner.lock();
-                    match child_inner.status {
-                        ProcessState::Exited(code) => {
-                            stat_loc.write((code as i32) << 8);
-                            waitee = Some(idx);
-                        }
-                        _ => (),
+                    if let ProcessState::Exited(code) = child_inner.status {
+                        stat_loc.write((code as i32) << 8);
+                        waitee = Some(idx);
                     }
                 }
 

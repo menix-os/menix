@@ -159,7 +159,7 @@ pub extern "C" fn main(_: usize, _: usize) {
             path,
             OpenFlags::Read | OpenFlags::Executable,
             Mode::empty(),
-            &Identity::get_kernel(),
+            Identity::get_kernel(),
         )
         .expect("Unable to read the init executable")
     };

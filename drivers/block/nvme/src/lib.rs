@@ -76,14 +76,14 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<Arc<dyn pci::Devi
     Ok(Arc::new(Controller {
         address: view.address(),
         driver: &DRIVER,
-        version: version,
+        version,
         regs,
     }))
 }
 
 static DRIVER: Driver = Driver {
     name: "nvme",
-    probe: probe,
+    probe,
     variants: &[PciVariant::new().class(1).sub_class(8).function(2)],
 };
 

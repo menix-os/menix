@@ -62,10 +62,8 @@ pub static GLOBAL_LOGGERS: SpinMutex<Logger> = SpinMutex::new(Logger {
 
 impl fmt::Write for Logger {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        for sink in &mut self.sinks {
-            if let Some(x) = sink {
-                x.write(s.as_bytes());
-            }
+        for x in self.sinks.iter_mut().flatten() {
+            x.write(s.as_bytes());
         }
         Ok(())
     }

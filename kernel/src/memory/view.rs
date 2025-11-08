@@ -67,7 +67,7 @@ impl<T: PrimInt> Register<T> {
     /// `offset` is in units of bytes.
     pub const fn new(offset: usize) -> Self {
         assert!(
-            offset % size_of::<T>() == 0,
+            offset.is_multiple_of(size_of::<T>()),
             "A register must be aligned to a multiple of its size"
         );
         Self {

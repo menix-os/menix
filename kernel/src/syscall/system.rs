@@ -13,7 +13,7 @@ pub fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
 }
 
 pub fn getuname(addr: UserPtr<uapi::utsname>) -> EResult<usize> {
-    addr.write(UTSNAME.lock().clone()).ok_or(Errno::EINVAL)?;
+    addr.write(*UTSNAME.lock()).ok_or(Errno::EINVAL)?;
 
     Ok(0)
 }

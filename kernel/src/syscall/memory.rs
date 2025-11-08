@@ -56,7 +56,7 @@ pub fn mmap(
                     .open_files
                     .get(&(fd as usize))
                     .ok_or(Errno::EBADF)
-                    .map(|x| x.clone())?,
+                    .cloned()?,
             )
         }
     };

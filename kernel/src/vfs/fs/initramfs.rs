@@ -132,9 +132,9 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
 
         match current_file.typ {
             REGULAR | NORMAL | CONTIGOUS => {
-                let (dir, file_name) = create_dirs(&proc_inner, target.clone(), file_name)?;
+                let (dir, file_name) = create_dirs(proc_inner, target.clone(), file_name)?;
                 let file = File::open(
-                    &proc_inner,
+                    proc_inner,
                     Some(dir),
                     file_name,
                     OpenFlags::Create,
@@ -154,14 +154,14 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
                 }
             }
             SYM_LINK => {
-                let (dir, file_name) = create_dirs(&proc_inner, target.clone(), file_name)?;
+                let (dir, file_name) = create_dirs(proc_inner, target.clone(), file_name)?;
                 let link_len = current_file
                     .linkname
                     .iter()
                     .take_while(|&x| *x != 0)
                     .count();
                 symlink(
-                    &proc_inner,
+                    proc_inner,
                     Some(dir),
                     file_name,
                     &current_file.linkname[0..link_len],
@@ -170,8 +170,8 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
                 files_loaded += 1;
             }
             DIRECTORY => {
-                let (dir, file_name) = create_dirs(&proc_inner, target.clone(), file_name)?;
-                create_dirs(&proc_inner, dir.clone(), file_name)?;
+                let (dir, file_name) = create_dirs(proc_inner, target.clone(), file_name)?;
+                create_dirs(proc_inner, dir.clone(), file_name)?;
                 files_loaded += 1;
             }
             LONG_LINK => {

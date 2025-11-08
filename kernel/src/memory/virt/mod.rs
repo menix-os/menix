@@ -121,9 +121,9 @@ impl MappedObject {
 impl Clone for MappedObject {
     fn clone(&self) -> Self {
         Self {
-            start_page: self.start_page.clone(),
-            end_page: self.end_page.clone(),
-            offset_page: self.offset_page.clone(),
+            start_page: self.start_page,
+            end_page: self.end_page,
+            offset_page: self.offset_page,
             object: self.object.clone(),
             flags: AtomicU8::new(self.flags.load(Ordering::SeqCst)),
         }
@@ -208,17 +208,9 @@ impl AddressSpace {
                     _ = self.table.unmap_single::<KernelAlloc>(page_addr);
                 }
 
-                let head_pages = if start_page < mapping.start_page {
-                    0
-                } else {
-                    start_page - mapping.start_page
-                };
+                let head_pages = start_page.saturating_sub(mapping.start_page);
 
-                let tail_pages = if end_page >= mapping.end_page {
-                    0
-                } else {
-                    mapping.end_page - end_page
-                };
+                let tail_pages = mapping.end_page.saturating_sub(end_page);
 
                 // Insert the leftmost pages.
                 if head_pages > 0 {
@@ -262,7 +254,7 @@ impl AddressSpace {
         }
 
         let page_size = arch::virt::get_page_size();
-        if addr.value() % page_size != 0 {
+        if !addr.value().is_multiple_of(page_size) {
             return Err(Errno::EINVAL);
         }
 
@@ -304,17 +296,9 @@ impl AddressSpace {
                     )
                     .map_err(|_| Errno::ENOMEM)?;
 
-                let head_pages = if start_page < mapping.start_page {
-                    0
-                } else {
-                    start_page - mapping.start_page
-                };
+                let head_pages = start_page.saturating_sub(mapping.start_page);
 
-                let tail_pages = if end_page >= mapping.end_page {
-                    0
-                } else {
-                    mapping.end_page - end_page
-                };
+                let tail_pages = mapping.end_page.saturating_sub(end_page);
 
                 // Insert the leftmost pages.
                 if head_pages > 0 {
@@ -359,7 +343,7 @@ impl AddressSpace {
     /// Checks if the entire range is mapped in this address space.
     pub fn is_mapped(&self, addr: VirtAddr, len: usize) -> bool {
         let page_size = arch::virt::get_page_size();
-        let num_pages = divide_up(len.into(), page_size);
+        let num_pages = divide_up(len, page_size);
         let start_page = addr.value() / page_size;
 
         let mappings = self.mappings.lock();
