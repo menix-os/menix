@@ -1,6 +1,9 @@
-use crate::generic::{
-    memory::view::{BitValue, MemoryView, Register},
-    util::{align_down, once::Once},
+use crate::{
+    generic::{
+        memory::view::{BitValue, MemoryView, Register},
+        util::{align_down, once::Once},
+    },
+    system::pci::{config, device::PciBar},
 };
 use alloc::{boxed::Box, vec::Vec};
 use core::fmt::Display;
@@ -78,7 +81,7 @@ pub trait Access {
 
 impl dyn Access + '_ {
     /// Returns a [`MemoryView`] that can be used to access the device config space.
-    pub fn view_for_device(&self, address: Address) -> Option<DeviceView<'_, Self>> {
+    pub fn view_for_device(&self, address: Address) -> Option<DeviceView<'_>> {
         self.decodes(address).then(|| DeviceView {
             access: self,
             address,
@@ -123,22 +126,92 @@ impl dyn Access + '_ {
     }
 }
 
-pub struct DeviceView<'a, A: Access + ?Sized> {
-    access: &'a A,
+pub struct DeviceView<'a> {
+    access: &'a dyn Access,
     address: Address,
 }
 
-impl<'a, A: Access + ?Sized> DeviceView<'a, A> {
-    pub fn access(&self) -> &'a A {
+impl<'a> DeviceView<'a> {
+    pub fn access(&self) -> &'a dyn Access {
         self.access
     }
 
     pub fn address(&self) -> Address {
         self.address
     }
+
+    pub fn bar(&self, index: usize) -> Option<PciBar> {
+        let bar_offset = config::generic::BAR0.offset() + index * size_of::<u32>();
+        let bar = self.access.read32(self.address, bar_offset as u32);
+
+        let is_mmio = bar & 0x1 == 0x0;
+        let is_mmio64 = is_mmio && ((bar >> 1) & 0x3) == 0x2;
+        let is_prefetchable = is_mmio && (bar & (1 << 3) != 0);
+
+        let command_register = self
+            .access
+            .read16(self.address, config::common::COMMAND.byte_offset() as u32);
+
+        // Disable IO and memory decoding while probing BAR sizes.
+        self.access.write16(
+            self.address,
+            config::common::COMMAND.byte_offset() as u32,
+            command_register & !(1 << 0 | 1 << 1),
+        );
+
+        // Probe the size of this BAR.
+        self.access
+            .write32(self.address, bar_offset as u32, 0xFFFF_FFFF);
+
+        let new_bar = self.access.read32(self.address, bar_offset as u32);
+
+        // Restore the original BAR value.
+        self.access.write32(self.address, bar_offset as u32, bar);
+
+        let kind = if is_mmio {
+            let address = (bar & 0xFFFF_FFF0) as usize;
+            let size = (!(new_bar & 0xFFFF_FFF0) + 1) as usize;
+
+            if is_mmio64 {
+                assert!(index + 1 < 6);
+
+                let next_bar_offset = bar_offset + size_of::<u32>();
+                let next_bar = self.access.read32(self.address, next_bar_offset as u32);
+
+                PciBar::Mmio64 {
+                    address: (next_bar as u64) << 32 | (address as u64),
+                    size,
+                    prefetchable: is_prefetchable,
+                }
+            } else {
+                PciBar::Mmio32 {
+                    address: address as u32,
+                    size,
+                    prefetchable: is_prefetchable,
+                }
+            }
+        } else {
+            let address = (bar & 0x0000_FFF0) as usize;
+            let size = (!(new_bar & 0xFFFF_FFFC) + 1) as usize;
+
+            PciBar::Io {
+                address: address as u16,
+                size,
+            }
+        };
+
+        // Restore the command register.
+        self.access.write16(
+            self.address,
+            config::common::COMMAND.byte_offset() as u32,
+            command_register,
+        );
+
+        kind.is_valid().then_some(kind)
+    }
 }
 
-impl<'a, A: Access + ?Sized> MemoryView for DeviceView<'a, A> {
+impl<'a> MemoryView for DeviceView<'a> {
     fn read_reg<T: PrimInt + FromBytes>(&self, reg: Register<T>) -> Option<BitValue<T>>
     where
         T::Bytes: Default,

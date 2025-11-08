@@ -13,7 +13,7 @@ use crate::{
         },
         util::{self, spin::SpinLock},
     },
-    system::pci::config::{ACCESS, Access, Address},
+    system::pci::{ACCESS, Access, Address},
 };
 use alloc::{alloc::GlobalAlloc, boxed::Box};
 use core::{

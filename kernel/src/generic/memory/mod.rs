@@ -7,6 +7,13 @@ pub mod user;
 pub mod view;
 pub mod virt;
 
+pub use cache::*;
+pub use pmm::*;
+pub use slab::*;
+pub use user::*;
+pub use view::*;
+pub use virt::*;
+
 use super::util::once::Once;
 use crate::{
     arch::{self, virt::get_page_size},
@@ -25,9 +32,6 @@ use core::{
     ptr::{self, NonNull},
     sync::atomic::Ordering,
 };
-use pmm::{AllocFlags, Page, PageAllocator};
-use slab::ALLOCATOR;
-use virt::VmFlags;
 
 static HHDM_START: Once<VirtAddr> = Once::new();
 

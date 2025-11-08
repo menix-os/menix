@@ -3,7 +3,7 @@ use crate::{
         pmm::KernelAlloc,
         virt::{VmFlags, mmu::PageTable},
     },
-    system::pci::config::{Access, EcamPciAccess},
+    system::pci::{Access, EcamPciAccess},
 };
 use alloc::{boxed::Box, vec::Vec};
 use uacpi_sys::{
@@ -59,6 +59,6 @@ pub fn MCFG_STAGE() {
         uacpi_table_unref(&mut table);
 
         // We have an MCFG, so reinitialize the PciAccess callbacks.
-        crate::system::pci::config::ACCESS.init(accesses);
+        crate::system::pci::ACCESS.init(accesses);
     };
 }

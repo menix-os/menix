@@ -2,18 +2,15 @@ use alloc::vec::Vec;
 
 use crate::{
     generic::memory::view::MemoryView,
-    system::pci::{
-        config::{
-            ACCESS, Access, Address, DeviceView,
-            common::{DEVICE_ID, REG0, VENDOR_ID},
-        },
-        device::{DEVICES, Device},
-    },
+    system::pci::config::common::{DEVICE_ID, REG0, VENDOR_ID},
 };
 
-pub mod config;
-pub mod device;
-pub mod driver;
+mod config;
+pub use config::*;
+mod device;
+pub use device::*;
+mod driver;
+pub use driver::*;
 
 /// Initializes the PCI subsystem.
 #[initgraph::task(
@@ -27,7 +24,7 @@ pub mod driver;
 pub fn PCI_STAGE() {
     log!("Scanning PCI devices");
 
-    let mut devices = DEVICES.lock();
+    let mut devices = PCI_DEVICES.lock();
     for access in ACCESS.get().iter() {
         for bus in access.start_bus()..=access.end_bus() {
             for slot in 0..32 {
@@ -43,11 +40,7 @@ pub fn PCI_STAGE() {
     }
 }
 
-fn scan_device<A: Access + ?Sized>(
-    addr: Address,
-    view: DeviceView<'_, A>,
-    devices: &mut Vec<Device>,
-) {
+fn scan_device(addr: Address, view: DeviceView<'_>, devices: &mut Vec<Address>) {
     let reg0 = view.read_reg(REG0).unwrap();
 
     let vendor_id = reg0.read_field(VENDOR_ID).value();
@@ -67,8 +60,5 @@ fn scan_device<A: Access + ?Sized>(
         device_id
     );
 
-    devices.push(Device {
-        address: addr,
-        driver: None,
-    });
+    devices.push(addr);
 }

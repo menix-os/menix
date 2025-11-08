@@ -66,7 +66,10 @@ impl<T: PrimInt> Register<T> {
     /// Creates a new register with native endianness.
     /// `offset` is in units of bytes.
     pub const fn new(offset: usize) -> Self {
-        assert!(offset % size_of::<T>() == 0);
+        assert!(
+            offset % size_of::<T>() == 0,
+            "A register must be aligned to a multiple of its size"
+        );
         Self {
             _p: PhantomData,
             offset,
@@ -116,13 +119,19 @@ impl<T: PrimInt, A: PrimInt> Field<T, A> {
     }
 
     /// Creates a new field spanning the given bit range (inclusive).
-    pub const fn new_bit(register: Register<T>, range: RangeInclusive<usize>) -> Self {
+    pub const fn new_bits(register: Register<T>, range: RangeInclusive<usize>) -> Self {
         let start = *range.start();
         let end = *range.end();
         assert!(start <= end);
-        assert!(end < size_of::<T>() * u8::BITS as usize);
+        assert!(
+            end < size_of::<T>() * u8::BITS as usize,
+            "T is not large enough to store the field's value"
+        );
         let width = end - start + 1;
-        assert!(width <= size_of::<A>() * u8::BITS as usize);
+        assert!(
+            width <= size_of::<A>() * u8::BITS as usize,
+            "A is not large enough to store the field's value"
+        );
         Self {
             _a: PhantomData,
             _p: PhantomData,
