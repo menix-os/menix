@@ -33,6 +33,7 @@ macro_rules! log_panic {
 fn panic_handler(info: &PanicInfo) -> ! {
     unsafe { arch::irq::set_irq_state(false) };
     arch::core::halt_others();
+    unsafe { GLOBAL_LOGGERS.force_unlock() };
 
     // We write directly to the loggers because something might've happened to the timers.
     log_panic!(

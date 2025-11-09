@@ -2,26 +2,24 @@
 
 use menix::{
     alloc::sync::Arc,
-    log,
+    dbg, log,
+    memory::{MemoryView, MmioView, PhysAddr},
+    posix::errno::{EResult, Errno},
     system::pci::{self, Address, DeviceView, Driver, PciBar, PciVariant},
-    {
-        memory::{MemoryView, MmioView, PhysAddr},
-        posix::errno::{EResult, Errno},
-    },
 };
 
 mod commands;
 mod queue;
 mod spec;
 
-struct Controller {
+struct NvmeController {
     address: Address,
     driver: &'static Driver,
     version: (u16, u8, u8),
     regs: MmioView,
 }
 
-impl pci::Device for Controller {
+impl pci::Device for NvmeController {
     fn address(&self) -> Address {
         self.address
     }
@@ -31,9 +29,8 @@ impl pci::Device for Controller {
     }
 }
 
-fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<Arc<dyn pci::Device>> {
+fn probe(_: &PciVariant, mut view: DeviceView<'static>) -> EResult<Arc<dyn pci::Device>> {
     log!("Probing NVMe device on {}", view.address());
-
     let bar = view.bar(0).ok_or(Errno::ENXIO)?;
     let (addr, size) = match bar {
         PciBar::Mmio32 {
@@ -48,8 +45,9 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<Arc<dyn pci::Devi
         } => (address as _, size),
         _ => unreachable!("PCI NVMe devices are MMIO-only"),
     };
-    let regs = unsafe { MmioView::new(PhysAddr::new(addr as _), size) };
+    let mut regs = unsafe { MmioView::new(PhysAddr::new(addr as _), size) };
 
+    // Read controller version.
     let vs = regs.read_reg(spec::regs::VS).ok_or(Errno::ENXIO)?;
     let version = (
         vs.read_field(spec::regs::MJR).value(),
@@ -73,7 +71,16 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<Arc<dyn pci::Devi
         1 << (mpsmax as usize + 12)
     );
 
-    Ok(Arc::new(Controller {
+    // TODO: Support legacy PCI interrupts.
+    // Setup MSI-X.
+    let mut cap = view
+        .capabilities()
+        .filter_map(|mut x| x.msix())
+        .next()
+        .ok_or(Errno::ENXIO)?;
+    cap.set_state(true);
+
+    Ok(Arc::new(NvmeController {
         address: view.address(),
         driver: &DRIVER,
         version,

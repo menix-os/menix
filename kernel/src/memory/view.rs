@@ -29,7 +29,7 @@ impl<T: PrimInt> BitValue<T> {
         BitValue::new(value.try_into().ok().unwrap())
     }
 
-    pub fn write_field<A: PrimInt + From<T>>(self, field: Field<T, A>, value: A) -> Self
+    pub fn write_field<A: PrimInt + From<A>>(self, field: Field<T, A>, value: A) -> Self
     where
         T: From<A>,
     {

@@ -9,10 +9,9 @@ use crate::{
             gdt, idt,
         },
     },
-    {
-        percpu::{CpuData, LD_PERCPU_START},
-        posix::errno::{EResult, Errno},
-    },
+    clock,
+    percpu::{CpuData, LD_PERCPU_START},
+    posix::errno::{EResult, Errno},
 };
 use core::{
     arch::{asm, naked_asm},
@@ -206,6 +205,8 @@ pub(in crate::arch) fn halt_others() {
         apic::Level::Assert,
         apic::TriggerMode::Edge,
     );
+
+    clock::block_ns(10000).unwrap();
 }
 
 pub(in crate::arch) fn halt() -> ! {
