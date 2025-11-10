@@ -205,7 +205,8 @@ impl Process {
 
         CpuData::get().scheduler.add_task(init);
 
-        Ok(())
+        // execve never returns on success.
+        Scheduler::kill_current();
     }
 
     pub fn exit(self: Arc<Self>, code: u8) {
