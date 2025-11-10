@@ -43,8 +43,6 @@ pub mod vfs;
 
 pub mod system;
 
-use core::sync::atomic::AtomicBool;
-
 use crate::{
     percpu::CpuData,
     process::{Identity, Process},
@@ -58,6 +56,7 @@ use crate::{
 };
 use alloc::{string::String, sync::Arc};
 use boot::BootInfo;
+use core::sync::atomic::AtomicBool;
 
 /// Initializes all important kernel structures.
 /// This is invoked by the boot environment.

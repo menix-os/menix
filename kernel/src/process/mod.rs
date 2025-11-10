@@ -108,7 +108,7 @@ impl Process {
                 children: Vec::new(),
                 address_space: Arc::new(old_inner.address_space.fork()?),
                 root_dir: old_inner.root_dir.clone(),
-                working_dir: old_inner.root_dir.clone(),
+                working_dir: old_inner.working_dir.clone(),
                 identity: old_inner.identity.clone(),
                 open_files: old_inner.open_files.clone(),
                 mmap_head: old_inner.mmap_head,
