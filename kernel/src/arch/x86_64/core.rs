@@ -9,10 +9,9 @@ use crate::{
             gdt, idt,
         },
     },
-    generic::{
-        percpu::{CpuData, LD_PERCPU_START},
-        posix::errno::{EResult, Errno},
-    },
+    clock,
+    percpu::{CpuData, LD_PERCPU_START},
+    posix::errno::{EResult, Errno},
 };
 use core::{
     arch::{asm, naked_asm},
@@ -32,7 +31,7 @@ unsafe extern "C" fn _start() {
         "lea rsp, [rip + {stack}]",
         "jmp {entry}",
         stack = sym LD_STACK_TOP,
-        entry = sym crate::generic::boot::entry
+        entry = sym crate::boot::entry
     );
 }
 
@@ -206,6 +205,8 @@ pub(in crate::arch) fn halt_others() {
         apic::Level::Assert,
         apic::TriggerMode::Edge,
     );
+
+    clock::block_ns(10000).unwrap();
 }
 
 pub(in crate::arch) fn halt() -> ! {

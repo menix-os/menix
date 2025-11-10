@@ -1,7 +1,7 @@
 mod mcfg;
 mod uacpi;
 
-use crate::generic::{boot::BootInfo, memory::PhysAddr, util::once::Once};
+use crate::{boot::BootInfo, memory::PhysAddr, util::once::Once};
 use alloc::boxed::Box;
 use core::ffi::c_void;
 
@@ -9,7 +9,7 @@ static RSDP_ADDRESS: Once<PhysAddr> = Once::new();
 
 #[initgraph::task(
     name = "system.acpi.tables",
-    depends = [crate::generic::memory::MEMORY_STAGE],
+    depends = [crate::memory::MEMORY_STAGE],
 )]
 pub fn TABLES_STAGE() {
     match BootInfo::get().rsdp_addr {
@@ -41,8 +41,8 @@ pub fn TABLES_STAGE() {
     depends = [
         TABLES_STAGE,
         crate::arch::INIT_STAGE,
-        crate::generic::clock::CLOCK_STAGE,
-        crate::generic::memory::MEMORY_STAGE,
+        crate::clock::CLOCK_STAGE,
+        crate::memory::MEMORY_STAGE,
     ],
     entails = [crate::INIT_STAGE]
 )]

@@ -1,4 +1,4 @@
-use crate::generic::{
+use crate::{
     clock::{ClockError, ClockSource},
     memory::view::{MemoryView, MmioView},
 };
@@ -13,7 +13,7 @@ pub struct Hpet {
 }
 
 mod regs {
-    use crate::generic::memory::view::Register;
+    use crate::memory::view::Register;
 
     pub const CAPABILITIES: Register<u64> = Register::new(0);
     pub const CONFIGURATION: Register<u64> = Register::new(0x10);
@@ -73,6 +73,6 @@ impl Hpet {
 )]
 pub fn HPET_STAGE() {
     if let Ok(x) = Hpet::new() {
-        _ = crate::generic::clock::switch(Box::new(x));
+        _ = crate::clock::switch(Box::new(x));
     }
 }

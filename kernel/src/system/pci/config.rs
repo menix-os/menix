@@ -1,13 +1,21 @@
-use crate::generic::{
-    memory::view::{BitValue, MemoryView, Register},
+use crate::{
+    memory::{
+        Field,
+        view::{BitValue, MemoryView, Register},
+    },
+    system::pci::{
+        config,
+        device::PciBar,
+        generic::{CAPABILITIES_PTR, REG13},
+    },
     util::{align_down, once::Once},
 };
 use alloc::{boxed::Box, vec::Vec};
-use core::fmt::Display;
+use core::{fmt::Display, marker::PhantomData};
 use num_traits::{FromBytes, NumCast, PrimInt, ToBytes};
 
 pub mod common {
-    use crate::generic::memory::view::{Field, Register};
+    use crate::memory::view::{Field, Register};
 
     pub const REG0: Register<u32> = Register::new(0x00).with_le();
     pub const VENDOR_ID: Field<u32, u16> = Field::new(REG0, 0);
@@ -26,7 +34,7 @@ pub mod common {
 }
 
 pub mod generic {
-    use crate::generic::memory::view::{Field, Register};
+    use crate::memory::view::{Field, Register};
 
     pub const BAR0: Register<u32> = Register::new(0x10).with_le();
     pub const BAR1: Register<u32> = Register::new(0x14).with_le();
@@ -42,7 +50,7 @@ pub mod generic {
     pub const EXPANSION_ROM: Register<u32> = Register::new(0x30).with_le();
 
     pub const REG13: Register<u32> = Register::new(0x34).with_le();
-    pub const CAPABILITIES_PTR: Field<u32, u8> = Field::new(REG11, 0);
+    pub const CAPABILITIES_PTR: Field<u32, u8> = Field::new(REG13, 0);
 
     pub const REG14: Register<u32> = Register::new(0x3C).with_le();
     pub const INTERRUPT_LINE: Field<u32, u8> = Field::new(REG14, 0);
@@ -78,8 +86,8 @@ pub trait Access {
 
 impl dyn Access + '_ {
     /// Returns a [`MemoryView`] that can be used to access the device config space.
-    pub fn view_for_device(&self, address: Address) -> Option<DeviceView<'_, Self>> {
-        self.decodes(address).then(|| DeviceView {
+    pub fn view_for_device(&self, address: Address) -> Option<DeviceView<'_>> {
+        self.decodes(address).then_some(DeviceView {
             access: self,
             address,
         })
@@ -99,7 +107,7 @@ impl dyn Access + '_ {
     }
 
     pub fn read16(&self, addr: Address, offset: u32) -> u16 {
-        assert!(offset % 2 == 0);
+        assert!(offset.is_multiple_of(2));
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let reg = self.read32(addr, aligned);
         (reg >> ((offset - aligned) * 8)) as u16
@@ -114,7 +122,7 @@ impl dyn Access + '_ {
     }
 
     pub fn write16(&self, addr: Address, offset: u32, value: u16) {
-        assert!(offset % 2 == 0);
+        assert!(offset.is_multiple_of(2));
         let aligned = align_down(offset, size_of::<u32>() as u32);
         let mut reg = self.read32(addr, aligned);
         reg &= !(0xFFFF << ((offset - aligned) * 8));
@@ -123,22 +131,103 @@ impl dyn Access + '_ {
     }
 }
 
-pub struct DeviceView<'a, A: Access + ?Sized> {
-    access: &'a A,
+#[derive(Clone)]
+pub struct DeviceView<'a> {
+    access: &'a dyn Access,
     address: Address,
 }
 
-impl<'a, A: Access + ?Sized> DeviceView<'a, A> {
-    pub fn access(&self) -> &'a A {
+impl<'a> DeviceView<'a> {
+    pub fn access(&self) -> &'a dyn Access {
         self.access
     }
 
     pub fn address(&self) -> Address {
         self.address
     }
+
+    pub fn capabilities(&mut self) -> CapIter<'_, 'a> {
+        CapIter {
+            ptr: self
+                .read_reg(REG13)
+                .map(|x| x.read_field(CAPABILITIES_PTR).value())
+                .unwrap(),
+            view: self,
+        }
+    }
+
+    pub fn bar(&self, index: usize) -> Option<PciBar> {
+        let bar_offset = config::generic::BAR0.offset() + index * size_of::<u32>();
+        let bar = self.access.read32(self.address, bar_offset as u32);
+
+        let is_mmio = bar & 0x1 == 0x0;
+        let is_mmio64 = is_mmio && ((bar >> 1) & 0x3) == 0x2;
+        let is_prefetchable = is_mmio && (bar & (1 << 3) != 0);
+
+        let command_register = self
+            .access
+            .read16(self.address, config::common::COMMAND.byte_offset() as u32);
+
+        // Disable IO and memory decoding while probing BAR sizes.
+        self.access.write16(
+            self.address,
+            config::common::COMMAND.byte_offset() as u32,
+            command_register & !(1 << 0 | 1 << 1),
+        );
+
+        // Probe the size of this BAR.
+        self.access
+            .write32(self.address, bar_offset as u32, 0xFFFF_FFFF);
+
+        let new_bar = self.access.read32(self.address, bar_offset as u32);
+
+        // Restore the original BAR value.
+        self.access.write32(self.address, bar_offset as u32, bar);
+
+        let kind = if is_mmio {
+            let address = (bar & 0xFFFF_FFF0) as usize;
+            let size = (!(new_bar & 0xFFFF_FFF0) + 1) as usize;
+
+            if is_mmio64 {
+                assert!(index + 1 < 6);
+
+                let next_bar_offset = bar_offset + size_of::<u32>();
+                let next_bar = self.access.read32(self.address, next_bar_offset as u32);
+
+                PciBar::Mmio64 {
+                    address: (next_bar as u64) << 32 | (address as u64),
+                    size,
+                    prefetchable: is_prefetchable,
+                }
+            } else {
+                PciBar::Mmio32 {
+                    address: address as u32,
+                    size,
+                    prefetchable: is_prefetchable,
+                }
+            }
+        } else {
+            let address = (bar & 0x0000_FFF0) as usize;
+            let size = (!(new_bar & 0xFFFF_FFFC) + 1) as usize;
+
+            PciBar::Io {
+                address: address as u16,
+                size,
+            }
+        };
+
+        // Restore the command register.
+        self.access.write16(
+            self.address,
+            config::common::COMMAND.byte_offset() as u32,
+            command_register,
+        );
+
+        kind.is_valid().then_some(kind)
+    }
 }
 
-impl<'a, A: Access + ?Sized> MemoryView for DeviceView<'a, A> {
+impl<'a> MemoryView for DeviceView<'a> {
     fn read_reg<T: PrimInt + FromBytes>(&self, reg: Register<T>) -> Option<BitValue<T>>
     where
         T::Bytes: Default,
@@ -209,6 +298,107 @@ impl Access for EcamPciAccess {
                 )
                 .write_volatile(value)
         }
+    }
+}
+
+pub struct CapIter<'a, 'b> {
+    view: &'a DeviceView<'b>,
+    ptr: u8,
+}
+
+impl<'a, 'b> Iterator for CapIter<'a, 'b> {
+    type Item = Capability<'a, ()>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.ptr == 0 {
+            return None;
+        }
+
+        let cur = self.ptr;
+        let reg: Register<u32> = Register::new(self.ptr as usize);
+        let field: Field<_, u8> = Field::new_bits(reg, 8..=15);
+
+        self.ptr = self
+            .view
+            .read_reg(reg)
+            .map(|x| x.read_field(field).value())
+            .unwrap();
+
+        Some(Capability {
+            view: self.view.clone(),
+            cap: cur,
+            _p: PhantomData,
+        })
+    }
+}
+
+pub struct Capability<'a, T> {
+    view: DeviceView<'a>,
+    cap: u8,
+    _p: PhantomData<T>,
+}
+
+impl<'a> Capability<'a, ()> {
+    pub fn id(&self) -> u8 {
+        let reg: Register<u32> = Register::new(self.cap as usize);
+        let field: Field<_, u8> = Field::new_bits(reg, 0..=7);
+        self.view
+            .read_reg(reg)
+            .map(|x| x.read_field(field).value())
+            .unwrap()
+    }
+
+    pub fn msi(&mut self) -> Option<Capability<'a, MsiCapability>> {
+        (self.id() == 0x05).then_some(Capability {
+            view: self.view.clone(),
+            cap: self.cap,
+            _p: PhantomData,
+        })
+    }
+
+    pub fn msix(&mut self) -> Option<Capability<'a, MsiXCapability>> {
+        (self.id() == 0x11).then_some(Capability {
+            view: self.view.clone(),
+            cap: self.cap,
+            _p: PhantomData,
+        })
+    }
+}
+
+/// Capability for MSIs
+pub struct MsiCapability;
+impl<'a> Capability<'a, MsiCapability> {}
+
+/// Capability for MSI-Xs
+pub struct MsiXCapability;
+impl<'a> Capability<'a, MsiXCapability> {
+    pub fn set_state(&mut self, status: bool) {
+        let reg: Register<u32> = Register::new(self.cap as usize);
+        let enable: Field<_, u8> = Field::new_bits(reg, 31..=31);
+        let old = self
+            .view
+            .read_reg(reg)
+            .unwrap()
+            .write_field(enable, status as u8);
+        self.view.write_reg(reg, old.value());
+    }
+
+    pub fn bir(&self) -> u8 {
+        let reg: Register<u32> = Register::new(self.cap as usize + 4);
+        let field: Field<_, u8> = Field::new_bits(reg, 0..=2);
+        self.view
+            .read_reg(reg)
+            .map(|x| x.read_field(field).value())
+            .unwrap()
+    }
+
+    pub fn table_offset(&self) -> u32 {
+        let reg: Register<u32> = Register::new(self.cap as usize + 4);
+        let field: Field<_, u32> = Field::new_bits(reg, 3..=31);
+        self.view
+            .read_reg(reg)
+            .map(|x| x.read_field(field).value())
+            .unwrap()
     }
 }
 

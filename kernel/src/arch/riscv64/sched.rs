@@ -1,4 +1,4 @@
-use crate::generic::{
+use crate::{
     memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
     posix::errno::EResult,
     process::task::Task,
@@ -185,7 +185,7 @@ unsafe extern "C" fn task_entry_thunk() -> ! {
         "mv ra, zero",
         "la t0, {task_thunk}",
         "jr t0",
-        task_thunk = sym crate::generic::sched::task_entry,
+        task_thunk = sym crate::sched::task_entry,
     );
 }
 

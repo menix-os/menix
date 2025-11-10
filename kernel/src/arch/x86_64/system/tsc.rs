@@ -1,6 +1,6 @@
 use crate::{
     arch::x86_64::{asm, consts},
-    generic::{
+    {
         boot::BootInfo,
         clock::{self, ClockSource},
     },
@@ -40,7 +40,7 @@ impl ClockSource for TscClock {
 #[initgraph::task(
     name = "arch.x86_64.tsc",
     depends = [super::hpet::HPET_STAGE],
-    entails = [crate::generic::clock::CLOCK_STAGE],
+    entails = [crate::clock::CLOCK_STAGE],
 )]
 fn TSC_STAGE() {
     // We need an invariant TSC.

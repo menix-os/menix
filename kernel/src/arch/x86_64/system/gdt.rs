@@ -3,7 +3,7 @@ use crate::{
         ArchPerCpu,
         consts::{CPL_KERNEL, CPL_USER, MSR_GS_BASE},
     },
-    generic::memory::virt::KERNEL_STACK_SIZE,
+    memory::virt::KERNEL_STACK_SIZE,
 };
 use alloc::boxed::Box;
 use bitflags::bitflags;

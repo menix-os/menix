@@ -12,7 +12,7 @@ use crate::{
             },
         },
     },
-    generic::{
+    {
         boot::BootInfo,
         clock,
         memory::{
@@ -202,14 +202,14 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
 
     // Create a new idle task for this CPU.
     let idle_task =
-        Arc::new(Task::new(sched::idle_fn, 0, 0, &Process::get_kernel(), false).unwrap());
+        Arc::new(Task::new(sched::idle_fn, 0, 0, Process::get_kernel(), false).unwrap());
     cpu_ctx
         .scheduler
         .idle_task
         .store(Arc::into_raw(idle_task) as *mut _, Ordering::Release);
 
     // Create a dummy task to drop right after the first reschedule.
-    let dummy = Arc::new(Task::new(sched::dummy_fn, 0, 0, &Process::get_kernel(), false).unwrap());
+    let dummy = Arc::new(Task::new(sched::dummy_fn, 0, 0, Process::get_kernel(), false).unwrap());
     cpu_ctx
         .scheduler
         .current
@@ -322,9 +322,9 @@ static FOUND_APS: SpinMutex<Vec<u32>> = SpinMutex::new(Vec::new());
 #[initgraph::task(
     name = "arch.x86_64.discover-aps",
     depends = [
-        crate::generic::memory::MEMORY_STAGE,
+        crate::memory::MEMORY_STAGE,
         crate::system::acpi::TABLES_STAGE,
-        crate::generic::clock::CLOCK_STAGE,
+        crate::clock::CLOCK_STAGE,
     ],
     entails = [crate::arch::INIT_STAGE],
 )]
@@ -376,7 +376,7 @@ fn DISCOVER_APS_STAGE() {
 
 #[initgraph::task(
     name = "arch.x86_64.init-aps",
-    depends = [DISCOVER_APS_STAGE, crate::generic::clock::CLOCK_STAGE, crate::generic::sched::SCHEDULER_STAGE],
+    depends = [DISCOVER_APS_STAGE, crate::clock::CLOCK_STAGE, crate::sched::SCHEDULER_STAGE],
     entails = [crate::arch::INIT_STAGE],
 )]
 fn INIT_APS_STAGE() {

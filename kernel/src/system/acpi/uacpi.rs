@@ -4,7 +4,8 @@
 
 use crate::{
     arch,
-    generic::{
+    system::pci::{ACCESS, Access, Address},
+    {
         clock,
         memory::{
             free, malloc,
@@ -13,7 +14,6 @@ use crate::{
         },
         util::{self, spin::SpinLock},
     },
-    system::pci::config::{ACCESS, Access, Address},
 };
 use alloc::{alloc::GlobalAlloc, boxed::Box};
 use core::{

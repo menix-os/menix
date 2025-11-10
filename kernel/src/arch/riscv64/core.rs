@@ -1,6 +1,6 @@
 use crate::{
     arch::irq::wait_for_irq,
-    generic::{
+    {
         percpu::CpuData,
         posix::errno::{EResult, Errno},
     },
@@ -14,7 +14,7 @@ fn stvec() {
 
 pub fn setup_bsp() {
     unsafe {
-        core::arch::asm!("la tp, {percpu}", percpu = sym crate::generic::percpu::LD_PERCPU_START);
+        core::arch::asm!("la tp, {percpu}", percpu = sym crate::percpu::LD_PERCPU_START);
         core::arch::asm!("csrw stvec, {stvec}", stvec = in(reg) stvec);
     }
 }
@@ -61,6 +61,6 @@ unsafe extern "C" fn _start() {
         "jr t0",
         "unimp",
         stack = sym LD_STACK_TOP,
-        entry = sym crate::generic::boot::entry,
+        entry = sym crate::boot::entry,
     );
 }

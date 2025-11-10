@@ -1,13 +1,23 @@
 use super::{consts, sched::Context};
-use crate::arch::x86_64::consts::CPL_USER;
 use crate::{
-    arch::x86_64::system::gdt::Gdt,
-    generic::{self, percpu::CpuData},
+    arch::{
+        self,
+        x86_64::{
+            ARCH_DATA,
+            consts::CPL_USER,
+            system::{apic::LAPIC, gdt::Gdt},
+        },
+    },
+    irq::IrqStatus,
+    memory::fault::PageFaultInfo,
+    percpu::CpuData,
+    util::mutex::irq::IrqMutex,
 };
 use core::{
     arch::{asm, naked_asm},
     mem::offset_of,
 };
+use seq_macro::seq;
 
 pub(in crate::arch) unsafe fn set_irq_state(value: bool) -> bool {
     let old_mask = get_irq_state();
@@ -33,6 +43,72 @@ pub(in crate::arch) fn wait_for_irq() {
     unsafe {
         asm!("hlt", options(nostack));
     }
+}
+
+/// Invoked by an interrupt stub.
+unsafe extern "C" fn idt_handler(context: *const Context) {
+    let old = IrqMutex::set_interrupted(true);
+    let context = unsafe { context.as_ref().unwrap() };
+    let isr = context.isr;
+
+    match isr as u8 {
+        // Exceptions.
+        consts::IDT_PF => {
+            page_fault_handler(context);
+        }
+        consts::IDT_NMI => {
+            arch::core::halt();
+        }
+        // Unhandled exceptions.
+        0x00..0x20 => {
+            error!("{:?}", context);
+            panic!("Got an exception {}", isr);
+        }
+        // IPIs
+        consts::IDT_IPI_RESCHED => {
+            unsafe { crate::arch::sched::preempt_disable() };
+            let cpu = CpuData::get();
+            if unsafe { crate::arch::sched::preempt_enable() } {
+                LAPIC.get().eoi();
+                cpu.scheduler.reschedule();
+            }
+        }
+        // Any other ISR is an IRQ with a dynamic handler.
+        _ => {
+            let status = match &ARCH_DATA.get().irq_handlers.lock()[isr as usize - 0x20] {
+                Some(x) => x.handle_immediate(),
+                None => panic!("Unhandled interrupt"),
+            };
+
+            match status {
+                IrqStatus::Ignored => todo!(),
+                IrqStatus::Handled => todo!(),
+                IrqStatus::Defer => todo!(),
+            }
+        }
+    }
+
+    IrqMutex::set_interrupted(old);
+}
+
+// /// Try to send a signal to the user-space program or panic if the interrupt is caused by the kernel.
+// fn try_signal_or_die(context: &Context, signal: u32, code: u32) {}
+
+fn page_fault_handler(context: &Context) {
+    let mut cr2: usize;
+    unsafe { asm!("mov {cr2}, cr2", cr2 = out(reg) cr2) };
+
+    let err = context.error;
+    let info = PageFaultInfo {
+        page_was_present: err & (1 << 0) != 0,
+        caused_by_write: err & (1 << 1) != 0,
+        caused_by_fetch: err & (1 << 4) != 0,
+        caused_by_user: context.cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
+        ip: (context.rip as usize).into(),
+        addr: cr2.into(),
+    };
+
+    crate::memory::virt::fault::handler(&info);
 }
 
 /// Handles a syscall via AMD64 syscall/sysret instructions.
@@ -107,7 +183,7 @@ extern "C" fn syscall_handler(frame: *mut Context) {
 
         // Arguments use the SYSV C ABI.
         // Except for a3, since RCX is needed for sysret, we need a different register.
-        let result = generic::syscall::dispatch(
+        let result = crate::syscall::dispatch(
             frame,
             frame.rax as usize,
             frame.rdi as usize,
@@ -120,4 +196,99 @@ extern "C" fn syscall_handler(frame: *mut Context) {
         frame.rax = result.0 as u64;
         frame.rdx = result.1 as u64;
     }
+}
+
+// There are some interrupts which generate an error code on the stack, while others do not.
+// We normalize this by just pushing 0 for those that don't generate an error code.
+seq! { N in 0..256 {
+    #[unsafe(naked)]
+    pub (super) unsafe extern "C" fn interrupt_stub~N() {
+        naked_asm!(
+            // These codes push an error on the stack. Do nothing.
+            ".if ({i} == 8 || ({i} >= 10 && {i} <= 14) || {i} == 17 || {i} == 21 || {i} == 29 || {i} == 30)",
+            // All other ones don't, so we need to push something ourselves.
+            ".else",
+            "push 0",
+            ".endif",
+
+            "push {i}",
+            "jmp {interrupt_stub_internal}",
+
+            i = const N,
+            interrupt_stub_internal = sym interrupt_stub_internal
+        );
+    }
+}}
+
+const CS_OFFSET: usize = size_of::<Context>() - size_of::<u64>() - offset_of!(Context, cs);
+
+/// To avoid having 256 big functions with essentially the same logic,
+/// this function is meant to do the actual heavy lifting.
+#[unsafe(naked)]
+unsafe extern "C" fn interrupt_stub_internal() {
+    naked_asm!(
+        // Load the kernel GS base if we're coming from user space.
+        "cmp word ptr [rsp+{cs}], {kernel_cs}",
+        "je 2f",
+        "swapgs",
+        "2:",
+        "push rax",
+        "push rbx",
+        "push rcx",
+        "push rdx",
+        "push rbp",
+        "push rdi",
+        "push rsi",
+        "push r8",
+        "push r9",
+        "push r10",
+        "push r11",
+        "push r12",
+        "push r13",
+        "push r14",
+        "push r15",
+        "cld",
+        // Zero out the base pointer since we can't trust it.
+        "xor rbp, rbp",
+        // Load the frame as first argument.
+        "mov rdi, rsp",
+        "call {interrupt_handler}",
+        "jmp {interrupt_return}",
+        cs = const CS_OFFSET,
+        kernel_cs = const offset_of!(Gdt, kernel64_code),
+        interrupt_handler = sym idt_handler,
+        interrupt_return = sym interrupt_return
+    );
+}
+
+/// Returns from an interrupt frame.
+#[unsafe(naked)]
+pub unsafe extern "C" fn interrupt_return() {
+    naked_asm!(
+        "pop r15",
+        "pop r14",
+        "pop r13",
+        "pop r12",
+        "pop r11",
+        "pop r10",
+        "pop r9",
+        "pop r8",
+        "pop rsi",
+        "pop rdi",
+        "pop rbp",
+        "pop rdx",
+        "pop rcx",
+        "pop rbx",
+        "pop rax",
+        // Change GS back if we came from user mode.
+        "cmp word ptr [rsp+{cs}], {kernel_cs}",
+        "je 2f",
+        "swapgs",
+        "2:",
+        // Skip .error and .isr fields.
+        "add rsp, 0x10",
+        "iretq",
+        cs = const CS_OFFSET,
+        kernel_cs = const offset_of!(Gdt, kernel64_code),
+    );
 }

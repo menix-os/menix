@@ -1,4 +1,4 @@
-use crate::generic::log::{self, LoggerSink};
+use crate::log::{self, LoggerSink};
 use alloc::boxed::Box;
 
 const DBCN: u64 = 0x4442434E;

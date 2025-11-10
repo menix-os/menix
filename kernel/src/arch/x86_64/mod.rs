@@ -6,11 +6,13 @@ pub mod sched;
 pub mod system;
 pub mod virt;
 
-use crate::generic::{
-    irq::IrqHandlerKind,
+use crate::{
+    arch::x86_64::system::idt::IDT_SIZE,
+    irq::IrqHandler,
     util::{mutex::spin::SpinMutex, once::Once},
 };
 use ::core::sync::atomic::AtomicBool;
+use alloc::sync::Arc;
 use system::gdt::{Gdt, TaskStateSegment};
 
 #[derive(Debug)]
@@ -21,7 +23,7 @@ pub struct ArchPerCpu {
     pub gdt: SpinMutex<Gdt>,
     pub tss: SpinMutex<TaskStateSegment>,
     /// IRQ mappings.
-    pub irq_handlers: SpinMutex<[IrqHandlerKind; 256]>,
+    pub irq_handlers: SpinMutex<[Option<Arc<dyn IrqHandler>>; IDT_SIZE - 0x20]>,
     /// Size of the FPU.
     pub fpu_size: Once<usize>,
     /// Function called to save the FPU context.
@@ -36,7 +38,7 @@ per_cpu!(
     pub(crate) static ARCH_DATA: ArchPerCpu = ArchPerCpu {
         gdt: SpinMutex::new(Gdt::new()),
         tss: SpinMutex::new(TaskStateSegment::new()),
-        irq_handlers: SpinMutex::new([const { IrqHandlerKind::None }; 256]),
+        irq_handlers: SpinMutex::new([const { None }; _]),
         fpu_size: Once::new(),
         fpu_save: Once::new(),
         fpu_restore: Once::new(),

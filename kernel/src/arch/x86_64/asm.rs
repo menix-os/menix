@@ -2,7 +2,7 @@
 
 use core::arch::{asm, global_asm};
 
-use crate::generic::{
+use crate::{
     memory::pmm::{AllocFlags, KernelAlloc, PageAllocator},
     posix::errno::EResult,
 };

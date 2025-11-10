@@ -1,6 +1,6 @@
 pub mod driver;
 
-use crate::generic::{
+use crate::{
     boot::BootInfo,
     memory::view::{MemoryView, Register},
     util::once::Once,
@@ -82,7 +82,7 @@ impl<'a> DeviceTree<'a> {
 
     pub fn find_node(&self, path: &[u8]) -> Option<Node<'_, '_>> {
         // Resolve aliases.
-        let (path, mut node) = if *path.get(0)? == b'/' {
+        let (path, mut node) = if *path.first()? == b'/' {
             (&path[1..], self.root())
         } else {
             let (alias, rest) =
@@ -348,7 +348,7 @@ fn find_node_end(structs: &[u8], mut offset: usize) -> usize {
 }
 
 /// Look up a string in the strings block.
-fn get_str<'a>(strings: &'a [u8], off: u32) -> Option<&'a [u8]> {
+fn get_str(strings: &[u8], off: u32) -> Option<&[u8]> {
     let mut end = off as usize;
     while end < strings.len() && strings[end] != 0 {
         end += 1;
@@ -361,7 +361,7 @@ pub static DEVICES: Once<Vec<&Node>> = Once::new();
 
 #[initgraph::task(
     name = "system.dt.parse-blob",
-    depends = [crate::generic::memory::MEMORY_STAGE],
+    depends = [crate::memory::MEMORY_STAGE],
     entails = [crate::INIT_STAGE]
 )]
 fn TREE_STAGE() {

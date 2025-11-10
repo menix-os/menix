@@ -1,5 +1,5 @@
 use super::internal;
-use crate::generic::memory::{VirtAddr, virt::mmu::PageTable};
+use crate::memory::{VirtAddr, virt::mmu::PageTable};
 pub use internal::virt::PageTableEntry;
 
 /// Gets the page size for a given level.
@@ -66,7 +66,7 @@ pub fn flush_tlb(addr: VirtAddr) {
 #[allow(unused)]
 mod api {
     use super::PageTableEntry;
-    use crate::generic::memory::{PhysAddr, virt::PteFlags};
+    use crate::memory::{PhysAddr, virt::PteFlags};
 
     /// Returns a PTE which represents an empty slot.
     const fn pte_empty() -> PageTableEntry {
