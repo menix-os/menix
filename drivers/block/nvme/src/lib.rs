@@ -2,7 +2,7 @@
 
 use menix::{
     alloc::sync::Arc,
-    dbg, log,
+    log,
     memory::{MemoryView, MmioView, PhysAddr},
     posix::errno::{EResult, Errno},
     system::pci::{self, Address, DeviceView, Driver, PciBar, PciVariant},

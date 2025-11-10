@@ -4,6 +4,9 @@ use core::{
     sync::atomic::{AtomicUsize, Ordering},
 };
 
+mod msi;
+pub use msi::*;
+
 #[derive(Debug)]
 pub enum IrqStatus {
     /// Interrupt was not handled.
@@ -14,18 +17,14 @@ pub enum IrqStatus {
     Defer,
 }
 
-bitflags::bitflags! {
-    #[derive(Debug)]
-    pub struct IrqFlags: u32 {
-        /// The IRQ is edge-triggered.
-        const Edge = 1 << 0;
-        /// The IRQ is level-triggered.
-        const Level = 1 << 1;
-        /// The IRQ is active low.
-        const ActiveLow = 1 << 2;
-        /// The IRQ is active high.
-        const ActiveHigh = 1 << 3;
-    }
+pub enum Polarity {
+    Low,
+    High,
+}
+
+pub enum Trigger {
+    Edge,
+    Level,
 }
 
 pub trait IrqHandler: Debug {
@@ -39,16 +38,6 @@ pub trait IrqHandler: Debug {
     }
 }
 
-#[derive(Debug)]
-pub enum IrqHandlerKind {
-    /// Nothing to handle.
-    None,
-    /// A static handler that is always available.
-    Static(&'static dyn IrqHandler),
-    /// A dynamic handler that can be changed at runtime.
-    Dynamic(Arc<dyn IrqHandler>),
-}
-
 pub type Irq = usize;
 
 /// Common functionality for an interrupt controller.
@@ -58,10 +47,11 @@ pub trait IrqController {
     fn register(
         &self,
         name: &str,
-        handler: IrqHandlerKind,
+        handler: Arc<dyn IrqHandler>,
         threaded_handler: Option<Arc<dyn IrqHandler>>,
         line: u32,
-        flags: IrqFlags,
+        polarity: Polarity,
+        trigger: Trigger,
     ) -> Result<Irq, IrqError>;
 
     /// Removes an IRQ handler.

@@ -1,7 +1,5 @@
 #![allow(unused)]
 
-use menix::memory::{Field, Register};
-
 /// Generic Command Set
 pub mod cmd {
     pub const NVME_CMD_FLUSH: u8 = 0x00;
