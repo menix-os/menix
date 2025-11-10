@@ -1,12 +1,10 @@
 use super::{consts, sched::Context};
 use crate::{
-    arch::{
-        self,
-        x86_64::{
-            ARCH_DATA,
-            consts::CPL_USER,
-            system::{apic::LAPIC, gdt::Gdt},
-        },
+    arch::x86_64::{
+        ARCH_DATA,
+        consts::CPL_USER,
+        core::halt,
+        system::{apic::LAPIC, gdt::Gdt},
     },
     irq::IrqStatus,
     memory::fault::PageFaultInfo,
@@ -56,15 +54,15 @@ unsafe extern "C" fn idt_handler(context: *const Context) {
         consts::IDT_PF => {
             page_fault_handler(context);
         }
-        consts::IDT_NMI => {
-            arch::core::halt();
-        }
         // Unhandled exceptions.
         0x00..0x20 => {
             error!("{:?}", context);
             panic!("Got an exception {}", isr);
         }
         // IPIs
+        consts::IDT_IPI_PANIC => {
+            halt();
+        }
         consts::IDT_IPI_RESCHED => {
             unsafe { crate::arch::sched::preempt_disable() };
             let cpu = CpuData::get();

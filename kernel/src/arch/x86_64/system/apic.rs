@@ -211,8 +211,8 @@ impl LocalApic {
     ) {
         let mut icr = vector as u64;
         icr |= (delivery_mode as u64) << 8;
-        icr |= (destination_mode as u64) << 10;
-        icr |= (delivery_status as u64) << 11;
+        icr |= (destination_mode as u64) << 11;
+        icr |= (delivery_status as u64) << 12;
         icr |= (level as u64) << 14;
         icr |= (trigger_mode as u64) << 15;
         icr |= (match target {
