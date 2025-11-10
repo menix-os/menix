@@ -2,21 +2,21 @@
 
 /// Generic Command Set
 pub mod cmd {
-    pub const NVME_CMD_FLUSH: u8 = 0x00;
-    pub const NVME_CMD_WRITE: u8 = 0x01;
-    pub const NVME_CMD_READ: u8 = 0x02;
+    pub const FLUSH: u8 = 0x00;
+    pub const WRITE: u8 = 0x01;
+    pub const READ: u8 = 0x02;
 }
 
 /// Admin Command Set
 pub mod admin_cmd {
-    pub const NVME_ACMD_DELETE_SQ: u8 = 0x00;
-    pub const NVME_ACMD_CREATE_SQ: u8 = 0x01;
-    pub const NVME_ACMD_DELETE_CQ: u8 = 0x04;
-    pub const NVME_ACMD_CREATE_CQ: u8 = 0x05;
-    pub const NVME_ACMD_IDENTIFY: u8 = 0x06;
-    pub const NVME_ACMD_ABORT: u8 = 0x08;
-    pub const NVME_ACMD_SET_FEATURES: u8 = 0x09;
-    pub const NVME_ACMD_GET_FEATURES: u8 = 0x0A;
+    pub const DELETE_SQ: u8 = 0x00;
+    pub const CREATE_SQ: u8 = 0x01;
+    pub const DELETE_CQ: u8 = 0x04;
+    pub const CREATE_CQ: u8 = 0x05;
+    pub const IDENTIFY: u8 = 0x06;
+    pub const ABORT: u8 = 0x08;
+    pub const SET_FEATURES: u8 = 0x09;
+    pub const GET_FEATURES: u8 = 0x0A;
 }
 
 /// Submission queue entry.
@@ -53,6 +53,8 @@ pub mod sq_entry {
 
 pub mod cq_entry {
     use menix::memory::{Field, Register};
+
+    pub const SIZE: usize = 0x10;
 
     pub const DW0: Register<u32> = Register::new(0).with_le();
     pub const DW2: Register<u32> = Register::new(8).with_le();

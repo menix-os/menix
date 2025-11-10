@@ -85,26 +85,32 @@ pub struct Driver {
     pub variants: &'static [PciVariant],
     /// Called when a new device is initialized.
     /// Should return a driver context.
-    pub probe: fn(variant: &PciVariant, access: DeviceView<'static>) -> EResult<Arc<dyn Device>>,
+    pub probe: fn(
+        driver: Arc<Driver>,
+        variant: &PciVariant,
+        access: DeviceView<'static>,
+    ) -> EResult<Arc<dyn Device>>,
 }
 
-static DRIVERS: SpinMutex<BTreeMap<&'static str, &'static Driver>> =
-    SpinMutex::new(BTreeMap::new());
+static DRIVERS: SpinMutex<BTreeMap<&'static str, Arc<Driver>>> = SpinMutex::new(BTreeMap::new());
 
 impl Driver {
-    pub fn register(&'static self) -> EResult<()> {
+    pub fn register(self) -> EResult<()> {
         let mut drivers = DRIVERS.lock();
 
-        if drivers.contains_key(self.name) {
+        let arc = Arc::new(self);
+
+        if drivers.contains_key(arc.name) {
+            warn!("Driver {} is already registered", arc.name);
             return Err(Errno::EEXIST);
         }
 
-        drivers.insert(self.name, self);
+        drivers.insert(arc.name, arc.clone());
 
         log!(
             "Registered new PCI driver \"{}\" with {} variant(s)",
-            self.name,
-            self.variants.len()
+            arc.name,
+            arc.variants.len()
         );
 
         // Probe matching PCI devices.
@@ -126,18 +132,18 @@ impl Driver {
             let sub_class = reg2.read_field(config::common::SUB_CLASS).value();
             let class = reg2.read_field(config::common::CLASS_CODE).value();
 
-            if let Some(variant) = self.variants.iter().find(|v| {
+            if let Some(variant) = arc.variants.iter().find(|v| {
                 v.device.is_none_or(|x| x == device_id)
                     && v.vendor.is_none_or(|x| x == vendor_id)
                     && v.prog_if.is_none_or(|x| x == prog_if)
                     && v.sub_class.is_none_or(|x| x == sub_class)
                     && v.class.is_none_or(|x| x == class)
             }) {
-                match (self.probe)(variant, view) {
+                match (arc.probe)(arc.clone(), variant, view) {
                     Ok(x) => DEVICES.lock().push(x),
                     Err(err) => error!(
                         "Driver \"{}\" failed to probe device {}: {:?}",
-                        self.name, addr, err
+                        arc.name, addr, err
                     ),
                 }
             }

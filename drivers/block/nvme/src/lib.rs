@@ -1,35 +1,25 @@
 #![no_std]
 
+use crate::controller::Controller;
 use menix::{
     alloc::sync::Arc,
     log,
-    memory::{MemoryView, MmioView, PhysAddr},
+    memory::{MmioView, PhysAddr},
     posix::errno::{EResult, Errno},
-    system::pci::{self, Address, DeviceView, Driver, PciBar, PciVariant},
+    system::pci::{self, DeviceView, Driver, PciBar, PciVariant},
 };
 
-mod commands;
+mod command;
+mod controller;
+mod namespace;
 mod queue;
 mod spec;
 
-struct NvmeController {
-    address: Address,
-    driver: &'static Driver,
-    version: (u16, u8, u8),
-    regs: MmioView,
-}
-
-impl pci::Device for NvmeController {
-    fn address(&self) -> Address {
-        self.address
-    }
-
-    fn driver(&self) -> &'static Driver {
-        self.driver
-    }
-}
-
-fn probe(_: &PciVariant, mut view: DeviceView<'static>) -> EResult<Arc<dyn pci::Device>> {
+fn probe(
+    _: Arc<Driver>,
+    _: &PciVariant,
+    view: DeviceView<'static>,
+) -> EResult<Arc<dyn pci::Device>> {
     log!("Probing NVMe device on {}", view.address());
     let bar = view.bar(0).ok_or(Errno::ENXIO)?;
     let (addr, size) = match bar {
@@ -45,47 +35,23 @@ fn probe(_: &PciVariant, mut view: DeviceView<'static>) -> EResult<Arc<dyn pci::
         } => (address as _, size),
         _ => unreachable!("PCI NVMe devices are MMIO-only"),
     };
-    let mut regs = unsafe { MmioView::new(PhysAddr::new(addr as _), size) };
-
-    // Read controller version.
-    let vs = regs.read_reg(spec::regs::VS).ok_or(Errno::ENXIO)?;
-    let version = (
-        vs.read_field(spec::regs::MJR).value(),
-        vs.read_field(spec::regs::MNR).value(),
-        vs.read_field(spec::regs::TER).value(),
-    );
-
-    log!(
-        "Controller version {}.{}.{}",
-        version.0,
-        version.1,
-        version.2
-    );
-
-    let cap = regs.read_reg(spec::regs::CAP).ok_or(Errno::ENXIO)?;
-    let mpsmax = cap.read_field(spec::regs::MPSMAX).value();
-    let mpsmin = cap.read_field(spec::regs::MPSMIN).value();
-    log!(
-        "mpsmin = {:#x}, mpsmax = {:#x}",
-        1 << (mpsmin as usize + 12),
-        1 << (mpsmax as usize + 12)
-    );
+    let regs = unsafe { MmioView::new(PhysAddr::new(addr as _), size) };
 
     // TODO: Support legacy PCI interrupts.
     // Setup MSI-X.
-    let mut cap = view
-        .capabilities()
-        .filter_map(|mut x| x.msix())
-        .next()
-        .ok_or(Errno::ENXIO)?;
-    cap.set_state(true);
+    // let mut cap = view
+    //     .capabilities()
+    //     .filter_map(|mut x| x.msix())
+    //     .next()
+    //     .ok_or(Errno::ENXIO)?;
 
-    Ok(Arc::new(NvmeController {
-        address: view.address(),
-        driver: &DRIVER,
-        version,
-        regs,
-    }))
+    let controller = Controller::new_pci(view.address(), regs)?;
+
+    // Reset the controller to initialize all queues and other structures.
+    log!("Resetting controller");
+    controller.reset();
+
+    Ok(Arc::new(controller))
 }
 
 static DRIVER: Driver = Driver {

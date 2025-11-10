@@ -1,5 +1,5 @@
 use crate::{
-    system::pci::{config::Address, driver::Driver},
+    system::pci::config::Address,
     {posix::errno::EResult, util::mutex::spin::SpinMutex},
 };
 use alloc::{sync::Arc, vec::Vec};
@@ -7,9 +7,6 @@ use alloc::{sync::Arc, vec::Vec};
 pub trait Device {
     /// Returns the PCI address of this device.
     fn address(&self) -> Address;
-
-    /// Returns the owning driver of this device.
-    fn driver(&self) -> &'static Driver;
 
     /// Called when a device is put to sleep.
     fn suspend(&self) -> EResult<()> {
