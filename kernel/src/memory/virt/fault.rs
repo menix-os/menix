@@ -43,29 +43,34 @@ pub fn handler(info: &PageFaultInfo) {
     } {
         // Do copy on write.
         let mut map_flags = mapped.get_flags();
-        let mapped_obj = if info.caused_by_write && map_flags.contains(VmFlags::CopyOnWrite) {
+        let wants_cow = map_flags.contains(VmFlags::CopyOnWrite);
+        let mut mapped_obj = mapped.object.clone();
+
+        if wants_cow && info.caused_by_write {
             map_flags &= !VmFlags::CopyOnWrite;
 
-            // If there is only one reference to this object, we don't have to CoW.
+            let num_pages = mapped.end_page - mapped.start_page;
+            let region_len = NonZeroUsize::new(num_pages * page_size).unwrap();
+            let region_addr = (mapped.start_page * page_size).into();
+            let region_offset = (mapped.offset_page * page_size) as _;
+
             if Arc::strong_count(&mapped.object) == 1 {
-                mapped.set_flags(map_flags);
-
-                for p in mapped.start_page..mapped.end_page {
-                    if space.table.is_mapped((p * page_size).into()) {
-                        space
-                            .table
-                            .remap_single::<KernelAlloc>(info.addr, map_flags)
-                            .expect("Unable to remap page for CoW");
-                    }
-                }
-
-                mapped.object
+                inner
+                    .address_space
+                    .map_object(
+                        mapped.object.clone(),
+                        region_addr,
+                        region_len,
+                        map_flags,
+                        region_offset,
+                    )
+                    .unwrap();
+                mapped_obj = mapped.object.clone();
             } else {
                 let new_obj = Arc::new(MemoryObject::new_phys());
 
-                // Copy the data from the old page.
+                // Copy the data from the old mapping into the new private object.
                 let mut buf = vec![0u8; page_size];
-                let num_pages = mapped.end_page - mapped.start_page;
                 for page in 0..num_pages {
                     mapped
                         .object
@@ -77,17 +82,17 @@ pub fn handler(info: &PageFaultInfo) {
                     .address_space
                     .map_object(
                         new_obj.clone(),
-                        (mapped.start_page * page_size).into(),
-                        NonZeroUsize::new(num_pages * page_size).unwrap(),
+                        region_addr,
+                        region_len,
                         map_flags,
-                        (mapped.offset_page * page_size) as _,
+                        region_offset,
                     )
                     .unwrap();
-                new_obj
+                mapped_obj = new_obj;
             }
-        } else {
-            mapped.object
-        };
+        } else if wants_cow {
+            map_flags &= !VmFlags::Write;
+        }
 
         if let Some(phys) =
             mapped_obj.try_get_page((faulty_page - mapped.start_page) + mapped.offset_page)
