@@ -1,12 +1,12 @@
 use crate::{
+    system::pci::{
+        ACCESS, DeviceView, config,
+        device::{DEVICES, Device, PCI_DEVICES},
+    },
     {
         memory::view::MemoryView,
         posix::errno::{EResult, Errno},
         util::mutex::spin::SpinMutex,
-    },
-    system::pci::{
-        ACCESS, DeviceView, config,
-        device::{DEVICES, Device, PCI_DEVICES},
     },
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};

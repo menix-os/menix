@@ -4,6 +4,7 @@
 
 use crate::{
     arch,
+    system::pci::{ACCESS, Access, Address},
     {
         clock,
         memory::{
@@ -13,7 +14,6 @@ use crate::{
         },
         util::{self, spin::SpinLock},
     },
-    system::pci::{ACCESS, Access, Address},
 };
 use alloc::{alloc::GlobalAlloc, boxed::Box};
 use core::{

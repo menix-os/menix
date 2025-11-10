@@ -1,9 +1,7 @@
 pub mod irq;
 pub mod spin;
 
-use crate::{
-    percpu::CpuData, process::task::Task, sched::Scheduler, util::mutex::spin::SpinMutex,
-};
+use crate::{percpu::CpuData, process::task::Task, sched::Scheduler, util::mutex::spin::SpinMutex};
 use alloc::sync::Arc;
 use core::{
     cell::UnsafeCell,

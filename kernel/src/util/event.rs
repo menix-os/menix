@@ -1,6 +1,4 @@
-use crate::{
-    percpu::CpuData, process::task::Task, sched::Scheduler, util::mutex::spin::SpinMutex,
-};
+use crate::{percpu::CpuData, process::task::Task, sched::Scheduler, util::mutex::spin::SpinMutex};
 use alloc::{boxed::Box, sync::Arc};
 use intrusive_collections::{LinkedList, LinkedListAtomicLink, intrusive_adapter};
 
