@@ -118,8 +118,7 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
     drop(inner);
     proc.fexecve(file, args, envs)?;
 
-    // Unreachable.
-    Scheduler::kill_current();
+    unreachable!("fexecve should never return on success");
 }
 
 pub fn waitpid(pid: uapi::pid_t, stat_loc: UserPtr<i32>, _options: i32) -> EResult<usize> {
