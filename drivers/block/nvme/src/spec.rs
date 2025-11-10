@@ -38,8 +38,10 @@ pub mod sq_entry {
     pub const NSID: Register<u32> = Register::new(4).with_le();
     /// Metadata Pointer
     pub const MPTR: Register<u64> = Register::new(16).with_le();
-    /// Data Pointer
-    pub const DPTR: Register<u64> = Register::new(24).with_le();
+    /// Data Pointer 0
+    pub const DPTR0: Register<u64> = Register::new(24).with_le();
+    /// Data Pointer 1
+    pub const DPTR1: Register<u64> = Register::new(32).with_le();
 
     pub const CDW10: Register<u32> = Register::new(40).with_le();
     pub const CDW11: Register<u32> = Register::new(44).with_le();
@@ -47,6 +49,22 @@ pub mod sq_entry {
     pub const CDW13: Register<u32> = Register::new(52).with_le();
     pub const CDW14: Register<u32> = Register::new(56).with_le();
     pub const CDW15: Register<u32> = Register::new(60).with_le();
+}
+
+pub mod cq_entry {
+    use menix::memory::{Field, Register};
+
+    pub const DW0: Register<u32> = Register::new(0).with_le();
+    pub const DW2: Register<u32> = Register::new(8).with_le();
+
+    pub const SQ_IDENT: Field<u32, u16> = Field::new_bits(DW2, 16..=31);
+    pub const SQ_HEAD: Field<u32, u16> = Field::new_bits(DW2, 0..=15);
+
+    pub const DW3: Register<u32> = Register::new(12).with_le();
+
+    pub const STATUS: Field<u32, u16> = Field::new_bits(DW3, 17..=31);
+    pub const PHASE_TAG: Field<u32, u8> = Field::new_bits(DW3, 16..=16);
+    pub const CID: Field<u32, u16> = Field::new_bits(DW3, 0..=15);
 }
 
 pub mod regs {
@@ -89,4 +107,17 @@ pub mod regs {
     pub const INTMS: Register<u32> = Register::new(0x0C).with_le();
     /// Interrupt Mask Clear
     pub const INTMC: Register<u32> = Register::new(0x10).with_le();
+
+    /// Controller Configuration
+    pub const CC: Register<u32> = Register::new(0x14).with_le();
+    /// I/O Completion Queue Entry Size
+    pub const IOCQES: Field<u32, u8> = Field::new_bits(CC, 20..=23);
+    /// I/O Submission Queue Entry Size
+    pub const IOSQES: Field<u32, u8> = Field::new_bits(CC, 16..=19);
+    /// Shutdown Notification
+    pub const SHN: Field<u32, u8> = Field::new_bits(CC, 14..=15);
+    /// Arbitration Mechanism Selected
+    pub const AMSEL: Field<u32, u8> = Field::new_bits(CC, 11..=13);
+    /// Memory Page Size
+    pub const MPS: Field<u32, u8> = Field::new_bits(CC, 07..=10);
 }
