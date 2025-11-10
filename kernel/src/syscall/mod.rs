@@ -47,10 +47,10 @@ pub fn dispatch(
         numbers::MADVISE => sys_unimp!("madvise", Err(Errno::ENOSYS)),
 
         // Signals
-        numbers::SIGPROCMASK => sys_unimp!("sigprocmask", Ok(0)),
-        numbers::SIGSUSPEND => sys_unimp!("sigsuspend", Ok(0)),
-        numbers::SIGPENDING => sys_unimp!("sigpending", Ok(0)),
-        numbers::SIGACTION => sys_unimp!("sigaction", Ok(0)),
+        numbers::SIGPROCMASK => sys_unimp!("sigprocmask", Err(Errno::ENOSYS)),
+        numbers::SIGSUSPEND => sys_unimp!("sigsuspend", Err(Errno::ENOSYS)),
+        numbers::SIGPENDING => sys_unimp!("sigpending", Err(Errno::ENOSYS)),
+        numbers::SIGACTION => sys_unimp!("sigaction", Err(Errno::ENOSYS)),
         numbers::SIGTIMEDWAIT => sys_unimp!("sigtimedwait", Err(Errno::ENOSYS)),
         numbers::SIGALTSTACK => sys_unimp!("sigaltstack", Err(Errno::ENOSYS)),
 
