@@ -86,6 +86,11 @@ pub fn pwrite(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<i
 }
 
 pub fn openat(fd: usize, path: VirtAddr, oflag: usize /* mode */) -> EResult<usize> {
+    // TODO: This should really be using UserPtr/a CStr abstraction.
+    if path == VirtAddr::null() {
+        return Err(Errno::EINVAL);
+    }
+
     let path = unsafe { CStr::from_ptr(path.as_ptr()) };
     let v = path.to_owned();
 
