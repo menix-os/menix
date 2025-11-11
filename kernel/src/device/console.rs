@@ -32,7 +32,7 @@ impl FileOps for Console {
     fn ioctl(&self, _: &File, request: usize, arg: usize) -> EResult<usize> {
         match request as _ {
             uapi::TIOCGWINSZ => {
-                let arg: UserPtr<'_, uapi::winsize> = UserPtr::new(arg.into());
+                let mut arg: UserPtr<'_, uapi::winsize> = UserPtr::new(arg.into());
                 arg.write(uapi::winsize {
                     ws_row: 25,
                     ws_col: 80,
