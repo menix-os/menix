@@ -108,9 +108,9 @@ impl<T> PerCpuData<T> {
     pub fn get_for(&self, context: &'static CpuData) -> &'static T {
         unsafe {
             let start = &raw const LD_PERCPU_START as usize;
-            (context.this.load(Ordering::Acquire) as *mut T)
+            (core::ptr::from_ref(context) as *const T)
                 .byte_add(&raw const self.storage as usize - start)
-                .as_mut()
+                .as_ref()
                 .unwrap()
         }
     }
