@@ -1,9 +1,7 @@
 use crate::{
     arch,
-    {
-        memory::{VirtAddr, cache::MemoryObject, pmm::KernelAlloc, virt::VmFlags},
-        sched::Scheduler,
-    },
+    memory::{AddressSpace, VirtAddr, cache::MemoryObject, pmm::KernelAlloc, virt::VmFlags},
+    sched::Scheduler,
 };
 use alloc::sync::Arc;
 use core::num::NonZeroUsize;
@@ -25,17 +23,14 @@ pub struct PageFaultInfo {
     pub page_was_present: bool,
 }
 
-/// Generic page fault handler.
-pub fn handler(info: &PageFaultInfo) {
+/// The actual page fault. This function is meant to be called by other code too.
+/// This is useful for [`crate::memory::user::UserPtr`], which avoids taking any additional locks.
+pub fn handler_inner(info: &PageFaultInfo, space: &AddressSpace) {
     // Check if the current address space has a theoretical mapping at the faulting address.
     let page_size = arch::virt::get_page_size();
-    let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
-    let space = &inner.address_space;
-    // The page index of the page fault address.
     let faulty_page = info.addr.value() / arch::virt::get_page_size();
     if let Some(mapped) = {
-        let mappings = inner.address_space.mappings.lock();
+        let mappings = space.mappings.lock();
         mappings
             .iter()
             .find(|x| faulty_page >= x.start_page && faulty_page < x.end_page)
@@ -55,8 +50,7 @@ pub fn handler(info: &PageFaultInfo) {
             let region_offset = (mapped.offset_page * page_size) as _;
 
             if Arc::strong_count(&mapped.object) == 1 {
-                inner
-                    .address_space
+                space
                     .map_object(
                         mapped.object.clone(),
                         region_addr,
@@ -78,8 +72,7 @@ pub fn handler(info: &PageFaultInfo) {
                     new_obj.write(&buf, (mapped.offset_page + page) * page_size);
                 }
 
-                inner
-                    .address_space
+                space
                     .map_object(
                         new_obj.clone(),
                         region_addr,
@@ -147,4 +140,12 @@ pub fn handler(info: &PageFaultInfo) {
         info.addr.0,
         info.ip.0
     );
+}
+
+/// Generic page fault handler for MMU-generated faults.
+pub fn handler(info: &PageFaultInfo) {
+    let proc = Scheduler::get_current().get_process();
+    let inner = proc.inner.lock();
+
+    handler_inner(info, &inner.address_space);
 }
