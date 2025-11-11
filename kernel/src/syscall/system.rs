@@ -12,7 +12,7 @@ pub fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
     crate::arch::core::archctl(cmd, arg)
 }
 
-pub fn getuname(addr: UserPtr<uapi::utsname>) -> EResult<usize> {
+pub fn getuname(mut addr: UserPtr<uapi::utsname>) -> EResult<usize> {
     addr.write(*UTSNAME.lock()).ok_or(Errno::EINVAL)?;
 
     Ok(0)
@@ -31,7 +31,7 @@ pub fn setuname(addr: UserPtr<uapi::utsname>) -> EResult<usize> {
     Ok(0)
 }
 
-pub fn clock_get(clockid: uapi::clockid_t, tp: UserPtr<uapi::timespec>) -> EResult<usize> {
+pub fn clock_get(clockid: uapi::clockid_t, mut tp: UserPtr<uapi::timespec>) -> EResult<usize> {
     let _ = clockid; // TODO: Respect clockid
 
     let elapsed = clock::get_elapsed();

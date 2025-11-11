@@ -23,7 +23,7 @@ impl<'a, T: Sized + Copy> UserPtr<'a, T> {
         Some(unsafe { self.addr.as_ptr::<T>().read_unaligned() })
     }
 
-    pub fn write(&self, value: T) -> bool {
+    pub fn write(&mut self, value: T) -> bool {
         unsafe { self.addr.as_ptr::<T>().write_unaligned(value) };
         true
     }

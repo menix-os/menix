@@ -139,7 +139,7 @@ impl FileOps for PipeBuffer {
         match request as _ {
             uapi::FIONREAD => {
                 let len = self.inner.lock().buffer.get_data_len() as i32;
-                let count_ptr = UserPtr::new(VirtAddr::new(argp));
+                let mut count_ptr = UserPtr::new(VirtAddr::new(argp));
                 count_ptr.write(len);
             }
             _ => return Err(Errno::ENOTTY),

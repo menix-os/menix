@@ -211,7 +211,7 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
     Ok(path_len)
 }
 
-fn write_stat(inode: &Arc<INode>, statbuf: UserPtr<uapi::stat>) {
+fn write_stat(inode: &Arc<INode>, mut statbuf: UserPtr<uapi::stat>) {
     let stat = uapi::stat {
         st_dev: 0,
         st_ino: inode.id,
@@ -466,7 +466,7 @@ pub fn pselect(
     Ok(1)
 }
 
-pub fn pipe(filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
+pub fn pipe(mut filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
     let fds = {
         let proc = Scheduler::get_current().get_process();
         let mut proc_inner = proc.inner.lock();

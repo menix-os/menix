@@ -121,7 +121,7 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
     unreachable!("fexecve should never return on success");
 }
 
-pub fn waitpid(pid: uapi::pid_t, stat_loc: UserPtr<i32>, _options: i32) -> EResult<usize> {
+pub fn waitpid(pid: uapi::pid_t, mut stat_loc: UserPtr<i32>, _options: i32) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
 
     loop {
