@@ -1,5 +1,6 @@
 use crate::{
     arch::{
+        irq::wait_for_irq,
         virt::{PageTableEntry, get_level_bits, get_max_leaf_level, get_page_bits},
         x86_64::{
             consts::{CR0_ET, CR0_PE, CR0_PG, CR4_PAE, MSR_EFER, MSR_EFER_LME, MSR_EFER_NXE},
@@ -12,19 +13,17 @@ use crate::{
             },
         },
     },
-    {
-        boot::BootInfo,
-        clock,
-        memory::{
-            PhysAddr,
-            pmm::{AllocFlags, KernelAlloc, PageAllocator},
-            virt::{KERNEL_STACK_SIZE, PteFlags, mmu::PageTable},
-        },
-        percpu::{self, CpuData},
-        process::{Process, task::Task},
-        sched,
-        util::mutex::spin::SpinMutex,
+    boot::BootInfo,
+    clock,
+    memory::{
+        PhysAddr,
+        pmm::{AllocFlags, KernelAlloc, PageAllocator},
+        virt::{KERNEL_STACK_SIZE, PteFlags, mmu::PageTable},
     },
+    percpu::{self, CpuData},
+    process::{Process, task::Task},
+    sched,
+    util::mutex::spin::SpinMutex,
 };
 use alloc::{sync::Arc, vec::Vec};
 use bytemuck::{Pod, Zeroable};
@@ -228,7 +227,7 @@ extern "C" fn ap_entry(info: PhysAddr) -> ! {
         booted.write_volatile(1);
     }
 
-    CpuData::get().scheduler.reschedule();
+    cpu_ctx.scheduler.do_yield();
     loop {}
 }
 
