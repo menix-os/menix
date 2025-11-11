@@ -12,18 +12,16 @@ use crate::{
             system::apic::LAPIC,
         },
     },
-    {
-        memory::{
-            VirtAddr,
-            pmm::{AllocFlags, KernelAlloc, PageAllocator},
-            virt::KERNEL_STACK_SIZE,
-        },
-        percpu::CpuData,
-        posix::errno::EResult,
-        process::task::Task,
-        sched::Scheduler,
-        util::mutex::irq::{IrqGuard, IrqMutex},
+    memory::{
+        VirtAddr,
+        pmm::{AllocFlags, KernelAlloc, PageAllocator},
+        virt::KERNEL_STACK_SIZE,
     },
+    percpu::CpuData,
+    posix::errno::EResult,
+    process::task::Task,
+    sched::Scheduler,
+    util::mutex::irq::{IrqGuard, IrqMutex},
 };
 use core::{
     arch::{asm, naked_asm},
@@ -321,7 +319,6 @@ pub(in crate::arch) unsafe fn jump_to_user_context(context: *mut Context) -> ! {
             "Attempted to perform a user jump on a kernel task!"
         );
 
-        IrqMutex::set_interrupted(false);
         asm!(
             "mov rsp, {context}",
             "jmp {interrupt_return}",
