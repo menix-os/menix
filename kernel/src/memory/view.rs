@@ -2,6 +2,7 @@
 
 use super::{PhysAddr, VirtAddr, pmm::KernelAlloc, virt::VmFlags};
 use crate::memory::virt::mmu::PageTable;
+use alloc::sync::Arc;
 use core::{marker::PhantomData, ops::RangeInclusive};
 use num_traits::{FromBytes, PrimInt, ToBytes};
 
@@ -49,6 +50,18 @@ pub trait MemoryView {
 
     /// Writes data to a register.
     fn write_reg<T: PrimInt + ToBytes>(&mut self, reg: Register<T>, value: T) -> Option<()>
+    where
+        T::Bytes: Default;
+}
+
+pub trait UnsafeMemoryView {
+    /// Reads data from a register.
+    unsafe fn read_reg<T: PrimInt + FromBytes>(&self, reg: Register<T>) -> Option<BitValue<T>>
+    where
+        T::Bytes: Default;
+
+    /// Writes data to a register.
+    unsafe fn write_reg<T: PrimInt + ToBytes>(&self, reg: Register<T>, value: T) -> Option<()>
     where
         T::Bytes: Default;
 }
@@ -216,6 +229,71 @@ impl MmioView {
             len,
         };
     }
+
+    pub unsafe fn new_offset(&self, offset: usize) -> Option<Self> {
+        if offset >= self.len {
+            return None;
+        }
+        unsafe {
+            Some(Self {
+                base: self.base.byte_add(offset),
+                len: self.len - offset,
+            })
+        }
+    }
+
+    pub fn sub_view(self: Arc<Self>, offset: usize) -> Option<MmioSubView> {
+        if offset >= self.len {
+            return None;
+        }
+
+        Some(MmioSubView {
+            parent: self,
+            offset,
+        })
+    }
+
+    pub fn base(&self) -> *mut () {
+        self.base
+    }
+
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    fn do_read_reg<T: PrimInt>(&self, reg: Register<T>, offset: usize) -> Option<BitValue<T>> {
+        if reg.offset() + offset + size_of::<T>() > self.len {
+            return None;
+        }
+
+        let mut value = unsafe {
+            (self.base as *mut T)
+                .byte_add(reg.offset() + offset)
+                .read_volatile()
+        };
+        if !reg.native_endian {
+            value = value.swap_bytes();
+        }
+
+        Some(BitValue::new(value))
+    }
+
+    fn do_write_reg<T: PrimInt>(&self, reg: Register<T>, value: T, offset: usize) -> Option<()> {
+        if reg.offset() + offset + size_of::<T>() > self.len {
+            return None;
+        }
+
+        let value = match reg.native_endian {
+            true => value,
+            false => value.swap_bytes(),
+        };
+        unsafe {
+            (self.base as *mut T)
+                .byte_add(reg.offset() + offset)
+                .write_volatile(value)
+        };
+        Some(())
+    }
 }
 
 impl Drop for MmioView {
@@ -226,34 +304,27 @@ impl Drop for MmioView {
     }
 }
 
-impl MemoryView for MmioView {
-    fn read_reg<T: PrimInt>(&self, reg: Register<T>) -> Option<BitValue<T>> {
-        if reg.offset() + size_of::<T>() > self.len {
-            return None;
-        }
-
-        let mut value = unsafe { (self.base as *mut T).byte_add(reg.offset).read_volatile() };
-        if !reg.native_endian {
-            value = value.swap_bytes();
-        }
-
-        Some(BitValue::new(value))
+impl UnsafeMemoryView for MmioView {
+    unsafe fn read_reg<T: PrimInt>(&self, reg: Register<T>) -> Option<BitValue<T>> {
+        self.do_read_reg(reg, 0)
     }
 
-    fn write_reg<T: PrimInt>(&mut self, reg: Register<T>, value: T) -> Option<()> {
-        if reg.offset() + size_of::<T>() > self.len {
-            return None;
-        }
+    unsafe fn write_reg<T: PrimInt>(&self, reg: Register<T>, value: T) -> Option<()> {
+        self.do_write_reg(reg, value, 0)
+    }
+}
 
-        let value = match reg.native_endian {
-            true => value,
-            false => value.swap_bytes(),
-        };
-        unsafe {
-            (self.base as *mut T)
-                .byte_add(reg.offset)
-                .write_volatile(value)
-        };
-        Some(())
+pub struct MmioSubView {
+    parent: Arc<MmioView>,
+    offset: usize,
+}
+
+impl UnsafeMemoryView for MmioSubView {
+    unsafe fn read_reg<T: PrimInt>(&self, reg: Register<T>) -> Option<BitValue<T>> {
+        self.parent.do_read_reg(reg, self.offset)
+    }
+
+    unsafe fn write_reg<T: PrimInt>(&'_ self, reg: Register<T>, value: T) -> Option<()> {
+        self.parent.do_write_reg(reg, value, self.offset)
     }
 }

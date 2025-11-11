@@ -1,22 +1,14 @@
-use crate::controller::Controller;
 use menix::{device::block::BlockDevice, posix::errno::EResult};
 
-pub struct Namespace<'a> {
-    controller: &'a Controller,
+pub struct Namespace {
     nsid: usize,
     lba_shift: usize,
     lba_count: usize,
 }
 
-impl<'a> Namespace<'a> {
-    pub fn new(
-        controller: &'a Controller,
-        nsid: usize,
-        lba_shift: usize,
-        lba_count: usize,
-    ) -> Self {
+impl Namespace {
+    pub fn new(nsid: usize, lba_shift: usize, lba_count: usize) -> Self {
         Self {
-            controller,
             nsid,
             lba_shift,
             lba_count,
@@ -24,7 +16,7 @@ impl<'a> Namespace<'a> {
     }
 }
 
-impl<'a> BlockDevice for Namespace<'a> {
+impl BlockDevice for Namespace {
     fn get_sector_size(&self) -> usize {
         1 << self.lba_shift
     }

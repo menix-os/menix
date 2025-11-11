@@ -45,11 +45,11 @@ fn probe(
     //     .next()
     //     .ok_or(Errno::ENXIO)?;
 
-    let controller = Controller::new_pci(view.address(), regs)?;
+    let mut controller = Controller::new_pci(view.address(), regs)?;
 
     // Reset the controller to initialize all queues and other structures.
     log!("Resetting controller");
-    controller.reset();
+    controller.reset()?;
 
     Ok(Arc::new(controller))
 }
