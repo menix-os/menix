@@ -95,10 +95,24 @@ macro_rules! addr_impl {
             }
         }
 
+        #[cfg(target_pointer_width = "32")]
+        impl Into<u32> for $ty {
+            fn into(self) -> u32 {
+                self.0 as u32
+            }
+        }
+
         #[cfg(target_pointer_width = "64")]
         impl From<u64> for $ty {
             fn from(addr: u64) -> Self {
                 Self(addr as usize)
+            }
+        }
+
+        #[cfg(target_pointer_width = "64")]
+        impl Into<u64> for $ty {
+            fn into(self) -> u64 {
+                self.0 as u64
             }
         }
 
