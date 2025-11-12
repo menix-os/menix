@@ -17,7 +17,7 @@ pub static UTSNAME: SpinMutex<uapi::utsname> = SpinMutex::new(uapi::utsname {
     sysname: to_char_array("Menix"),
     nodename: to_char_array("localhost"),
     release: to_char_array(env!("CARGO_PKG_VERSION")),
-    version: to_char_array(env!("MENIX_VERSION")),
+    version: to_char_array("Menix is not Minix"),
     machine: {
         #[cfg(target_arch = "x86_64")]
         {
