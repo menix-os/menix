@@ -19,9 +19,8 @@ use core::{
 };
 
 pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
-    let slice = UserSlice::new(addr, len)
-        .as_mut_slice()
-        .ok_or(Errno::EINVAL)?;
+    let mut user_ptr = UserSlice::new(addr, len);
+    let slice = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
     let file = {
         let proc = Scheduler::get_current().get_process();
         let proc_inner = proc.inner.lock();
@@ -37,9 +36,8 @@ pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
 }
 
 pub fn pread(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
-    let slice = UserSlice::new(addr, len)
-        .as_mut_slice()
-        .ok_or(Errno::EINVAL)?;
+    let mut user_ptr = UserSlice::new(addr, len);
+    let slice = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
     let file = {
         let proc = Scheduler::get_current().get_process();
         let proc_inner = proc.inner.lock();
@@ -55,7 +53,8 @@ pub fn pread(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<is
 }
 
 pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
-    let slice = UserSlice::new(addr, len).as_slice().ok_or(Errno::EINVAL)?;
+    let user_ptr = UserSlice::new(addr, len);
+    let slice = user_ptr.as_slice().ok_or(Errno::EINVAL)?;
     let file = {
         let proc = Scheduler::get_current().get_process();
         let proc_inner = proc.inner.lock();
@@ -70,7 +69,8 @@ pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
 }
 
 pub fn pwrite(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
-    let slice = UserSlice::new(addr, len).as_slice().ok_or(Errno::EINVAL)?;
+    let user_ptr = UserSlice::new(addr, len);
+    let slice = user_ptr.as_slice().ok_or(Errno::EINVAL)?;
     let file = {
         let proc = Scheduler::get_current().get_process();
         let proc_inner = proc.inner.lock();
@@ -167,9 +167,8 @@ pub fn ioctl(fd: usize, request: usize, arg: VirtAddr) -> EResult<usize> {
 }
 
 pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
-    let buf: &mut [u8] = UserSlice::new(buffer, len)
-        .as_mut_slice()
-        .ok_or(Errno::EINVAL)?;
+    let mut user_ptr = UserSlice::new(buffer, len);
+    let buf: &mut [u8] = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
 
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
@@ -349,9 +348,8 @@ pub fn chdir(path: VirtAddr) -> EResult<usize> {
 }
 
 pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
-    let buf: &mut [u8] = UserSlice::new(addr, len)
-        .as_mut_slice()
-        .ok_or(Errno::EINVAL)?;
+    let mut user_ptr = UserSlice::new(addr, len);
+    let buf: &mut [u8] = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
 
     let proc = Scheduler::get_current().get_process();
     let inner = proc.inner.lock();

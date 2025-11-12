@@ -1,16 +1,15 @@
 //! Safe user memory reading/writing.
 
 use super::VirtAddr;
-use bytemuck::AnyBitPattern;
 use core::marker::PhantomData;
 
 /// Provides safe access to a single structure from userland.
-pub struct UserPtr<'a, T: Sized + Copy> {
+pub struct UserPtr<T: Sized + Copy> {
     addr: VirtAddr,
-    _p: PhantomData<&'a T>,
+    _p: PhantomData<T>,
 }
 
-impl<'a, T: Sized + Copy> UserPtr<'a, T> {
+impl<T: Sized + Copy> UserPtr<T> {
     pub const fn new(addr: VirtAddr) -> Self {
         Self {
             addr,
@@ -29,20 +28,20 @@ impl<'a, T: Sized + Copy> UserPtr<'a, T> {
     }
 }
 
-impl<'a, T: Sized + Copy> From<usize> for UserPtr<'a, T> {
+impl<T: Sized + Copy> From<usize> for UserPtr<T> {
     fn from(value: usize) -> Self {
         Self::new(value.into())
     }
 }
 
 /// Provides safe access to a memory buffer from userland.
-pub struct UserSlice<'a, T: AnyBitPattern> {
+pub struct UserSlice<T: Sized + Copy> {
     addr: VirtAddr,
     len: usize,
-    _p: PhantomData<&'a T>,
+    _p: PhantomData<T>,
 }
 
-impl<'a, T: AnyBitPattern> UserSlice<'a, T> {
+impl<T: Sized + Copy> UserSlice<T> {
     pub const fn new(addr: VirtAddr, len: usize) -> Self {
         Self {
             addr,
@@ -51,11 +50,15 @@ impl<'a, T: AnyBitPattern> UserSlice<'a, T> {
         }
     }
 
-    pub fn as_slice(&self) -> Option<&'a [T]> {
+    pub fn len(&self) -> usize {
+        self.len
+    }
+
+    pub fn as_slice(&self) -> Option<&[T]> {
         Some(unsafe { core::slice::from_raw_parts(self.addr.as_ptr::<T>(), self.len) })
     }
 
-    pub fn as_mut_slice(&mut self) -> Option<&'a mut [T]> {
+    pub fn as_mut_slice(&mut self) -> Option<&mut [T]> {
         Some(unsafe { core::slice::from_raw_parts_mut(self.addr.as_ptr::<T>(), self.len) })
     }
 }
