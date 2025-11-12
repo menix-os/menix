@@ -78,7 +78,7 @@ pub fn dispatch(
         numbers::WRITE => vfs::write(a0, a1.into(), a2).map(|x| x as _),
         numbers::PWRITE => vfs::pwrite(a0, a1.into(), a2, a3).map(|x| x as _),
         numbers::SEEK => vfs::seek(a0, a1, a2),
-        numbers::IOCTL => vfs::ioctl(a0, a1, a2),
+        numbers::IOCTL => vfs::ioctl(a0, a1, a2.into()),
         numbers::OPENAT => vfs::openat(a0, a1.into(), a2),
         numbers::CLOSE => vfs::close(a0),
         numbers::FSTAT => vfs::fstat(a0, a1.into()),

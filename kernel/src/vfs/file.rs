@@ -1,6 +1,6 @@
 use super::inode::{INode, NodeType};
 use crate::{
-    memory::cache::MemoryObject,
+    memory::{VirtAddr, cache::MemoryObject},
     posix::errno::{EResult, Errno},
     process::{Identity, InnerProcess},
     util::mutex::Mutex,
@@ -137,7 +137,7 @@ pub trait FileOps: Debug {
 
     /// Performs a generic ioctl operation on the file.
     /// Returns a driver specific status code if it was successful.
-    fn ioctl(&self, file: &File, request: usize, arg: usize) -> EResult<usize> {
+    fn ioctl(&self, file: &File, request: usize, arg: VirtAddr) -> EResult<usize> {
         _ = (arg, request, file);
         Err(Errno::ENOTTY)
     }
@@ -379,7 +379,7 @@ impl File {
         }
     }
 
-    pub fn ioctl(&self, request: usize, arg: usize) -> EResult<usize> {
+    pub fn ioctl(&self, request: usize, arg: VirtAddr) -> EResult<usize> {
         self.ops.ioctl(self, request, arg)
     }
 

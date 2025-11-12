@@ -1,7 +1,7 @@
 use crate::{
     device::Device,
     log::GLOBAL_LOGGERS,
-    memory::user::UserPtr,
+    memory::{VirtAddr, user::UserPtr},
     posix::errno::{EResult, Errno},
     process::{Identity, PROCESS_STAGE, Process},
     util::mutex::irq::IrqMutex,
@@ -29,10 +29,10 @@ impl FileOps for Console {
         Ok(buffer.len() as _)
     }
 
-    fn ioctl(&self, _: &File, request: usize, arg: usize) -> EResult<usize> {
+    fn ioctl(&self, _: &File, request: usize, arg: VirtAddr) -> EResult<usize> {
         match request as _ {
             uapi::TIOCGWINSZ => {
-                let mut arg: UserPtr<'_, uapi::winsize> = UserPtr::new(arg.into());
+                let mut arg: UserPtr<'_, uapi::winsize> = UserPtr::new(arg);
                 arg.write(uapi::winsize {
                     ws_row: 25,
                     ws_col: 80,

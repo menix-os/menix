@@ -135,11 +135,11 @@ impl FileOps for PipeBuffer {
         todo!()
     }
 
-    fn ioctl(&self, _file: &File, request: usize, argp: usize) -> EResult<usize> {
+    fn ioctl(&self, _file: &File, request: usize, argp: VirtAddr) -> EResult<usize> {
         match request as _ {
             uapi::FIONREAD => {
                 let len = self.inner.lock().buffer.get_data_len() as i32;
-                let mut count_ptr = UserPtr::new(VirtAddr::new(argp));
+                let mut count_ptr = UserPtr::new(argp);
                 count_ptr.write(len);
             }
             _ => return Err(Errno::ENOTTY),

@@ -157,7 +157,7 @@ pub fn close(fd: usize) -> EResult<usize> {
     }
 }
 
-pub fn ioctl(fd: usize, request: usize, arg: usize) -> EResult<usize> {
+pub fn ioctl(fd: usize, request: usize, arg: VirtAddr) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.inner.lock();
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
