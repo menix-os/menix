@@ -1,5 +1,5 @@
 use crate::{
-    device::Device,
+    device::CharDevice,
     log::GLOBAL_LOGGERS,
     memory::{VirtAddr, user::UserPtr},
     posix::errno::{EResult, Errno},
@@ -46,11 +46,7 @@ impl FileOps for Console {
     }
 }
 
-impl Device for Console {
-    fn open(&self) -> EResult<()> {
-        Ok(())
-    }
-
+impl CharDevice for Console {
     fn name(&self) -> &str {
         "console"
     }

@@ -1,5 +1,5 @@
 use crate::{
-    device::Device,
+    device::CharDevice,
     posix::errno::{EResult, Errno},
     process::{Identity, PROCESS_STAGE, Process},
     vfs::{
@@ -23,11 +23,7 @@ impl FileOps for NullFile {
     }
 }
 
-impl Device for NullFile {
-    fn open(&self) -> EResult<()> {
-        Ok(())
-    }
-
+impl CharDevice for NullFile {
     fn name(&self) -> &str {
         "null"
     }
@@ -47,11 +43,7 @@ impl FileOps for ZeroFile {
     }
 }
 
-impl Device for ZeroFile {
-    fn open(&self) -> EResult<()> {
-        Ok(())
-    }
-
+impl CharDevice for ZeroFile {
     fn name(&self) -> &str {
         "zero"
     }
@@ -71,11 +63,7 @@ impl FileOps for FullFile {
     }
 }
 
-impl Device for FullFile {
-    fn open(&self) -> EResult<()> {
-        Ok(())
-    }
-
+impl CharDevice for FullFile {
     fn name(&self) -> &str {
         "full"
     }

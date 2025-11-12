@@ -4,12 +4,12 @@ mod tmpfs;
 
 use super::inode::INode;
 use crate::{
-    device::Device,
     posix::errno::{EResult, Errno},
     util::mutex::spin::SpinMutex,
     vfs::{
         PathNode,
         cache::Entry,
+        file::FileOps,
         inode::{Mode, NodeType},
     },
 };
@@ -86,7 +86,7 @@ pub trait SuperBlock: Debug {
         self: Arc<Self>,
         node_type: NodeType,
         mode: Mode,
-        device: Option<Arc<dyn Device>>,
+        device: Option<Arc<dyn FileOps>>,
     ) -> EResult<Arc<INode>>;
 
     /// Deletes the inode.

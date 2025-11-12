@@ -85,7 +85,6 @@ impl Debug for File {
         f.debug_struct("File")
             .field("path", &self.path)
             .field("flags", &self.flags)
-            .field("ops", &self.ops)
             .finish()
     }
 }
@@ -108,7 +107,7 @@ impl Clone for FileDescription {
 /// Operations that can be performed on a file. Every trait function has a
 /// generic implementation, which treats it as unimplemented.
 /// Inputs have been sanitized when these functions are called.
-pub trait FileOps: Debug {
+pub trait FileOps {
     /// Called when the file is being opened.
     fn acquire(&self, file: &File) -> EResult<()> {
         let _ = file;
@@ -260,22 +259,20 @@ impl File {
                 Arc::try_new(result)?
             }
             NodeOps::Directory(dir) => dir.open(inode, file_path, flags, identity)?,
-            NodeOps::BlockDevice(dev) => {
-                dev.open()?;
+            NodeOps::BlockDevice => {
                 let result = File {
                     path: Some(file_path),
-                    ops: dev.clone(),
+                    ops: inode.file_ops.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
                     offset: Mutex::new(0),
                 };
                 Arc::try_new(result)?
             }
-            NodeOps::CharacterDevice(dev) => {
-                dev.open()?;
+            NodeOps::CharacterDevice => {
                 let result = File {
                     path: Some(file_path),
-                    ops: dev.clone(),
+                    ops: inode.file_ops.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
                     offset: Mutex::new(0),
@@ -348,7 +345,7 @@ impl File {
         let mut position = self.offset.lock();
 
         match &self.inode.as_ref().ok_or(Errno::EINVAL)?.node_ops {
-            NodeOps::CharacterDevice(_) => return Err(Errno::ESPIPE),
+            NodeOps::CharacterDevice => return Err(Errno::ESPIPE),
             NodeOps::Socket | NodeOps::FIFO => return Err(Errno::ESPIPE),
             _ => (),
         }

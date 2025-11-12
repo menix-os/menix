@@ -11,8 +11,8 @@ pub use file::File;
 pub use fs::Mount;
 pub use fs::MountFlags;
 
+use crate::vfs::file::FileOps;
 use crate::{
-    device::Device,
     memory::{
         VirtAddr,
         cache::MemoryObject,
@@ -46,7 +46,7 @@ pub fn mknod(
     path: &[u8],
     file_type: NodeType,
     mode: Mode,
-    device: Option<Arc<dyn Device>>,
+    device: Option<Arc<dyn FileOps>>,
     identity: &Identity,
 ) -> EResult<()> {
     match file_type {
