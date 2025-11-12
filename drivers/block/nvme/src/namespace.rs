@@ -1,4 +1,4 @@
-use menix::{device::block::BlockDevice, posix::errno::EResult};
+use menix::{device::BlockDevice, memory::VirtAddr, posix::errno::EResult, vfs::File};
 
 pub struct Namespace {
     nsid: usize,
@@ -26,6 +26,11 @@ impl BlockDevice for Namespace {
     }
 
     fn write_sectors(&self, buffer: &[u8], sector_start: usize) -> EResult<usize> {
+        todo!()
+    }
+
+    fn handle_ioctl(&self, file: &File, request: usize, arg: VirtAddr) -> EResult<usize> {
+        let _ = arg;
         todo!()
     }
 }
