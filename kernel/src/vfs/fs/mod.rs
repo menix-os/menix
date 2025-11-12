@@ -4,7 +4,7 @@ mod tmpfs;
 
 use super::inode::INode;
 use crate::{
-    device::Device,
+    device::CharDevice,
     posix::errno::{EResult, Errno},
     util::mutex::spin::SpinMutex,
     vfs::{
@@ -86,7 +86,7 @@ pub trait SuperBlock: Debug {
         self: Arc<Self>,
         node_type: NodeType,
         mode: Mode,
-        device: Option<Arc<dyn Device>>,
+        device: Option<Arc<dyn CharDevice>>,
     ) -> EResult<Arc<INode>>;
 
     /// Deletes the inode.

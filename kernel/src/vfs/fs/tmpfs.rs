@@ -2,20 +2,17 @@
 
 use super::{MountFlags, SuperBlock};
 use crate::{
-    arch,
-    {
-        device::Device,
-        memory::{PhysAddr, cache::MemoryObject},
-        posix::errno::{EResult, Errno},
-        process::Identity,
-        util::mutex::{Mutex, spin::SpinMutex},
-        vfs::{
-            PathNode,
-            cache::Entry,
-            file::{File, FileOps, MmapFlags, OpenFlags, SeekAnchor},
-            fs::{FileSystem, Mount},
-            inode::{DirectoryOps, INode, Mode, NodeOps, NodeType, RegularOps, SymlinkOps},
-        },
+    device::CharDevice,
+    memory::{PhysAddr, cache::MemoryObject},
+    posix::errno::{EResult, Errno},
+    process::Identity,
+    util::mutex::{Mutex, spin::SpinMutex},
+    vfs::{
+        PathNode,
+        cache::Entry,
+        file::{File, FileOps, MmapFlags, OpenFlags, SeekAnchor},
+        fs::{FileSystem, Mount},
+        inode::{DirectoryOps, INode, Mode, NodeOps, NodeType, RegularOps, SymlinkOps},
     },
 };
 use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
@@ -72,7 +69,7 @@ impl SuperBlock for TmpSuper {
         self: Arc<Self>,
         node_type: NodeType,
         mode: Mode,
-        device: Option<Arc<dyn Device>>,
+        device: Option<Arc<dyn CharDevice>>,
     ) -> EResult<Arc<INode>> {
         let (node_ops, file_ops): (_, Arc<dyn FileOps>) = match node_type {
             NodeType::Regular => {
@@ -93,7 +90,8 @@ impl SuperBlock for TmpSuper {
             }
             NodeType::BlockDevice => {
                 let dev = device.ok_or(Errno::ENODEV)?;
-                (NodeOps::BlockDevice(dev.clone()), dev)
+                todo!()
+                // (NodeOps::BlockDevice(dev.clone()), dev)
             }
             _ => return Err(Errno::EINVAL),
         };
