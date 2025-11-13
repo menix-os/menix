@@ -1,6 +1,6 @@
 #![no_std]
 
-use crate::controller::Controller;
+use crate::{command::Command, controller::Controller};
 use menix::{
     log,
     memory::{MmioView, PhysAddr},
@@ -37,9 +37,6 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<()> {
     // Reset the controller to initialize all queues and other structures.
     log!("Resetting controller");
     controller.reset()?;
-
-    // TODO
-    core::mem::forget(controller);
 
     Ok(())
 }

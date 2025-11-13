@@ -13,7 +13,7 @@ use menix::{
     util::mutex::spin::SpinMutex,
 };
 
-const MAX_IO_QUEUE_DEPTH: usize = 1024;
+const MAX_IO_QUEUE_DEPTH: u16 = 1024;
 const DOORBELL_OFFSET: usize = 0x1000;
 const ADMIN_QUEUE_SIZE: u16 = 32;
 
@@ -23,7 +23,7 @@ pub struct Controller {
     version: (u16, u8, u8),
     doorbell_stride: u32,
     admin_queue: SpinMutex<Option<Queue>>,
-    io_queues: SpinMutex<Vec<Queue>>,
+    io_queues: SpinMutex<Option<Queue>>,
 }
 
 impl Controller {
@@ -55,7 +55,7 @@ impl Controller {
             version,
             doorbell_stride,
             admin_queue: SpinMutex::new(None),
-            io_queues: SpinMutex::new(Vec::new()),
+            io_queues: SpinMutex::new(None),
         })
     }
 
@@ -63,7 +63,7 @@ impl Controller {
         let cap = unsafe { self.regs.read_reg(spec::regs::CAP) }.unwrap();
 
         let queue_depth = min(
-            cap.read_field(spec::regs::cap::MQES).value() as usize + 1,
+            cap.read_field(spec::regs::cap::MQES).value() + 1,
             MAX_IO_QUEUE_DEPTH,
         );
 
@@ -87,6 +87,9 @@ impl Controller {
 
         *self.admin_queue.lock() = Some(admin_queue);
 
+        // Create an IO queue.
+        let io_queue = Queue::new(1, queue_depth, self.regs.clone())?;
+
         Ok(())
     }
 
@@ -101,10 +104,15 @@ impl Controller {
     }
 
     pub fn submit_admin_cmd(&self, cmd: Command) {
-        todo!()
+        if let Some(queue) = self.admin_queue.lock().as_mut() {
+            queue.submit_cmd(cmd);
+        }
     }
 
     pub fn submit_io_cmd(&self, cmd: Command) {
-        todo!()
+        let mut queues = self.io_queues.lock();
+        if let Some(queue) = queues.iter_mut().next() {
+            queue.submit_cmd(cmd);
+        }
     }
 }
