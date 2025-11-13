@@ -1,15 +1,12 @@
 use crate::{
-    system::pci::{
-        ACCESS, DeviceView, config,
-        device::{DEVICES, Device, PCI_DEVICES},
-    },
+    system::pci::{ACCESS, DeviceView, config, device::PCI_DEVICES},
     {
         memory::view::MemoryView,
         posix::errno::{EResult, Errno},
         util::mutex::spin::SpinMutex,
     },
 };
-use alloc::{collections::btree_map::BTreeMap, sync::Arc};
+use alloc::collections::btree_map::BTreeMap;
 
 kernel_proc::pci_variant_builders! {
     MassStorageController = 0x01 {
@@ -85,32 +82,26 @@ pub struct Driver {
     pub variants: &'static [PciVariant],
     /// Called when a new device is initialized.
     /// Should return a driver context.
-    pub probe: fn(
-        driver: Arc<Driver>,
-        variant: &PciVariant,
-        access: DeviceView<'static>,
-    ) -> EResult<Arc<dyn Device>>,
+    pub probe: fn(variant: &PciVariant, access: DeviceView<'static>) -> EResult<()>,
 }
 
-static DRIVERS: SpinMutex<BTreeMap<&'static str, Arc<Driver>>> = SpinMutex::new(BTreeMap::new());
+static DRIVERS: SpinMutex<BTreeMap<&'static str, Driver>> = SpinMutex::new(BTreeMap::new());
 
 impl Driver {
     pub fn register(self) -> EResult<()> {
         let mut drivers = DRIVERS.lock();
 
-        let arc = Arc::new(self);
-
-        if drivers.contains_key(arc.name) {
-            warn!("Driver {} is already registered", arc.name);
+        if drivers.contains_key(self.name) {
+            warn!("Driver {} is already registered", self.name);
             return Err(Errno::EEXIST);
         }
 
-        drivers.insert(arc.name, arc.clone());
+        drivers.insert(self.name, self);
 
         log!(
             "Registered new PCI driver \"{}\" with {} variant(s)",
-            arc.name,
-            arc.variants.len()
+            self.name,
+            self.variants.len()
         );
 
         // Probe matching PCI devices.
@@ -132,20 +123,14 @@ impl Driver {
             let sub_class = reg2.read_field(config::common::SUB_CLASS).value();
             let class = reg2.read_field(config::common::CLASS_CODE).value();
 
-            if let Some(variant) = arc.variants.iter().find(|v| {
+            if let Some(variant) = self.variants.iter().find(|v| {
                 v.device.is_none_or(|x| x == device_id)
                     && v.vendor.is_none_or(|x| x == vendor_id)
                     && v.prog_if.is_none_or(|x| x == prog_if)
                     && v.sub_class.is_none_or(|x| x == sub_class)
                     && v.class.is_none_or(|x| x == class)
             }) {
-                match (arc.probe)(arc.clone(), variant, view) {
-                    Ok(x) => DEVICES.lock().push(x),
-                    Err(err) => error!(
-                        "Driver \"{}\" failed to probe device {}: {:?}",
-                        arc.name, addr, err
-                    ),
-                }
+                (self.probe)(variant, view)?;
             }
         }
 

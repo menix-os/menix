@@ -1,13 +1,14 @@
 use crate::{command::Command, spec::CompletionEntry};
 use menix::{
-    memory::{AllocFlags, KernelAlloc, MmioSubView, MmioView, PageAllocator, PhysAddr},
+    alloc::sync::Arc,
+    memory::{AllocFlags, KernelAlloc, MmioView, PageAllocator, PhysAddr},
     posix::errno::EResult,
 };
 
 pub struct Queue {
     queue_id: usize,
     depth: u16,
-    doorbells: MmioSubView,
+    view: Arc<MmioView>,
     cq_addr: PhysAddr,
     cq_view: MmioView,
     sq_addr: PhysAddr,
@@ -16,7 +17,7 @@ pub struct Queue {
 
 impl Queue {
     /// Creates a new submission and completion queue pair.
-    pub fn new(queue_id: usize, depth: u16, doorbells: MmioSubView) -> EResult<Self> {
+    pub fn new(queue_id: usize, depth: u16, view: Arc<MmioView>) -> EResult<Self> {
         let align = 0x1000;
         let sq_size = ((depth << 6) + align - 1) & !(align - 1);
         let cq_size = ((depth * (size_of::<CompletionEntry>() as u16)) + align - 1) & !(align - 1);
@@ -32,7 +33,7 @@ impl Queue {
         Ok(Self {
             queue_id,
             depth,
-            doorbells,
+            view,
             cq_view,
             sq_view,
             cq_addr,

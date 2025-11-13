@@ -2,11 +2,10 @@
 
 use crate::controller::Controller;
 use menix::{
-    alloc::sync::Arc,
     log,
     memory::{MmioView, PhysAddr},
     posix::errno::{EResult, Errno},
-    system::pci::{self, DeviceView, Driver, PciBar, PciVariant},
+    system::pci::{DeviceView, Driver, PciBar, PciVariant},
 };
 
 mod command;
@@ -15,24 +14,12 @@ mod namespace;
 mod queue;
 mod spec;
 
-fn probe(
-    _: Arc<Driver>,
-    _: &PciVariant,
-    view: DeviceView<'static>,
-) -> EResult<Arc<dyn pci::Device>> {
+fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<()> {
     log!("Probing NVMe device on {}", view.address());
     let bar = view.bar(0).ok_or(Errno::ENXIO)?;
     let (addr, size) = match bar {
-        PciBar::Mmio32 {
-            address,
-            size,
-            prefetchable: _,
-        } => (address as usize, size),
-        PciBar::Mmio64 {
-            address,
-            size,
-            prefetchable: _,
-        } => (address as _, size),
+        PciBar::Mmio32 { address, size, .. } => (address as usize, size),
+        PciBar::Mmio64 { address, size, .. } => (address as _, size),
         _ => unreachable!("PCI NVMe devices are MMIO-only"),
     };
     let regs = unsafe { MmioView::new(PhysAddr::new(addr as _), size) };
@@ -45,13 +32,16 @@ fn probe(
     //     .next()
     //     .ok_or(Errno::ENXIO)?;
 
-    let mut controller = Controller::new_pci(view.address(), regs)?;
+    let controller = Controller::new_pci(view.address(), regs)?;
 
     // Reset the controller to initialize all queues and other structures.
     log!("Resetting controller");
     controller.reset()?;
 
-    Ok(Arc::new(controller))
+    // TODO
+    core::mem::forget(controller);
+
+    Ok(())
 }
 
 static DRIVER: Driver = Driver {

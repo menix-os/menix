@@ -9,7 +9,8 @@ use menix::{
     error,
     memory::{BitValue, MmioView, UnsafeMemoryView},
     posix::errno::{EResult, Errno},
-    system::pci::{self, Address},
+    system::pci::Address,
+    util::mutex::spin::SpinMutex,
 };
 
 const MAX_IO_QUEUE_DEPTH: usize = 1024;
@@ -21,12 +22,12 @@ pub struct Controller {
     regs: Arc<MmioView>,
     version: (u16, u8, u8),
     doorbell_stride: u32,
-    admin_queue: Option<Queue>,
-    io_queues: Vec<Queue>,
+    admin_queue: SpinMutex<Option<Queue>>,
+    io_queues: SpinMutex<Vec<Queue>>,
 }
 
 impl Controller {
-    pub fn new_pci(address: Address, regs: MmioView) -> EResult<Self> {
+    pub fn new_pci(address: Address, regs: MmioView) -> EResult<Controller> {
         // Read controller version.
         let vs = unsafe { regs.read_reg(spec::regs::VS) }.ok_or(Errno::ENXIO)?;
         let version = (
@@ -53,12 +54,12 @@ impl Controller {
             regs: Arc::new(regs),
             version,
             doorbell_stride,
-            admin_queue: None,
-            io_queues: Vec::new(),
+            admin_queue: SpinMutex::new(None),
+            io_queues: SpinMutex::new(Vec::new()),
         })
     }
 
-    pub fn reset(&mut self) -> EResult<()> {
+    pub fn reset(&self) -> EResult<()> {
         let cap = unsafe { self.regs.read_reg(spec::regs::CAP) }.unwrap();
 
         let queue_depth = min(
@@ -67,12 +68,7 @@ impl Controller {
         );
 
         // Create an admin queue first so we can create more queues.
-        let sub_view = self
-            .regs
-            .clone()
-            .sub_view(DOORBELL_OFFSET)
-            .ok_or(Errno::ENXIO)?;
-        let admin_queue = Queue::new(0, ADMIN_QUEUE_SIZE, sub_view)?;
+        let admin_queue = Queue::new(0, ADMIN_QUEUE_SIZE, self.regs.clone())?;
 
         // Set the admin queue sizes.
         let mut aqa = BitValue::new(0);
@@ -89,7 +85,7 @@ impl Controller {
                 .write_reg(spec::regs::ACQ, admin_queue.get_cq_addr().into());
         }
 
-        self.admin_queue = Some(admin_queue);
+        *self.admin_queue.lock() = Some(admin_queue);
 
         Ok(())
     }
@@ -110,11 +106,5 @@ impl Controller {
 
     pub fn submit_io_cmd(&self, cmd: Command) {
         todo!()
-    }
-}
-
-impl pci::Device for Controller {
-    fn address(&self) -> Address {
-        self.address
     }
 }

@@ -1,14 +1,24 @@
-use menix::{device::BlockDevice, memory::VirtAddr, posix::errno::EResult, vfs::File};
+use crate::controller::Controller;
+use menix::{
+    alloc::sync::Arc, device::BlockDevice, memory::VirtAddr, posix::errno::EResult, vfs::File,
+};
 
 pub struct Namespace {
+    controller: Arc<Controller>,
     nsid: usize,
     lba_shift: usize,
     lba_count: usize,
 }
 
 impl Namespace {
-    pub fn new(nsid: usize, lba_shift: usize, lba_count: usize) -> Self {
+    pub fn new(
+        controller: Arc<Controller>,
+        nsid: usize,
+        lba_shift: usize,
+        lba_count: usize,
+    ) -> Self {
         Self {
+            controller,
             nsid,
             lba_shift,
             lba_count,

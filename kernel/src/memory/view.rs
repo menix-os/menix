@@ -242,7 +242,7 @@ impl MmioView {
         }
     }
 
-    pub fn sub_view(self: Arc<Self>, offset: usize) -> Option<MmioSubView> {
+    pub fn sub_view(&self, offset: usize) -> Option<MmioSubView<'_>> {
         if offset >= self.len {
             return None;
         }
@@ -314,17 +314,17 @@ impl UnsafeMemoryView for MmioView {
     }
 }
 
-pub struct MmioSubView {
-    parent: Arc<MmioView>,
+pub struct MmioSubView<'a> {
+    parent: &'a MmioView,
     offset: usize,
 }
 
-impl UnsafeMemoryView for MmioSubView {
+impl UnsafeMemoryView for MmioSubView<'_> {
     unsafe fn read_reg<T: PrimInt>(&self, reg: Register<T>) -> Option<BitValue<T>> {
         self.parent.do_read_reg(reg, self.offset)
     }
 
-    unsafe fn write_reg<T: PrimInt>(&'_ self, reg: Register<T>, value: T) -> Option<()> {
+    unsafe fn write_reg<T: PrimInt>(&self, reg: Register<T>, value: T) -> Option<()> {
         self.parent.do_write_reg(reg, value, self.offset)
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     system::pci::config::Address,
     {posix::errno::EResult, util::mutex::spin::SpinMutex},
 };
-use alloc::{sync::Arc, vec::Vec};
+use alloc::vec::Vec;
 
 pub trait Device {
     /// Returns the PCI address of this device.
@@ -48,4 +48,3 @@ impl PciBar {
 }
 
 pub static PCI_DEVICES: SpinMutex<Vec<Address>> = SpinMutex::new(Vec::new());
-pub static DEVICES: SpinMutex<Vec<Arc<dyn Device>>> = SpinMutex::new(Vec::new());
