@@ -1,6 +1,6 @@
 #![no_std]
 
-use crate::{command::Command, controller::Controller};
+use crate::controller::Controller;
 use menix::{
     log,
     memory::{MmioView, PhysAddr},

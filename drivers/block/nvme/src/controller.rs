@@ -5,7 +5,7 @@ use crate::{
 };
 use core::cmp::min;
 use menix::{
-    alloc::{sync::Arc, vec::Vec},
+    alloc::sync::Arc,
     error,
     memory::{BitValue, MmioView, UnsafeMemoryView},
     posix::errno::{EResult, Errno},
@@ -13,9 +13,9 @@ use menix::{
     util::mutex::spin::SpinMutex,
 };
 
-const MAX_IO_QUEUE_DEPTH: u16 = 1024;
 const DOORBELL_OFFSET: usize = 0x1000;
-const ADMIN_QUEUE_SIZE: u16 = 32;
+const ADMIN_QUEUE_SIZE: usize = 32;
+const IO_QUEUE_SIZE_MAX: usize = 1024;
 
 pub struct Controller {
     address: Address,
@@ -23,7 +23,7 @@ pub struct Controller {
     version: (u16, u8, u8),
     doorbell_stride: u32,
     admin_queue: SpinMutex<Option<Queue>>,
-    io_queues: SpinMutex<Option<Queue>>,
+    io_queue: SpinMutex<Option<Queue>>,
 }
 
 impl Controller {
@@ -55,7 +55,7 @@ impl Controller {
             version,
             doorbell_stride,
             admin_queue: SpinMutex::new(None),
-            io_queues: SpinMutex::new(None),
+            io_queue: SpinMutex::new(None),
         })
     }
 
@@ -63,8 +63,8 @@ impl Controller {
         let cap = unsafe { self.regs.read_reg(spec::regs::CAP) }.unwrap();
 
         let queue_depth = min(
-            cap.read_field(spec::regs::cap::MQES).value() + 1,
-            MAX_IO_QUEUE_DEPTH,
+            cap.read_field(spec::regs::cap::MQES).value() as usize + 1,
+            IO_QUEUE_SIZE_MAX,
         );
 
         // Create an admin queue first so we can create more queues.
@@ -72,8 +72,8 @@ impl Controller {
 
         // Set the admin queue sizes.
         let mut aqa = BitValue::new(0);
-        aqa = aqa.write_field(spec::regs::aqa::ACQS, ADMIN_QUEUE_SIZE - 1);
-        aqa = aqa.write_field(spec::regs::aqa::ASQS, ADMIN_QUEUE_SIZE - 1);
+        aqa = aqa.write_field(spec::regs::aqa::ACQS, (ADMIN_QUEUE_SIZE - 1) as _);
+        aqa = aqa.write_field(spec::regs::aqa::ASQS, (ADMIN_QUEUE_SIZE - 1) as _);
         unsafe { self.regs.write_reg(spec::regs::AQA, aqa.value()) };
 
         // Set the addresses to the admin submission and completion queue.
@@ -89,6 +89,10 @@ impl Controller {
 
         // Create an IO queue.
         let io_queue = Queue::new(1, queue_depth, self.regs.clone())?;
+
+        // TODO: Setup queue.
+
+        *self.io_queue.lock() = Some(io_queue);
 
         Ok(())
     }
@@ -110,8 +114,7 @@ impl Controller {
     }
 
     pub fn submit_io_cmd(&self, cmd: Command) {
-        let mut queues = self.io_queues.lock();
-        if let Some(queue) = queues.iter_mut().next() {
+        if let Some(queue) = self.io_queue.lock().as_mut() {
             queue.submit_cmd(cmd);
         }
     }
