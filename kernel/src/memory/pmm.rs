@@ -129,6 +129,11 @@ impl PageAllocator for KernelAlloc {
     }
 
     unsafe fn dealloc(addr: PhysAddr, pages: usize) {
+        // If we have an empty allocation, there's nothing to free.
+        if pages == 0 {
+            return;
+        }
+
         let mut head = PMM.lock();
         let mut page_db = PAGE_DB.lock();
         let page = page_db.get_mut(Page::idx_from_addr(addr)).unwrap();
