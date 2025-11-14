@@ -6,6 +6,8 @@ use menix::static_assert;
 pub mod sq_entry {
     use menix::memory::{Field, Register};
 
+    pub const SIZE: usize = 0x40;
+
     pub const CDW0: Register<u32> = Register::new(0).with_le();
 
     /// Command Identifier
@@ -32,6 +34,24 @@ pub mod sq_entry {
     pub const CDW13: Register<u32> = Register::new(52).with_le();
     pub const CDW14: Register<u32> = Register::new(56).with_le();
     pub const CDW15: Register<u32> = Register::new(60).with_le();
+
+    pub mod create_cq {
+        use menix::memory::Field;
+
+        pub const OPCODE: u8 = 0x01;
+
+        /// Queue Size
+        pub const QSIZE: Field<u32, u16> = Field::new_bits(super::CDW10, 16..=31);
+        /// Queue Identifier
+        pub const QID: Field<u32, u16> = Field::new_bits(super::CDW10, 00..=15);
+
+        /// Interrupt Vector
+        pub const IV: Field<u32, u16> = Field::new_bits(super::CDW11, 16..=31);
+        /// Interrupts Enabled
+        pub const IEN: Field<u32, u16> = Field::new_bits(super::CDW11, 01..=01);
+        /// Physically Contigous
+        pub const PC: Field<u32, u8> = Field::new_bits(super::CDW11, 00..=00);
+    }
 }
 
 pub mod cq_entry {
@@ -181,19 +201,19 @@ pub mod admin_cmd {
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct DataPointer {
-    prp1: u64,
-    prp2: u64,
+    pub prp1: u64,
+    pub prp2: u64,
 }
 
 /// An entry in the completion queue.
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
 pub struct CompletionEntry {
-    result: u64,
-    sq_head: u16,
-    sq_id: u16,
-    cmd_id: u16,
-    status: CompletionStatus,
+    pub result: u64,
+    pub sq_head: u16,
+    pub sq_id: u16,
+    pub cmd_id: u16,
+    pub status: CompletionStatus,
 }
 static_assert!(size_of::<CompletionEntry>() == 16);
 

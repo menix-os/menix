@@ -10,6 +10,7 @@ use menix::{
 
 mod command;
 mod controller;
+mod error;
 mod namespace;
 mod queue;
 mod spec;
@@ -32,11 +33,11 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<()> {
     //     .next()
     //     .ok_or(Errno::ENXIO)?;
 
-    let controller = Controller::new_pci(view.address(), regs)?;
+    let controller =
+        Controller::new_pci(view.address(), regs).expect("Failed to setup the controller");
 
     // Reset the controller to initialize all queues and other structures.
-    log!("Resetting controller");
-    controller.reset()?;
+    controller.reset().unwrap();
 
     Ok(())
 }

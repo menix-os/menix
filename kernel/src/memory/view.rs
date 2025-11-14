@@ -2,7 +2,6 @@
 
 use super::{PhysAddr, VirtAddr, pmm::KernelAlloc, virt::VmFlags};
 use crate::memory::virt::mmu::PageTable;
-use alloc::sync::Arc;
 use core::{marker::PhantomData, ops::RangeInclusive};
 use num_traits::{FromBytes, PrimInt, ToBytes};
 
@@ -317,6 +316,20 @@ impl UnsafeMemoryView for MmioView {
 pub struct MmioSubView<'a> {
     parent: &'a MmioView,
     offset: usize,
+}
+
+impl MmioSubView<'_> {
+    pub fn sub_view(&self, offset: usize) -> Option<Self> {
+        self.parent.sub_view(self.offset + offset)
+    }
+
+    pub fn base(&self) -> *mut () {
+        unsafe { self.parent.base().byte_add(self.offset) }
+    }
+
+    pub fn len(&self) -> usize {
+        self.parent.len() - self.offset
+    }
 }
 
 impl UnsafeMemoryView for MmioSubView<'_> {

@@ -1,9 +1,17 @@
-use crate::spec::DataPointer;
-use menix::static_assert;
+use crate::{
+    error::NvmeError,
+    queue::Queue,
+    spec::{self, DataPointer},
+};
+use menix::memory::{BitValue, UnsafeMemoryView};
+
+pub trait Command {
+    unsafe fn write_command(&self, view: &impl UnsafeMemoryView) -> Result<(), NvmeError>;
+}
 
 #[derive(Clone, Copy)]
 #[repr(C, packed)]
-pub struct Command {
+pub struct TheCommand {
     pub opcode: u8,
     pub flags: u8,
     pub command_id: u16,
@@ -11,19 +19,6 @@ pub struct Command {
     pub cdw2: [u32; 2],
     pub metadata: u64,
     pub data_ptr: DataPointer,
-    pub payload: Payload,
-}
-
-static_assert!(size_of::<Command>() == 64);
-
-#[derive(Clone, Copy)]
-#[repr(C)]
-pub union Payload {
-    pub rw: ReadWriteCommand,
-    pub create_cq: CreateCQCommand,
-    pub create_sq: CreateSQCommand,
-    pub identify: IdentifyCommand,
-    pub set_features: SetFeaturesCommand,
 }
 
 #[derive(Clone, Copy)]
@@ -38,30 +33,55 @@ pub struct ReadWriteCommand {
     pub app_mask: u16,
 }
 
-#[derive(Clone, Copy)]
-#[repr(C)]
-pub struct CreateCQCommand {
+pub struct CreateCQCommand<'a> {
+    pub queue: &'a Queue,
     pub cqid: u16,
     pub queue_size: u16,
-    pub cq_flags: u16,
+    pub irqs_enabled: bool,
     pub irq_vector: u16,
-    __reserved2: [u32; 4],
 }
 
+impl Command for CreateCQCommand<'_> {
+    unsafe fn write_command(&self, view: &impl UnsafeMemoryView) -> Result<(), NvmeError> {
+        unsafe {
+            let cdw0 = BitValue::new(0)
+                .write_field(spec::sq_entry::OPC, spec::admin_cmd::CREATE_CQ)
+                .write_field(spec::sq_entry::PSDT, 1); // We always want to use PRP for this.
+
+            view.write_reg(spec::sq_entry::DPTR0, self.queue.get_cq_addr().into());
+            let cdw10 = BitValue::new(0)
+                .write_field(spec::sq_entry::create_cq::QSIZE, self.queue_size)
+                .write_field(spec::sq_entry::create_cq::QID, self.cqid);
+            let cdw11 = BitValue::new(0)
+                .write_field(spec::sq_entry::create_cq::IV, self.irq_vector)
+                .write_field(
+                    spec::sq_entry::create_cq::IEN,
+                    if self.irqs_enabled { 1 } else { 0 },
+                ) // TODO: Enable interrupts.
+                .write_field(spec::sq_entry::create_cq::PC, 1); // Our buffer is physically contiguous.
+
+            view.write_reg(spec::sq_entry::CDW0, cdw0.value());
+            view.write_reg(spec::sq_entry::CDW10, cdw10.value());
+            view.write_reg(spec::sq_entry::CDW10, cdw11.value());
+        }
+
+        Ok(())
+    }
+}
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct CreateSQCommand {
-    sqid: u16,
-    queue_size: u16,
-    sq_flags: u16,
-    cqid: u16,
+    pub sqid: u16,
+    pub queue_size: u16,
+    pub sq_flags: u16,
+    pub cqid: u16,
 }
 
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct IdentifyCommand {
     pub cns: u8,
-    reserved: u8,
+    pub reserved: u8,
     pub controller_id: u16,
 }
 
