@@ -168,9 +168,9 @@ impl Controller {
                 .copy_to_nonoverlapping(fwrev.as_mut_ptr(), fwrev.len());
         };
 
-        *self.serial.lock() = Some(String::from_utf8_lossy(&serial.trim_ascii_end()).to_string());
-        *self.model.lock() = Some(String::from_utf8_lossy(&model.trim_ascii_end()).to_string());
-        *self.revision.lock() = Some(String::from_utf8_lossy(&fwrev.trim_ascii_end()).to_string());
+        *self.serial.lock() = Some(String::from_utf8_lossy(serial.trim_ascii_end()).to_string());
+        *self.model.lock() = Some(String::from_utf8_lossy(model.trim_ascii_end()).to_string());
+        *self.revision.lock() = Some(String::from_utf8_lossy(fwrev.trim_ascii_end()).to_string());
 
         self.ns_count.store(
             unsafe { view.read_reg(Register::new(516)) }
@@ -199,7 +199,7 @@ impl Controller {
         let mut nsid = 0;
         loop {
             aq.submit_cmd(IdentifyCommand {
-                buffer: identify_buffer.into(),
+                buffer: identify_buffer,
                 controller_id: 0,
                 cns: 2,
                 nsid,
@@ -217,7 +217,7 @@ impl Controller {
 
             for id in &ns_list {
                 aq.submit_cmd(IdentifyCommand {
-                    buffer: identify_buffer.into(),
+                    buffer: identify_buffer,
                     controller_id: 0,
                     cns: 0,
                     nsid: *id,
@@ -274,7 +274,7 @@ impl Controller {
 
         unsafe { KernelAlloc::dealloc_bytes(identify_buffer, 4096) };
 
-        return Ok(namespaces);
+        Ok(namespaces)
     }
 
     /// Sets the CC.EN flag.

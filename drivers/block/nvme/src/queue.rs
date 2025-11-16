@@ -101,7 +101,7 @@ impl Queue {
         // Create a subview into the submission queue at the current tail.
         let view = self
             .sq_view
-            .sub_view(self.sq_tail as usize * spec::sq_entry::SIZE)
+            .sub_view(self.sq_tail * spec::sq_entry::SIZE)
             .ok_or(NvmeError::MmioFailed)?;
 
         let doorbells = self

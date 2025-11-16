@@ -15,9 +15,9 @@ pub mod sq_entry {
     /// PRP or SGL for Data Transfer
     pub const PSDT: Field<u32, u8> = Field::new_bits(CDW0, 14..=15);
     /// Fused Operation
-    pub const FUSE: Field<u32, u8> = Field::new_bits(CDW0, 08..=09);
+    pub const FUSE: Field<u32, u8> = Field::new_bits(CDW0, 8..=9);
     /// Opcode
-    pub const OPC: Field<u32, u8> = Field::new_bits(CDW0, 00..=07);
+    pub const OPC: Field<u32, u8> = Field::new_bits(CDW0, 0..=7);
 
     /// Namespace Identifier
     pub const NSID: Register<u32> = Register::new(4).with_le();
@@ -43,14 +43,14 @@ pub mod sq_entry {
         /// Queue Size
         pub const QSIZE: Field<u32, u16> = Field::new_bits(super::CDW10, 16..=31);
         /// Queue Identifier
-        pub const QID: Field<u32, u16> = Field::new_bits(super::CDW10, 00..=15);
+        pub const QID: Field<u32, u16> = Field::new_bits(super::CDW10, 0..=15);
 
         /// Interrupt Vector
         pub const IV: Field<u32, u16> = Field::new_bits(super::CDW11, 16..=31);
         /// Interrupts Enabled
-        pub const IEN: Field<u32, u8> = Field::new_bits(super::CDW11, 01..=01);
+        pub const IEN: Field<u32, u8> = Field::new_bits(super::CDW11, 1..=1);
         /// Physically Contigous
-        pub const PC: Field<u32, u8> = Field::new_bits(super::CDW11, 00..=00);
+        pub const PC: Field<u32, u8> = Field::new_bits(super::CDW11, 0..=0);
     }
 
     pub mod create_sq {
@@ -61,14 +61,14 @@ pub mod sq_entry {
         /// Queue Size
         pub const QSIZE: Field<u32, u16> = Field::new_bits(super::CDW10, 16..=31);
         /// Queue Identifier
-        pub const QID: Field<u32, u16> = Field::new_bits(super::CDW10, 00..=15);
+        pub const QID: Field<u32, u16> = Field::new_bits(super::CDW10, 0..=15);
 
         /// Completion Queue Identifier
         pub const CQID: Field<u32, u16> = Field::new_bits(super::CDW11, 16..=31);
         /// Queue Priority
-        pub const QPRIO: Field<u32, u8> = Field::new_bits(super::CDW11, 01..=02);
+        pub const QPRIO: Field<u32, u8> = Field::new_bits(super::CDW11, 1..=2);
         /// Physically Contigous
-        pub const PC: Field<u32, u8> = Field::new_bits(super::CDW11, 00..=00);
+        pub const PC: Field<u32, u8> = Field::new_bits(super::CDW11, 0..=0);
     }
 
     pub mod identify {
@@ -77,16 +77,16 @@ pub mod sq_entry {
         /// Controller Identifier
         pub const CNTID: Field<u32, u16> = Field::new_bits(super::CDW10, 16..=31);
         /// Controller or Namespace Structure
-        pub const CNS: Field<u32, u8> = Field::new_bits(super::CDW10, 00..=07);
+        pub const CNS: Field<u32, u8> = Field::new_bits(super::CDW10, 0..=7);
     }
 
     pub mod rw {
         use menix::memory::Field;
 
         /// Starting LBA Lower Bits
-        pub const SLBA_LOW: Field<u32, u32> = Field::new_bits(super::CDW10, 00..=31);
+        pub const SLBA_LOW: Field<u32, u32> = Field::new_bits(super::CDW10, 0..=31);
         /// Starting LBA Higher Bits
-        pub const SLBA_HIGH: Field<u32, u32> = Field::new_bits(super::CDW11, 00..=31);
+        pub const SLBA_HIGH: Field<u32, u32> = Field::new_bits(super::CDW11, 0..=31);
 
         /// Limited Retry
         pub const LR: Field<u32, u8> = Field::new_bits(super::CDW12, 31..=31);
@@ -95,7 +95,7 @@ pub mod sq_entry {
         /// Protection Information Field
         pub const PRINFO: Field<u32, u8> = Field::new_bits(super::CDW12, 26..=29);
         /// Number of Logical Blocks
-        pub const NLB: Field<u32, u16> = Field::new_bits(super::CDW12, 00..=15);
+        pub const NLB: Field<u32, u16> = Field::new_bits(super::CDW12, 0..=15);
     }
 }
 
@@ -145,7 +145,7 @@ pub mod regs {
         /// Contiguous Queues Required
         pub const CQR: Field<u64, u8> = Field::new_bits(super::CAP, 16..=16);
         /// Maximum Queue Entries Supported
-        pub const MQES: Field<u64, u16> = Field::new_bits(super::CAP, 00..=15);
+        pub const MQES: Field<u64, u16> = Field::new_bits(super::CAP, 0..=15);
     }
 
     /// Version
@@ -157,9 +157,9 @@ pub mod regs {
         /// Major Version Number
         pub const MJR: Field<u32, u16> = Field::new_bits(super::VS, 16..=31);
         /// Minor Version Number
-        pub const MNR: Field<u32, u8> = Field::new_bits(super::VS, 08..=15);
+        pub const MNR: Field<u32, u8> = Field::new_bits(super::VS, 8..=15);
         /// Tertiary Version Number
-        pub const TER: Field<u32, u8> = Field::new_bits(super::VS, 00..=07);
+        pub const TER: Field<u32, u8> = Field::new_bits(super::VS, 0..=7);
     }
 
     /// Interrupt Mask Set
@@ -182,11 +182,11 @@ pub mod regs {
         /// Arbitration Mechanism Selected
         pub const AMS: Field<u32, u8> = Field::new_bits(super::CC, 11..=13);
         /// Memory Page Size
-        pub const MPS: Field<u32, u8> = Field::new_bits(super::CC, 07..=10);
+        pub const MPS: Field<u32, u8> = Field::new_bits(super::CC, 7..=10);
         /// I/O Command Set Selected
-        pub const CSS: Field<u32, u8> = Field::new_bits(super::CC, 04..=06);
+        pub const CSS: Field<u32, u8> = Field::new_bits(super::CC, 4..=6);
         /// Enable
-        pub const EN: Field<u32, u8> = Field::new_bits(super::CC, 00..=00);
+        pub const EN: Field<u32, u8> = Field::new_bits(super::CC, 0..=0);
     }
 
     /// Controller Status
@@ -196,15 +196,15 @@ pub mod regs {
         use menix::memory::Field;
 
         /// Processing Paused
-        pub const PP: Field<u32, u8> = Field::new_bits(super::CSTS, 05..=05);
+        pub const PP: Field<u32, u8> = Field::new_bits(super::CSTS, 5..=5);
         /// NVM Subsystem Reset Occurred
-        pub const NSSRO: Field<u32, u8> = Field::new_bits(super::CSTS, 04..=04);
+        pub const NSSRO: Field<u32, u8> = Field::new_bits(super::CSTS, 4..=4);
         /// Shutdown Status
-        pub const SHST: Field<u32, u8> = Field::new_bits(super::CSTS, 02..=03);
+        pub const SHST: Field<u32, u8> = Field::new_bits(super::CSTS, 2..=3);
         /// Controller Fatal Status
-        pub const CFS: Field<u32, u8> = Field::new_bits(super::CSTS, 01..=01);
+        pub const CFS: Field<u32, u8> = Field::new_bits(super::CSTS, 1..=1);
         /// Ready
-        pub const RDY: Field<u32, u8> = Field::new_bits(super::CSTS, 00..=00);
+        pub const RDY: Field<u32, u8> = Field::new_bits(super::CSTS, 0..=0);
     }
 
     /// Admin Queue Attributes
@@ -214,13 +214,14 @@ pub mod regs {
         use menix::memory::Field;
 
         /// Admin Completion Queue Size
-        pub const ACQS: Field<u32, u16> = Field::new_bits(super::AQA, 00..=11);
+        pub const ACQS: Field<u32, u16> = Field::new_bits(super::AQA, 0..=11);
         /// Admin Submission Queue Size
         pub const ASQS: Field<u32, u16> = Field::new_bits(super::AQA, 16..=27);
     }
 
+    /// Admin Submission Queue
     pub const ASQ: Register<u64> = Register::new(0x28).with_le();
-
+    /// Admin Completion Queue
     pub const ACQ: Register<u64> = Register::new(0x30).with_le();
 }
 

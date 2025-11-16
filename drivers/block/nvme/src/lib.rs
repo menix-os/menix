@@ -52,20 +52,14 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<()> {
     };
 
     // Reset the controller to initialize all queues and other structures.
-    match controller.reset() {
-        Err(e) => {
-            error!("Failed to reset controller: {e}");
-            return Err(Errno::ENODEV);
-        }
-        _ => (),
+    if let Err(e) = controller.reset() {
+        error!("Failed to reset controller: {e}");
+        return Err(Errno::ENODEV);
     };
 
-    match controller.identify() {
-        Err(e) => {
-            error!("Failed to identify controller: {e}");
-            return Err(Errno::ENODEV);
-        }
-        _ => (),
+    if let Err(e) = controller.identify() {
+        error!("Failed to identify controller: {e}");
+        return Err(Errno::ENODEV);
     };
 
     let namespaces = match controller.scan_namespaces() {
