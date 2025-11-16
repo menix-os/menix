@@ -38,7 +38,7 @@ pub mod sq_entry {
     pub mod create_cq {
         use menix::memory::Field;
 
-        pub const OPCODE: u8 = 0x01;
+        pub const OPCODE: u8 = 0x05;
 
         /// Queue Size
         pub const QSIZE: Field<u32, u16> = Field::new_bits(super::CDW10, 16..=31);
@@ -48,9 +48,54 @@ pub mod sq_entry {
         /// Interrupt Vector
         pub const IV: Field<u32, u16> = Field::new_bits(super::CDW11, 16..=31);
         /// Interrupts Enabled
-        pub const IEN: Field<u32, u16> = Field::new_bits(super::CDW11, 01..=01);
+        pub const IEN: Field<u32, u8> = Field::new_bits(super::CDW11, 01..=01);
         /// Physically Contigous
         pub const PC: Field<u32, u8> = Field::new_bits(super::CDW11, 00..=00);
+    }
+
+    pub mod create_sq {
+        use menix::memory::Field;
+
+        pub const OPCODE: u8 = 0x01;
+
+        /// Queue Size
+        pub const QSIZE: Field<u32, u16> = Field::new_bits(super::CDW10, 16..=31);
+        /// Queue Identifier
+        pub const QID: Field<u32, u16> = Field::new_bits(super::CDW10, 00..=15);
+
+        /// Completion Queue Identifier
+        pub const CQID: Field<u32, u16> = Field::new_bits(super::CDW11, 16..=31);
+        /// Queue Priority
+        pub const QPRIO: Field<u32, u8> = Field::new_bits(super::CDW11, 01..=02);
+        /// Physically Contigous
+        pub const PC: Field<u32, u8> = Field::new_bits(super::CDW11, 00..=00);
+    }
+
+    pub mod identify {
+        use menix::memory::Field;
+
+        /// Controller Identifier
+        pub const CNTID: Field<u32, u16> = Field::new_bits(super::CDW10, 16..=31);
+        /// Controller or Namespace Structure
+        pub const CNS: Field<u32, u8> = Field::new_bits(super::CDW10, 00..=07);
+    }
+
+    pub mod rw {
+        use menix::memory::Field;
+
+        /// Starting LBA Lower Bits
+        pub const SLBA_LOW: Field<u32, u32> = Field::new_bits(super::CDW10, 00..=31);
+        /// Starting LBA Higher Bits
+        pub const SLBA_HIGH: Field<u32, u32> = Field::new_bits(super::CDW11, 00..=31);
+
+        /// Limited Retry
+        pub const LR: Field<u32, u8> = Field::new_bits(super::CDW12, 31..=31);
+        /// Force Unit Access
+        pub const FUA: Field<u32, u8> = Field::new_bits(super::CDW12, 30..=30);
+        /// Protection Information Field
+        pub const PRINFO: Field<u32, u8> = Field::new_bits(super::CDW12, 26..=29);
+        /// Number of Logical Blocks
+        pub const NLB: Field<u32, u16> = Field::new_bits(super::CDW12, 00..=15);
     }
 }
 
@@ -198,35 +243,25 @@ pub mod admin_cmd {
     pub const GET_FEATURES: u8 = 0x0A;
 }
 
-#[derive(Clone, Copy)]
-#[repr(C, packed)]
-pub struct DataPointer {
-    pub prp1: u64,
-    pub prp2: u64,
-}
-
 /// An entry in the completion queue.
-#[derive(Clone, Copy)]
-#[repr(C, packed)]
+#[derive(Clone, Copy, Debug)]
 pub struct CompletionEntry {
-    pub result: u64,
+    pub result: u32,
     pub sq_head: u16,
     pub sq_id: u16,
     pub cmd_id: u16,
+    pub phase_tag: bool,
     pub status: CompletionStatus,
 }
-static_assert!(size_of::<CompletionEntry>() == 16);
 
 /// A status value returned in a [`CompletionEntry`].
-#[derive(Clone, Copy)]
-#[repr(C, packed)]
-pub struct CompletionStatus {
-    status: u16,
-}
+#[derive(Clone, Copy, Debug)]
+#[repr(transparent)]
+pub struct CompletionStatus(pub u16);
 
 impl CompletionStatus {
     pub fn is_success(&self) -> bool {
-        self.status == 0
+        self.0 == 0
     }
 }
 

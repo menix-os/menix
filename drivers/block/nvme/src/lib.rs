@@ -1,11 +1,19 @@
 #![no_std]
 
 use crate::controller::Controller;
+use core::sync::atomic::AtomicUsize;
 use menix::{
-    log,
+    alloc::format,
+    core::sync::atomic::Ordering,
+    error, log,
     memory::{MmioView, PhysAddr},
     posix::errno::{EResult, Errno},
+    process::{Identity, Process},
     system::pci::{DeviceView, Driver, PciBar, PciVariant},
+    vfs::{
+        self,
+        inode::{Mode, NodeType},
+    },
 };
 
 mod command;
@@ -14,6 +22,8 @@ mod error;
 mod namespace;
 mod queue;
 mod spec;
+
+static NVME_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<()> {
     log!("Probing NVMe device on {}", view.address());
@@ -26,18 +36,67 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<()> {
     let regs = unsafe { MmioView::new(PhysAddr::new(addr as _), size) };
 
     // TODO: Support legacy PCI interrupts.
-    // Setup MSI-X.
+    // TODO: Setup MSI-X.
     // let mut cap = view
     //     .capabilities()
     //     .filter_map(|mut x| x.msix())
     //     .next()
     //     .ok_or(Errno::ENXIO)?;
 
-    let controller =
-        Controller::new_pci(view.address(), regs).expect("Failed to setup the controller");
+    let controller = match Controller::new_pci(regs) {
+        Ok(x) => x,
+        Err(e) => {
+            error!("Failed to probe controller: {e}");
+            return Err(Errno::ENODEV);
+        }
+    };
 
     // Reset the controller to initialize all queues and other structures.
-    controller.reset().unwrap();
+    match controller.reset() {
+        Err(e) => {
+            error!("Failed to reset controller: {e}");
+            return Err(Errno::ENODEV);
+        }
+        _ => (),
+    };
+
+    match controller.identify() {
+        Err(e) => {
+            error!("Failed to identify controller: {e}");
+            return Err(Errno::ENODEV);
+        }
+        _ => (),
+    };
+
+    let namespaces = match controller.scan_namespaces() {
+        Ok(x) => x,
+        Err(e) => {
+            error!("Failed to identify controller: {e}");
+            return Err(Errno::ENODEV);
+        }
+    };
+
+    let nvme_id = NVME_COUNTER.fetch_add(1, Ordering::SeqCst);
+    for ns in namespaces {
+        unsafe { Process::get_kernel().inner.force_unlock() };
+        let inner = Process::get_kernel().inner.lock();
+        let path = format!("/dev/nvme{}n{}", nvme_id, ns.get_id());
+        vfs::mknod(
+            &inner,
+            None,
+            path.as_bytes(),
+            NodeType::CharacterDevice,
+            Mode::from_bits_truncate(0o666),
+            Some(ns),
+            Identity::get_kernel(),
+        )?;
+
+        log!(
+            "Registered new block device: \"{}\" on {}",
+            path,
+            view.address()
+        );
+    }
 
     Ok(())
 }

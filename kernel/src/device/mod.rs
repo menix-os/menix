@@ -1,8 +1,9 @@
 use crate::{
-    memory::VirtAddr,
-    posix::errno::EResult,
+    memory::{AllocFlags, KernelAlloc, PageAllocator, PhysAddr, VirtAddr},
+    posix::errno::{EResult, Errno},
     vfs::{File, file::FileOps},
 };
+use core::slice;
 
 mod console;
 pub mod input;
@@ -13,32 +14,113 @@ pub trait CharDevice: FileOps {
     fn name(&self) -> &str;
 }
 
-pub trait BlockDevice {
+pub trait BlockDevice: FileOps {
     /// Gets the size of a sector in bytes.
-    fn get_sector_size(&self) -> usize;
+    fn get_lba_size(&self) -> usize;
 
-    /// Reads enough sectors to fill the buffer from `sector_start`.
-    /// # Safety
-    /// The implementation must allow `buffer` to have any position and size.
-    fn read_sectors(&self, buffer: &mut [u8], sector_start: usize) -> EResult<usize>;
+    /// Reads a logical block from from `lba` into the buffer.
+    fn read_lba(&self, buffer: PhysAddr, lba: u64) -> EResult<()>;
 
     /// Writes the buffer to the device starting at `sector_start`.
-    /// # Safety
-    /// The implementation must allow `buffer` to have any position and size.
-    fn write_sectors(&self, buffer: &[u8], sector_start: usize) -> EResult<usize>;
+    fn write_lba(&self, buffer: PhysAddr, lba: u64) -> EResult<()>;
 
     fn handle_ioctl(&self, file: &File, request: usize, arg: VirtAddr) -> EResult<usize>;
 }
 
-impl FileOps for dyn BlockDevice {
-    fn read(&self, file: &File, buffer: &mut [u8], offset: u64) -> EResult<isize> {
-        let _ = (offset, buffer, file);
-        todo!()
+impl<T: BlockDevice> FileOps for T {
+    fn read(&self, _: &File, buffer: &mut [u8], offset: u64) -> EResult<isize> {
+        if buffer.is_empty() {
+            return Ok(0);
+        }
+
+        let lba_size = self.get_lba_size() as u64;
+        if lba_size == 0 {
+            return Err(Errno::EINVAL);
+        }
+
+        let tmp_phys = KernelAlloc::alloc_bytes(lba_size as _, AllocFlags::empty())?;
+        let mut progress = 0;
+
+        let result = 'a: loop {
+            if progress >= buffer.len() as u64 {
+                break 'a Ok(progress as isize);
+            }
+            let misalign = (progress + offset) % lba_size;
+            let page_index = (progress + offset) / lba_size;
+            let copy_size = (lba_size - misalign).min(buffer.len() as u64 - progress);
+
+            if let Err(e) = self.read_lba(tmp_phys, page_index) {
+                if progress == 0 {
+                    return Err(e);
+                } else {
+                    break 'a Ok(progress as isize);
+                }
+            }
+
+            let page_slice: &[u8] =
+                unsafe { slice::from_raw_parts(tmp_phys.as_hhdm(), lba_size as _) };
+            buffer[progress as usize..][..copy_size as usize]
+                .copy_from_slice(&page_slice[misalign as usize..][..copy_size as usize]);
+            progress += copy_size;
+        };
+
+        unsafe { KernelAlloc::dealloc_bytes(tmp_phys, lba_size as usize) };
+
+        result
     }
 
-    fn write(&self, file: &File, buffer: &[u8], offset: u64) -> EResult<isize> {
-        let _ = (offset, buffer, file);
-        todo!()
+    fn write(&self, _: &File, buffer: &[u8], offset: u64) -> EResult<isize> {
+        if buffer.is_empty() {
+            return Ok(0);
+        }
+
+        let sector_size = self.get_lba_size() as u64;
+        if sector_size == 0 {
+            return Err(Errno::EINVAL);
+        }
+
+        let tmp_phys = KernelAlloc::alloc_bytes(sector_size as _, AllocFlags::empty())?;
+        let mut progress = 0;
+
+        let result = 'a: loop {
+            if progress >= buffer.len() as u64 {
+                break 'a Ok(progress as isize);
+            }
+            let misalign = (progress + offset) % sector_size;
+            let page_index = (progress + offset) / sector_size;
+            let copy_size = (sector_size - misalign).min(buffer.len() as u64 - progress);
+
+            // Read the current LBA data.
+            if let Err(e) = self.read_lba(tmp_phys, page_index) {
+                if progress == 0 {
+                    return Err(e);
+                } else {
+                    break 'a Ok(progress as isize);
+                }
+            }
+
+            {
+                let page_slice: &mut [u8] =
+                    unsafe { slice::from_raw_parts_mut(tmp_phys.as_hhdm(), sector_size as _) };
+                page_slice[misalign as usize..][..copy_size as usize]
+                    .copy_from_slice(&buffer[progress as usize..][..copy_size as usize]);
+            }
+
+            // Write the new LBA data.
+            if let Err(e) = self.write_lba(tmp_phys, page_index) {
+                if progress == 0 {
+                    return Err(e);
+                } else {
+                    break 'a Ok(progress as isize);
+                }
+            }
+
+            progress += copy_size;
+        };
+
+        unsafe { KernelAlloc::dealloc_bytes(tmp_phys, sector_size as usize) };
+
+        result
     }
 
     fn ioctl(&self, file: &File, request: usize, arg: VirtAddr) -> EResult<usize> {
