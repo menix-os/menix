@@ -1,15 +1,12 @@
 use crate::{
-    system::pci::{
-        ACCESS, DeviceView, config,
-        device::{DEVICES, Device, PCI_DEVICES},
-    },
+    system::pci::{ACCESS, DeviceView, config, device::PCI_DEVICES},
     {
         memory::view::MemoryView,
         posix::errno::{EResult, Errno},
         util::mutex::spin::SpinMutex,
     },
 };
-use alloc::{collections::btree_map::BTreeMap, sync::Arc};
+use alloc::collections::btree_map::BTreeMap;
 
 kernel_proc::pci_variant_builders! {
     MassStorageController = 0x01 {
@@ -85,17 +82,17 @@ pub struct Driver {
     pub variants: &'static [PciVariant],
     /// Called when a new device is initialized.
     /// Should return a driver context.
-    pub probe: fn(variant: &PciVariant, access: DeviceView<'static>) -> EResult<Arc<dyn Device>>,
+    pub probe: fn(variant: &PciVariant, access: DeviceView<'static>) -> EResult<()>,
 }
 
-static DRIVERS: SpinMutex<BTreeMap<&'static str, &'static Driver>> =
-    SpinMutex::new(BTreeMap::new());
+static DRIVERS: SpinMutex<BTreeMap<&'static str, Driver>> = SpinMutex::new(BTreeMap::new());
 
 impl Driver {
-    pub fn register(&'static self) -> EResult<()> {
+    pub fn register(self) -> EResult<()> {
         let mut drivers = DRIVERS.lock();
 
         if drivers.contains_key(self.name) {
+            warn!("Driver {} is already registered", self.name);
             return Err(Errno::EEXIST);
         }
 
@@ -133,13 +130,7 @@ impl Driver {
                     && v.sub_class.is_none_or(|x| x == sub_class)
                     && v.class.is_none_or(|x| x == class)
             }) {
-                match (self.probe)(variant, view) {
-                    Ok(x) => DEVICES.lock().push(x),
-                    Err(err) => error!(
-                        "Driver \"{}\" failed to probe device {}: {:?}",
-                        self.name, addr, err
-                    ),
-                }
+                (self.probe)(variant, view)?;
             }
         }
 

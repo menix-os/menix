@@ -1,6 +1,6 @@
 use crate::{
     clock::{ClockError, ClockSource},
-    memory::view::{MemoryView, MmioView},
+    memory::{UnsafeMemoryView, view::MmioView},
 };
 use alloc::boxed::Box;
 use uacpi_sys::{
@@ -30,11 +30,11 @@ impl ClockSource for Hpet {
     }
 
     fn reset(&mut self) {
-        self.regs.write_reg(regs::MAIN_COUNTER, 0_u64).unwrap();
+        unsafe { self.regs.write_reg(regs::MAIN_COUNTER, 0_u64).unwrap() };
     }
 
     fn get_elapsed_ns(&self) -> usize {
-        let counter = self.regs.read_reg(regs::MAIN_COUNTER).unwrap().value();
+        let counter = unsafe { self.regs.read_reg(regs::MAIN_COUNTER).unwrap().value() };
         return (counter * self.period as u64 / 1_000_000) as usize;
     }
 }
@@ -50,17 +50,19 @@ impl Hpet {
         }
 
         let hpet = unsafe { table.__bindgen_anon_1.ptr } as *const acpi_hpet;
-        let mut mmio = unsafe { MmioView::new(((*hpet).address.address as usize).into(), 0x1000) };
+        let mmio = unsafe { MmioView::new(((*hpet).address.address as usize).into(), 0x1000) };
         unsafe { uacpi_table_unref(&raw mut table) };
 
         // Enable timer.
-        mmio.write_reg(
-            regs::CONFIGURATION,
-            mmio.read_reg(regs::CONFIGURATION).unwrap().value() | 1,
-        )
-        .unwrap();
+        unsafe {
+            mmio.write_reg(
+                regs::CONFIGURATION,
+                mmio.read_reg(regs::CONFIGURATION).unwrap().value() | 1,
+            )
+            .unwrap()
+        };
 
-        let caps = mmio.read_reg(regs::CAPABILITIES).unwrap().value();
+        let caps = unsafe { mmio.read_reg(regs::CAPABILITIES).unwrap().value() };
         let period = (caps >> 32) as u32;
 
         return Ok(Hpet { regs: mmio, period });

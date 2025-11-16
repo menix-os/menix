@@ -8,16 +8,14 @@ use crate::{
             consts::{self, IDT_IPI_RESCHED},
         },
     },
-    {
-        clock,
-        irq::{IrqHandler, IrqStatus},
-        memory::{
-            PhysAddr,
-            view::{MemoryView, MmioView, Register},
-        },
-        percpu::CpuData,
-        util::mutex::spin::SpinMutex,
+    clock,
+    irq::{IrqHandler, IrqStatus},
+    memory::{
+        PhysAddr, UnsafeMemoryView,
+        view::{MemoryView, MmioView, Register},
     },
+    percpu::CpuData,
+    util::mutex::spin::SpinMutex,
 };
 use core::{
     hint::unlikely,
@@ -161,7 +159,7 @@ impl LocalApic {
 
     fn read_reg(&self, reg: Register<u32>) -> u64 {
         match &*self.xapic_regs.lock() {
-            Some(x) => {
+            Some(x) => unsafe {
                 if reg == regs::ICR {
                     let lo = x.read_reg(regs::ICR).unwrap().value();
                     let hi = x.read_reg(regs::ICR_HI).unwrap().value();
@@ -170,21 +168,21 @@ impl LocalApic {
                 } else {
                     x.read_reg(reg).unwrap().value().into()
                 }
-            }
+            },
             None => unsafe { asm::rdmsr(0x800 + (reg.offset() as u32 >> 4)) },
         }
     }
 
     fn write_reg(&self, reg: Register<u32>, value: u64) {
         match &mut *self.xapic_regs.lock() {
-            Some(x) => {
+            Some(x) => unsafe {
                 if reg == regs::ICR {
                     x.write_reg(regs::ICR_HI, (value >> 32) as u32).unwrap();
                     x.write_reg(regs::ICR, value as u32).unwrap();
                 } else {
                     x.write_reg(reg, value as u32).unwrap()
                 }
-            }
+            },
             None => unsafe { asm::wrmsr(0x800 + (reg.offset() as u32 >> 4), value) },
         }
     }

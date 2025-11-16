@@ -1,15 +1,12 @@
 use crate::{
-    system::pci::{config::Address, driver::Driver},
+    system::pci::config::Address,
     {posix::errno::EResult, util::mutex::spin::SpinMutex},
 };
-use alloc::{sync::Arc, vec::Vec};
+use alloc::vec::Vec;
 
 pub trait Device {
     /// Returns the PCI address of this device.
     fn address(&self) -> Address;
-
-    /// Returns the owning driver of this device.
-    fn driver(&self) -> &'static Driver;
 
     /// Called when a device is put to sleep.
     fn suspend(&self) -> EResult<()> {
@@ -51,4 +48,3 @@ impl PciBar {
 }
 
 pub static PCI_DEVICES: SpinMutex<Vec<Address>> = SpinMutex::new(Vec::new());
-pub static DEVICES: SpinMutex<Vec<Arc<dyn Device>>> = SpinMutex::new(Vec::new());
