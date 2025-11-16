@@ -55,11 +55,17 @@ pub trait MemoryView {
 
 pub trait UnsafeMemoryView {
     /// Reads data from a register.
+    /// # Safety
+    /// The implementation must ensure that the register access is valid.
     unsafe fn read_reg<T: PrimInt + FromBytes>(&self, reg: Register<T>) -> Option<BitValue<T>>
     where
         T::Bytes: Default;
 
     /// Writes data to a register.
+    /// # Safety
+    /// The implementation must ensure that the register access is valid.
+    /// Since this function can mutate data without an immutable reference,
+    /// e.g. using MMIO, this function cannot be possibly safe.
     unsafe fn write_reg<T: PrimInt + ToBytes>(&self, reg: Register<T>, value: T) -> Option<()>
     where
         T::Bytes: Default;
@@ -227,18 +233,6 @@ impl MmioView {
                 .unwrap() as *mut (),
             len,
         };
-    }
-
-    pub unsafe fn new_offset(&self, offset: usize) -> Option<Self> {
-        if offset >= self.len {
-            return None;
-        }
-        unsafe {
-            Some(Self {
-                base: self.base.byte_add(offset),
-                len: self.len - offset,
-            })
-        }
     }
 
     pub fn sub_view(&self, offset: usize) -> Option<MmioSubView<'_>> {

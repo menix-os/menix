@@ -42,6 +42,10 @@ pub trait PageAllocator {
     /// Deallocating arbitrary physical addresses is inherently unsafe, since it can cause the kernel to corrupt.
     unsafe fn dealloc(addr: PhysAddr, pages: usize);
 
+    /// Deallocates enough consecutive pages to fit `bytes` amount of bytes.
+    /// # Safety
+    /// To be completely safe, only use this function together with [`PageAllocator::alloc_bytes`].
+    /// Safety notes from [`PageAllocator::dealloc`] also apply here.
     unsafe fn dealloc_bytes(addr: PhysAddr, bytes: usize) {
         let pages = divide_up(bytes, arch::virt::get_page_size());
         return unsafe { Self::dealloc(addr, pages) };
