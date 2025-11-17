@@ -12,6 +12,7 @@ use menix::{
         sync::Arc,
         vec::Vec,
     },
+    clock,
     core::sync::atomic::Ordering,
     error, log,
     memory::{
@@ -28,6 +29,7 @@ pub struct Controller {
     regs: Arc<MmioView>,
     /// The amount of bytes between two doorbells.
     doorbell_stride: usize,
+    mps_min: usize,
     /// Serial number of the controller.
     serial: SpinMutex<Option<String>>,
     /// Model name of the controller.
@@ -40,6 +42,8 @@ pub struct Controller {
     pub io_queue: SpinMutex<Option<Queue>>,
     /// Amount of namespaces.
     ns_count: AtomicU32,
+    /// Maximum data transfer size.
+    pub mdts: SpinMutex<Option<usize>>,
 }
 
 impl Controller {
@@ -69,12 +73,14 @@ impl Controller {
         Ok(Arc::new(Self {
             regs: Arc::new(regs),
             doorbell_stride,
+            mps_min,
             admin_queue: SpinMutex::new(None),
             io_queue: SpinMutex::new(None),
             serial: SpinMutex::new(None),
             model: SpinMutex::new(None),
             revision: SpinMutex::new(None),
             ns_count: AtomicU32::new(0),
+            mdts: SpinMutex::new(None),
         }))
     }
 
@@ -178,6 +184,13 @@ impl Controller {
                 .value(),
             Ordering::Release,
         );
+
+        let mdts = unsafe { view.read_reg(Register::<u8>::new(77)) }
+            .ok_or(NvmeError::MmioFailed)?
+            .value();
+        if mdts != 0 {
+            *self.mdts.lock() = Some(mdts as usize * self.mps_min);
+        }
 
         unsafe { KernelAlloc::dealloc_bytes(identify_buffer, 4096) };
 
@@ -287,7 +300,10 @@ impl Controller {
                 .write_field(spec::regs::cc::EN, if enable { 1 } else { 0 });
             self.regs
                 .write_reg(spec::regs::CC, cc.value())
-                .ok_or(NvmeError::MmioFailed)
+                .ok_or(NvmeError::MmioFailed)?;
         }
+
+        clock::block_ns(100000).unwrap();
+        Ok(())
     }
 }

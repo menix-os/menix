@@ -1,5 +1,3 @@
-use core::num::NonZeroUsize;
-
 use crate::{
     error::NvmeError,
     queue::Queue,
@@ -17,7 +15,8 @@ pub struct ReadWriteCommand {
     pub buffer: PhysAddr,
     pub do_write: bool,
     pub start_lba: u64,
-    pub length: NonZeroUsize,
+    pub num_lbas: usize,
+    pub bytes: usize,
     pub control: u16,
     pub ds_mgmt: u32,
     pub ref_tag: u32,
@@ -46,13 +45,14 @@ impl Command for ReadWriteCommand {
             let cdw11 = BitValue::new(0)
                 .write_field(spec::sq_entry::rw::SLBA_HIGH, (self.start_lba >> 32) as u32);
 
-            let cdw12 = BitValue::new(0)
-                .write_field(spec::sq_entry::rw::NLB, (self.length.get() - 1) as u16);
+            let cdw12 =
+                BitValue::new(0).write_field(spec::sq_entry::rw::NLB, (self.num_lbas - 1) as u16);
             let cdw13 = BitValue::new(0);
             let cdw14 = BitValue::new(0);
             let cdw15 = BitValue::new(0);
 
             view.write_reg(spec::sq_entry::NSID, self.nsid);
+            // TODO: For large transfers, we need to setup the PRP in a special way.
             view.write_reg(spec::sq_entry::DPTR0, self.buffer.into());
             view.write_reg(spec::sq_entry::CDW0, cdw0.value());
             view.write_reg(spec::sq_entry::CDW10, cdw10.value());

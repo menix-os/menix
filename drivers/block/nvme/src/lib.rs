@@ -79,7 +79,7 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<()> {
             &inner,
             None,
             path.as_bytes(),
-            NodeType::CharacterDevice,
+            NodeType::BlockDevice,
             Mode::from_bits_truncate(0o666),
             Some(ns),
             Identity::get_kernel(),

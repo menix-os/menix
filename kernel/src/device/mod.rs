@@ -19,7 +19,7 @@ pub trait BlockDevice: FileOps {
     fn get_lba_size(&self) -> usize;
 
     /// Reads a logical block from from `lba` into the buffer.
-    fn read_lba(&self, buffer: PhysAddr, lba: u64) -> EResult<()>;
+    fn read_lba(&self, buffer: PhysAddr, num_lba: usize, lba: u64) -> EResult<usize>;
 
     /// Writes the buffer to the device starting at `sector_start`.
     fn write_lba(&self, buffer: PhysAddr, lba: u64) -> EResult<()>;
@@ -33,38 +33,63 @@ impl<T: BlockDevice> FileOps for T {
             return Ok(0);
         }
 
-        let lba_size = self.get_lba_size() as u64;
+        let lba_size = self.get_lba_size();
         if lba_size == 0 {
             return Err(Errno::EINVAL);
         }
 
-        let tmp_phys = KernelAlloc::alloc_bytes(lba_size as _, AllocFlags::empty())?;
+        let lba_size_u64 = lba_size as u64;
+        let mut max_lbas_per_iter =
+            ((buffer.len() as u64 + lba_size_u64 - 1) / lba_size_u64).max(1);
+        max_lbas_per_iter = max_lbas_per_iter.saturating_add(1);
+
+        let tmp_bytes_u64 = max_lbas_per_iter
+            .checked_mul(lba_size_u64)
+            .ok_or(Errno::ENOMEM)?;
+        let tmp_bytes = usize::try_from(tmp_bytes_u64).map_err(|_| Errno::ENOMEM)?;
+
+        let tmp_phys = KernelAlloc::alloc_bytes(tmp_bytes, AllocFlags::empty())?;
         let mut progress = 0;
 
         let result = 'a: loop {
             if progress >= buffer.len() as u64 {
                 break 'a Ok(progress as isize);
             }
-            let misalign = (progress + offset) % lba_size;
-            let page_index = (progress + offset) / lba_size;
-            let copy_size = (lba_size - misalign).min(buffer.len() as u64 - progress);
 
-            if let Err(e) = self.read_lba(tmp_phys, page_index) {
-                if progress == 0 {
-                    return Err(e);
-                } else {
-                    break 'a Ok(progress as isize);
-                }
+            let misalign = (progress + offset) % lba_size_u64;
+            let page_index = (progress + offset) / lba_size_u64;
+            let remaining = buffer.len() as u64 - progress;
+            let mut chunk_lbas = ((misalign + remaining + lba_size_u64 - 1) / lba_size_u64).max(1);
+            chunk_lbas = chunk_lbas.min(max_lbas_per_iter);
+
+            let read_lbas = match self.read_lba(tmp_phys, chunk_lbas as usize, page_index) {
+                Ok(0) => break 'a Ok(progress as isize),
+                Ok(n) => n as u64,
+                Err(e) if progress == 0 => return Err(e),
+                Err(_) => break 'a Ok(progress as isize),
+            };
+
+            let chunk_bytes = read_lbas * lba_size_u64;
+            let chunk_slice =
+                unsafe { slice::from_raw_parts(tmp_phys.as_hhdm(), chunk_bytes as usize) };
+
+            let start = misalign as usize;
+            if start >= chunk_slice.len() {
+                break 'a Ok(progress as isize);
             }
 
-            let page_slice: &[u8] =
-                unsafe { slice::from_raw_parts(tmp_phys.as_hhdm(), lba_size as _) };
-            buffer[progress as usize..][..copy_size as usize]
-                .copy_from_slice(&page_slice[misalign as usize..][..copy_size as usize]);
-            progress += copy_size;
+            let mut copy_len = chunk_slice.len() - start;
+            copy_len = copy_len.min(remaining as usize);
+            if copy_len == 0 {
+                break 'a Ok(progress as isize);
+            }
+
+            buffer[progress as usize..][..copy_len]
+                .copy_from_slice(&chunk_slice[start..][..copy_len]);
+            progress += copy_len as u64;
         };
 
-        unsafe { KernelAlloc::dealloc_bytes(tmp_phys, lba_size as usize) };
+        unsafe { KernelAlloc::dealloc_bytes(tmp_phys, tmp_bytes) };
 
         result
     }
@@ -91,7 +116,7 @@ impl<T: BlockDevice> FileOps for T {
             let copy_size = (sector_size - misalign).min(buffer.len() as u64 - progress);
 
             // Read the current LBA data.
-            if let Err(e) = self.read_lba(tmp_phys, page_index) {
+            if let Err(e) = self.read_lba(tmp_phys, 1, page_index) {
                 if progress == 0 {
                     return Err(e);
                 } else {

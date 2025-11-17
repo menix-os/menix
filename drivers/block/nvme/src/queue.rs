@@ -109,7 +109,10 @@ impl Queue {
             .sub_view(self.doorbells_offset)
             .ok_or(NvmeError::MmioFailed)?;
 
-        unsafe { command.write_command(&view)? };
+        unsafe {
+            (view.base() as *mut u8).write_bytes(0, spec::sq_entry::SIZE);
+            command.write_command(&view)?;
+        }
 
         self.sq_tail += 1;
         if self.sq_tail == self.depth {

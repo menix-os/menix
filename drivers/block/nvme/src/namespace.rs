@@ -1,5 +1,4 @@
 use crate::{command::ReadWriteCommand, controller::Controller};
-use core::num::NonZeroUsize;
 use menix::{
     alloc::sync::Arc,
     device::BlockDevice,
@@ -41,19 +40,24 @@ impl BlockDevice for Namespace {
         1 << self.lba_shift
     }
 
-    fn read_lba(&self, buffer: PhysAddr, sector_start: u64) -> EResult<()> {
-        if sector_start >= self.lba_count {
-            return Err(Errno::ENXIO);
+    fn read_lba(&self, buffer: PhysAddr, num_lbas: usize, start_lba: u64) -> EResult<usize> {
+        if start_lba + num_lbas as u64 > self.lba_count {
+            return Ok(0);
         }
 
+        let read_count = match *self.controller.mdts.lock() {
+            Some(_) => num_lbas.min(16), // TODO: num_lbas.min((x >> self.lba_shift) as usize),
+            None => num_lbas,
+        };
         let mut ioq_guard = self.controller.io_queue.lock();
         let ioq = ioq_guard.as_mut().ok_or(Errno::EIO)?;
 
         ioq.submit_cmd(ReadWriteCommand {
             buffer,
             do_write: false,
-            start_lba: sector_start,
-            length: NonZeroUsize::new(1).unwrap(), // 1 LBA
+            start_lba: start_lba,
+            num_lbas: read_count,
+            bytes: read_count << self.lba_shift,
             control: 0,
             ds_mgmt: 0,
             ref_tag: 0,
@@ -63,11 +67,12 @@ impl BlockDevice for Namespace {
         })
         .map_err(|_| Errno::ENXIO)?;
 
-        if !ioq.next_completion().unwrap().status.is_success() {
-            return Err(Errno::ENXIO);
+        let comp = ioq.next_completion().unwrap();
+        if !comp.status.is_success() {
+            return Err(Errno::EFAULT);
         }
 
-        Ok(())
+        Ok(read_count)
     }
 
     fn write_lba(&self, buffer: PhysAddr, sector_start: u64) -> EResult<()> {
@@ -78,7 +83,8 @@ impl BlockDevice for Namespace {
             buffer,
             do_write: true,
             start_lba: sector_start,
-            length: NonZeroUsize::new(1).unwrap(), // 1 LBA
+            num_lbas: 1, // 1 LBA
+            bytes: 512,
             control: 0,
             ds_mgmt: 0,
             ref_tag: 0,
