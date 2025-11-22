@@ -48,22 +48,17 @@ fn panic_handler(info: &PanicInfo) -> ! {
     {
         log_panic!("----------");
         let modules = super::module::MODULE_TABLE.lock();
-        match modules.len() {
-            0 => log_panic!("No linked modules"),
-            len => {
-                log_panic!("{} linked module(s):", len);
-                for (name, module) in modules.iter() {
-                    log_panic!("{}:", name);
-                    for (_, virt, length, flags) in &module.mappings {
-                        log_panic!(
-                            "    {:#x} - {:#x}, {:?}",
-                            virt.value(),
-                            virt.value() + length,
-                            flags
-                        );
-                    }
-                }
-            }
+        log_panic!("{} linked module(s):", modules.len());
+        for (name, module) in modules.iter() {
+            log_panic!(
+                "{:?}: {}",
+                module
+                    .mappings
+                    .first()
+                    .map(|x| x.1)
+                    .unwrap_or(VirtAddr::null()),
+                name
+            );
         }
     }
 
