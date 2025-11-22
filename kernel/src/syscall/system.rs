@@ -1,6 +1,8 @@
+use alloc::string::String;
+
 use crate::{
     clock,
-    memory::user::UserPtr,
+    memory::{UserSlice, VirtAddr, user::UserPtr},
     posix::{
         errno::{EResult, Errno},
         utsname::UTSNAME,
@@ -42,6 +44,48 @@ pub fn clock_get(clockid: uapi::clockid_t, mut tp: UserPtr<uapi::timespec>) -> E
         tv_nsec: (elapsed % NS_TO_SEC) as _,
     })
     .ok_or(Errno::EINVAL)?;
+
+    Ok(0)
+}
+
+const LOG_EMERG: usize = 0;
+const LOG_ALERT: usize = 1;
+const LOG_CRIT: usize = 2;
+const LOG_ERR: usize = 3;
+const LOG_WARNING: usize = 4;
+const LOG_NOTICE: usize = 5;
+const LOG_INFO: usize = 6;
+const LOG_DEBUG: usize = 7;
+
+pub fn syslog(level: usize, ptr: VirtAddr, len: usize) -> EResult<usize> {
+    let slice: UserSlice<u8> = UserSlice::new(ptr, len);
+    use ::core::fmt::Write;
+    {
+        let current_time = crate::clock::get_elapsed();
+        let _lock = crate::util::mutex::irq::IrqMutex::lock();
+        let mut writer = crate::log::GLOBAL_LOGGERS.lock();
+        _ = writer.write_fmt(format_args!(
+            "[{:5}.{:06}] \x1b[0m",
+            current_time / 1_000_000_000,
+            (current_time / 1000) % 1_000_000,
+        ));
+        _ = writer.write_fmt(format_args!(
+            "[{}] {}",
+            match level {
+                LOG_EMERG => "EMERG",
+                LOG_ALERT => "ALERT",
+                LOG_CRIT => "CRIT",
+                LOG_ERR => "ERR",
+                LOG_WARNING => "WARNING",
+                LOG_NOTICE => "NOTICE",
+                LOG_INFO => "INFO",
+                LOG_DEBUG => "DEBUG",
+                _ => "?"
+            },
+            String::from_utf8_lossy(slice.as_slice().ok_or(Errno::EINVAL)?)
+        ));
+        _ = writer.write_fmt(format_args!("\x1b[0m\n"));
+    }
 
     Ok(0)
 }

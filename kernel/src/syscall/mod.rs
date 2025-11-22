@@ -31,7 +31,7 @@ pub fn dispatch(
     // Note that the numbers might not be in order, but grouped logically.
     let result = match num {
         // System control
-        numbers::SYSLOG => sys_unimp!("syslog", Ok(0)),
+        numbers::SYSLOG => system::syslog(a0, a1.into(), a2),
         numbers::GETUNAME => system::getuname(a0.into()),
         numbers::SETUNAME => system::setuname(a0.into()),
         numbers::ARCHCTL => system::archctl(a0, a1),
