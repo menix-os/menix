@@ -80,7 +80,7 @@ pub fn syslog(level: usize, ptr: VirtAddr, len: usize) -> EResult<usize> {
                 LOG_NOTICE => "NOTICE",
                 LOG_INFO => "INFO",
                 LOG_DEBUG => "DEBUG",
-                _ => "?"
+                _ => "?",
             },
             String::from_utf8_lossy(slice.as_slice().ok_or(Errno::EINVAL)?)
         ));
