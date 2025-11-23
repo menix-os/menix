@@ -22,8 +22,8 @@ pub fn getuname(mut addr: UserPtr<uapi::utsname>) -> EResult<usize> {
 
 pub fn setuname(addr: UserPtr<uapi::utsname>) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
-    if inner.identity.user_id != 0 {
+    // Only allow the superuser to change the uname.
+    if proc.identity.lock().user_id != 0 {
         return Err(Errno::EPERM);
     }
 

@@ -11,7 +11,6 @@ pub use file::File;
 pub use fs::Mount;
 pub use fs::MountFlags;
 
-use crate::vfs::file::FileOps;
 use crate::{
     memory::{
         VirtAddr,
@@ -19,11 +18,11 @@ use crate::{
         virt::{AddressSpace, VmFlags},
     },
     posix::errno::{EResult, Errno},
-    process::{Identity, InnerProcess, PROCESS_STAGE, Process},
+    process::{Identity, PROCESS_STAGE, Process},
     util::once::Once,
     vfs::{
         cache::LookupFlags,
-        file::{MmapFlags, OpenFlags},
+        file::{FileOps, MmapFlags, OpenFlags},
         fs::devtmpfs,
         inode::{Mode, NodeOps, NodeType},
     },
@@ -41,8 +40,8 @@ pub fn get_root() -> PathNode {
 
 /// Creates a new node in the VFS.
 pub fn mknod(
-    inner: &InnerProcess,
-    at: Option<Arc<File>>,
+    root: PathNode,
+    cwd: PathNode,
     path: &[u8],
     file_type: NodeType,
     mode: Mode,
@@ -60,7 +59,7 @@ pub fn mknod(
         _ => return Err(Errno::EINVAL),
     }
 
-    let path = PathNode::flookup(inner, at, path, identity, LookupFlags::MustNotExist)?;
+    let path = PathNode::lookup(root, cwd, path, identity, LookupFlags::MustNotExist)?;
     let parent = path
         .lookup_parent()
         .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
@@ -74,19 +73,13 @@ pub fn mknod(
 
 /// Creates a symbolic link at `path`, pointing to `target_path`.
 pub fn symlink(
-    inner: &InnerProcess,
-    at: Option<Arc<File>>,
+    root: PathNode,
+    cwd: PathNode,
     path: &[u8],
     target_path: &[u8],
     identity: &Identity,
 ) -> EResult<()> {
-    let path = PathNode::lookup(
-        inner,
-        at.and_then(|x| x.path.clone()),
-        path,
-        identity,
-        LookupFlags::MustNotExist,
-    )?;
+    let path = PathNode::lookup(root, cwd, path, identity, LookupFlags::MustNotExist)?;
 
     let parent_inode = path
         .lookup_parent()?
@@ -105,7 +98,7 @@ pub fn symlink(
 /// Maps a memory object in the address space of a process.
 pub fn mmap(
     file: Option<Arc<File>>,
-    space: &AddressSpace,
+    space: &mut AddressSpace,
     addr: VirtAddr,
     len: NonZeroUsize,
     prot: VmFlags,
@@ -162,10 +155,12 @@ pub fn VFS_DEV_MOUNT_STAGE() {
     let devtmpfs =
         fs::mount(None, b"devtmpfs", MountFlags::empty()).expect("Unable to mount the devtmpfs");
 
-    let kernel = Process::get_kernel().inner.lock();
+    let proc = Process::get_kernel();
+    let root = proc.root_dir.lock();
+    let cwd = proc.working_dir.lock();
     mknod(
-        &kernel,
-        None,
+        root.clone(),
+        cwd.clone(),
         b"/dev",
         NodeType::Directory,
         Mode::UserRead | Mode::UserWrite,
@@ -175,8 +170,8 @@ pub fn VFS_DEV_MOUNT_STAGE() {
     .expect("Unable to create /dev");
 
     let devdir = PathNode::lookup(
-        &kernel,
-        None,
+        root.clone(),
+        cwd.clone(),
         b"/dev",
         Identity::get_kernel(),
         LookupFlags::MustExist,

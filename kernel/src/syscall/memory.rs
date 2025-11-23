@@ -35,12 +35,12 @@ pub fn mmap(
     vm_prot.set(VmFlags::Exec, prot & uapi::PROT_EXEC != 0);
 
     let proc = Scheduler::get_current().get_process();
-    let mut proc_inner = proc.inner.lock();
+    let mut mmap_head = proc.mmap_head.lock();
 
     // If MAP_FIXED isn't specified, we must find a suitable address.
     let addr = if !flags.contains(MmapFlags::Fixed) {
-        let cur = proc_inner.mmap_head;
-        proc_inner.mmap_head = align_up((cur + length).value(), get_page_size()).into();
+        let cur = *mmap_head;
+        *mmap_head = align_up((cur + length).value(), get_page_size()).into();
 
         cur
     } else {
@@ -52,17 +52,16 @@ pub fn mmap(
         false => {
             // Look up the corresponding fd.
             Some(
-                proc_inner
-                    .open_files
-                    .get(&(fd as usize))
-                    .ok_or(Errno::EBADF)
-                    .cloned()?,
+                proc.open_files
+                    .lock()
+                    .get_fd(fd as usize)
+                    .ok_or(Errno::EBADF)?,
             )
         }
     };
     crate::vfs::mmap(
         file.map(|x| x.file.clone()),
-        &proc_inner.address_space,
+        &mut proc.address_space.lock(),
         addr,
         NonZeroUsize::new(length).ok_or(Errno::EINVAL)?,
         vm_prot,
@@ -79,8 +78,7 @@ pub fn mprotect(addr: VirtAddr, size: usize, prot: u32) -> EResult<usize> {
     vm_prot.set(VmFlags::Exec, prot & uapi::PROT_EXEC != 0);
 
     let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
-    proc_inner.address_space.protect(
+    proc.address_space.lock().protect(
         addr,
         NonZeroUsize::new(size).ok_or(Errno::EINVAL)?,
         vm_prot,
@@ -91,10 +89,8 @@ pub fn mprotect(addr: VirtAddr, size: usize, prot: u32) -> EResult<usize> {
 
 pub fn munmap(addr: VirtAddr, size: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
-
-    inner
-        .address_space
+    proc.address_space
+        .lock()
         .unmap(addr, NonZeroUsize::new(size).ok_or(Errno::EINVAL)?)
         .map(|_| 0)
 }

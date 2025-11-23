@@ -72,12 +72,11 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<()> {
 
     let nvme_id = NVME_COUNTER.fetch_add(1, Ordering::SeqCst);
     for ns in namespaces {
-        unsafe { Process::get_kernel().inner.force_unlock() };
-        let inner = Process::get_kernel().inner.lock();
+        let kernel = Process::get_kernel();
         let path = format!("/dev/nvme{}n{}", nvme_id, ns.get_id());
         vfs::mknod(
-            &inner,
-            None,
+            kernel.root_dir.lock().clone(),
+            kernel.working_dir.lock().clone(),
             path.as_bytes(),
             NodeType::BlockDevice,
             Mode::from_bits_truncate(0o666),

@@ -50,7 +50,7 @@ use crate::{
     vfs::{
         File,
         file::{FileDescription, OpenFlags},
-        fs::initramfs::load,
+        fs::initramfs,
         inode::Mode,
     },
 };
@@ -78,22 +78,12 @@ pub extern "C" fn main(_: usize, _: usize) {
     log!("Menix {}", env!("CARGO_PKG_VERSION"));
     log!("Command line: {}", BootInfo::get().command_line.inner());
 
-    // Load the initramfs.
+    // Load all initramfs files.
     {
-        let proc_inner = Process::get_kernel().inner.lock();
-        // Load the initramfs into the root directory.
-        let root_dir = File::open(
-            &proc_inner,
-            None,
-            b"/",
-            OpenFlags::Directory,
-            Mode::empty(),
-            Identity::get_kernel(),
-        )
-        .expect("Unable to open root directory");
-
+        let kernel_proc = Process::get_kernel();
+        let root_dir = kernel_proc.root_dir.lock().clone();
         for file in BootInfo::get().files {
-            load(&proc_inner, root_dir.clone(), unsafe {
+            initramfs::load(root_dir.clone(), root_dir.clone(), unsafe {
                 core::slice::from_raw_parts(file.data.as_hhdm(), file.length)
             })
             .expect("Failed to load one of the provided initramfs archives");
@@ -128,10 +118,10 @@ pub extern "C" fn main(_: usize, _: usize) {
     let init_proc = INIT.get();
     // Open /dev/console for stdio for init.
     {
-        let mut init_inner = init_proc.inner.lock();
+        let mut open_files = init_proc.open_files.lock();
         let console = File::open(
-            &init_inner,
-            None,
+            init_proc.root_dir.lock().clone(),
+            init_proc.working_dir.lock().clone(),
             b"/dev/console",
             OpenFlags::ReadWrite,
             Mode::empty(),
@@ -140,21 +130,20 @@ pub extern "C" fn main(_: usize, _: usize) {
         .expect("Unable to open console for init");
 
         for i in 0..=2 {
-            init_inner.open_files.insert(
-                i,
+            open_files.open_file(
                 FileDescription {
                     file: console.clone(),
                     close_on_exec: AtomicBool::new(false),
                 },
+                i,
             );
         }
     }
 
     let init_file = {
-        let init_inner = init_proc.inner.lock();
         File::open(
-            &init_inner,
-            None,
+            init_proc.root_dir.lock().clone(),
+            init_proc.working_dir.lock().clone(),
             path,
             OpenFlags::Read | OpenFlags::Executable,
             Mode::empty(),

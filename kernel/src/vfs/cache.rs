@@ -1,9 +1,9 @@
 use super::inode::INode;
 use crate::{
     posix::errno::{EResult, Errno},
-    process::{Identity, InnerProcess},
+    process::Identity,
     util::mutex::spin::SpinMutex,
-    vfs::{File, file::OpenFlags, fs::Mount, inode::NodeOps},
+    vfs::{file::OpenFlags, fs::Mount, inode::NodeOps},
 };
 use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
 use core::{fmt::Debug, hint::unlikely};
@@ -82,26 +82,9 @@ pub struct PathNode {
 }
 
 impl PathNode {
-    pub fn flookup(
-        proc: &InnerProcess,
-        file: Option<Arc<File>>,
-        path: &[u8],
-        identity: &Identity,
-        flags: LookupFlags,
-    ) -> EResult<Self> {
-        let start = match file {
-            Some(x) => match x.path.clone() {
-                Some(p) => Some(p),
-                None => return Err(Errno::ENOENT),
-            },
-            None => None,
-        };
-        return Self::lookup(proc, start, path, identity, flags);
-    }
-
     pub fn lookup(
-        proc: &InnerProcess,
-        start: Option<Self>,
+        root: Self,
+        start: Self,
         path: &[u8],
         identity: &Identity,
         flags: LookupFlags,
@@ -113,9 +96,9 @@ impl PathNode {
         // If a path starts with '/', it's an absolute path.
         // In that case, skip the first character and use the current root as a starting point.
         let (mut current_node, path) = if path.first().is_some_and(|&x| x == b'/') {
-            (proc.root_dir.clone(), &path[1..])
+            (root.clone(), &path[1..])
         } else {
-            (start.unwrap_or(proc.working_dir.clone()), path)
+            (start, path)
         };
 
         // Parse each component.
@@ -125,7 +108,7 @@ impl PathNode {
                 return Err(Errno::EILSEQ);
             }
 
-            current_node = current_node.resolve_symlink(proc, identity, flags)?;
+            current_node = current_node.resolve_symlink(root.clone(), identity, flags)?;
             let Some(inode) = current_node.entry.get_inode() else {
                 return Err(Errno::ENOENT);
             };
@@ -144,7 +127,7 @@ impl PathNode {
         }
 
         if flags.contains(LookupFlags::FollowSymlinks) {
-            current_node = current_node.resolve_symlink(proc, identity, flags)?;
+            current_node = current_node.resolve_symlink(root, identity, flags)?;
         }
 
         let inode = current_node.entry.get_inode();
@@ -154,7 +137,7 @@ impl PathNode {
         if flags.contains(LookupFlags::MustNotExist) && inode.is_some() {
             return Err(Errno::EEXIST);
         }
-        return Ok(current_node);
+        return Ok(current_node.clone());
     }
 
     pub fn lookup_child(self, name: &[u8]) -> EResult<Self> {
@@ -238,7 +221,7 @@ impl PathNode {
 
     fn resolve_symlink(
         &self,
-        proc: &InnerProcess,
+        root: Self,
         identity: &Identity,
         flags: LookupFlags,
     ) -> EResult<Self> {
@@ -251,11 +234,11 @@ impl PathNode {
             let link_length = symlink.read_link(&inode, &mut link_buf)? as usize;
 
             let result = Self::lookup(
-                proc,
-                Some(PathNode {
+                root.clone(),
+                PathNode {
                     mount: self.mount.clone(),
                     entry: parent.clone(),
-                }),
+                },
                 &link_buf[0..link_length],
                 identity,
                 flags,

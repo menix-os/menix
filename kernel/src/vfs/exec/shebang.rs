@@ -45,14 +45,16 @@ impl ExecFormat for ShebangFormat {
 
         let interp_path = info.argv.first().ok_or(Errno::EINVAL)?;
         {
-            let inner = proc.inner.lock();
+            let root = proc.root_dir.lock();
+            let cwd = proc.working_dir.lock();
+            let identity = proc.identity.lock();
             info.executable = File::open(
-                &inner,
-                None,
+                root.clone(),
+                cwd.clone(),
                 interp_path,
                 OpenFlags::Read | OpenFlags::Executable,
                 Mode::UserRead | Mode::UserExec,
-                &inner.identity,
+                &identity,
             )?;
         }
 

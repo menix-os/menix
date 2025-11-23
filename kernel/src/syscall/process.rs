@@ -29,26 +29,22 @@ pub fn getppid() -> usize {
 
 pub fn getuid() -> usize {
     let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
-    inner.identity.user_id as usize
+    proc.identity.lock().user_id as usize
 }
 
 pub fn geteuid() -> usize {
     let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
-    inner.identity.effective_user_id as usize
+    proc.identity.lock().effective_user_id as usize
 }
 
 pub fn getgid() -> usize {
     let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
-    inner.identity.group_id as usize
+    proc.identity.lock().group_id as usize
 }
 
 pub fn getegid() -> usize {
     let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
-    inner.identity.effective_group_id as usize
+    proc.identity.lock().effective_group_id as usize
 }
 
 pub fn getpgid(pid: usize) -> EResult<usize> {
@@ -106,16 +102,14 @@ pub fn execve(path: VirtAddr, argv: VirtAddr, envp: VirtAddr) -> EResult<usize> 
         })
         .collect();
 
-    let inner = proc.inner.lock();
     let file = File::open(
-        &inner,
-        None,
+        proc.root_dir.lock().clone(),
+        proc.working_dir.lock().clone(),
         path_str.to_bytes(),
         OpenFlags::Read | OpenFlags::Executable,
         Mode::empty(),
-        &inner.identity,
+        &proc.identity.lock(),
     )?;
-    drop(inner);
     proc.fexecve(file, args, envs)?;
 
     unreachable!("fexecve should never return on success");
@@ -125,8 +119,8 @@ pub fn waitpid(pid: uapi::pid_t, mut stat_loc: UserPtr<i32>, _options: i32) -> E
     let proc = Scheduler::get_current().get_process();
 
     loop {
-        let mut inner = proc.inner.lock();
-        if inner.children.is_empty() {
+        let mut inner = proc.children.lock();
+        if inner.is_empty() {
             return Err(Errno::ECHILD);
         }
         match pid as isize {
@@ -136,34 +130,34 @@ pub fn waitpid(pid: uapi::pid_t, mut stat_loc: UserPtr<i32>, _options: i32) -> E
             }
             -1 | 0 => {
                 let mut waitee = None;
-                for (idx, child) in inner.children.iter().enumerate() {
-                    let child_inner = child.inner.lock();
-                    if let ProcessState::Exited(code) = child_inner.status {
+                for (idx, child) in inner.iter().enumerate() {
+                    let child_inner = child.status.lock();
+                    if let ProcessState::Exited(code) = *child_inner {
                         stat_loc.write((code as i32) << 8);
                         waitee = Some(idx);
                     }
                 }
 
                 if let Some(w) = waitee {
-                    inner.children.remove(w);
+                    inner.remove(w);
                 }
             }
             _ => {
                 let mut waitee = None;
-                for (idx, child) in inner.children.iter().enumerate() {
+                for (idx, child) in inner.iter().enumerate() {
                     if child.get_pid() != pid as usize {
                         continue;
                     }
 
-                    let child_inner = child.inner.lock();
-                    if let ProcessState::Exited(code) = child_inner.status {
+                    let child_inner = child.status.lock();
+                    if let ProcessState::Exited(code) = *child_inner {
                         stat_loc.write((code as i32) << 8);
                         waitee = Some(idx);
                     }
                 }
 
                 if let Some(w) = waitee {
-                    inner.children.remove(w);
+                    inner.remove(w);
                 }
             }
         }

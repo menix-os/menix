@@ -74,11 +74,13 @@ impl CharDevice for FullFile {
     depends = [PROCESS_STAGE, VFS_DEV_MOUNT_STAGE]
 )]
 fn MEMFILES_STAGE() {
-    let inner = Process::get_kernel().inner.lock();
+    let proc = Process::get_kernel();
+    let root = proc.root_dir.lock();
+    let cwd = proc.working_dir.lock();
 
     vfs::mknod(
-        &inner,
-        None,
+        root.clone(),
+        cwd.clone(),
         b"/dev/null",
         NodeType::CharacterDevice,
         Mode::from_bits_truncate(0o666),
@@ -88,8 +90,8 @@ fn MEMFILES_STAGE() {
     .expect("Unable to create /dev/null");
 
     vfs::mknod(
-        &inner,
-        None,
+        root.clone(),
+        cwd.clone(),
         b"/dev/full",
         NodeType::CharacterDevice,
         Mode::from_bits_truncate(0o666),
@@ -99,8 +101,8 @@ fn MEMFILES_STAGE() {
     .expect("Unable to create /dev/full");
 
     vfs::mknod(
-        &inner,
-        None,
+        root.clone(),
+        cwd.clone(),
         b"/dev/zero",
         NodeType::CharacterDevice,
         Mode::from_bits_truncate(0o666),

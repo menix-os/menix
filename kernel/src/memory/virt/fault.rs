@@ -25,12 +25,12 @@ pub struct PageFaultInfo {
 
 /// The actual page fault. This function is meant to be called by other code too.
 /// This is useful for [`crate::memory::user::UserPtr`], which avoids taking any additional locks.
-pub fn handler_inner(info: &PageFaultInfo, space: &AddressSpace) {
+pub fn handler_inner(info: &PageFaultInfo, space: &mut AddressSpace) {
     // Check if the current address space has a theoretical mapping at the faulting address.
     let page_size = arch::virt::get_page_size();
     let faulty_page = info.addr.value() / arch::virt::get_page_size();
     if let Some(mapped) = {
-        let mappings = space.mappings.lock();
+        let mappings = &space.mappings;
         mappings
             .iter()
             .find(|x| faulty_page >= x.start_page && faulty_page < x.end_page)
@@ -145,7 +145,5 @@ pub fn handler_inner(info: &PageFaultInfo, space: &AddressSpace) {
 /// Generic page fault handler for MMU-generated faults.
 pub fn handler(info: &PageFaultInfo) {
     let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
-
-    handler_inner(info, &inner.address_space);
+    handler_inner(info, &mut proc.address_space.lock());
 }

@@ -7,7 +7,7 @@ use crate::{
     {
         memory::{cache::MemoryObject, pmm::KernelAlloc, virt::mmu::PageTable},
         posix::errno::{EResult, Errno},
-        util::{divide_up, mutex::spin::SpinMutex, once::Once},
+        util::{divide_up, once::Once},
     },
 };
 use alloc::{collections::btree_set::BTreeSet, sync::Arc, vec::Vec};
@@ -90,7 +90,7 @@ pub static KERNEL_MMAP_BASE_ADDR: AtomicUsize = AtomicUsize::new(0);
 pub struct AddressSpace {
     pub table: Arc<PageTable>,
     /// A map that translates global page offsets (virt / page_size) to a physical page and the flags of the mapping.
-    pub mappings: SpinMutex<BTreeSet<MappedObject>>,
+    pub mappings: BTreeSet<MappedObject>,
 }
 
 /// Represents a mapped object.
@@ -158,13 +158,13 @@ impl AddressSpace {
     pub fn new() -> Self {
         Self {
             table: Arc::new(PageTable::new_user::<KernelAlloc>(AllocFlags::empty())),
-            mappings: SpinMutex::default(),
+            mappings: BTreeSet::new(),
         }
     }
 
     /// Maps an object into the address space.
     pub fn map_object(
-        &self,
+        &mut self,
         object: Arc<MemoryObject>,
         addr: VirtAddr,
         len: NonZeroUsize,
@@ -184,8 +184,8 @@ impl AddressSpace {
         let start_page = addr.value() / page_size;
         let end_page = start_page + divide_up(len.into(), page_size);
 
-        let mut mappings = self.mappings.lock();
-        let overlapping = mappings
+        let overlapping = self
+            .mappings
             .iter()
             .filter(|mapping| start_page < mapping.end_page && mapping.start_page < end_page)
             .cloned()
@@ -193,7 +193,7 @@ impl AddressSpace {
 
         // Split any mappings that got shadowed.
         for mapping in overlapping.iter() {
-            mappings.remove(mapping);
+            self.mappings.remove(mapping);
             // If new mapping completely shadows the old mapping.
             if start_page <= mapping.start_page && end_page >= mapping.end_page {
                 for p in mapping.start_page..mapping.end_page {
@@ -214,7 +214,7 @@ impl AddressSpace {
 
                 // Insert the leftmost pages.
                 if head_pages > 0 {
-                    mappings.insert(MappedObject {
+                    self.mappings.insert(MappedObject {
                         start_page: mapping.start_page,
                         end_page: mapping.start_page + head_pages,
                         offset_page: mapping.offset_page,
@@ -225,7 +225,7 @@ impl AddressSpace {
 
                 // Insert the rightmost pages.
                 if tail_pages > 0 {
-                    mappings.insert(MappedObject {
+                    self.mappings.insert(MappedObject {
                         start_page: mapping.end_page - tail_pages,
                         end_page: mapping.end_page,
                         offset_page: mapping.offset_page + head_pages + (end_page - start_page),
@@ -236,7 +236,7 @@ impl AddressSpace {
             }
         }
 
-        mappings.insert(MappedObject {
+        self.mappings.insert(MappedObject {
             start_page,
             end_page,
             offset_page: offset as usize / page_size,
@@ -247,7 +247,7 @@ impl AddressSpace {
         Ok(())
     }
 
-    pub fn protect(&self, addr: VirtAddr, len: NonZeroUsize, prot: VmFlags) -> EResult<()> {
+    pub fn protect(&mut self, addr: VirtAddr, len: NonZeroUsize, prot: VmFlags) -> EResult<()> {
         // `addr + len` may not overflow if the mapping is fixed.
         if addr.value().checked_add(len.into()).is_none() {
             return Err(Errno::ENOMEM);
@@ -261,8 +261,8 @@ impl AddressSpace {
         let start_page = addr.value() / page_size;
         let end_page = start_page + divide_up(len.into(), page_size);
 
-        let mut mappings = self.mappings.lock();
-        let overlapping = mappings
+        let overlapping = self
+            .mappings
             .iter()
             .filter(|mapping| start_page < mapping.end_page && mapping.start_page < end_page)
             .cloned()
@@ -272,8 +272,8 @@ impl AddressSpace {
         for mapping in overlapping {
             // If new mapping completely shadows the old mapping.
             if start_page <= mapping.start_page && end_page >= mapping.end_page {
-                mappings.remove(&mapping);
-                mappings.insert(MappedObject {
+                self.mappings.remove(&mapping);
+                self.mappings.insert(MappedObject {
                     flags: AtomicU8::new(prot.bits()),
                     ..mapping
                 });
@@ -288,7 +288,7 @@ impl AddressSpace {
             // If new mapping partially shadows the old mapping.
             else {
                 // TODO
-                mappings.remove(&mapping);
+                self.mappings.remove(&mapping);
                 self.table
                     .unmap_range::<KernelAlloc>(
                         (start_page.max(mapping.start_page) * page_size).into(),
@@ -302,7 +302,7 @@ impl AddressSpace {
 
                 // Insert the leftmost pages.
                 if head_pages > 0 {
-                    mappings.insert(MappedObject {
+                    self.mappings.insert(MappedObject {
                         start_page: mapping.start_page,
                         end_page: mapping.start_page + head_pages,
                         offset_page: mapping.offset_page,
@@ -313,7 +313,7 @@ impl AddressSpace {
 
                 // Insert the rightmost pages.
                 if tail_pages > 0 {
-                    mappings.insert(MappedObject {
+                    self.mappings.insert(MappedObject {
                         start_page: mapping.end_page - tail_pages,
                         end_page: mapping.end_page,
                         offset_page: mapping.offset_page + head_pages + (end_page - start_page),
@@ -323,7 +323,7 @@ impl AddressSpace {
                 }
 
                 // Insert the new mapping.
-                mappings.insert(MappedObject {
+                self.mappings.insert(MappedObject {
                     flags: AtomicU8::new(prot.bits()),
                     ..mapping
                 });
@@ -346,11 +346,9 @@ impl AddressSpace {
         let num_pages = divide_up(len, page_size);
         let start_page = addr.value() / page_size;
 
-        let mappings = self.mappings.lock();
-
         let mut prev = None;
 
-        for mapping in mappings.iter().filter(|mapping| {
+        for mapping in self.mappings.iter().filter(|mapping| {
             start_page < mapping.end_page && mapping.start_page < start_page + num_pages
         }) {
             if let Some(e) = prev
@@ -368,25 +366,22 @@ impl AddressSpace {
         prev.is_some()
     }
 
-    pub fn clear(&self) {
-        self.mappings.lock().clear();
+    pub fn clear(&mut self) {
+        self.mappings.clear();
     }
 
     pub fn fork(&self) -> EResult<Self> {
         let page_size = arch::virt::get_page_size();
-        let result = Self::new();
-
-        let old_maps = self.mappings.lock();
-        let mut new = result.mappings.lock();
+        let mut result = Self::new();
 
         // Copy over existing mappings, but make a copy of private mappings.
-        for obj in old_maps.iter() {
+        for obj in self.mappings.iter() {
             if obj.get_flags().contains(VmFlags::Shared) {
-                new.insert(obj.clone());
+                result.mappings.insert(obj.clone());
             } else {
                 obj.set_flags(obj.get_flags() | VmFlags::CopyOnWrite);
 
-                new.insert(obj.clone());
+                result.mappings.insert(obj.clone());
 
                 // Map the object as read only in order to handle CoW.
                 for p in obj.start_page..obj.end_page {
@@ -399,7 +394,6 @@ impl AddressSpace {
             }
         }
 
-        drop(new);
         Ok(result)
     }
 }

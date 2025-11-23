@@ -2,7 +2,7 @@ use super::inode::{INode, NodeType};
 use crate::{
     memory::{VirtAddr, cache::MemoryObject},
     posix::errno::{EResult, Errno},
-    process::{Identity, InnerProcess},
+    process::Identity,
     util::mutex::Mutex,
     vfs::{
         cache::{LookupFlags, PathNode},
@@ -151,8 +151,8 @@ pub trait FileOps {
 impl File {
     /// Opens a file referenced by a path.
     pub fn open(
-        proc: &InnerProcess,
-        at: Option<Arc<File>>,
+        root: PathNode,
+        cwd: PathNode,
         path: &[u8],
         flags: OpenFlags,
         mode: Mode,
@@ -178,7 +178,7 @@ impl File {
             lookup_flags |= LookupFlags::FollowSymlinks;
         }
 
-        let file_path = PathNode::flookup(proc, at, path, identity, lookup_flags)?;
+        let file_path = PathNode::lookup(root, cwd, path, identity, lookup_flags)?;
         match file_path.entry.get_inode() {
             Some(x) => Self::do_open_inode(file_path, &x, flags, identity),
             None => {

@@ -23,7 +23,7 @@ pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     let slice = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
     let file = {
         let proc = Scheduler::get_current().get_process();
-        let proc_inner = proc.inner.lock();
+        let proc_inner = proc.open_files.lock();
         proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
     };
 
@@ -40,7 +40,7 @@ pub fn pread(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<is
     let slice = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
     let file = {
         let proc = Scheduler::get_current().get_process();
-        let proc_inner = proc.inner.lock();
+        let proc_inner = proc.open_files.lock();
         proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
     };
 
@@ -57,7 +57,7 @@ pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     let slice = user_ptr.as_slice().ok_or(Errno::EINVAL)?;
     let file = {
         let proc = Scheduler::get_current().get_process();
-        let proc_inner = proc.inner.lock();
+        let proc_inner = proc.open_files.lock();
         proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
     };
 
@@ -73,7 +73,7 @@ pub fn pwrite(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<i
     let slice = user_ptr.as_slice().ok_or(Errno::EINVAL)?;
     let file = {
         let proc = Scheduler::get_current().get_process();
-        let proc_inner = proc.inner.lock();
+        let proc_inner = proc.open_files.lock();
         proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file
     };
 
@@ -95,22 +95,29 @@ pub fn openat(fd: usize, path: VirtAddr, oflag: usize /* mode */) -> EResult<usi
     let v = path.to_owned();
 
     let proc = Scheduler::get_current().get_process();
-    let mut proc_inner = proc.inner.lock();
+    let mut proc_inner = proc.open_files.lock();
     let parent = if fd == uapi::AT_FDCWD as _ {
-        None
+        proc.working_dir.lock().clone()
     } else {
-        Some(proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file)
+        proc_inner
+            .get_fd(fd)
+            .ok_or(Errno::EBADF)?
+            .file
+            .path
+            .as_ref()
+            .ok_or(Errno::ENOTDIR)?
+            .clone()
     };
 
     let file = File::open(
-        &proc_inner,
+        proc.root_dir.lock().clone(),
         parent,
         v.to_bytes(),
         // O_CLOEXEC doesn't apply to a file, but rather its individual FD.
         // This means that dup'ing a file doesn't share this flag.
         OpenFlags::from_bits_truncate(oflag as _) & !OpenFlags::CloseOnExec,
         Mode::empty(),
-        &proc_inner.identity,
+        &proc.identity.lock(),
     )?;
 
     proc_inner
@@ -128,8 +135,7 @@ pub fn openat(fd: usize, path: VirtAddr, oflag: usize /* mode */) -> EResult<usi
 
 pub fn seek(fd: usize, offset: usize, whence: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
-    let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
+    let file = proc.open_files.lock().get_fd(fd).ok_or(Errno::EBADF)?.file;
     let anchor = match whence {
         0 => SeekAnchor::Start(offset as _),
         1 => SeekAnchor::Current(offset as _),
@@ -141,25 +147,15 @@ pub fn seek(fd: usize, offset: usize, whence: usize) -> EResult<usize> {
 
 pub fn close(fd: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
-    let mut proc_inner = proc.inner.lock();
+    let mut proc_inner = proc.open_files.lock();
 
-    match proc_inner.open_files.remove_entry(&fd) {
-        // If removal was successful, the close worked.
-        Some((_, desc)) => {
-            // If this is the last reference to the underlying file, close it for good.
-            if Arc::strong_count(&desc.file) == 1 {
-                desc.file.close()?;
-            }
-            Ok(0)
-        }
-        // If it wasn't, the FD argument is invalid.
-        None => Err(Errno::EBADF),
-    }
+    proc_inner.close(fd).ok_or(Errno::EBADF)?;
+    Ok(0)
 }
 
 pub fn ioctl(fd: usize, request: usize, arg: VirtAddr) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
+    let proc_inner = proc.open_files.lock();
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
     drop(proc_inner);
 
@@ -171,11 +167,10 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
     let buf: &mut [u8] = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
 
     let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
 
     let mut buffer = vec![0u8; uapi::PATH_MAX as _];
     let mut cursor = uapi::PATH_MAX as usize;
-    let mut current = proc_inner.working_dir.clone();
+    let mut current = proc.working_dir.lock().clone();
 
     // Walk up until we reach the root
     while let Ok(parent) = current.lookup_parent() {
@@ -241,7 +236,7 @@ fn write_stat(inode: &Arc<INode>, mut statbuf: UserPtr<uapi::stat>) {
 
 pub fn fstat(fd: usize, statbuf: UserPtr<uapi::stat>) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
+    let proc_inner = proc.open_files.lock();
 
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
     let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
@@ -261,20 +256,27 @@ pub fn fstatat(
     let v = path.to_owned();
 
     let proc = Scheduler::get_current().get_process();
-    let proc_inner = proc.inner.lock();
+    let proc_inner = proc.open_files.lock();
     let parent = if at == uapi::AT_FDCWD as _ {
-        None
+        proc.working_dir.lock().clone()
     } else {
-        Some(proc_inner.get_fd(at).ok_or(Errno::EBADF)?.file)
+        proc_inner
+            .get_fd(at)
+            .ok_or(Errno::EBADF)?
+            .file
+            .path
+            .as_ref()
+            .ok_or(Errno::ENOTDIR)?
+            .clone()
     };
 
     let file = File::open(
-        &proc_inner,
+        proc.root_dir.lock().clone(),
         parent,
         v.to_bytes(),
         OpenFlags::Read,
         Mode::empty(),
-        &proc_inner.identity,
+        &proc.identity.lock(),
     )?;
     let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
 
@@ -287,7 +289,7 @@ pub fn fstatat(
 
 pub fn dup(fd: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
-    let mut proc_inner = proc.inner.lock();
+    let mut proc_inner = proc.open_files.lock();
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
     proc_inner.open_file(file, fd).ok_or(Errno::EMFILE)
 }
@@ -298,11 +300,10 @@ pub fn dup3(fd1: usize, fd2: usize, _flags: usize) -> EResult<usize> {
     }
 
     let proc = Scheduler::get_current().get_process();
-    let mut proc_inner = proc.inner.lock();
+    let mut proc_inner = proc.open_files.lock();
 
     let file = proc_inner.get_fd(fd1).ok_or(Errno::EBADF)?;
-    proc_inner.open_files.insert(fd2, file);
-    Ok(fd2)
+    proc_inner.open_file(file, fd2).ok_or(Errno::EMFILE)
 }
 
 pub fn mkdirat(fd: usize, path: VirtAddr, mode: uapi::mode_t) -> EResult<usize> {
@@ -310,20 +311,27 @@ pub fn mkdirat(fd: usize, path: VirtAddr, mode: uapi::mode_t) -> EResult<usize> 
     let v = path.to_owned();
 
     let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
+    let inner = proc.open_files.lock();
     let parent = if fd == uapi::AT_FDCWD as _ {
-        None
+        proc.working_dir.lock().clone()
     } else {
-        Some(inner.get_fd(fd).ok_or(Errno::EBADF)?.file)
+        inner
+            .get_fd(fd)
+            .ok_or(Errno::EBADF)?
+            .file
+            .path
+            .as_ref()
+            .ok_or(Errno::ENOTDIR)?
+            .clone()
     };
     vfs::mknod(
-        &inner,
+        proc.root_dir.lock().clone(),
         parent,
         v.as_bytes(),
         NodeType::Directory,
         Mode::from_bits(mode).ok_or(Errno::EINVAL)?,
         None,
-        &inner.identity,
+        &proc.identity.lock(),
     )?;
 
     Ok(0)
@@ -334,15 +342,16 @@ pub fn chdir(path: VirtAddr) -> EResult<usize> {
     let v = path.to_owned();
 
     let proc = Scheduler::get_current().get_process();
-    let mut inner = proc.inner.lock();
+    let root = proc.root_dir.lock();
+    let mut cwd = proc.working_dir.lock();
     let node = PathNode::lookup(
-        &inner,
-        None,
+        root.clone(),
+        cwd.clone(),
         v.as_bytes(),
-        &inner.identity,
+        &proc.identity.lock(),
         LookupFlags::MustExist,
     )?;
-    inner.working_dir = node;
+    *cwd = node;
 
     Ok(0)
 }
@@ -352,7 +361,7 @@ pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
     let buf: &mut [u8] = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
 
     let proc = Scheduler::get_current().get_process();
-    let inner = proc.inner.lock();
+    let inner = proc.open_files.lock();
 
     // fd must be a valid descriptor open for reading.
     let dir = inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
@@ -376,7 +385,7 @@ pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
 
 pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
-    let mut proc_inner = proc.inner.lock();
+    let mut proc_inner = proc.open_files.lock();
 
     match cmd as _ {
         uapi::F_DUPFD => {
@@ -467,10 +476,10 @@ pub fn pselect(
 pub fn pipe(mut filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
     let fds = {
         let proc = Scheduler::get_current().get_process();
-        let mut proc_inner = proc.inner.lock();
+        let mut files = proc.open_files.lock();
         let (pipe1, pipe2) = vfs::pipe()?;
         [
-            proc_inner
+            files
                 .open_file(
                     FileDescription {
                         file: pipe1,
@@ -479,7 +488,7 @@ pub fn pipe(mut filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
                     0,
                 )
                 .ok_or(Errno::EMFILE)? as _,
-            proc_inner
+            files
                 .open_file(
                     FileDescription {
                         file: pipe2,

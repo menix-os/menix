@@ -8,15 +8,15 @@ use crate::{
     boot::BootInfo,
     module,
     posix::errno::{EResult, Errno},
-    process::{Identity, InnerProcess},
+    process::Identity,
     util::{self},
     vfs::{
+        PathNode,
         file::{File, OpenFlags},
         inode::{Mode, NodeType},
         mknod, symlink,
     },
 };
-use alloc::sync::Arc;
 use bytemuck::AnyBitPattern;
 use core::ffi::CStr;
 
@@ -65,10 +65,10 @@ fn oct2bin(str: &[u8]) -> usize {
 
 /// Creates all directories in the given path and opens the last one. Also returns the final file name.
 pub fn create_dirs<'a>(
-    proc_inner: &InnerProcess,
-    at: Arc<File>,
+    root: PathNode,
+    at: PathNode,
     path: &'a [u8],
-) -> EResult<(Arc<File>, &'a [u8])> {
+) -> EResult<(PathNode, &'a [u8])> {
     let mut current = at;
 
     // If there is a path to split off, do that. If there isn't, there are no directories to create.
@@ -79,8 +79,8 @@ pub fn create_dirs<'a>(
 
     for component in path.split(|&x| x == b'/').filter(|&x| !x.is_empty()) {
         if let Err(e) = mknod(
-            proc_inner,
-            Some(current.clone()),
+            root.clone(),
+            current.clone(),
             component,
             NodeType::Directory,
             Mode::from_bits_truncate(0o755),
@@ -92,19 +92,23 @@ pub fn create_dirs<'a>(
         }
 
         current = File::open(
-            proc_inner,
-            Some(current.clone()),
+            root.clone(),
+            current.clone(),
             component,
             OpenFlags::Directory,
             Mode::empty(),
             Identity::get_kernel(),
-        )?;
+        )?
+        .path
+        .as_ref()
+        .unwrap()
+        .clone();
     }
 
     return Ok((current, file_name));
 }
 
-pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResult<()> {
+pub fn load(root: PathNode, target: PathNode, data: &[u8]) -> EResult<()> {
     let mut offset = 0;
     let mut name_override = None;
     let mut files_loaded = 0;
@@ -132,10 +136,10 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
 
         match current_file.typ {
             REGULAR | NORMAL | CONTIGOUS => {
-                let (dir, file_name) = create_dirs(proc_inner, target.clone(), file_name)?;
+                let (dir, file_name) = create_dirs(root.clone(), target.clone(), file_name)?;
                 let file = File::open(
-                    proc_inner,
-                    Some(dir),
+                    root.clone(),
+                    dir,
                     file_name,
                     OpenFlags::Create,
                     Mode::from_bits_truncate(file_mode as u32),
@@ -154,15 +158,15 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
                 }
             }
             SYM_LINK => {
-                let (dir, file_name) = create_dirs(proc_inner, target.clone(), file_name)?;
+                let (dir, file_name) = create_dirs(root.clone(), target.clone(), file_name)?;
                 let link_len = current_file
                     .linkname
                     .iter()
                     .take_while(|&x| *x != 0)
                     .count();
                 symlink(
-                    proc_inner,
-                    Some(dir),
+                    root.clone(),
+                    dir.clone(),
                     file_name,
                     &current_file.linkname[0..link_len],
                     Identity::get_kernel(),
@@ -170,8 +174,8 @@ pub fn load(proc_inner: &InnerProcess, target: Arc<File>, data: &[u8]) -> EResul
                 files_loaded += 1;
             }
             DIRECTORY => {
-                let (dir, file_name) = create_dirs(proc_inner, target.clone(), file_name)?;
-                create_dirs(proc_inner, dir.clone(), file_name)?;
+                let (dir, file_name) = create_dirs(root.clone(), target.clone(), file_name)?;
+                create_dirs(root.clone(), dir.clone(), file_name)?;
                 files_loaded += 1;
             }
             LONG_LINK => {

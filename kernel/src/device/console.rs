@@ -57,10 +57,12 @@ impl CharDevice for Console {
     depends = [PROCESS_STAGE, VFS_DEV_MOUNT_STAGE]
 )]
 fn CONSOLE_STAGE() {
-    let inner = Process::get_kernel().inner.lock();
+    let proc = Process::get_kernel();
+    let root = proc.root_dir.lock();
+    let cwd = proc.working_dir.lock();
     vfs::mknod(
-        &inner,
-        None,
+        root.clone(),
+        cwd.clone(),
         b"/dev/console",
         NodeType::CharacterDevice,
         Mode::from_bits_truncate(0o666),

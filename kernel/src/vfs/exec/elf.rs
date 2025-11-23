@@ -4,7 +4,7 @@ use crate::{
     {
         memory::{cache::MemoryObject, virt::VmFlags},
         posix::errno::{EResult, Errno},
-        process::{InnerProcess, Process, task::Task, to_user},
+        process::{Process, task::Task, to_user},
         util::align_down,
         vfs::{
             exec::ExecFormat,
@@ -343,7 +343,7 @@ impl ElfFormat {
     // Loads an ELF file into an address space. Returns the entry point address.
     fn load_file(
         file: &Arc<File>,
-        inner: &mut InnerProcess,
+        proc: &Arc<Process>,
         info: &mut ExecInfo,
         base: usize,
     ) -> EResult<ElfInfo> {
@@ -429,12 +429,12 @@ impl ElfFormat {
                     file.pread(&mut interp_name, phdr.p_offset as _)?;
                     // Open the interpreter and save it in the info.
                     info.interpreter = Some(File::open(
-                        inner,
-                        Some(file.clone()),
+                        proc.root_dir.lock().clone(),
+                        proc.working_dir.lock().clone(),
                         &interp_name,
                         OpenFlags::Read | OpenFlags::Executable,
                         Mode::empty(),
-                        &inner.identity,
+                        &proc.identity.lock(),
                     )?)
                 }
                 _ => (),
@@ -471,18 +471,17 @@ impl ExecFormat for ElfFormat {
     }
 
     fn load(&self, proc: &Arc<Process>, info: &mut ExecInfo) -> EResult<Task> {
-        let mut inner = proc.inner.lock();
         let page_size = arch::virt::get_page_size();
 
         // Load the main executable. The base address only matters if the type is ET_DYN.
         // Base could technically be 0, but we don't want to get anywhere near the NULL address.
-        let elf = Self::load_file(&info.executable.clone(), &mut inner, info, 0x10000)?;
+        let elf = Self::load_file(&info.executable.clone(), proc, info, 0x10000)?;
 
         // If we have an interpreter, we need to use its entry point.
         let entry = if let Some(x) = &info.interpreter {
             let interp = Self::load_file(
                 &x.clone(),
-                &mut inner,
+                proc,
                 info,
                 1usize << (arch::virt::get_highest_bit_shift() - 2),
             )?;

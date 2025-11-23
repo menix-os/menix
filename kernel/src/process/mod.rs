@@ -1,3 +1,4 @@
+pub mod signal;
 pub mod task;
 
 use crate::{
@@ -44,30 +45,24 @@ pub struct Process {
     name: String,
     /// The parent of this process, or [`None`], if this is the init process.
     parent: Option<Weak<Process>>,
-    /// Mutable fields of the process.
-    pub inner: SpinMutex<InnerProcess>,
-}
-
-/// The lockable, mutable part of a process.
-#[derive(Debug)]
-pub struct InnerProcess {
-    pub status: ProcessState,
-    /// A list of associated tasks.
-    pub threads: Vec<Arc<Task>>,
-    /// Child processes of this process.
-    pub children: Vec<Arc<Process>>,
+    /// A list of [`Task`]s associated with this process.
+    pub threads: SpinMutex<Vec<Arc<Task>>>,
     /// The address space for this process.
-    pub address_space: Arc<AddressSpace>,
+    pub address_space: Arc<SpinMutex<AddressSpace>>,
     /// The root directory for this process.
-    pub root_dir: PathNode,
+    pub root_dir: SpinMutex<PathNode>,
     /// Current working directory.
-    pub working_dir: PathNode,
+    pub working_dir: SpinMutex<PathNode>,
+    /// The status of this process.
+    pub status: SpinMutex<ProcessState>,
+    /// Child processes owned by this process.
+    pub children: SpinMutex<Vec<Arc<Process>>>,
     /// The user identity of this process.
-    pub identity: Identity,
+    pub identity: SpinMutex<Identity>,
     /// A table of open file descriptors.
-    pub open_files: BTreeMap<usize, FileDescription>,
+    pub open_files: SpinMutex<FdTable>,
     /// A pointer to the next free memory region.
-    pub mmap_head: VirtAddr,
+    pub mmap_head: SpinMutex<VirtAddr>,
 }
 
 impl Process {
@@ -93,26 +88,23 @@ impl Process {
     }
 
     pub fn new(name: String, parent: Option<Arc<Self>>) -> EResult<Self> {
-        Self::new_with_space(name, parent, Arc::new(AddressSpace::new()))
+        Self::new_with_space(name, parent, AddressSpace::new())
     }
 
     pub fn fork(self: Arc<Self>, context: &Context) -> EResult<(Arc<Self>, Arc<Task>)> {
-        let mut old_inner = self.inner.lock();
         let forked = Arc::new(Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Acquire),
             name: self.name.clone(),
             parent: Some(Arc::downgrade(&self)),
-            inner: SpinMutex::new(InnerProcess {
-                status: ProcessState::Running,
-                threads: Vec::new(),
-                children: Vec::new(),
-                address_space: Arc::new(old_inner.address_space.fork()?),
-                root_dir: old_inner.root_dir.clone(),
-                working_dir: old_inner.working_dir.clone(),
-                identity: old_inner.identity.clone(),
-                open_files: old_inner.open_files.clone(),
-                mmap_head: old_inner.mmap_head,
-            }),
+            threads: SpinMutex::new(Vec::new()),
+            address_space: Arc::new(SpinMutex::new(self.address_space.lock().fork()?)),
+            root_dir: SpinMutex::new(self.root_dir.lock().clone()),
+            working_dir: SpinMutex::new(self.working_dir.lock().clone()),
+            status: SpinMutex::new(ProcessState::Running),
+            children: SpinMutex::new(Vec::new()),
+            identity: SpinMutex::new(self.identity.lock().clone()),
+            open_files: SpinMutex::new(self.open_files.lock().clone()),
+            mmap_head: SpinMutex::new(self.mmap_head.lock().clone()),
         });
 
         // Create a heap allocated context that we can pass to the entry point.
@@ -122,8 +114,8 @@ impl Process {
 
         // Create the main thread.
         let forked_thread = Arc::new(Task::new(to_user_context, raw_ctx as _, 0, &forked, true)?);
-        forked.inner.lock().threads.push(forked_thread.clone());
-        old_inner.children.push(forked.clone());
+        forked.threads.lock().push(forked_thread.clone());
+        self.children.lock().push(forked.clone());
 
         Ok((forked, forked_thread))
     }
@@ -131,41 +123,36 @@ impl Process {
     fn new_with_space(
         name: String,
         parent: Option<Arc<Self>>,
-        space: Arc<AddressSpace>,
+        space: AddressSpace,
     ) -> EResult<Self> {
         let (root, cwd, identity) = match &parent {
-            Some(x) => {
-                let inner = x.inner.lock();
-                (
-                    inner.root_dir.clone(),
-                    inner.working_dir.clone(),
-                    inner.identity.clone(),
-                )
-            }
+            Some(x) => (
+                x.root_dir.lock().clone(),
+                x.working_dir.lock().clone(),
+                x.identity.lock().clone(),
+            ),
             None => (vfs::get_root(), vfs::get_root(), Identity::default()),
         };
 
         // Save the child in the parent process.
         if let Some(x) = &parent {
-            x.inner.lock().children.push(x.clone())
+            x.children.lock().push(x.clone())
         }
 
         Ok(Self {
             id: PID_COUNTER.fetch_add(1, Ordering::Relaxed),
             name,
             parent: parent.map(|x| Arc::downgrade(&x)),
-            inner: SpinMutex::new(InnerProcess {
-                status: ProcessState::Running,
-                threads: Vec::new(),
-                children: Vec::new(),
-                address_space: space,
-                root_dir: root,
-                working_dir: cwd,
-                identity,
-                open_files: BTreeMap::new(),
-                // TODO: This address should be determined from the highest loaded segment.
-                mmap_head: VirtAddr::new(0x1_0000_0000),
-            }),
+            threads: SpinMutex::new(Vec::new()),
+            address_space: Arc::new(SpinMutex::new(space)),
+            status: SpinMutex::new(ProcessState::Running),
+            children: SpinMutex::new(Vec::new()),
+            root_dir: SpinMutex::new(root),
+            working_dir: SpinMutex::new(cwd),
+            identity: SpinMutex::new(identity),
+            open_files: SpinMutex::new(FdTable::new()),
+            // TODO: This address should be determined from the highest loaded segment.
+            mmap_head: SpinMutex::new(VirtAddr::new(0x1_0000_0000)),
         })
     }
 
@@ -197,10 +184,11 @@ impl Process {
 
         // If we get here, then the loading of the executable was successful.
         {
-            let mut inner = self.inner.lock();
-            inner.threads.clear();
-            inner.threads.push(init.clone());
-            inner.address_space = Arc::try_new(info.space)?;
+            let mut threads = self.threads.lock();
+            let mut space = self.address_space.lock();
+            threads.clear();
+            threads.push(init.clone());
+            *space = info.space;
         }
 
         CpuData::get().scheduler.add_task(init);
@@ -210,38 +198,44 @@ impl Process {
     }
 
     pub fn exit(self: Arc<Self>, code: u8) {
-        let mut inner = self.inner.lock();
+        {
+            let mut open_files = self.open_files.lock();
+            let mut threads = self.threads.lock();
+            let mut status = self.status.lock();
 
-        // Kill all threads.
-        for thread in inner.threads.iter() {
-            let mut thread_inner = thread.inner.lock();
-            thread_inner.state = task::TaskState::Dead;
-        }
-        inner.threads.clear();
-
-        // Close all files.
-        let fds = inner.open_files.keys().cloned().collect::<Vec<_>>();
-        for fd in fds {
-            let desc = inner.open_files.remove(&fd);
-            if let Some(desc) = desc
-                && Arc::strong_count(&desc.file) == 1
-            {
-                _ = desc.file.close();
+            // Kill all threads.
+            for thread in threads.iter() {
+                let mut thread_inner = thread.inner.lock();
+                thread_inner.state = task::TaskState::Dead;
             }
-        }
-        inner.open_files.clear();
+            threads.clear();
 
-        inner.status = ProcessState::Exited(code);
-        drop(inner);
+            // Close all files.
+            open_files.close_all();
+
+            *status = ProcessState::Exited(code);
+        }
         Scheduler::kill_current();
     }
 }
 
-impl InnerProcess {
+#[repr(transparent)]
+#[derive(Clone, Debug)]
+pub struct FdTable {
+    inner: BTreeMap<usize, FileDescription>,
+}
+
+impl FdTable {
+    pub const fn new() -> Self {
+        Self {
+            inner: BTreeMap::new(),
+        }
+    }
+
     /// Attempts to get the file corresponding to the given file descriptor.
     /// Note that this does not handle special FDs like [`uapi::AT_FDCWD`].
     pub fn get_fd(&self, fd: usize) -> Option<FileDescription> {
-        self.open_files.get(&fd).cloned()
+        self.inner.get(&fd).cloned()
     }
 
     /// Allocates a new descriptor for a file. Returns [`None`] if there are no more free FDs for this process.
@@ -250,14 +244,40 @@ impl InnerProcess {
         // Find a free descriptor.
         let mut last = base;
         loop {
-            if !self.open_files.contains_key(&last) {
+            if !self.inner.contains_key(&last) {
                 break;
             }
             last += 1;
         }
 
-        self.open_files.insert(last, file);
+        self.inner.insert(last, file);
         Some(last)
+    }
+
+    pub fn close(&mut self, fd: usize) -> Option<()> {
+        let desc = self.inner.remove(&fd);
+        match desc {
+            Some(desc) => {
+                if Arc::strong_count(&desc.file) == 1 {
+                    _ = desc.file.close();
+                }
+                Some(())
+            }
+            None => None,
+        }
+    }
+
+    pub fn close_all(&mut self) {
+        let fds = self.inner.keys().cloned().collect::<Vec<_>>();
+        for fd in fds {
+            let desc = self.inner.remove(&fd);
+            if let Some(desc) = desc
+                && Arc::strong_count(&desc.file) == 1
+            {
+                _ = desc.file.close();
+            }
+        }
+        self.inner.clear();
     }
 }
 
@@ -319,10 +339,10 @@ pub fn PROCESS_STAGE() {
             Process::new_with_space(
                 "kernel".into(),
                 None,
-                Arc::new(AddressSpace {
+                AddressSpace {
                     table: super::memory::virt::KERNEL_PAGE_TABLE.get().clone(),
-                    mappings: SpinMutex::new(BTreeSet::new()),
-                }),
+                    mappings: BTreeSet::new(),
+                },
             )
             .expect("Unable to create the main kernel process"),
         ))
