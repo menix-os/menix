@@ -89,3 +89,32 @@ pub fn syslog(level: usize, ptr: VirtAddr, len: usize) -> EResult<usize> {
 
     Ok(0)
 }
+
+pub fn reboot(magic: u32, cmd: u32) -> EResult<usize> {
+    if magic != 0xdeadbeef {
+        return Err(Errno::EINVAL);
+    }
+
+    let proc = Scheduler::get_current().get_process();
+    let identity = proc.identity.lock();
+    if identity.user_id != 0 {
+        return Err(Errno::EPERM);
+    }
+
+    match cmd {
+        uapi::RB_DISABLE_CAD => {
+            warn!("RB_DISABLE_CAD is unimplemented");
+        }
+        uapi::RB_ENABLE_CAD => {
+            warn!("RB_ENABLE_CAD is unimplemented");
+        }
+        uapi::RB_POWER_OFF => {
+            todo!("Power off");
+        }
+        _ => {
+            warn!("Unknown reboot command {:#x}", cmd);
+            return Err(Errno::EINVAL);
+        }
+    }
+    Ok(0)
+}

@@ -35,7 +35,7 @@ pub fn dispatch(
         numbers::GETUNAME => system::getuname(a0.into()),
         numbers::SETUNAME => system::setuname(a0.into()),
         numbers::ARCHCTL => system::archctl(a0, a1),
-        numbers::REBOOT => sys_unimp!("reboot", Err(Errno::ENOSYS)),
+        numbers::REBOOT => system::reboot(a0 as _, a1 as _),
         numbers::GETCPU => sys_unimp!("getcpu", Err(Errno::ENOSYS)),
         numbers::SYSINFO => sys_unimp!("sysinfo", Err(Errno::ENOSYS)),
         numbers::PTRACE => sys_unimp!("ptrace", Err(Errno::ENOSYS)),
