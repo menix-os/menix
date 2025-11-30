@@ -206,10 +206,10 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
 }
 
 fn write_stat(inode: &Arc<INode>, mut statbuf: UserPtr<uapi::stat>) {
-    let stat = uapi::stat {
+    statbuf.write(uapi::stat {
         st_dev: 0,
         st_ino: inode.id,
-        st_mode: inode.mode.load(Ordering::Acquire)
+        st_mode: inode.mode.lock().bits()
             | match inode.node_ops {
                 NodeOps::Regular(_) => uapi::S_IFREG,
                 NodeOps::Directory(_) => uapi::S_IFDIR,
@@ -220,18 +220,16 @@ fn write_stat(inode: &Arc<INode>, mut statbuf: UserPtr<uapi::stat>) {
                 NodeOps::Socket => uapi::S_IFSOCK,
             },
         st_nlink: Arc::strong_count(inode) as _,
-        st_uid: inode.uid.load(Ordering::Acquire) as _,
-        st_gid: inode.gid.load(Ordering::Acquire) as _,
+        st_uid: *inode.uid.lock(),
+        st_gid: *inode.gid.lock(),
         st_rdev: 0,
-        st_size: inode.size.load(Ordering::Acquire) as _,
+        st_size: *inode.size.lock() as _,
         st_atim: *inode.atime.lock(),
         st_mtim: *inode.mtime.lock(),
         st_ctim: *inode.ctime.lock(),
         st_blksize: 0,
         st_blocks: 0,
-    };
-
-    statbuf.write(stat);
+    });
 }
 
 pub fn fstat(fd: usize, statbuf: UserPtr<uapi::stat>) -> EResult<usize> {
@@ -294,7 +292,7 @@ pub fn dup(fd: usize) -> EResult<usize> {
     proc_inner.open_file(file, fd).ok_or(Errno::EMFILE)
 }
 
-pub fn dup3(fd1: usize, fd2: usize, _flags: usize) -> EResult<usize> {
+pub fn dup3(fd1: usize, fd2: usize, flags: usize) -> EResult<usize> {
     if fd1 == fd2 {
         return Ok(fd1);
     }
@@ -303,6 +301,15 @@ pub fn dup3(fd1: usize, fd2: usize, _flags: usize) -> EResult<usize> {
     let mut proc_inner = proc.open_files.lock();
 
     let file = proc_inner.get_fd(fd1).ok_or(Errno::EBADF)?;
+    if proc_inner.get_fd(fd2).is_some() {
+        proc_inner.close(fd2);
+    }
+
+    let flags = OpenFlags::from_bits_truncate(flags as _);
+    if flags.contains(OpenFlags::CloseOnExec) {
+        file.close_on_exec.store(true, Ordering::Release);
+    }
+
     proc_inner.open_file(file, fd2).ok_or(Errno::EMFILE)
 }
 
@@ -501,5 +508,51 @@ pub fn pipe(mut filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
     };
 
     filedes.write(fds);
+    Ok(0)
+}
+
+pub fn faccessat(fd: usize, path: VirtAddr, amode: usize, flag: usize) -> EResult<usize> {
+    if path == VirtAddr::null() {
+        return Err(Errno::EINVAL);
+    }
+
+    let path = unsafe { CStr::from_ptr(path.as_ptr()) };
+    let v = path.to_owned();
+
+    let proc = Scheduler::get_current().get_process();
+    let proc_inner = proc.open_files.lock();
+    let parent = if fd == uapi::AT_FDCWD as _ {
+        proc.working_dir.lock().clone()
+    } else {
+        proc_inner
+            .get_fd(fd)
+            .ok_or(Errno::EBADF)?
+            .file
+            .path
+            .as_ref()
+            .ok_or(Errno::ENOTDIR)?
+            .clone()
+    };
+
+    let path_node = PathNode::lookup(
+        proc.root_dir.lock().clone(),
+        parent,
+        v.as_bytes(),
+        &proc.identity.lock(),
+        LookupFlags::MustExist
+            | LookupFlags::FollowSymlinks
+            | if flag as u32 & uapi::AT_EACCESS != 0 {
+                LookupFlags::empty()
+            } else {
+                LookupFlags::UseRealId
+            },
+    )?;
+
+    let node = path_node.entry.get_inode().ok_or(Errno::EBADF)?;
+    let amode = Mode::from_bits_truncate(amode as _);
+    if !node.mode.lock().intersects(amode) {
+        return Err(Errno::EACCES);
+    }
+
     Ok(0)
 }

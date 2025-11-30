@@ -10,11 +10,7 @@ use crate::{
     },
 };
 use alloc::sync::Arc;
-use core::{
-    any::Any,
-    fmt::Debug,
-    sync::atomic::{AtomicU32, AtomicUsize, Ordering},
-};
+use core::{any::Any, fmt::Debug};
 
 /// A standalone file system node, also commonly referred to as a vnode.
 /// It is used to represent a file or sized memory in a generic way.
@@ -30,13 +26,13 @@ pub struct INode {
 
     // The following fields make up `stat`.
     pub id: u64,
-    pub size: AtomicUsize,
-    pub uid: AtomicUsize,
-    pub gid: AtomicUsize,
+    pub size: SpinMutex<usize>,
+    pub uid: SpinMutex<uapi::uid_t>,
+    pub gid: SpinMutex<uapi::gid_t>,
     pub atime: SpinMutex<uapi::timespec>,
     pub mtime: SpinMutex<uapi::timespec>,
     pub ctime: SpinMutex<uapi::timespec>,
-    pub mode: AtomicU32,
+    pub mode: SpinMutex<Mode>,
 }
 
 impl INode {
@@ -44,7 +40,7 @@ impl INode {
     /// Returns [`Errno::EACCES`] if an access is not allowed.
     pub fn try_access(&self, ident: &Identity, flags: OpenFlags, use_real: bool) -> EResult<()> {
         let _ = use_real; // TODO
-        let mode = self.get_mode();
+        let mode = self.mode.lock();
 
         if ident.effective_user_id == 0 {
             // If this file is not able to be executed, always fail.
@@ -61,7 +57,7 @@ impl INode {
     }
 
     pub fn len(&self) -> usize {
-        self.size.load(Ordering::Acquire)
+        *self.size.lock()
     }
 
     /// Updates the node with given timestamps.
@@ -83,20 +79,16 @@ impl INode {
         }
     }
 
-    /// Returns the current mode of this inode.
-    pub fn get_mode(&self) -> Mode {
-        Mode::from_bits_truncate(self.mode.load(Ordering::Acquire))
-    }
-
     /// Changes permissions on this `node`.
     pub fn chmod(&self, mode: Mode) {
-        self.mode.store(mode.bits(), Ordering::Release);
+        let mut m = self.mode.lock();
+        *m = mode;
     }
 
     /// Changes ownership on this `node`.
     pub fn chown(&self, uid: uapi::uid_t, gid: uapi::gid_t) {
-        self.uid.store(uid as _, Ordering::Release);
-        self.gid.store(gid as _, Ordering::Release);
+        *self.uid.lock() = uid;
+        *self.gid.lock() = gid;
     }
 }
 
@@ -150,7 +142,7 @@ pub trait DirectoryOps: Any {
         match &sym_inode.node_ops {
             NodeOps::SymbolicLink(_) => {
                 sym_inode.cache.write(target_path, 0);
-                sym_inode.size.store(target_path.len(), Ordering::Release);
+                *sym_inode.size.lock() = target_path.len();
                 path.entry.set_inode(sym_inode);
                 Ok(())
             }

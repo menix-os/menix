@@ -55,7 +55,7 @@ pub fn dispatch(
         numbers::SIGALTSTACK => sys_unimp!("sigaltstack", Err(Errno::ENOSYS)),
 
         // Processes
-        numbers::EXIT => sys_unimp!("exit", process::exit(a0)),
+        numbers::EXIT => process::exit(a0),
         numbers::EXECVE => process::execve(a0.into(), a1.into(), a2.into()),
         numbers::FORK => process::fork(frame),
         numbers::KILL => sys_unimp!("kill", Err(Errno::ENOSYS)),
@@ -85,7 +85,7 @@ pub fn dispatch(
         numbers::FSTATAT => vfs::fstatat(a0, a1.into(), a2.into(), a3),
         numbers::STATVFS => sys_unimp!("statvfs", Err(Errno::ENOSYS)),
         numbers::FSTATVFS => sys_unimp!("fstatvfs", Err(Errno::ENOSYS)),
-        numbers::FACCESSAT => sys_unimp!("faccessat", Err(Errno::ENOSYS)),
+        numbers::FACCESSAT => vfs::faccessat(a0, a1.into(), a2, a3),
         numbers::FCNTL => vfs::fcntl(a0, a1, a2),
         numbers::FTRUNCATE => sys_unimp!("ftruncate", Err(Errno::ENOSYS)),
         numbers::FALLOCATE => sys_unimp!("fallocate", Err(Errno::ENOSYS)),
@@ -108,7 +108,7 @@ pub fn dispatch(
         numbers::UNLINKAT => sys_unimp!("unlinkat", Err(Errno::ENOSYS)),
         numbers::READLINKAT => sys_unimp!("readlinkat", Err(Errno::ENOSYS)),
         numbers::FLOCK => sys_unimp!("flock", Err(Errno::ENOSYS)),
-        numbers::PPOLL => sys_unimp!("ppoll", Err(Errno::ENOSYS)),
+        numbers::PPOLL => sys_unimp!("ppoll", Ok(0)),
         numbers::DUP => vfs::dup(a0),
         numbers::DUP3 => vfs::dup3(a0, a1, a2),
         numbers::SYNC => sys_unimp!("sync", Err(Errno::ENOSYS)),

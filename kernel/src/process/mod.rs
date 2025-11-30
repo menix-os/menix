@@ -185,10 +185,13 @@ impl Process {
         // If we get here, then the loading of the executable was successful.
         {
             let mut threads = self.threads.lock();
-            let mut space = self.address_space.lock();
             threads.clear();
             threads.push(init.clone());
+
+            let mut space = self.address_space.lock();
             *space = info.space;
+
+            self.open_files.lock().close_exec();
         }
 
         CpuData::get().scheduler.add_task(init);
@@ -278,6 +281,29 @@ impl FdTable {
             }
         }
         self.inner.clear();
+    }
+
+    /// Closes all files with the [`OpenFlags::CloseOnExec`] flag.
+    pub fn close_exec(&mut self) {
+        let fds = self.inner.keys().cloned().collect::<Vec<_>>();
+        for fd in fds {
+            if !self
+                .inner
+                .get(&fd)
+                .unwrap()
+                .close_on_exec
+                .load(Ordering::Acquire)
+            {
+                continue;
+            }
+
+            let desc = self.inner.remove(&fd);
+            if let Some(desc) = desc
+                && Arc::strong_count(&desc.file) == 1
+            {
+                _ = desc.file.close();
+            }
+        }
     }
 }
 

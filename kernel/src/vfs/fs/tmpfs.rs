@@ -95,13 +95,13 @@ impl SuperBlock for TmpSuper {
             file_ops,
             sb: self,
             cache: Arc::new(MemoryObject::new_phys()),
-            mode: AtomicU32::new(mode.bits()),
+            mode: SpinMutex::new(mode),
             atime: SpinMutex::default(),
             mtime: SpinMutex::default(),
             ctime: SpinMutex::default(),
-            size: AtomicUsize::default(),
-            uid: AtomicUsize::default(),
-            gid: AtomicUsize::default(),
+            size: SpinMutex::default(),
+            uid: SpinMutex::default(),
+            gid: SpinMutex::default(),
         })?)
     }
 
@@ -201,9 +201,10 @@ impl FileOps for TmpRegular {
 
     fn write(&self, file: &File, buffer: &[u8], offset: u64) -> EResult<isize> {
         let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
+        let mut size_lock = inode.size.lock();
         let start = offset;
         let actual = inode.cache.write(buffer, start as usize);
-        inode.size.store(actual, Ordering::Release);
+        *size_lock = actual;
 
         Ok(actual as _)
     }

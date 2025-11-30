@@ -344,9 +344,10 @@ impl File {
     pub fn seek(&self, offset: SeekAnchor) -> EResult<u64> {
         let mut position = self.offset.lock();
 
-        match &self.inode.as_ref().ok_or(Errno::EINVAL)?.node_ops {
-            NodeOps::CharacterDevice => return Err(Errno::ESPIPE),
-            NodeOps::Socket | NodeOps::FIFO => return Err(Errno::ESPIPE),
+        match self.inode.as_ref().ok_or(Errno::ESPIPE)?.node_ops {
+            NodeOps::CharacterDevice | NodeOps::Socket | NodeOps::FIFO => {
+                return Err(Errno::ESPIPE);
+            }
             _ => (),
         }
 
@@ -357,12 +358,7 @@ impl File {
             }
             SeekAnchor::Current(x) => position.checked_add_signed(x).ok_or(Errno::EOVERFLOW),
             SeekAnchor::End(x) => {
-                let size = self
-                    .inode
-                    .as_ref()
-                    .ok_or(Errno::EINVAL)?
-                    .size
-                    .load(Ordering::Acquire);
+                let size = self.inode.as_ref().ok_or(Errno::EINVAL)?.size.lock();
 
                 let new = if x.is_negative() {
                     size.checked_add_signed(x as _).ok_or(Errno::EINVAL)?
