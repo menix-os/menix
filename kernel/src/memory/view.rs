@@ -254,6 +254,14 @@ impl MmioView {
         self.len
     }
 
+    pub unsafe fn as_slice(&self) -> &'_ [u8] {
+        unsafe { core::slice::from_raw_parts(self.base as *const u8, self.len) }
+    }
+
+    pub fn as_mut_slice(&mut self) -> &'_ mut [u8] {
+        unsafe { core::slice::from_raw_parts_mut(self.base as *mut u8, self.len) }
+    }
+
     fn do_read_reg<T: PrimInt>(&self, reg: Register<T>, offset: usize) -> Option<BitValue<T>> {
         if reg.offset() + offset + size_of::<T>() > self.len {
             return None;

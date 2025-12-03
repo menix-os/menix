@@ -81,7 +81,9 @@ impl SuperBlock for TmpSuper {
                 (NodeOps::SymbolicLink(reg.clone()), reg)
             }
             NodeType::Directory => {
-                let reg = Arc::new(TmpDir);
+                let reg = Arc::new(TmpDir {
+                    children: Mutex::new(Vec::new()),
+                });
                 (NodeOps::Directory(reg.clone()), reg)
             }
             NodeType::CharacterDevice => (NodeOps::CharacterDevice, device.ok_or(Errno::ENODEV)?),
@@ -116,8 +118,10 @@ impl SuperBlock for TmpSuper {
     }
 }
 
-#[derive(Debug, Default)]
-struct TmpDir;
+struct TmpDir {
+    children: Mutex<Vec<Arc<INode>>>,
+}
+
 impl DirectoryOps for TmpDir {
     fn lookup(&self, _: &Arc<INode>, _: &PathNode) -> EResult<()> {
         // tmpfs directories only live in memory, so we cannot look up entries that do not exist.
@@ -158,6 +162,31 @@ impl DirectoryOps for TmpDir {
         target_entry: PathNode,
     ) -> EResult<()> {
         todo!()
+    }
+
+    fn get_entries(&self) -> EResult<Vec<uapi::dirent>> {
+        let mut entries = Vec::new();
+        let children = self.children.lock();
+
+        for child in children.iter() {
+            entries.push(uapi::dirent {
+                d_ino: child.id,
+                d_off: (entries.len() * size_of::<uapi::dirent>()) as i64,
+                d_reclen: size_of::<uapi::dirent>() as u16,
+                d_type: match &child.node_ops {
+                    NodeOps::Regular(_) => uapi::DT_REG,
+                    NodeOps::Directory(_) => uapi::DT_DIR,
+                    NodeOps::SymbolicLink(_) => uapi::DT_LNK,
+                    NodeOps::FIFO => uapi::DT_FIFO,
+                    NodeOps::BlockDevice => uapi::DT_BLK,
+                    NodeOps::CharacterDevice => uapi::DT_CHR,
+                    NodeOps::Socket => uapi::DT_SOCK,
+                } as u8,
+                d_name: [0; _],
+            });
+        }
+
+        Ok(entries)
     }
 }
 

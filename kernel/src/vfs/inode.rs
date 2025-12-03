@@ -9,7 +9,7 @@ use crate::{
         file::{File, FileOps, OpenFlags},
     },
 };
-use alloc::sync::Arc;
+use alloc::{sync::Arc, vec::Vec};
 use core::{any::Any, fmt::Debug};
 
 /// A standalone file system node, also commonly referred to as a vnode.
@@ -164,6 +164,8 @@ pub trait DirectoryOps: Any {
         target: &Arc<INode>,
         target_path: PathNode,
     ) -> EResult<()>;
+
+    fn get_entries(&self) -> EResult<Vec<uapi::dirent>>;
 }
 
 /// Operations for regular file [`INode`]s.
