@@ -36,9 +36,6 @@ pub fn dispatch(
         numbers::SETUNAME => system::setuname(a0.into()),
         numbers::ARCHCTL => system::archctl(a0, a1),
         numbers::REBOOT => system::reboot(a0 as _, a1 as _),
-        numbers::GETCPU => sys_unimp!("getcpu", Err(Errno::ENOSYS)),
-        numbers::SYSINFO => sys_unimp!("sysinfo", Err(Errno::ENOSYS)),
-        numbers::PTRACE => sys_unimp!("ptrace", Err(Errno::ENOSYS)),
 
         // Mapped memory
         numbers::MMAP => memory::mmap(a0.into(), a1, a2 as _, a3 as _, a4 as _, a5 as _),
@@ -118,8 +115,16 @@ pub fn dispatch(
         numbers::MOUNT => sys_unimp!("mount", Err(Errno::ENOSYS)),
         numbers::UMOUNT => sys_unimp!("umount", Err(Errno::ENOSYS)),
         numbers::PIPE => vfs::pipe(a0.into()),
-        numbers::SWAPON => sys_unimp!("swapon", Err(Errno::ENOSYS)),
-        numbers::SWAPOFF => sys_unimp!("swapoff", Err(Errno::ENOSYS)),
+
+        // Epoll
+        numbers::EPOLL_CREATE => sys_unimp!("epoll_create", Err(Errno::ENOSYS)),
+        numbers::EPOLL_CTL => sys_unimp!("epoll_ctl", Err(Errno::ENOSYS)),
+        numbers::EPOLL_WAIT => sys_unimp!("epoll_wait", Err(Errno::ENOSYS)),
+
+        // Timer FD
+        numbers::TIMERFD_CREATE => sys_unimp!("timerfd_create", Err(Errno::ENOSYS)),
+        numbers::TIMERFD_SETTIME => sys_unimp!("timerfd_settime", Err(Errno::ENOSYS)),
+        numbers::TIMERFD_GETTIME => sys_unimp!("timerfd_gettime", Err(Errno::ENOSYS)),
 
         // Sockets
         numbers::SOCKET => sys_unimp!("socket", Err(Errno::ENOSYS)),
