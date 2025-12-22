@@ -15,44 +15,45 @@ use core::{
     num::NonZeroUsize,
     sync::atomic::{AtomicBool, Ordering},
 };
+use uapi::{fcntl::*, mman::*};
 
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy)]
     pub struct OpenFlags: u32 {
         /// Create the file if it's missing.
-        const Create = uapi::O_CREAT as _;
+        const Create = O_CREAT;
         /// Exclusive use.
-        const Exclusive = uapi::O_EXCL as _;
+        const Exclusive = O_EXCL;
         /// Do not assign a controlling terminal.
-        const NoCtrlTerminal = uapi::O_NOCTTY as _;
-        const Truncate = uapi::O_TRUNC as _;
-        const Append = uapi::O_APPEND as _;
-        const NonBlocking = uapi::O_NONBLOCK as _;
-        const SyncData = uapi::O_DSYNC as _;
+        const NoCtrlTerminal = O_NOCTTY;
+        const Truncate = O_TRUNC;
+        const Append = O_APPEND;
+        const NonBlocking = O_NONBLOCK;
+        const SyncData = O_DSYNC;
         /// Open this file as a directory.
-        const Directory = uapi::O_DIRECTORY as _;
+        const Directory = O_DIRECTORY;
         /// Don't follow symbolic links.
-        const NoFollow = uapi::O_NOFOLLOW as _;
+        const NoFollow = O_NOFOLLOW;
         /// Close this file on a call to `execve`.
-        const CloseOnExec = uapi::O_CLOEXEC as _;
-        const Sync = uapi::O_SYNC as _;
-        const SyncRead = uapi::O_RSYNC as _;
-        const LargeFile = uapi::O_LARGEFILE as _;
+        const CloseOnExec = O_CLOEXEC;
+        const Sync = O_SYNC;
+        const SyncRead = O_RSYNC;
+        const LargeFile = O_LARGEFILE;
         /// Don't update the access time.
-        const NoAccessTime = uapi::O_NOATIME as _;
-        const Temporary = uapi::O_TMPFILE as _;
-        const Read = uapi::O_RDONLY as _;
-        const Write = uapi::O_WRONLY as _;
-        const ReadWrite = uapi::O_RDWR as _;
-        const Executable = uapi::O_EXEC as _;
+        const NoAccessTime = O_NOATIME;
+        const Temporary = O_TMPFILE;
+        const Read = O_RDONLY;
+        const Write = O_WRONLY;
+        const ReadWrite = O_RDWR;
+        const Executable = O_EXEC;
     }
 
     #[derive(Debug, Clone, Copy)]
     pub struct MmapFlags: u32 {
-        const Anonymous = uapi::MAP_ANONYMOUS as _;
-        const Shared = uapi::MAP_SHARED as _;
-        const Private = uapi::MAP_PRIVATE as _;
-        const Fixed = uapi::MAP_FIXED as _;
+        const Anonymous = MAP_ANONYMOUS;
+        const Shared = MAP_SHARED;
+        const Private = MAP_PRIVATE;
+        const Fixed = MAP_FIXED;
     }
 }
 

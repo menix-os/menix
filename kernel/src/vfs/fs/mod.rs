@@ -15,6 +15,7 @@ use crate::{
 };
 use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc};
 use core::fmt::Debug;
+use uapi::{mount::*, statvfs::*};
 
 /// A mounted file system.
 #[derive(Debug)]
@@ -28,36 +29,13 @@ pub struct Mount {
 bitflags::bitflags! {
     #[derive(Debug)]
     pub struct MountFlags: u32 {
-        const ReadOnly = uapi::MS_RDONLY as _;
-        const NoSuperUserID = uapi::MS_NOSUID as _;
-        const NoDev = uapi::MS_NODEV as _;
-        const NoExec = uapi::MS_NOEXEC as _;
-        const NoSynchronous = uapi::MS_SYNCHRONOUS as _;
-        const Remount = uapi::MS_REMOUNT as _;
-        const MandatoryLock = uapi::MS_MANDLOCK as _;
-        const DirSync = uapi::MS_DIRSYNC as _;
-        const NoSymbolFollow = uapi::MS_NOSYMFOLLOW as _;
-        const NoAccessTime = uapi::MS_NOATIME as _;
-        const NoDirAccessTime = uapi::MS_NODIRATIME as _;
-        const Bind = uapi::MS_BIND as _;
-        const Move = uapi::MS_MOVE as _;
-        const Rec = uapi::MS_REC as _;
-        const Silent = uapi::MS_SILENT as _;
-        const PosixACL = uapi::MS_POSIXACL as _;
-        const Unbindable = uapi::MS_UNBINDABLE as _;
-        const Private = uapi::MS_PRIVATE as _;
-        const Slave = uapi::MS_SLAVE as _;
-        const Shared = uapi::MS_SHARED as _;
-        const RelativeTime = uapi::MS_RELATIME as _;
-        const KernMount = uapi::MS_KERNMOUNT as _;
-        const IVersion = uapi::MS_I_VERSION as _;
-        const StrictAccessTime = uapi::MS_STRICTATIME as _;
-        const LazyTime = uapi::MS_LAZYTIME as _;
-        const NoRemoteLock = uapi::MS_NOREMOTELOCK as _;
-        const NoSec = uapi::MS_NOSEC as _;
-        const Born = uapi::MS_BORN as _;
-        const Active = uapi::MS_ACTIVE as _;
-        const NoUser = uapi::MS_NOUSER as _;
+        const ReadOnly = MNT_RDONLY;
+        const NoSetUid = MNT_NOSUID;
+        const NoExec = MNT_NOEXEC;
+        const RelativeTime = MNT_RELATIME;
+        const NoAccessTime = MNT_NOATIME;
+        const Remount = MNT_REMOUNT;
+        const Force = MNT_FORCE;
     }
 }
 
@@ -78,7 +56,7 @@ pub trait SuperBlock: Debug {
     fn sync(self: Arc<Self>) -> EResult<()>;
 
     /// Gets the status of the file system.
-    fn statvfs(self: Arc<Self>) -> EResult<uapi::statvfs>;
+    fn statvfs(self: Arc<Self>) -> EResult<statvfs>;
 
     /// Allocates a new inode on this super block.
     /// If `node_type` is a character or block device, a `device` must also be passed.

@@ -9,6 +9,7 @@ use crate::{
     },
 };
 use core::num::NonZeroUsize;
+use uapi::mman::*;
 
 pub fn mmap(
     addr: VirtAddr,
@@ -30,9 +31,9 @@ pub fn mmap(
     }
 
     let mut vm_prot = VmFlags::empty();
-    vm_prot.set(VmFlags::Read, prot & uapi::PROT_READ != 0);
-    vm_prot.set(VmFlags::Write, prot & uapi::PROT_WRITE != 0);
-    vm_prot.set(VmFlags::Exec, prot & uapi::PROT_EXEC != 0);
+    vm_prot.set(VmFlags::Read, prot & PROT_READ != 0);
+    vm_prot.set(VmFlags::Write, prot & PROT_WRITE != 0);
+    vm_prot.set(VmFlags::Exec, prot & PROT_EXEC != 0);
 
     let proc = Scheduler::get_current().get_process();
     let mut mmap_head = proc.mmap_head.lock();
@@ -73,9 +74,9 @@ pub fn mmap(
 
 pub fn mprotect(addr: VirtAddr, size: usize, prot: u32) -> EResult<usize> {
     let mut vm_prot = VmFlags::empty();
-    vm_prot.set(VmFlags::Read, prot & uapi::PROT_READ != 0);
-    vm_prot.set(VmFlags::Write, prot & uapi::PROT_WRITE != 0);
-    vm_prot.set(VmFlags::Exec, prot & uapi::PROT_EXEC != 0);
+    vm_prot.set(VmFlags::Read, prot & PROT_READ != 0);
+    vm_prot.set(VmFlags::Write, prot & PROT_WRITE != 0);
+    vm_prot.set(VmFlags::Exec, prot & PROT_EXEC != 0);
 
     let proc = Scheduler::get_current().get_process();
     proc.address_space.lock().protect(

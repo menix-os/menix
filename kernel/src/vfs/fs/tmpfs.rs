@@ -23,6 +23,7 @@ use core::{
     slice,
     sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering},
 };
+use uapi::statvfs::statvfs;
 
 #[derive(Debug)]
 struct TmpFs;
@@ -64,7 +65,7 @@ impl SuperBlock for TmpSuper {
         Ok(())
     }
 
-    fn statvfs(self: Arc<Self>) -> EResult<uapi::statvfs> {
+    fn statvfs(self: Arc<Self>) -> EResult<statvfs> {
         todo!()
     }
 
@@ -75,7 +76,7 @@ impl SuperBlock for TmpSuper {
         mode: Mode,
     ) -> EResult<Arc<INode>> {
         Ok(Arc::try_new(INode {
-            id: self.inode_counter.fetch_add(1, Ordering::Acquire) as u64,
+            id: self.inode_counter.fetch_add(1, Ordering::Acquire),
             node_ops,
             file_ops,
             sb: self,
@@ -300,7 +301,7 @@ impl FileOps for TmpRegular {
             map_address,
             NonZeroUsize::new(backed_map_size).unwrap(),
             prot,
-            offset - misalign as i64,
+            offset - misalign as isize,
         )?;
         Ok(addr)
     }

@@ -28,7 +28,7 @@ impl EventListener {}
 #[derive(Clone, Copy)]
 #[repr(C)]
 pub struct InputEvent {
-    pub time: uapi::timeval,
+    pub time: uapi::time::timeval,
     pub typ: u16,
     pub code: u16,
     pub value: i32,

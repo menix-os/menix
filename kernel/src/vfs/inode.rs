@@ -10,6 +10,7 @@ use crate::{
 };
 use alloc::sync::Arc;
 use core::{any::Any, fmt::Debug};
+use uapi::{stat::*, time::timespec};
 
 /// A standalone file system node, also commonly referred to as a vnode.
 /// It is used to represent a file or sized memory in a generic way.
@@ -22,13 +23,13 @@ pub struct INode {
     pub sb: Arc<dyn SuperBlock>,
 
     // The following fields make up `stat`.
-    pub id: u64,
+    pub id: usize,
     pub size: SpinMutex<usize>,
     pub uid: SpinMutex<uapi::uid_t>,
     pub gid: SpinMutex<uapi::gid_t>,
-    pub atime: SpinMutex<uapi::timespec>,
-    pub mtime: SpinMutex<uapi::timespec>,
-    pub ctime: SpinMutex<uapi::timespec>,
+    pub atime: SpinMutex<timespec>,
+    pub mtime: SpinMutex<timespec>,
+    pub ctime: SpinMutex<timespec>,
     pub mode: SpinMutex<Mode>,
 }
 
@@ -61,9 +62,9 @@ impl INode {
     /// If an argument is [`None`], the respective value is not updated.
     pub fn update_time(
         &self,
-        mtime: Option<uapi::timespec>,
-        atime: Option<uapi::timespec>,
-        ctime: Option<uapi::timespec>,
+        mtime: Option<timespec>,
+        atime: Option<timespec>,
+        ctime: Option<timespec>,
     ) {
         if let Some(mtime) = mtime {
             *self.mtime.lock() = mtime;
@@ -187,31 +188,31 @@ pub trait SymlinkOps: Any {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NodeType {
-    Regular = uapi::S_IFREG as _,
-    Directory = uapi::S_IFDIR as _,
-    SymbolicLink = uapi::S_IFLNK as _,
-    FIFO = uapi::S_IFIFO as _,
-    BlockDevice = uapi::S_IFBLK as _,
-    CharacterDevice = uapi::S_IFCHR as _,
-    Socket = uapi::S_IFSOCK as _,
+    Regular = S_IFREG as _,
+    Directory = S_IFDIR as _,
+    SymbolicLink = S_IFLNK as _,
+    FIFO = S_IFIFO as _,
+    BlockDevice = S_IFBLK as _,
+    CharacterDevice = S_IFCHR as _,
+    Socket = S_IFSOCK as _,
 }
 
 bitflags::bitflags! {
     #[derive(Debug, Default, Clone)]
     pub struct Mode: u32 {
-        const UserRead = uapi::S_IRUSR;
-        const UserWrite = uapi::S_IWUSR;
-        const UserExec = uapi::S_IXUSR;
+        const UserRead = S_IRUSR;
+        const UserWrite = S_IWUSR;
+        const UserExec = S_IXUSR;
 
-        const GroupRead = uapi::S_IRGRP;
-        const GroupWrite = uapi::S_IWGRP;
-        const GroupExec = uapi::S_IXGRP;
+        const GroupRead = S_IRGRP;
+        const GroupWrite = S_IWGRP;
+        const GroupExec = S_IXGRP;
 
-        const OtherRead = uapi::S_IROTH;
-        const OtherWrite = uapi::S_IWOTH;
-        const OtherExec = uapi::S_IXOTH;
+        const OtherRead = S_IROTH;
+        const OtherWrite = S_IWOTH;
+        const OtherExec = S_IXOTH;
 
-        const SetUserId = uapi::S_ISUID;
-        const SetGroupId = uapi::S_ISGID;
+        const SetUserId = S_ISUID;
+        const SetGroupId = S_ISGID;
     }
 }

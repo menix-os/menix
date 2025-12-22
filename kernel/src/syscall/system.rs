@@ -1,5 +1,3 @@
-use alloc::string::String;
-
 use crate::{
     clock,
     memory::{UserSlice, VirtAddr, user::UserPtr},
@@ -9,18 +7,21 @@ use crate::{
     },
     sched::Scheduler,
 };
-
+use alloc::string::String;
+use uapi::reboot::*;
+use uapi::time::*;
+use uapi::utsname::*;
 pub fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
     crate::arch::core::archctl(cmd, arg)
 }
 
-pub fn getuname(mut addr: UserPtr<uapi::utsname>) -> EResult<usize> {
+pub fn getuname(mut addr: UserPtr<utsname>) -> EResult<usize> {
     addr.write(*UTSNAME.lock()).ok_or(Errno::EINVAL)?;
 
     Ok(0)
 }
 
-pub fn setuname(addr: UserPtr<uapi::utsname>) -> EResult<usize> {
+pub fn setuname(addr: UserPtr<utsname>) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     // Only allow the superuser to change the uname.
     if proc.identity.lock().user_id != 0 {
@@ -33,13 +34,13 @@ pub fn setuname(addr: UserPtr<uapi::utsname>) -> EResult<usize> {
     Ok(0)
 }
 
-pub fn clock_get(clockid: uapi::clockid_t, mut tp: UserPtr<uapi::timespec>) -> EResult<usize> {
+pub fn clock_get(clockid: uapi::clockid_t, mut tp: UserPtr<timespec>) -> EResult<usize> {
     let _ = clockid; // TODO: Respect clockid
 
     let elapsed = clock::get_elapsed();
     const NS_TO_SEC: usize = 1000 * 1000 * 1000;
 
-    tp.write(uapi::timespec {
+    tp.write(timespec {
         tv_sec: (elapsed / NS_TO_SEC) as _,
         tv_nsec: (elapsed % NS_TO_SEC) as _,
     })
@@ -102,13 +103,13 @@ pub fn reboot(magic: u32, cmd: u32) -> EResult<usize> {
     }
 
     match cmd {
-        uapi::RB_DISABLE_CAD => {
+        RB_DISABLE_CAD => {
             warn!("RB_DISABLE_CAD is unimplemented");
         }
-        uapi::RB_ENABLE_CAD => {
+        RB_ENABLE_CAD => {
             warn!("RB_ENABLE_CAD is unimplemented");
         }
-        uapi::RB_POWER_OFF => {
+        RB_POWER_OFF => {
             todo!("Power off");
         }
         _ => {

@@ -7,6 +7,7 @@ use crate::{
 };
 use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
 use core::{fmt::Debug, hint::unlikely};
+use uapi::limits::PATH_MAX;
 
 #[derive(Default)]
 pub enum EntryState {
@@ -225,7 +226,7 @@ impl PathNode {
         identity: &Identity,
         flags: LookupFlags,
     ) -> EResult<Self> {
-        let mut link_buf = vec![0u8; uapi::PATH_MAX as _];
+        let mut link_buf = vec![0u8; PATH_MAX as _];
         let mut current = self.clone();
         while let Some(inode) = current.entry.get_inode()
             && let NodeOps::SymbolicLink(symlink) = &inode.node_ops

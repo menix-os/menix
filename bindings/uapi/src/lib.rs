@@ -1,6 +1,38 @@
 #![no_std]
-#![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
-#![allow(clippy::missing_safety_doc)]
 
-include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
+pub mod archctl;
+pub mod dirent;
+pub mod epoll;
+pub mod errno;
+pub mod fcntl;
+pub mod ioctls;
+pub mod limits;
+pub mod mman;
+pub mod mount;
+pub mod poll;
+pub mod reboot;
+pub mod resource;
+pub mod signal;
+pub mod stat;
+pub mod statvfs;
+pub mod termios;
+pub mod time;
+pub mod utsname;
+
+pub type off_t = isize;
+pub type off64_t = isize;
+pub type blksize_t = usize;
+pub type blkcnt_t = usize;
+pub type clockid_t = usize;
+pub type dev_t = usize;
+pub type gid_t = usize;
+pub type ino_t = usize;
+pub type mode_t = u32;
+pub type nlink_t = usize;
+pub type pid_t = usize;
+pub type rlim_t = usize;
+pub type uid_t = usize;
+pub type fsblkcnt_t = usize;
+pub type fsfilcnt_t = usize;
+pub type pthread_attr_t = usize;
