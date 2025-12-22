@@ -86,7 +86,6 @@ pub(crate) static KERNEL_PAGE_TABLE: Once<Arc<PageTable>> = Once::new();
 // TODO: Replace with allocator.
 pub static KERNEL_MMAP_BASE_ADDR: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Debug)]
 pub struct AddressSpace {
     pub table: Arc<PageTable>,
     /// A map that translates global page offsets (virt / page_size) to a physical page and the flags of the mapping.
@@ -94,7 +93,6 @@ pub struct AddressSpace {
 }
 
 /// Represents a mapped object.
-#[derive(Debug)]
 pub struct MappedObject {
     /// The starting virtual page number of the mapping.
     pub start_page: usize,
@@ -103,7 +101,7 @@ pub struct MappedObject {
     /// The offset in the memory object.
     pub offset_page: usize,
     /// The mapped object.
-    pub object: Arc<MemoryObject>,
+    pub object: Arc<dyn MemoryObject>,
     /// A [`VmFlags`] object, but stored as an atomic value.
     flags: AtomicU8,
 }
@@ -165,7 +163,7 @@ impl AddressSpace {
     /// Maps an object into the address space.
     pub fn map_object(
         &mut self,
-        object: Arc<MemoryObject>,
+        object: Arc<dyn MemoryObject>,
         addr: VirtAddr,
         len: NonZeroUsize,
         prot: VmFlags,

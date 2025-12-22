@@ -2,8 +2,9 @@
 
 use super::{MountFlags, SuperBlock};
 use crate::{
+    arch,
     device::CharDevice,
-    memory::{PhysAddr, cache::MemoryObject},
+    memory::{AddressSpace, PagedMemoryObject, PhysAddr, VirtAddr, VmFlags, cache::MemoryObject},
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::{Mutex, spin::SpinMutex},
@@ -18,6 +19,7 @@ use crate::{
 use alloc::{boxed::Box, string::String, sync::Arc, vec::Vec};
 use core::{
     any::Any,
+    num::NonZeroUsize,
     slice,
     sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering},
 };
@@ -35,10 +37,11 @@ impl FileSystem for TmpFs {
             inode_counter: AtomicUsize::new(0),
         })?;
 
+        let dir = Arc::new(TmpDir::default());
         let root_inode = super_block.clone().create_inode(
-            NodeType::Directory,
+            NodeOps::Directory(dir.clone()),
+            dir,
             Mode::from_bits_truncate(0o755),
-            None,
         )?;
 
         Ok(Arc::try_new(Mount {
@@ -67,34 +70,15 @@ impl SuperBlock for TmpSuper {
 
     fn create_inode(
         self: Arc<Self>,
-        node_type: NodeType,
+        node_ops: NodeOps,
+        file_ops: Arc<dyn FileOps>,
         mode: Mode,
-        device: Option<Arc<dyn FileOps>>,
     ) -> EResult<Arc<INode>> {
-        let (node_ops, file_ops): (_, Arc<dyn FileOps>) = match node_type {
-            NodeType::Regular => {
-                let reg = Arc::new(TmpRegular::default());
-                (NodeOps::Regular(reg.clone()), reg)
-            }
-            NodeType::SymbolicLink => {
-                let reg = Arc::new(TmpSymlink::default());
-                (NodeOps::SymbolicLink(reg.clone()), reg)
-            }
-            NodeType::Directory => {
-                let reg = Arc::new(TmpDir);
-                (NodeOps::Directory(reg.clone()), reg)
-            }
-            NodeType::CharacterDevice => (NodeOps::CharacterDevice, device.ok_or(Errno::ENODEV)?),
-            NodeType::BlockDevice => (NodeOps::BlockDevice, device.ok_or(Errno::ENODEV)?),
-            _ => return Err(Errno::EINVAL),
-        };
-
         Ok(Arc::try_new(INode {
             id: self.inode_counter.fetch_add(1, Ordering::Acquire) as u64,
             node_ops,
             file_ops,
             sb: self,
-            cache: Arc::new(MemoryObject::new_phys()),
             mode: SpinMutex::new(mode),
             atime: SpinMutex::default(),
             mtime: SpinMutex::default(),
@@ -118,6 +102,7 @@ impl SuperBlock for TmpSuper {
 
 #[derive(Debug, Default)]
 struct TmpDir;
+
 impl DirectoryOps for TmpDir {
     fn lookup(&self, _: &Arc<INode>, _: &PathNode) -> EResult<()> {
         // tmpfs directories only live in memory, so we cannot look up entries that do not exist.
@@ -159,15 +144,83 @@ impl DirectoryOps for TmpDir {
     ) -> EResult<()> {
         todo!()
     }
+
+    fn symlink(
+        &self,
+        node: &Arc<INode>,
+        path: PathNode,
+        target_path: &[u8],
+        identity: &Identity,
+    ) -> EResult<()> {
+        let _ = identity; // TODO
+        let reg = Arc::new(TmpSymlink::default());
+        let node_ops = NodeOps::SymbolicLink(reg.clone());
+
+        let sym_inode =
+            node.sb
+                .clone()
+                .create_inode(node_ops, reg.clone(), Mode::from_bits_truncate(0o777))?;
+
+        *reg.target.lock() = target_path.to_vec();
+        *sym_inode.size.lock() = target_path.len();
+        path.entry.set_inode(sym_inode);
+        Ok(())
+    }
+
+    fn create(&self, self_node: &Arc<INode>, entry: Arc<Entry>, mode: Mode) -> EResult<()> {
+        let mut children = entry.children.lock();
+        let new_file = Arc::new(TmpRegular::new());
+        let new_node = self_node.sb.clone().create_inode(
+            NodeOps::Regular(new_file.clone()),
+            new_file,
+            mode,
+        )?;
+        entry.set_inode(new_node);
+        Ok(())
+    }
+
+    fn mkdir(&self, self_node: &Arc<INode>, entry: Arc<Entry>, mode: Mode) -> EResult<Arc<Entry>> {
+        let mut children = entry.children.lock();
+        let new_dir = Arc::new(TmpDir);
+        let new_dir_node = self_node.sb.clone().create_inode(
+            NodeOps::Directory(new_dir.clone()),
+            new_dir,
+            mode,
+        )?;
+        entry.set_inode(new_dir_node);
+        Ok(entry.clone()) // TODO: This is wrong. Return the child entry instead.
+    }
+
+    fn mknod(
+        &self,
+        self_node: &Arc<INode>,
+        node_type: NodeType,
+        mode: Mode,
+        dev: Option<Arc<dyn FileOps>>,
+    ) -> EResult<Arc<INode>> {
+        let new_node = dev.ok_or(Errno::ENODEV)?;
+        self_node.sb.clone().create_inode(
+            match node_type {
+                NodeType::BlockDevice => NodeOps::BlockDevice,
+                NodeType::CharacterDevice => NodeOps::CharacterDevice,
+                _ => return Err(Errno::ENODEV),
+            },
+            new_node,
+            mode,
+        )
+    }
 }
 
 #[derive(Debug, Default)]
-struct TmpSymlink {}
+struct TmpSymlink {
+    pub target: SpinMutex<Vec<u8>>,
+}
 
 impl SymlinkOps for TmpSymlink {
     fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<u64> {
-        let copy_size = buf.len().min(node.len());
-        node.cache.read(&mut buf[0..copy_size], 0);
+        let target = self.target.lock();
+        let copy_size = buf.len().min(target.len());
+        buf[0..copy_size].copy_from_slice(&target[0..copy_size]);
         Ok(copy_size as u64)
     }
 }
@@ -175,8 +228,19 @@ impl SymlinkOps for TmpSymlink {
 impl FileOps for TmpSymlink {}
 impl FileOps for TmpDir {}
 
-#[derive(Debug, Default)]
-struct TmpRegular {}
+#[derive(Debug)]
+struct TmpRegular {
+    /// A mappable page cache for the contents of the node.
+    pub cache: Arc<PagedMemoryObject>,
+}
+
+impl TmpRegular {
+    pub fn new() -> Self {
+        Self {
+            cache: Arc::new(PagedMemoryObject::new_phys()),
+        }
+    }
+}
 
 impl RegularOps for TmpRegular {
     fn truncate(&self, node: &INode, length: u64) -> EResult<()> {
@@ -194,7 +258,8 @@ impl FileOps for TmpRegular {
         }
 
         let copy_size = buffer.len().min(inode.len() - start as usize);
-        let actual = inode.cache.read(&mut buffer[0..copy_size], start as usize);
+        let actual = (self.cache.as_ref() as &dyn MemoryObject)
+            .read(&mut buffer[0..copy_size], start as usize);
 
         Ok(actual as _)
     }
@@ -203,10 +268,41 @@ impl FileOps for TmpRegular {
         let inode = file.inode.as_ref().ok_or(Errno::EINVAL)?;
         let mut size_lock = inode.size.lock();
         let start = offset;
-        let actual = inode.cache.write(buffer, start as usize);
+        let actual = (self.cache.as_ref() as &dyn MemoryObject).write(buffer, start as usize);
         *size_lock = actual;
 
         Ok(actual as _)
+    }
+
+    fn mmap(
+        &self,
+        file: &File,
+        space: &mut AddressSpace,
+        addr: VirtAddr,
+        len: NonZeroUsize,
+        prot: VmFlags,
+        flags: MmapFlags,
+        offset: uapi::off_t,
+    ) -> EResult<VirtAddr> {
+        let object = if flags.contains(MmapFlags::Private) {
+            self.cache.make_private(len, offset)?
+        } else {
+            self.cache.clone()
+        };
+
+        let page_size = arch::virt::get_page_size();
+        let misalign = addr.value() as usize & (page_size - 1);
+        let map_address = addr - misalign;
+        let backed_map_size = (len.get() + misalign + page_size - 1) & !(page_size - 1);
+
+        space.map_object(
+            object,
+            map_address,
+            NonZeroUsize::new(backed_map_size).unwrap(),
+            prot,
+            offset - misalign as i64,
+        )?;
+        Ok(addr)
     }
 }
 

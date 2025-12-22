@@ -9,7 +9,7 @@ use crate::{
         self, File, PathNode,
         cache::LookupFlags,
         file::{FileDescription, OpenFlags, SeekAnchor},
-        inode::{INode, Mode, NodeOps, NodeType},
+        inode::{INode, Mode, NodeOps},
     },
 };
 use alloc::{borrow::ToOwned, sync::Arc};
@@ -331,13 +331,11 @@ pub fn mkdirat(fd: usize, path: VirtAddr, mode: uapi::mode_t) -> EResult<usize> 
             .ok_or(Errno::ENOTDIR)?
             .clone()
     };
-    vfs::mknod(
+    vfs::mkdir(
         proc.root_dir.lock().clone(),
         parent,
         v.as_bytes(),
-        NodeType::Directory,
         Mode::from_bits(mode).ok_or(Errno::EINVAL)?,
-        None,
         &proc.identity.lock(),
     )?;
 

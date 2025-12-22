@@ -58,6 +58,7 @@ pub fn getpgid(pid: usize) -> EResult<usize> {
 
 pub fn exit(error: usize) -> ! {
     let proc = Scheduler::get_current().get_process();
+    let error = error as i8;
 
     if proc.get_pid() <= 1 {
         panic!("Attempted to kill init with error code {error}");

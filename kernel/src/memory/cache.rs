@@ -1,24 +1,28 @@
 use crate::{
     arch::virt::get_page_size,
-    {
-        memory::{
-            PhysAddr,
-            pmm::{AllocFlags, KernelAlloc, PageAllocator},
-        },
-        util::mutex::spin::SpinMutex,
+    memory::{
+        PhysAddr,
+        pmm::{AllocFlags, KernelAlloc, PageAllocator},
     },
+    posix::errno::EResult,
+    util::mutex::spin::SpinMutex,
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};
-use core::{fmt::Debug, slice};
+use core::{fmt::Debug, num::NonZeroUsize, slice};
 
-/// A list of mappable pages.
+pub trait MemoryObject {
+    /// Attempts to get the physical address of a page with a relative index into this object.
+    /// Returns [`None`] if the page is out of bounds for this object.
+    fn try_get_page(&self, page_index: usize) -> Option<PhysAddr>;
+}
+
 #[derive(Debug)]
-pub struct MemoryObject {
+pub struct PagedMemoryObject {
     pages: SpinMutex<BTreeMap<usize, PhysAddr>>,
     source: Arc<dyn Pager>,
 }
 
-impl MemoryObject {
+impl PagedMemoryObject {
     /// Creates a new object, without making allocations.
     pub fn new(source: Arc<dyn Pager>) -> Self {
         Self {
@@ -32,24 +36,23 @@ impl MemoryObject {
         Self::new(Arc::new(PhysPager))
     }
 
-    /// Attempts to get the physical address of a page with a relative index into this object.
-    /// Returns [`None`] if the page is out of bounds for this object.
-    pub fn try_get_page(&self, page_index: usize) -> Option<PhysAddr> {
-        let mut pages = self.pages.lock();
-        match pages.get(&page_index) {
-            // If the page already exists, we can return it.
-            Some(page) => Some(*page),
-            // If it does not, we need to check if it's actually available.
-            None => match self.source.try_get_page(page_index) {
-                Ok(x) => {
-                    pages.insert(page_index, x);
-                    Some(x)
-                }
-                Err(_) => None,
-            },
-        }
+    /// If a private mapping is requested, creates a new memory object and copies the data over.
+    pub fn make_private(
+        self: &Arc<Self>,
+        length: NonZeroUsize,
+        offset: uapi::off_t,
+    ) -> EResult<Arc<dyn MemoryObject>> {
+        // Private mapping means we need to do a unique allocation.
+        // TODO: Do this in smaller chunks to not overwhelm the allocator.
+        let phys = Arc::new(PagedMemoryObject::new_phys());
+        let mut buf = vec![0u8; length.into()];
+        (self.as_ref() as &dyn MemoryObject).read(&mut buf, offset as _);
+        (phys.as_ref() as &dyn MemoryObject).write(&buf, offset as _);
+        Ok(phys)
     }
+}
 
+impl dyn MemoryObject {
     /// Reads data from the object into a buffer.
     /// Reading out of bounds will return 0.
     pub fn read(&self, buffer: &mut [u8], offset: usize) -> usize {
@@ -101,7 +104,25 @@ impl MemoryObject {
     }
 }
 
-impl Drop for MemoryObject {
+impl MemoryObject for PagedMemoryObject {
+    fn try_get_page(&self, page_index: usize) -> Option<PhysAddr> {
+        let mut pages = self.pages.lock();
+        match pages.get(&page_index) {
+            // If the page already exists, we can return it.
+            Some(page) => Some(*page),
+            // If it does not, we need to check if it's actually available.
+            None => match self.source.try_get_page(page_index) {
+                Ok(x) => {
+                    pages.insert(page_index, x);
+                    Some(x)
+                }
+                Err(_) => None,
+            },
+        }
+    }
+}
+
+impl Drop for PagedMemoryObject {
     fn drop(&mut self) {
         let p = self.pages.lock();
         for (_, &addr) in p.iter() {

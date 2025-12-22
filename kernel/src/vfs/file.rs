@@ -1,6 +1,6 @@
-use super::inode::{INode, NodeType};
+use super::inode::INode;
 use crate::{
-    memory::{VirtAddr, cache::MemoryObject},
+    memory::{AddressSpace, VirtAddr, VmFlags},
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::Mutex,
@@ -146,6 +146,21 @@ pub trait FileOps {
         _ = (file, mask);
         Ok(mask)
     }
+
+    /// Maps the file into an [`AddressSpace`].
+    fn mmap(
+        &self,
+        file: &File,
+        space: &mut AddressSpace,
+        addr: VirtAddr,
+        len: NonZeroUsize,
+        prot: VmFlags,
+        flags: MmapFlags,
+        offset: uapi::off_t,
+    ) -> EResult<VirtAddr> {
+        let _ = (file, space, addr, len, prot, flags, offset);
+        Err(Errno::ENODEV)
+    }
 }
 
 impl File {
@@ -193,21 +208,18 @@ impl File {
                     .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
                     .expect("Entry should always have a parent");
 
-                match &parent.node_ops {
-                    NodeOps::Directory(_) => (),
-                    _ => return Err(Errno::ENOTDIR),
-                }
-
                 parent.try_access(identity, flags, false)?;
 
-                let file_node = parent
-                    .sb
-                    .clone()
-                    .create_inode(NodeType::Regular, mode, None)?;
+                match &parent.node_ops {
+                    NodeOps::Directory(x) => x.create(&parent, file_path.entry.clone(), mode)?,
+                    _ => return Err(Errno::ENOTDIR),
+                };
 
-                file_path.entry.as_ref().set_inode(file_node.clone());
+                let file_node = file_path.entry.get_inode().unwrap();
+                Self::do_open_inode(file_path.clone(), &file_node, flags, identity)?;
+
                 let result = File {
-                    path: Some(file_path),
+                    path: Some(file_path.clone()),
                     ops: file_node.file_ops.clone(),
                     inode: Some(file_node),
                     flags: Mutex::new(flags),
@@ -372,34 +384,20 @@ impl File {
         }
     }
 
-    pub fn ioctl(&self, request: usize, arg: VirtAddr) -> EResult<usize> {
-        self.ops.ioctl(self, request, arg)
+    pub fn mmap(
+        &self,
+        space: &mut AddressSpace,
+        addr: VirtAddr,
+        len: NonZeroUsize,
+        prot: VmFlags,
+        flags: MmapFlags,
+        offset: uapi::off_t,
+    ) -> EResult<VirtAddr> {
+        self.ops.mmap(self, space, addr, len, prot, flags, offset)
     }
 
-    /// If a private mapping is requested, creates a new memory object and copies the data over.
-    pub fn get_memory_object(
-        &self,
-        length: NonZeroUsize,
-        offset: uapi::off_t,
-        private: bool,
-    ) -> EResult<Arc<MemoryObject>> {
-        let cache = self
-            .inode
-            .as_ref()
-            .ok_or(Errno::ENOENT)
-            .map(|x| x.cache.clone())?;
-
-        if private {
-            // Private mapping means we need to do a unique allocation.
-            // TODO: Do this in smaller chunks to not overwhelm the allocator.
-            let phys = MemoryObject::new_phys();
-            let mut buf = vec![0u8; length.into()];
-            cache.read(&mut buf, offset as _);
-            phys.write(&buf, offset as _);
-            Arc::try_new(phys).map_err(|_| Errno::ENOMEM)
-        } else {
-            Ok(cache)
-        }
+    pub fn ioctl(&self, request: usize, arg: VirtAddr) -> EResult<usize> {
+        self.ops.ioctl(self, request, arg)
     }
 
     pub fn close(&self) -> EResult<()> {

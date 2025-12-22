@@ -37,7 +37,6 @@ pub enum ProcessState {
     // TODO: SIGSTOP
 }
 
-#[derive(Debug)]
 pub struct Process {
     /// The unique identifier of this process.
     id: Pid,

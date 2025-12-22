@@ -1,11 +1,10 @@
 use super::fs::SuperBlock;
 use crate::{
-    memory::cache::MemoryObject,
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::spin::SpinMutex,
     vfs::{
-        PathNode,
+        Entry, PathNode,
         file::{File, FileOps, OpenFlags},
     },
 };
@@ -21,8 +20,6 @@ pub struct INode {
     pub file_ops: Arc<dyn FileOps>,
     /// The super block which this node is located in.
     pub sb: Arc<dyn SuperBlock>,
-    /// A mappable page cache for the contents of the node.
-    pub cache: Arc<MemoryObject>,
 
     // The following fields make up `stat`.
     pub id: u64,
@@ -113,16 +110,30 @@ pub trait DirectoryOps: Any {
     /// Looks up all children in an `node` directory and caches them in `entry`.
     /// An implementation shall return [`Errno::ENOENT`] if a lookup fails and
     /// shall leave `entry` unchanged.
-    fn lookup(&self, node: &Arc<INode>, entry: &PathNode) -> EResult<()>;
+    fn lookup(&self, self_node: &Arc<INode>, entry: &PathNode) -> EResult<()>;
 
     /// Opens a directory.
     fn open(
         &self,
-        node: &Arc<INode>,
+        self_node: &Arc<INode>,
         entry: PathNode,
         flags: OpenFlags,
         identity: &Identity,
     ) -> EResult<Arc<File>>;
+
+    /// Creates a new regular file. The implementation should create the [`INode`]
+    /// and set it in the given `entry`.
+    fn create(&self, self_node: &Arc<INode>, entry: Arc<Entry>, mode: Mode) -> EResult<()> {
+        let _ = (self_node, entry, mode);
+        Err(Errno::EPERM)
+    }
+
+    /// Creates a new regular file. The implementation should create the [`INode`]
+    /// and set it in the given `entry`.
+    fn mkdir(&self, self_node: &Arc<INode>, entry: Arc<Entry>, mode: Mode) -> EResult<Arc<Entry>> {
+        let _ = (self_node, entry, mode);
+        Err(Errno::EPERM)
+    }
 
     /// Creates a new symbolic link.
     fn symlink(
@@ -131,39 +142,33 @@ pub trait DirectoryOps: Any {
         path: PathNode,
         target_path: &[u8],
         identity: &Identity,
-    ) -> EResult<()> {
-        let _ = identity; // TODO
-        let sym_inode = node.sb.clone().create_inode(
-            NodeType::SymbolicLink,
-            Mode::from_bits_truncate(0o777),
-            None,
-        )?;
-
-        match &sym_inode.node_ops {
-            NodeOps::SymbolicLink(_) => {
-                sym_inode.cache.write(target_path, 0);
-                *sym_inode.size.lock() = target_path.len();
-                path.entry.set_inode(sym_inode);
-                Ok(())
-            }
-            _ => Err(Errno::EINVAL),
-        }
-    }
+    ) -> EResult<()>;
 
     /// Creates a new hard link.
-    fn link(&self, node: &Arc<INode>, path: &PathNode, target: &Arc<INode>) -> EResult<()>;
+    fn link(&self, self_node: &Arc<INode>, path: &PathNode, target: &Arc<INode>) -> EResult<()>;
 
     /// Removes a link.
-    fn unlink(&self, node: &Arc<INode>, path: &PathNode) -> EResult<()>;
+    fn unlink(&self, self_node: &Arc<INode>, path: &PathNode) -> EResult<()>;
 
     /// Renames a node.
     fn rename(
         &self,
-        node: &Arc<INode>,
+        self_node: &Arc<INode>,
         path: PathNode,
         target: &Arc<INode>,
         target_path: PathNode,
     ) -> EResult<()>;
+
+    fn mknod(
+        &self,
+        self_node: &Arc<INode>,
+        node_type: NodeType,
+        mode: Mode,
+        dev: Option<Arc<dyn FileOps>>,
+    ) -> EResult<Arc<INode>> {
+        let _ = (self_node, node_type, mode, dev);
+        Err(Errno::ENODEV)
+    }
 }
 
 /// Operations for regular file [`INode`]s.

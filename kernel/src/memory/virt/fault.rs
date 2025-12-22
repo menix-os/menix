@@ -1,6 +1,8 @@
 use crate::{
     arch,
-    memory::{AddressSpace, VirtAddr, cache::MemoryObject, pmm::KernelAlloc, virt::VmFlags},
+    memory::{
+        AddressSpace, MemoryObject, PagedMemoryObject, VirtAddr, pmm::KernelAlloc, virt::VmFlags,
+    },
     sched::Scheduler,
 };
 use alloc::sync::Arc;
@@ -61,7 +63,7 @@ pub fn handler_inner(info: &PageFaultInfo, space: &mut AddressSpace) {
                     .unwrap();
                 mapped_obj = mapped.object.clone();
             } else {
-                let new_obj = Arc::new(MemoryObject::new_phys());
+                let new_obj: Arc<dyn MemoryObject> = Arc::new(PagedMemoryObject::new_phys());
 
                 // Copy the data from the old mapping into the new private object.
                 let mut buf = vec![0u8; page_size];

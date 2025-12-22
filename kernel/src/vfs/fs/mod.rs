@@ -10,7 +10,7 @@ use crate::{
         PathNode,
         cache::Entry,
         file::FileOps,
-        inode::{Mode, NodeType},
+        inode::{Mode, NodeOps},
     },
 };
 use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc};
@@ -84,9 +84,9 @@ pub trait SuperBlock: Debug {
     /// If `node_type` is a character or block device, a `device` must also be passed.
     fn create_inode(
         self: Arc<Self>,
-        node_type: NodeType,
+        node_ops: NodeOps,
+        file_ops: Arc<dyn FileOps>,
         mode: Mode,
-        device: Option<Arc<dyn FileOps>>,
     ) -> EResult<Arc<INode>>;
 
     /// Deletes the inode.
