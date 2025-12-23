@@ -4,6 +4,7 @@ use crate::{
     vfs::{File, exec::ExecFormat, file::OpenFlags, inode::Mode},
 };
 use alloc::{sync::Arc, vec::Vec};
+use uapi::limits::PATH_MAX;
 
 #[derive(Debug)]
 struct ShebangFormat;
@@ -25,7 +26,7 @@ impl ExecFormat for ShebangFormat {
 
     fn load(&self, proc: &Arc<Process>, info: &mut super::ExecInfo) -> EResult<Task> {
         let mut interp = vec![];
-        for i in 0..(uapi::PATH_MAX as _) {
+        for i in 0..(PATH_MAX as _) {
             let mut buf = [0u8];
             info.executable.pread(&mut buf, i + 2)?; // Skip the #!
             if buf[0] == b'\n' {

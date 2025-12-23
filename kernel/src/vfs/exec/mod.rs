@@ -18,7 +18,6 @@ use alloc::{
 };
 
 /// Information passed to [`ExecFormat::load`].
-#[derive(Debug)]
 pub struct ExecInfo {
     /// The excutable to load.
     pub executable: Arc<File>,

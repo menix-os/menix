@@ -13,8 +13,7 @@ pub use fs::MountFlags;
 
 use crate::{
     memory::{
-        VirtAddr,
-        cache::MemoryObject,
+        PagedMemoryObject, VirtAddr,
         virt::{AddressSpace, VmFlags},
     },
     posix::errno::{EResult, Errno},
@@ -38,37 +37,27 @@ pub fn get_root() -> PathNode {
     ROOT.get().clone()
 }
 
-/// Creates a new node in the VFS.
-pub fn mknod(
+/// Creates a new directory.
+pub fn mkdir(
     root: PathNode,
     cwd: PathNode,
     path: &[u8],
-    file_type: NodeType,
     mode: Mode,
-    device: Option<Arc<dyn FileOps>>,
     identity: &Identity,
-) -> EResult<()> {
-    match file_type {
-        // POSIX only allows these types of nodes to be created.
-        NodeType::Regular
-        | NodeType::Directory
-        | NodeType::BlockDevice
-        | NodeType::CharacterDevice
-        | NodeType::FIFO => (),
-        // Anything else we disallow.
-        _ => return Err(Errno::EINVAL),
-    }
-
+) -> EResult<Arc<Entry>> {
     let path = PathNode::lookup(root, cwd, path, identity, LookupFlags::MustNotExist)?;
-    let parent = path
-        .lookup_parent()
-        .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
-        .expect("Entry has no parent node?");
 
-    let new_inode = parent.sb.clone().create_inode(file_type, mode, device)?;
-    path.entry.set_inode(new_inode);
+    let parent_inode = path
+        .lookup_parent()?
+        .entry
+        .get_inode()
+        .ok_or(Errno::ENOENT)?;
+    parent_inode.try_access(identity, OpenFlags::Write, false)?;
 
-    Ok(())
+    match &parent_inode.node_ops {
+        NodeOps::Directory(x) => x.mkdir(&parent_inode, path.entry, mode),
+        _ => Err(Errno::ENOTDIR),
+    }
 }
 
 /// Creates a symbolic link at `path`, pointing to `target_path`.
@@ -91,8 +80,45 @@ pub fn symlink(
     // Create the symlink in the parent directory.
     match &parent_inode.node_ops {
         NodeOps::Directory(x) => x.symlink(&parent_inode, path, target_path, identity),
-        _ => return Err(Errno::ENOTDIR),
+        _ => Err(Errno::ENOTDIR),
     }
+}
+
+/// Creates a new node in the VFS.
+pub fn mknod(
+    root: PathNode,
+    cwd: PathNode,
+    path: &[u8],
+    file_type: NodeType,
+    mode: Mode,
+    device: Option<Arc<dyn FileOps>>,
+    identity: &Identity,
+) -> EResult<()> {
+    match file_type {
+        // POSIX only allows these types of nodes to be created.
+        NodeType::BlockDevice | NodeType::CharacterDevice | NodeType::FIFO => (),
+        // Anything else we disallow.
+        _ => {
+            error!("Creating a directory using mknod is not supported!");
+            return Err(Errno::EINVAL);
+        }
+    }
+
+    let path = PathNode::lookup(root, cwd, path, identity, LookupFlags::MustNotExist)?;
+    let parent = path
+        .lookup_parent()
+        .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
+        .expect("Entry has no parent node?");
+
+    let dir = match &parent.node_ops {
+        NodeOps::Directory(x) => x,
+        _ => return Err(Errno::ENOTDIR),
+    };
+
+    let new_inode = dir.mknod(&parent, file_type, mode, device)?;
+    path.entry.set_inode(new_inode);
+
+    Ok(())
 }
 
 /// Maps a memory object in the address space of a process.
@@ -106,11 +132,10 @@ pub fn mmap(
     offset: uapi::off_t,
 ) -> EResult<VirtAddr> {
     if flags.contains(MmapFlags::Anonymous) {
-        let anon = Arc::new(MemoryObject::new_phys());
+        let anon = Arc::new(PagedMemoryObject::new_phys());
         space.map_object(anon, addr, len, prot, offset)?;
     } else if let Some(f) = file {
-        let object = f.get_memory_object(len, offset, flags.contains(MmapFlags::Private))?;
-        space.map_object(object, addr, len, prot, offset)?;
+        f.ops.mmap(&f, space, addr, len, prot, flags, offset)?;
     } else {
         return Err(Errno::EINVAL);
     }
@@ -158,26 +183,19 @@ pub fn VFS_DEV_MOUNT_STAGE() {
     let proc = Process::get_kernel();
     let root = proc.root_dir.lock();
     let cwd = proc.working_dir.lock();
-    mknod(
+    let devdir = mkdir(
         root.clone(),
         cwd.clone(),
         b"/dev",
-        NodeType::Directory,
         Mode::UserRead | Mode::UserWrite,
-        None,
         Identity::get_kernel(),
     )
     .expect("Unable to create /dev");
 
-    let devdir = PathNode::lookup(
-        root.clone(),
-        cwd.clone(),
-        b"/dev",
-        Identity::get_kernel(),
-        LookupFlags::MustExist,
-    )
-    .expect("Lookup for /dev failed");
-
-    *devtmpfs.mount_point.lock() = Some(devdir.clone());
-    devdir.entry.mounts.lock().push(devtmpfs);
+    // TODO
+    //*devtmpfs.mount_point.lock() = Some(PathNode {
+    //    mount: ,
+    //    entry: devdir,
+    //});
+    devdir.mounts.lock().push(devtmpfs);
 }

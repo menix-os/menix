@@ -13,6 +13,7 @@ use crate::{
 };
 use alloc::{string::String, sync::Arc};
 use core::fmt::Write;
+use uapi::termios::winsize;
 
 #[derive(Debug)]
 struct Console;
@@ -31,9 +32,9 @@ impl FileOps for Console {
 
     fn ioctl(&self, _: &File, request: usize, arg: VirtAddr) -> EResult<usize> {
         match request as _ {
-            uapi::TIOCGWINSZ => {
-                let mut arg: UserPtr<uapi::winsize> = UserPtr::new(arg);
-                arg.write(uapi::winsize {
+            uapi::ioctls::TIOCGWINSZ => {
+                let mut arg: UserPtr<winsize> = UserPtr::new(arg);
+                arg.write(winsize {
                     ws_row: 25,
                     ws_col: 80,
                     ..Default::default()

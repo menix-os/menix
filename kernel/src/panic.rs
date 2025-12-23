@@ -88,7 +88,7 @@ fn panic_handler(info: &PanicInfo) -> ! {
             }
 
             log_panic!(
-                "{:#x} <{:#} + {:#x}>",
+                "{:#x} [{:#} + {:#x}]",
                 addr as u64,
                 rustc_demangle::demangle(name),
                 offset

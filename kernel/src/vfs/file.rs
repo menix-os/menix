@@ -1,6 +1,6 @@
-use super::inode::{INode, NodeType};
+use super::inode::INode;
 use crate::{
-    memory::{VirtAddr, cache::MemoryObject},
+    memory::{AddressSpace, VirtAddr, VmFlags},
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::Mutex,
@@ -15,44 +15,45 @@ use core::{
     num::NonZeroUsize,
     sync::atomic::{AtomicBool, Ordering},
 };
+use uapi::{fcntl::*, mman::*};
 
 bitflags::bitflags! {
     #[derive(Debug, Clone, Copy)]
     pub struct OpenFlags: u32 {
         /// Create the file if it's missing.
-        const Create = uapi::O_CREAT as _;
+        const Create = O_CREAT;
         /// Exclusive use.
-        const Exclusive = uapi::O_EXCL as _;
+        const Exclusive = O_EXCL;
         /// Do not assign a controlling terminal.
-        const NoCtrlTerminal = uapi::O_NOCTTY as _;
-        const Truncate = uapi::O_TRUNC as _;
-        const Append = uapi::O_APPEND as _;
-        const NonBlocking = uapi::O_NONBLOCK as _;
-        const SyncData = uapi::O_DSYNC as _;
+        const NoCtrlTerminal = O_NOCTTY;
+        const Truncate = O_TRUNC;
+        const Append = O_APPEND;
+        const NonBlocking = O_NONBLOCK;
+        const SyncData = O_DSYNC;
         /// Open this file as a directory.
-        const Directory = uapi::O_DIRECTORY as _;
+        const Directory = O_DIRECTORY;
         /// Don't follow symbolic links.
-        const NoFollow = uapi::O_NOFOLLOW as _;
+        const NoFollow = O_NOFOLLOW;
         /// Close this file on a call to `execve`.
-        const CloseOnExec = uapi::O_CLOEXEC as _;
-        const Sync = uapi::O_SYNC as _;
-        const SyncRead = uapi::O_RSYNC as _;
-        const LargeFile = uapi::O_LARGEFILE as _;
+        const CloseOnExec = O_CLOEXEC;
+        const Sync = O_SYNC;
+        const SyncRead = O_RSYNC;
+        const LargeFile = O_LARGEFILE;
         /// Don't update the access time.
-        const NoAccessTime = uapi::O_NOATIME as _;
-        const Temporary = uapi::O_TMPFILE as _;
-        const Read = uapi::O_RDONLY as _;
-        const Write = uapi::O_WRONLY as _;
-        const ReadWrite = uapi::O_RDWR as _;
-        const Executable = uapi::O_EXEC as _;
+        const NoAccessTime = O_NOATIME;
+        const Temporary = O_TMPFILE;
+        const Read = O_RDONLY;
+        const Write = O_WRONLY;
+        const ReadWrite = O_RDWR;
+        const Executable = O_EXEC;
     }
 
     #[derive(Debug, Clone, Copy)]
     pub struct MmapFlags: u32 {
-        const Anonymous = uapi::MAP_ANONYMOUS as _;
-        const Shared = uapi::MAP_SHARED as _;
-        const Private = uapi::MAP_PRIVATE as _;
-        const Fixed = uapi::MAP_FIXED as _;
+        const Anonymous = MAP_ANONYMOUS;
+        const Shared = MAP_SHARED;
+        const Private = MAP_PRIVATE;
+        const Fixed = MAP_FIXED;
     }
 }
 
@@ -146,6 +147,21 @@ pub trait FileOps {
         _ = (file, mask);
         Ok(mask)
     }
+
+    /// Maps the file into an [`AddressSpace`].
+    fn mmap(
+        &self,
+        file: &File,
+        space: &mut AddressSpace,
+        addr: VirtAddr,
+        len: NonZeroUsize,
+        prot: VmFlags,
+        flags: MmapFlags,
+        offset: uapi::off_t,
+    ) -> EResult<VirtAddr> {
+        let _ = (file, space, addr, len, prot, flags, offset);
+        Err(Errno::ENODEV)
+    }
 }
 
 impl File {
@@ -193,21 +209,18 @@ impl File {
                     .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
                     .expect("Entry should always have a parent");
 
-                match &parent.node_ops {
-                    NodeOps::Directory(_) => (),
-                    _ => return Err(Errno::ENOTDIR),
-                }
-
                 parent.try_access(identity, flags, false)?;
 
-                let file_node = parent
-                    .sb
-                    .clone()
-                    .create_inode(NodeType::Regular, mode, None)?;
+                match &parent.node_ops {
+                    NodeOps::Directory(x) => x.create(&parent, file_path.entry.clone(), mode)?,
+                    _ => return Err(Errno::ENOTDIR),
+                };
 
-                file_path.entry.as_ref().set_inode(file_node.clone());
+                let file_node = file_path.entry.get_inode().unwrap();
+                Self::do_open_inode(file_path.clone(), &file_node, flags, identity)?;
+
                 let result = File {
-                    path: Some(file_path),
+                    path: Some(file_path.clone()),
                     ops: file_node.file_ops.clone(),
                     inode: Some(file_node),
                     flags: Mutex::new(flags),
@@ -372,34 +385,20 @@ impl File {
         }
     }
 
-    pub fn ioctl(&self, request: usize, arg: VirtAddr) -> EResult<usize> {
-        self.ops.ioctl(self, request, arg)
+    pub fn mmap(
+        &self,
+        space: &mut AddressSpace,
+        addr: VirtAddr,
+        len: NonZeroUsize,
+        prot: VmFlags,
+        flags: MmapFlags,
+        offset: uapi::off_t,
+    ) -> EResult<VirtAddr> {
+        self.ops.mmap(self, space, addr, len, prot, flags, offset)
     }
 
-    /// If a private mapping is requested, creates a new memory object and copies the data over.
-    pub fn get_memory_object(
-        &self,
-        length: NonZeroUsize,
-        offset: uapi::off_t,
-        private: bool,
-    ) -> EResult<Arc<MemoryObject>> {
-        let cache = self
-            .inode
-            .as_ref()
-            .ok_or(Errno::ENOENT)
-            .map(|x| x.cache.clone())?;
-
-        if private {
-            // Private mapping means we need to do a unique allocation.
-            // TODO: Do this in smaller chunks to not overwhelm the allocator.
-            let phys = MemoryObject::new_phys();
-            let mut buf = vec![0u8; length.into()];
-            cache.read(&mut buf, offset as _);
-            phys.write(&buf, offset as _);
-            Arc::try_new(phys).map_err(|_| Errno::ENOMEM)
-        } else {
-            Ok(cache)
-        }
+    pub fn ioctl(&self, request: usize, arg: VirtAddr) -> EResult<usize> {
+        self.ops.ioctl(self, request, arg)
     }
 
     pub fn close(&self) -> EResult<()> {

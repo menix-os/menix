@@ -1,16 +1,14 @@
 use super::ExecInfo;
 use crate::{
     arch,
-    {
-        memory::{cache::MemoryObject, virt::VmFlags},
-        posix::errno::{EResult, Errno},
-        process::{Process, task::Task, to_user},
-        util::align_down,
-        vfs::{
-            exec::ExecFormat,
-            file::{File, OpenFlags},
-            inode::Mode,
-        },
+    memory::{MemoryObject, PagedMemoryObject, virt::VmFlags},
+    posix::errno::{EResult, Errno},
+    process::{Process, task::Task, to_user},
+    util::align_down,
+    vfs::{
+        exec::ExecFormat,
+        file::{File, MmapFlags, OpenFlags},
+        inode::Mode,
     },
 };
 use alloc::{sync::Arc, vec::Vec};
@@ -389,6 +387,7 @@ impl ElfFormat {
                         prot |= VmFlags::Exec;
                     }
 
+                    debug_assert!(phdr.p_offset % phdr.p_align == phdr.p_vaddr % phdr.p_align);
                     let misalign = phdr.p_vaddr as usize & (page_size - 1);
                     let map_address = base + phdr.p_vaddr as usize - misalign;
                     let backed_map_size =
@@ -397,21 +396,22 @@ impl ElfFormat {
                         (phdr.p_memsz as usize + misalign + page_size - 1) & !(page_size - 1);
 
                     // Copy the file data into its own mapping.
-                    let backed = file.get_memory_object(
+                    file.mmap(
+                        &mut info.space,
+                        (base + phdr.p_vaddr as usize).into(),
                         NonZeroUsize::new(phdr.p_filesz as usize).unwrap(),
-                        phdr.p_offset as _,
-                        true,
-                    )?;
-                    info.space.map_object(
-                        backed.clone(),
-                        map_address.into(),
-                        NonZeroUsize::new(backed_map_size).unwrap(),
                         prot,
-                        (phdr.p_offset as usize - misalign) as _,
+                        MmapFlags::Private,
+                        (phdr.p_offset) as _,
                     )?;
+                    //info.space.map_object(
+                    //    backed.clone(),
+                    //    prot,
+                    //    (phdr.p_offset as usize - misalign) as _,
+                    //)?;
 
                     if total_map_size > backed_map_size {
-                        let private_map = Arc::new(MemoryObject::new_phys());
+                        let private_map = Arc::new(PagedMemoryObject::new_phys());
                         info.space.map_object(
                             private_map,
                             (map_address + backed_map_size).into(),
@@ -496,7 +496,7 @@ impl ExecFormat for ElfFormat {
         let stack_size = 2 * 1024 * 1024; // 2MiB stack.
         let stack_start = highest - stack_size;
 
-        let stack = Arc::new(MemoryObject::new_phys());
+        let stack: Arc<dyn MemoryObject> = Arc::new(PagedMemoryObject::new_phys());
         info.space.map_object(
             stack.clone(),
             stack_start.into(),

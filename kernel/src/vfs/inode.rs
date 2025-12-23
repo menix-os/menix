@@ -1,16 +1,16 @@
 use super::fs::SuperBlock;
 use crate::{
-    memory::cache::MemoryObject,
     posix::errno::{EResult, Errno},
     process::Identity,
     util::mutex::spin::SpinMutex,
     vfs::{
-        PathNode,
+        Entry, PathNode,
         file::{File, FileOps, OpenFlags},
     },
 };
 use alloc::sync::Arc;
 use core::{any::Any, fmt::Debug};
+use uapi::{stat::*, time::timespec};
 
 /// A standalone file system node, also commonly referred to as a vnode.
 /// It is used to represent a file or sized memory in a generic way.
@@ -21,17 +21,15 @@ pub struct INode {
     pub file_ops: Arc<dyn FileOps>,
     /// The super block which this node is located in.
     pub sb: Arc<dyn SuperBlock>,
-    /// A mappable page cache for the contents of the node.
-    pub cache: Arc<MemoryObject>,
 
     // The following fields make up `stat`.
-    pub id: u64,
+    pub id: usize,
     pub size: SpinMutex<usize>,
     pub uid: SpinMutex<uapi::uid_t>,
     pub gid: SpinMutex<uapi::gid_t>,
-    pub atime: SpinMutex<uapi::timespec>,
-    pub mtime: SpinMutex<uapi::timespec>,
-    pub ctime: SpinMutex<uapi::timespec>,
+    pub atime: SpinMutex<timespec>,
+    pub mtime: SpinMutex<timespec>,
+    pub ctime: SpinMutex<timespec>,
     pub mode: SpinMutex<Mode>,
 }
 
@@ -64,9 +62,9 @@ impl INode {
     /// If an argument is [`None`], the respective value is not updated.
     pub fn update_time(
         &self,
-        mtime: Option<uapi::timespec>,
-        atime: Option<uapi::timespec>,
-        ctime: Option<uapi::timespec>,
+        mtime: Option<timespec>,
+        atime: Option<timespec>,
+        ctime: Option<timespec>,
     ) {
         if let Some(mtime) = mtime {
             *self.mtime.lock() = mtime;
@@ -113,16 +111,30 @@ pub trait DirectoryOps: Any {
     /// Looks up all children in an `node` directory and caches them in `entry`.
     /// An implementation shall return [`Errno::ENOENT`] if a lookup fails and
     /// shall leave `entry` unchanged.
-    fn lookup(&self, node: &Arc<INode>, entry: &PathNode) -> EResult<()>;
+    fn lookup(&self, self_node: &Arc<INode>, entry: &PathNode) -> EResult<()>;
 
     /// Opens a directory.
     fn open(
         &self,
-        node: &Arc<INode>,
+        self_node: &Arc<INode>,
         entry: PathNode,
         flags: OpenFlags,
         identity: &Identity,
     ) -> EResult<Arc<File>>;
+
+    /// Creates a new regular file. The implementation should create the [`INode`]
+    /// and set it in the given `entry`.
+    fn create(&self, self_node: &Arc<INode>, entry: Arc<Entry>, mode: Mode) -> EResult<()> {
+        let _ = (self_node, entry, mode);
+        Err(Errno::EPERM)
+    }
+
+    /// Creates a new regular file. The implementation should create the [`INode`]
+    /// and set it in the given `entry`.
+    fn mkdir(&self, self_node: &Arc<INode>, entry: Arc<Entry>, mode: Mode) -> EResult<Arc<Entry>> {
+        let _ = (self_node, entry, mode);
+        Err(Errno::EPERM)
+    }
 
     /// Creates a new symbolic link.
     fn symlink(
@@ -131,39 +143,33 @@ pub trait DirectoryOps: Any {
         path: PathNode,
         target_path: &[u8],
         identity: &Identity,
-    ) -> EResult<()> {
-        let _ = identity; // TODO
-        let sym_inode = node.sb.clone().create_inode(
-            NodeType::SymbolicLink,
-            Mode::from_bits_truncate(0o777),
-            None,
-        )?;
-
-        match &sym_inode.node_ops {
-            NodeOps::SymbolicLink(_) => {
-                sym_inode.cache.write(target_path, 0);
-                *sym_inode.size.lock() = target_path.len();
-                path.entry.set_inode(sym_inode);
-                Ok(())
-            }
-            _ => Err(Errno::EINVAL),
-        }
-    }
+    ) -> EResult<()>;
 
     /// Creates a new hard link.
-    fn link(&self, node: &Arc<INode>, path: &PathNode, target: &Arc<INode>) -> EResult<()>;
+    fn link(&self, self_node: &Arc<INode>, path: &PathNode, target: &Arc<INode>) -> EResult<()>;
 
     /// Removes a link.
-    fn unlink(&self, node: &Arc<INode>, path: &PathNode) -> EResult<()>;
+    fn unlink(&self, self_node: &Arc<INode>, path: &PathNode) -> EResult<()>;
 
     /// Renames a node.
     fn rename(
         &self,
-        node: &Arc<INode>,
+        self_node: &Arc<INode>,
         path: PathNode,
         target: &Arc<INode>,
         target_path: PathNode,
     ) -> EResult<()>;
+
+    fn mknod(
+        &self,
+        self_node: &Arc<INode>,
+        node_type: NodeType,
+        mode: Mode,
+        dev: Option<Arc<dyn FileOps>>,
+    ) -> EResult<Arc<INode>> {
+        let _ = (self_node, node_type, mode, dev);
+        Err(Errno::ENODEV)
+    }
 }
 
 /// Operations for regular file [`INode`]s.
@@ -182,31 +188,31 @@ pub trait SymlinkOps: Any {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NodeType {
-    Regular = uapi::S_IFREG as _,
-    Directory = uapi::S_IFDIR as _,
-    SymbolicLink = uapi::S_IFLNK as _,
-    FIFO = uapi::S_IFIFO as _,
-    BlockDevice = uapi::S_IFBLK as _,
-    CharacterDevice = uapi::S_IFCHR as _,
-    Socket = uapi::S_IFSOCK as _,
+    Regular = S_IFREG as _,
+    Directory = S_IFDIR as _,
+    SymbolicLink = S_IFLNK as _,
+    FIFO = S_IFIFO as _,
+    BlockDevice = S_IFBLK as _,
+    CharacterDevice = S_IFCHR as _,
+    Socket = S_IFSOCK as _,
 }
 
 bitflags::bitflags! {
     #[derive(Debug, Default, Clone)]
     pub struct Mode: u32 {
-        const UserRead = uapi::S_IRUSR;
-        const UserWrite = uapi::S_IWUSR;
-        const UserExec = uapi::S_IXUSR;
+        const UserRead = S_IRUSR;
+        const UserWrite = S_IWUSR;
+        const UserExec = S_IXUSR;
 
-        const GroupRead = uapi::S_IRGRP;
-        const GroupWrite = uapi::S_IWGRP;
-        const GroupExec = uapi::S_IXGRP;
+        const GroupRead = S_IRGRP;
+        const GroupWrite = S_IWGRP;
+        const GroupExec = S_IXGRP;
 
-        const OtherRead = uapi::S_IROTH;
-        const OtherWrite = uapi::S_IWOTH;
-        const OtherExec = uapi::S_IXOTH;
+        const OtherRead = S_IROTH;
+        const OtherWrite = S_IWOTH;
+        const OtherExec = S_IXOTH;
 
-        const SetUserId = uapi::S_ISUID;
-        const SetGroupId = uapi::S_ISGID;
+        const SetUserId = S_ISUID;
+        const SetGroupId = S_ISGID;
     }
 }

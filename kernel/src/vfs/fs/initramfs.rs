@@ -11,10 +11,9 @@ use crate::{
     process::Identity,
     util::{self},
     vfs::{
-        PathNode,
+        self, PathNode,
         file::{File, OpenFlags},
-        inode::{Mode, NodeType},
-        mknod, symlink,
+        inode::Mode,
     },
 };
 use bytemuck::AnyBitPattern;
@@ -78,13 +77,11 @@ pub fn create_dirs<'a>(
     };
 
     for component in path.split(|&x| x == b'/').filter(|&x| !x.is_empty()) {
-        if let Err(e) = mknod(
+        if let Err(e) = vfs::mkdir(
             root.clone(),
             current.clone(),
             component,
-            NodeType::Directory,
             Mode::from_bits_truncate(0o755),
-            None,
             Identity::get_kernel(),
         ) && e != Errno::EEXIST
         {
@@ -164,7 +161,7 @@ pub fn load(root: PathNode, target: PathNode, data: &[u8]) -> EResult<()> {
                     .iter()
                     .take_while(|&x| *x != 0)
                     .count();
-                symlink(
+                vfs::symlink(
                     root.clone(),
                     dir.clone(),
                     file_name,

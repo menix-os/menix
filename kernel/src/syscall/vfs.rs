@@ -9,7 +9,7 @@ use crate::{
         self, File, PathNode,
         cache::LookupFlags,
         file::{FileDescription, OpenFlags, SeekAnchor},
-        inode::{INode, Mode, NodeOps, NodeType},
+        inode::{INode, Mode, NodeOps},
     },
 };
 use alloc::{borrow::ToOwned, sync::Arc};
@@ -17,6 +17,7 @@ use core::{
     ffi::CStr,
     sync::atomic::{AtomicBool, Ordering},
 };
+use uapi::{fcntl::*, limits::PATH_MAX, mode_t, signal::sigset_t, stat::*, time::timespec};
 
 pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     let mut user_ptr = UserSlice::new(addr, len);
@@ -96,7 +97,7 @@ pub fn openat(fd: usize, path: VirtAddr, oflag: usize /* mode */) -> EResult<usi
 
     let proc = Scheduler::get_current().get_process();
     let mut proc_inner = proc.open_files.lock();
-    let parent = if fd == uapi::AT_FDCWD as _ {
+    let parent = if fd == AT_FDCWD as _ {
         proc.working_dir.lock().clone()
     } else {
         proc_inner
@@ -168,8 +169,8 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
 
     let proc = Scheduler::get_current().get_process();
 
-    let mut buffer = vec![0u8; uapi::PATH_MAX as _];
-    let mut cursor = uapi::PATH_MAX as usize;
+    let mut buffer = vec![0u8; PATH_MAX as _];
+    let mut cursor = PATH_MAX as usize;
     let mut current = proc.working_dir.lock().clone();
 
     // Walk up until we reach the root
@@ -189,7 +190,7 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
     }
 
     // Special case: root directory
-    if cursor == uapi::PATH_MAX as usize {
+    if cursor == PATH_MAX as usize {
         cursor -= 1;
         buffer[cursor] = b'/';
     }
@@ -205,19 +206,19 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
     Ok(path_len)
 }
 
-fn write_stat(inode: &Arc<INode>, mut statbuf: UserPtr<uapi::stat>) {
-    statbuf.write(uapi::stat {
+fn write_stat(inode: &Arc<INode>, mut statbuf: UserPtr<stat>) {
+    statbuf.write(stat {
         st_dev: 0,
         st_ino: inode.id,
         st_mode: inode.mode.lock().bits()
             | match inode.node_ops {
-                NodeOps::Regular(_) => uapi::S_IFREG,
-                NodeOps::Directory(_) => uapi::S_IFDIR,
-                NodeOps::SymbolicLink(_) => uapi::S_IFLNK,
-                NodeOps::FIFO => uapi::S_IFIFO,
-                NodeOps::BlockDevice => uapi::S_IFBLK,
-                NodeOps::CharacterDevice => uapi::S_IFCHR,
-                NodeOps::Socket => uapi::S_IFSOCK,
+                NodeOps::Regular(_) => S_IFREG,
+                NodeOps::Directory(_) => S_IFDIR,
+                NodeOps::SymbolicLink(_) => S_IFLNK,
+                NodeOps::FIFO => S_IFIFO,
+                NodeOps::BlockDevice => S_IFBLK,
+                NodeOps::CharacterDevice => S_IFCHR,
+                NodeOps::Socket => S_IFSOCK,
             },
         st_nlink: Arc::strong_count(inode) as _,
         st_uid: *inode.uid.lock(),
@@ -232,7 +233,7 @@ fn write_stat(inode: &Arc<INode>, mut statbuf: UserPtr<uapi::stat>) {
     });
 }
 
-pub fn fstat(fd: usize, statbuf: UserPtr<uapi::stat>) -> EResult<usize> {
+pub fn fstat(fd: usize, statbuf: UserPtr<stat>) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.open_files.lock();
 
@@ -247,7 +248,7 @@ pub fn fstat(fd: usize, statbuf: UserPtr<uapi::stat>) -> EResult<usize> {
 pub fn fstatat(
     at: usize,
     path: VirtAddr,
-    statbuf: UserPtr<uapi::stat>,
+    statbuf: UserPtr<stat>,
     _flags: usize, // TODO
 ) -> EResult<usize> {
     let path = unsafe { CStr::from_ptr(path.as_ptr()) };
@@ -255,7 +256,7 @@ pub fn fstatat(
 
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.open_files.lock();
-    let parent = if at == uapi::AT_FDCWD as _ {
+    let parent = if at == AT_FDCWD as _ {
         proc.working_dir.lock().clone()
     } else {
         proc_inner
@@ -313,13 +314,13 @@ pub fn dup3(fd1: usize, fd2: usize, flags: usize) -> EResult<usize> {
     proc_inner.open_file(file, fd2).ok_or(Errno::EMFILE)
 }
 
-pub fn mkdirat(fd: usize, path: VirtAddr, mode: uapi::mode_t) -> EResult<usize> {
+pub fn mkdirat(fd: usize, path: VirtAddr, mode: mode_t) -> EResult<usize> {
     let path = unsafe { CStr::from_ptr(path.as_ptr()) };
     let v = path.to_owned();
 
     let proc = Scheduler::get_current().get_process();
     let inner = proc.open_files.lock();
-    let parent = if fd == uapi::AT_FDCWD as _ {
+    let parent = if fd == AT_FDCWD as _ {
         proc.working_dir.lock().clone()
     } else {
         inner
@@ -331,13 +332,11 @@ pub fn mkdirat(fd: usize, path: VirtAddr, mode: uapi::mode_t) -> EResult<usize> 
             .ok_or(Errno::ENOTDIR)?
             .clone()
     };
-    vfs::mknod(
+    vfs::mkdir(
         proc.root_dir.lock().clone(),
         parent,
         v.as_bytes(),
-        NodeType::Directory,
         Mode::from_bits(mode).ok_or(Errno::EINVAL)?,
-        None,
         &proc.identity.lock(),
     )?;
 
@@ -395,16 +394,16 @@ pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> EResult<usize> {
     let mut proc_inner = proc.open_files.lock();
 
     match cmd as _ {
-        uapi::F_DUPFD => {
+        F_DUPFD => {
             let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
             proc_inner.open_file(file, arg).ok_or(Errno::EMFILE)
         }
-        uapi::F_DUPFD_CLOEXEC => {
+        F_DUPFD_CLOEXEC => {
             let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
             file.close_on_exec.store(true, Ordering::Release);
             proc_inner.open_file(file, arg).ok_or(Errno::EMFILE)
         }
-        uapi::F_GETFD => {
+        F_GETFD => {
             let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
             let mut flags = OpenFlags::empty();
             flags.set(
@@ -413,53 +412,53 @@ pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> EResult<usize> {
             );
             Ok(flags.bits() as _)
         }
-        uapi::F_SETFD => Ok(0),
-        uapi::F_GETFL => {
+        F_SETFD => Ok(0),
+        F_GETFL => {
             let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
             let flags = *file.file.flags.lock();
             Ok(flags.bits() as _)
         }
-        uapi::F_SETFL => {
+        F_SETFL => {
             warn!("fcntl F_SETFL is a stub!");
             Ok(0)
         }
-        uapi::F_GETOWN => {
+        F_GETOWN => {
             warn!("fcntl F_GETOWN is a stub!");
             Ok(0)
         }
-        uapi::F_SETOWN => {
+        F_SETOWN => {
             warn!("fcntl F_SETOWN is a stub!");
             Ok(0)
         }
-        uapi::F_GETOWN_EX => {
+        F_GETOWN_EX => {
             warn!("fcntl F_GETOWN_EX is a stub!");
             Ok(0)
         }
-        uapi::F_SETOWN_EX => {
+        F_SETOWN_EX => {
             warn!("fcntl F_SETOWN_EX is a stub!");
             Ok(0)
         }
-        uapi::F_GETLK => {
+        F_GETLK => {
             warn!("fcntl F_GETLK is a stub!");
             Ok(0)
         }
-        uapi::F_SETLK => {
+        F_SETLK => {
             warn!("fcntl F_SETLK is a stub!");
             Ok(0)
         }
-        uapi::F_SETLKW => {
+        F_SETLKW => {
             warn!("fcntl F_SETLKW is a stub!");
             Ok(0)
         }
-        uapi::F_OFD_GETLK => {
+        F_OFD_GETLK => {
             warn!("fcntl F_OFD_GETLK is a stub!");
             Ok(0)
         }
-        uapi::F_OFD_SETLK => {
+        F_OFD_SETLK => {
             warn!("fcntl F_OFD_SETLK is a stub!");
             Ok(0)
         }
-        uapi::F_OFD_SETLKW => {
+        F_OFD_SETLKW => {
             warn!("fcntl F_OFD_SETLKW is a stub!");
             Ok(0)
         }
@@ -472,8 +471,8 @@ pub fn pselect(
     read_fds: VirtAddr,
     write_fds: VirtAddr,
     except_fds: VirtAddr,
-    timeout: UserPtr<uapi::timespec>,
-    sigmask: UserPtr<uapi::sigset_t>,
+    timeout: UserPtr<timespec>,
+    sigmask: UserPtr<sigset_t>,
 ) -> EResult<usize> {
     let _ = (except_fds, sigmask, timeout, write_fds, read_fds, fd);
     // TODO
@@ -521,7 +520,7 @@ pub fn faccessat(fd: usize, path: VirtAddr, amode: usize, flag: usize) -> EResul
 
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.open_files.lock();
-    let parent = if fd == uapi::AT_FDCWD as _ {
+    let parent = if fd == AT_FDCWD as _ {
         proc.working_dir.lock().clone()
     } else {
         proc_inner
@@ -541,7 +540,7 @@ pub fn faccessat(fd: usize, path: VirtAddr, amode: usize, flag: usize) -> EResul
         &proc.identity.lock(),
         LookupFlags::MustExist
             | LookupFlags::FollowSymlinks
-            | if flag as u32 & uapi::AT_EACCESS != 0 {
+            | if flag as u32 & AT_EACCESS != 0 {
                 LookupFlags::empty()
             } else {
                 LookupFlags::UseRealId
