@@ -3,6 +3,7 @@
 
 pub mod archctl;
 pub mod dirent;
+pub mod drm;
 pub mod epoll;
 pub mod errno;
 pub mod fcntl;
