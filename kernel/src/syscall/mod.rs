@@ -92,7 +92,7 @@ pub fn dispatch(
         numbers::READDIR => sys_unimp!("readdir", Err(Errno::ENOSYS)),
         numbers::GETCWD => vfs::getcwd(a0.into(), a1),
         numbers::CHDIR => vfs::chdir(a0.into()),
-        numbers::FCHDIR => sys_unimp!("fchdir", Err(Errno::ENOSYS)),
+        numbers::FCHDIR => vfs::fchdir(a0),
         numbers::MKDIRAT => sys_unimp!("mkdirat", vfs::mkdirat(a0, a1.into(), a2 as _)),
         numbers::RMDIRAT => sys_unimp!("rmdirat", Err(Errno::ENOSYS)),
         numbers::GETDENTS => sys_unimp!("getdents", vfs::getdents(a0, a1.into(), a2)),
@@ -176,7 +176,7 @@ pub fn dispatch(
         numbers::FUTEX_WAKE => sys_unimp!("futex_wake", Ok(0)),
 
         // Time
-        numbers::TIMER_CREATE => sys_unimp!("timer_create", Err(Errno::ENOSYS)),
+        numbers::TIMER_CREATE => sys_unimp!("timer_create", Ok(0)),
         numbers::TIMER_SET => sys_unimp!("timer_set", Err(Errno::ENOSYS)),
         numbers::TIMER_DELETE => sys_unimp!("timer_delete", Err(Errno::ENOSYS)),
         numbers::ITIMER_GET => sys_unimp!("itimer_get", Err(Errno::ENOSYS)),

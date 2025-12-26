@@ -362,6 +362,15 @@ pub fn chdir(path: VirtAddr) -> EResult<usize> {
     Ok(0)
 }
 
+pub fn fchdir(fd: usize) -> EResult<usize> {
+    let proc = Scheduler::get_current().get_process();
+    let mut cwd = proc.working_dir.lock();
+    let dir = proc.open_files.lock().get_fd(fd).ok_or(Errno::EBADF)?;
+    *cwd = dir.file.path.as_ref().cloned().ok_or(Errno::ENOTDIR)?;
+
+    Ok(0)
+}
+
 pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
     let mut user_ptr = UserSlice::new(addr, len);
     let buf: &mut [u8] = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
