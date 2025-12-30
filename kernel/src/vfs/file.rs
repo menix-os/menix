@@ -3,6 +3,7 @@ use crate::{
     memory::{AddressSpace, VirtAddr, VmFlags},
     posix::errno::{EResult, Errno},
     process::Identity,
+    uapi,
     util::mutex::Mutex,
     vfs::{
         cache::{LookupFlags, PathNode},

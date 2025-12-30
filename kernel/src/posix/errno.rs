@@ -1,5 +1,5 @@
+use crate::uapi::errno::*;
 use alloc::alloc::AllocError;
-use uapi::errno::*;
 
 /// Encapsulates an Errno value as a result.
 pub type EResult<T> = Result<T, Errno>;

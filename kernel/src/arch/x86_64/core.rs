@@ -12,6 +12,7 @@ use crate::{
     clock,
     percpu::{CpuData, LD_PERCPU_START},
     posix::errno::{EResult, Errno},
+    uapi,
 };
 use core::{
     arch::{asm, naked_asm},

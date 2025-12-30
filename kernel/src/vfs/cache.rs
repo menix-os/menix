@@ -2,12 +2,12 @@ use super::inode::INode;
 use crate::{
     posix::errno::{EResult, Errno},
     process::Identity,
+    uapi::limits::PATH_MAX,
     util::mutex::spin::SpinMutex,
     vfs::{file::OpenFlags, fs::Mount, inode::NodeOps},
 };
 use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc, vec::Vec};
 use core::{fmt::Debug, hint::unlikely};
-use uapi::limits::PATH_MAX;
 
 #[derive(Default)]
 pub enum EntryState {

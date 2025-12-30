@@ -1,4 +1,4 @@
-use crate::fcntl::{O_CLOEXEC, O_NONBLOCK};
+use super::fcntl::{O_CLOEXEC, O_NONBLOCK};
 
 pub const EPOLL_NONBLOCK: u32 = O_NONBLOCK;
 pub const EPOLL_CLOEXEC: u32 = O_CLOEXEC;

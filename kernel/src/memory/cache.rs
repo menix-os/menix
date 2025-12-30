@@ -5,6 +5,7 @@ use crate::{
         pmm::{AllocFlags, KernelAlloc, PageAllocator},
     },
     posix::errno::EResult,
+    uapi,
     util::mutex::spin::SpinMutex,
 };
 use alloc::{collections::btree_map::BTreeMap, sync::Arc};

@@ -7,6 +7,7 @@ use crate::{
     memory::{AddressSpace, PagedMemoryObject, PhysAddr, VirtAddr, VmFlags, cache::MemoryObject},
     posix::errno::{EResult, Errno},
     process::Identity,
+    uapi::{self, statvfs::statvfs},
     util::mutex::{Mutex, spin::SpinMutex},
     vfs::{
         PathNode,
@@ -23,7 +24,6 @@ use core::{
     slice,
     sync::atomic::{AtomicU32, AtomicU64, AtomicUsize, Ordering},
 };
-use uapi::statvfs::statvfs;
 
 #[derive(Debug)]
 struct TmpFs;

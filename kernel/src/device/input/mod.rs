@@ -1,5 +1,6 @@
 use crate::{
     posix::errno::EResult,
+    uapi,
     vfs::{File, file::FileOps},
 };
 

@@ -11,6 +11,7 @@ pub use file::File;
 pub use fs::Mount;
 pub use fs::MountFlags;
 
+use crate::uapi;
 use crate::{
     memory::{
         PagedMemoryObject, VirtAddr,

@@ -1,13 +1,12 @@
 use crate::{
     arch::sched::Context,
-    {
-        memory::{VirtAddr, user::UserPtr},
-        percpu::CpuData,
-        posix::errno::{EResult, Errno},
-        process::ProcessState,
-        sched::Scheduler,
-        vfs::{File, file::OpenFlags, inode::Mode},
-    },
+    memory::{VirtAddr, user::UserPtr},
+    percpu::CpuData,
+    posix::errno::{EResult, Errno},
+    process::ProcessState,
+    sched::Scheduler,
+    uapi,
+    vfs::{File, file::OpenFlags, inode::Mode},
 };
 use alloc::vec::Vec;
 use core::ffi::{CStr, c_char};

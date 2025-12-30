@@ -1,12 +1,11 @@
 use crate::{
     arch::virt::get_page_size,
-    {
-        memory::{VirtAddr, virt::VmFlags},
-        posix::errno::{EResult, Errno},
-        sched::Scheduler,
-        util::align_up,
-        vfs::file::MmapFlags,
-    },
+    memory::{VirtAddr, virt::VmFlags},
+    posix::errno::{EResult, Errno},
+    sched::Scheduler,
+    uapi,
+    util::align_up,
+    vfs::file::MmapFlags,
 };
 use core::num::NonZeroUsize;
 use uapi::mman::*;

@@ -4,6 +4,7 @@ use crate::{
     memory::{VirtAddr, user::UserPtr},
     posix::errno::{EResult, Errno},
     process::{Identity, PROCESS_STAGE, Process},
+    uapi,
     util::mutex::irq::IrqMutex,
     vfs::{
         self, File, VFS_DEV_MOUNT_STAGE,
@@ -13,7 +14,6 @@ use crate::{
 };
 use alloc::{string::String, sync::Arc};
 use core::fmt::Write;
-use uapi::termios::winsize;
 
 #[derive(Debug)]
 struct Console;
@@ -33,8 +33,8 @@ impl FileOps for Console {
     fn ioctl(&self, _: &File, request: usize, arg: VirtAddr) -> EResult<usize> {
         match request as _ {
             uapi::ioctls::TIOCGWINSZ => {
-                let mut arg: UserPtr<winsize> = UserPtr::new(arg);
-                arg.write(winsize {
+                let mut arg = UserPtr::new(arg);
+                arg.write(uapi::termios::winsize {
                     ws_row: 25,
                     ws_col: 80,
                     ..Default::default()

@@ -35,8 +35,8 @@ pub const RLIM_NLIMITS: u32 = RLIMIT_NLIMITS;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct rusage {
-    pub ru_utime: crate::time::timeval,
-    pub ru_stime: crate::time::timeval,
+    pub ru_utime: super::time::timeval,
+    pub ru_stime: super::time::timeval,
     pub ru_maxrss: isize,
     pub ru_ixrss: isize,
     pub ru_idrss: isize,

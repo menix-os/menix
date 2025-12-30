@@ -6,11 +6,9 @@ use crate::{
         utsname::UTSNAME,
     },
     sched::Scheduler,
+    uapi::{self, reboot::*, time::*, utsname::*},
 };
 use alloc::string::String;
-use uapi::reboot::*;
-use uapi::time::*;
-use uapi::utsname::*;
 pub fn archctl(cmd: usize, arg: usize) -> EResult<usize> {
     crate::arch::core::archctl(cmd, arg)
 }

@@ -1,4 +1,4 @@
-use uapi::signal::*;
+use crate::uapi::signal::*;
 
 #[repr(u32)]
 pub enum Signal {

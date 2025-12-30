@@ -1,6 +1,7 @@
 use crate::{
     memory::{VirtAddr, user::UserPtr},
     posix::errno::{EResult, Errno},
+    uapi,
     util::{event::Event, mutex::spin::SpinMutex, ring::RingBuffer},
     vfs::{
         File,

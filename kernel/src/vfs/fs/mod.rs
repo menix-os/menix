@@ -5,6 +5,7 @@ mod tmpfs;
 use super::inode::INode;
 use crate::{
     posix::errno::{EResult, Errno},
+    uapi::{mount::*, statvfs::*},
     util::mutex::spin::SpinMutex,
     vfs::{
         PathNode,
@@ -15,7 +16,6 @@ use crate::{
 };
 use alloc::{collections::btree_map::BTreeMap, string::String, sync::Arc};
 use core::fmt::Debug;
-use uapi::{mount::*, statvfs::*};
 
 /// A mounted file system.
 #[derive(Debug)]

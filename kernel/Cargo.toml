@@ -11,7 +11,6 @@ bindgen = "0.72.0"
 
 [dependencies]
 initgraph = { path = "crates/initgraph" }
-uapi = { path = "../bindings/uapi" }
 uacpi-sys = { path = "../bindings/uacpi" }
 flanterm-sys = { path = "../bindings/flanterm" }
 bitflags = "2.9.0"

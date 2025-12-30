@@ -1,4 +1,4 @@
-use uapi::resource::*;
+use crate::uapi::resource::*;
 
 #[repr(u32)]
 pub enum Resource {

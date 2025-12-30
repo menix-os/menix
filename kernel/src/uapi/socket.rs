@@ -1,4 +1,4 @@
-use crate::uio::iovec;
+use super::uio::iovec;
 
 pub type socklen_t = u32;
 pub type sa_family_t = u32;
@@ -54,9 +54,9 @@ pub struct sockaddr_un {
 #[repr(C)]
 #[derive(Clone, Copy, Debug)]
 pub struct ucred {
-    pub pid: crate::pid_t,
-    pub uid: crate::uid_t,
-    pub gid: crate::gid_t,
+    pub pid: super::pid_t,
+    pub uid: super::uid_t,
+    pub gid: super::gid_t,
 }
 
 pub const SCM_RIGHTS: u32 = 1;

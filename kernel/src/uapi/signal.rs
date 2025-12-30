@@ -112,7 +112,7 @@ pub struct sigevent {
     pub sigev_signo: i32,
     pub sigev_value: sigval,
     pub sigev_notify_function: Option<fn(sigval)>,
-    pub sigev_notify_attributes: *mut crate::pthread_attr_t,
+    pub sigev_notify_attributes: *mut super::pthread_attr_t,
 }
 
 #[repr(C)]
@@ -121,8 +121,8 @@ pub struct siginfo_t {
     pub si_signo: i32,
     pub si_code: i32,
     pub si_errno: i32,
-    pub si_pid: crate::pid_t,
-    pub si_uid: crate::uid_t,
+    pub si_pid: super::pid_t,
+    pub si_uid: super::uid_t,
     pub si_addr: *mut (),
     pub si_status: i32,
     pub si_value: sigval,

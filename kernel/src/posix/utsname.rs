@@ -1,5 +1,4 @@
-use crate::util::mutex::spin::SpinMutex;
-use uapi::utsname::utsname;
+use crate::{uapi::utsname::utsname, util::mutex::spin::SpinMutex};
 
 const SYSNAME: &[u8] = b"Menix";
 const NODENAME: &[u8] = b"localhost";

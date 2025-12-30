@@ -4,11 +4,10 @@ pub mod mmu;
 use super::{VirtAddr, pmm::AllocFlags};
 use crate::{
     arch::{self},
-    {
-        memory::{cache::MemoryObject, pmm::KernelAlloc, virt::mmu::PageTable},
-        posix::errno::{EResult, Errno},
-        util::{divide_up, once::Once},
-    },
+    memory::{cache::MemoryObject, pmm::KernelAlloc, virt::mmu::PageTable},
+    posix::errno::{EResult, Errno},
+    uapi,
+    util::{divide_up, once::Once},
 };
 use alloc::{collections::btree_set::BTreeSet, sync::Arc, vec::Vec};
 use bitflags::bitflags;

@@ -2,6 +2,7 @@ use super::fs::SuperBlock;
 use crate::{
     posix::errno::{EResult, Errno},
     process::Identity,
+    uapi::{self, stat::*, time::timespec},
     util::mutex::spin::SpinMutex,
     vfs::{
         Entry, PathNode,
@@ -10,7 +11,6 @@ use crate::{
 };
 use alloc::sync::Arc;
 use core::{any::Any, fmt::Debug};
-use uapi::{stat::*, time::timespec};
 
 /// A standalone file system node, also commonly referred to as a vnode.
 /// It is used to represent a file or sized memory in a generic way.
