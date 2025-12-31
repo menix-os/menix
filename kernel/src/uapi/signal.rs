@@ -1,3 +1,5 @@
+use crate::memory::UserPtr;
+
 pub const POLL_IN: u32 = 1;
 pub const POLL_OUT: u32 = 2;
 pub const POLL_MSG: u32 = 3;
@@ -102,7 +104,7 @@ pub type sigset_t = u64;
 #[derive(Clone, Copy)]
 pub union sigval {
     pub sival_int: i32,
-    pub sival_ptr: *mut (),
+    pub sival_ptr: UserPtr<()>,
 }
 
 #[repr(C)]
@@ -111,8 +113,8 @@ pub struct sigevent {
     pub sigev_notify: i32,
     pub sigev_signo: i32,
     pub sigev_value: sigval,
-    pub sigev_notify_function: Option<fn(sigval)>,
-    pub sigev_notify_attributes: *mut super::pthread_attr_t,
+    pub sigev_notify_function: Option<extern "C" fn(sigval)>,
+    pub sigev_notify_attributes: UserPtr<super::pthread_attr_t>,
 }
 
 #[repr(C)]
@@ -123,7 +125,7 @@ pub struct siginfo_t {
     pub si_errno: i32,
     pub si_pid: super::pid_t,
     pub si_uid: super::uid_t,
-    pub si_addr: *mut (),
+    pub si_addr: UserPtr<()>,
     pub si_status: i32,
     pub si_value: sigval,
 }
@@ -131,7 +133,7 @@ pub struct siginfo_t {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct stack_t {
-    pub ss_sp: *mut (),
+    pub ss_sp: UserPtr<()>,
     pub ss_size: usize,
     pub ss_flags: i32,
 }
@@ -139,8 +141,8 @@ pub struct stack_t {
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct sigaction {
-    pub sa_sigaction: Option<fn(i32, *mut siginfo_t, *mut ())>,
-    pub sa_restorer: Option<fn()>,
+    pub sa_sigaction: Option<extern "C" fn(i32, UserPtr<siginfo_t>, UserPtr<()>)>,
+    pub sa_restorer: Option<extern "C" fn()>,
     pub sa_mask: sigset_t,
     pub sa_flags: i32,
 }

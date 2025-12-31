@@ -1,4 +1,5 @@
 use super::uio::iovec;
+use crate::memory::UserPtr;
 
 pub type socklen_t = u32;
 pub type sa_family_t = u32;
@@ -6,11 +7,11 @@ pub type sa_family_t = u32;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct msghdr {
-    pub msg_name: *mut (),
+    pub msg_name: UserPtr<()>,
     pub msg_namelen: socklen_t,
-    pub msg_iov: *mut iovec,
+    pub msg_iov: UserPtr<iovec>,
     pub msg_iovlen: i32,
-    pub msg_control: *mut (),
+    pub msg_control: UserPtr<()>,
     pub msg_controllen: socklen_t,
     pub msg_flags: i32,
 }

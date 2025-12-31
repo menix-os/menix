@@ -4,10 +4,15 @@ use super::VirtAddr;
 use core::marker::PhantomData;
 
 /// Provides safe access to a single structure from userland.
+#[repr(transparent)]
+#[derive(Clone, Copy)]
 pub struct UserPtr<T: Sized + Copy> {
     addr: VirtAddr,
     _p: PhantomData<T>,
 }
+
+// A UserPtr is always transparent and equal in size to a regular pointer.
+static_assert!(size_of::<UserPtr<()>>() == size_of::<*const ()>());
 
 impl<T: Sized + Copy> UserPtr<T> {
     pub const fn new(addr: VirtAddr) -> Self {
