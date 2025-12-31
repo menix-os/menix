@@ -1,19 +1,13 @@
-use super::{
+use crate::{
+    arch,
     memory::{
         PhysAddr, VirtAddr,
         pmm::{AllocFlags, KernelAlloc, PageAllocator},
-        virt::VmFlags,
+        virt::{self, KERNEL_MMAP_BASE_ADDR, VmFlags, mmu::PageTable},
     },
-    util::mutex::spin::SpinMutex,
-    util::{align_down, align_up},
+    posix::errno::{EResult, Errno},
+    util::{align_down, align_up, mutex::spin::SpinMutex},
     vfs::exec::elf::{self, ElfHashTable, ElfHdr, ElfPhdr, ElfRela, ElfSym},
-};
-use crate::{
-    arch,
-    {
-        memory::virt::{self, KERNEL_MMAP_BASE_ADDR, mmu::PageTable},
-        posix::errno::{EResult, Errno},
-    },
 };
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{ffi::CStr, slice, sync::atomic::Ordering};
@@ -434,6 +428,7 @@ macro_rules! define_string_section {
     };
 }
 
+/// Used to declare a crate as a module. The function passed to the macro is used as an entry point when the module is loaded.
 #[macro_export]
 macro_rules! module {
     ($desc: expr, $author: expr, $entry: ident) => {

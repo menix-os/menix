@@ -109,7 +109,10 @@ pub(super) fn setup_core(context: &'static CpuData) {
                 | (offset_of!(gdt::Gdt, kernel64_code) as u64) << 32,
         );
         // Set syscall entry point.
-        super::asm::wrmsr(consts::MSR_LSTAR, irq::amd64_syscall_stub as u64);
+        super::asm::wrmsr(
+            consts::MSR_LSTAR,
+            irq::amd64_syscall_stub as *const () as u64,
+        );
         super::asm::wrmsr(
             consts::MSR_SFMASK,
             (consts::RFLAGS_AC | consts::RFLAGS_DF | consts::RFLAGS_IF) as u64,

@@ -6,7 +6,6 @@
 #![feature(slice_split_once)]
 #![feature(bool_to_result)]
 #![feature(box_into_inner)]
-#![feature(slice_as_array)]
 #![feature(const_index)]
 #![feature(const_trait_impl)]
 #![no_builtins]

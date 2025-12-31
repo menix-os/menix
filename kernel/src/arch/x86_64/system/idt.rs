@@ -34,7 +34,7 @@ pub fn init() {
     // Set all gates to their respective handlers.
     unsafe {
         seq!(N in 0..256 {
-            (*idt).routines[N] = IdtEntry::new((crate::arch::internal::irq::interrupt_stub~N as usize).into(), 0, GateType::Interrupt);
+            (*idt).routines[N] = IdtEntry::new((crate::arch::internal::irq::interrupt_stub~N as *const () as usize).into(), 0, GateType::Interrupt);
         });
     }
 }

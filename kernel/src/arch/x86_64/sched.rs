@@ -212,7 +212,7 @@ pub(in crate::arch) fn init_task(
         (*frame).rbx = entry as u64;
         (*frame).r12 = arg1 as u64;
         (*frame).r13 = arg2 as u64;
-        (*frame).rip = task_entry_thunk as u64;
+        (*frame).rip = task_entry_thunk as *const () as u64;
         context.rsp = frame as u64;
 
         if is_user {
