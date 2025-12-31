@@ -10,8 +10,6 @@ use crate::{
     },
 };
 use alloc::boxed::Box;
-#[allow(unused)]
-use alloc::vec;
 use core::{
     ffi::{c_char, c_void},
     ptr::null_mut,
