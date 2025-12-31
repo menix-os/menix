@@ -4,6 +4,7 @@ pub mod archctl;
 pub mod dirent;
 pub mod errno;
 pub mod fcntl;
+pub mod input;
 pub mod ioctls;
 pub mod limits;
 pub mod mman;
