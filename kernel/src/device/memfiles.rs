@@ -1,11 +1,12 @@
 use crate::{
     device::CharDevice,
     posix::errno::{EResult, Errno},
-    process::{Identity, PROCESS_STAGE, Process},
+    process::PROCESS_STAGE,
     vfs::{
-        self, File, VFS_DEV_MOUNT_STAGE,
+        File,
         file::FileOps,
-        inode::{Mode, NodeType},
+        fs::devtmpfs::{self, DEVTMPFS_STAGE},
+        inode::Mode,
     },
 };
 use alloc::sync::Arc;
@@ -71,43 +72,30 @@ impl CharDevice for FullFile {
 
 #[initgraph::task(
     name = "generic.device.memfiles",
-    depends = [PROCESS_STAGE, VFS_DEV_MOUNT_STAGE]
+    depends = [PROCESS_STAGE, DEVTMPFS_STAGE]
 )]
 fn MEMFILES_STAGE() {
-    let proc = Process::get_kernel();
-    let root = proc.root_dir.lock();
-    let cwd = proc.working_dir.lock();
-
-    vfs::mknod(
-        root.clone(),
-        cwd.clone(),
-        b"/dev/null",
-        NodeType::CharacterDevice,
+    devtmpfs::register_device(
+        b"null",
+        Arc::new(NullFile),
         Mode::from_bits_truncate(0o666),
-        Some(Arc::new(NullFile)),
-        Identity::get_kernel(),
+        false,
     )
     .expect("Unable to create /dev/null");
 
-    vfs::mknod(
-        root.clone(),
-        cwd.clone(),
-        b"/dev/full",
-        NodeType::CharacterDevice,
+    devtmpfs::register_device(
+        b"full",
+        Arc::new(FullFile),
         Mode::from_bits_truncate(0o666),
-        Some(Arc::new(FullFile)),
-        Identity::get_kernel(),
+        false,
     )
     .expect("Unable to create /dev/full");
 
-    vfs::mknod(
-        root.clone(),
-        cwd.clone(),
-        b"/dev/zero",
-        NodeType::CharacterDevice,
+    devtmpfs::register_device(
+        b"zero",
+        Arc::new(ZeroFile),
         Mode::from_bits_truncate(0o666),
-        Some(Arc::new(ZeroFile)),
-        Identity::get_kernel(),
+        false,
     )
     .expect("Unable to create /dev/zero");
 }
