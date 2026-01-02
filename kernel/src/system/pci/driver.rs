@@ -67,6 +67,16 @@ impl PciVariant {
         return self;
     }
 
+    pub const fn vendor(mut self, vendor: u16) -> Self {
+        self.vendor = Some(vendor);
+        return self;
+    }
+
+    pub const fn device(mut self, device: u16) -> Self {
+        self.device = Some(device);
+        return self;
+    }
+
     pub const fn with_data(mut self, data: usize) -> Self {
         self.data = data;
         return self;
