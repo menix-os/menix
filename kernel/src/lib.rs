@@ -8,6 +8,7 @@
 #![feature(box_into_inner)]
 #![feature(const_index)]
 #![feature(const_trait_impl)]
+#![feature(const_cmp)]
 #![no_builtins]
 // Clippy lints
 #![allow(clippy::needless_return)]

@@ -22,6 +22,14 @@ impl<T: Sized + Copy> UserPtr<T> {
         }
     }
 
+    /// Creates a new pointer with an offset as a multiple of the underlying type.
+    pub const fn offset(self, offset: usize) -> Self {
+        Self {
+            addr: VirtAddr::new(self.addr.0 + (offset * size_of::<T>())),
+            _p: self._p,
+        }
+    }
+
     pub fn read(&self) -> Option<T> {
         // TODO: Mark the start of a user pointer access that can be checked in the PF handler.
         Some(unsafe { self.addr.as_ptr::<T>().read_unaligned() })
