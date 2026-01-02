@@ -1,4 +1,3 @@
-use crate::uapi::{fcntl::*, limits::PATH_MAX, mode_t, signal::sigset_t, stat::*, time::timespec};
 use crate::{
     memory::{
         VirtAddr,
@@ -6,6 +5,15 @@ use crate::{
     },
     posix::errno::{EResult, Errno},
     sched::Scheduler,
+    uapi::{
+        fcntl::*,
+        limits::PATH_MAX,
+        mode_t,
+        poll::{POLLERR, POLLNVAL, pollfd},
+        signal::sigset_t,
+        stat::*,
+        time::timespec,
+    },
     vfs::{
         self, File, PathNode,
         cache::LookupFlags,
@@ -475,17 +483,76 @@ pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> EResult<usize> {
     }
 }
 
+pub fn ppoll(
+    fds_ptr: VirtAddr,
+    nfds: usize,
+    timeout_ptr: VirtAddr,
+    sigmask_ptr: VirtAddr,
+) -> EResult<usize> {
+    // Read the pollfd array from userspace
+    let mut fds_slice = UserSlice::new(fds_ptr, nfds * core::mem::size_of::<pollfd>());
+    let fds_bytes = fds_slice.as_mut_slice().ok_or(Errno::EFAULT)?;
+    let fds =
+        unsafe { core::slice::from_raw_parts_mut(fds_bytes.as_mut_ptr() as *mut pollfd, nfds) };
+
+    let proc = Scheduler::get_current().get_process();
+    let proc_inner = proc.open_files.lock();
+
+    let mut ready_count = 0;
+
+    // Poll each file descriptor
+    for poll_entry in fds.iter_mut() {
+        let fd = poll_entry.fd;
+        poll_entry.revents = 0;
+
+        if fd < 0 {
+            // Negative fd means ignore this entry
+            continue;
+        }
+
+        // Get the file
+        let file_desc = match proc_inner.get_fd(fd as usize) {
+            Some(f) => f,
+            None => {
+                // Invalid fd - set POLLNVAL
+                poll_entry.revents = POLLNVAL;
+                ready_count += 1;
+                continue;
+            }
+        };
+
+        // Call the file's poll method
+        match file_desc.file.poll(poll_entry.events) {
+            Ok(revents) => {
+                poll_entry.revents = revents as i16;
+                if revents != 0 {
+                    ready_count += 1;
+                }
+            }
+            Err(_) => {
+                poll_entry.revents = POLLERR;
+                ready_count += 1;
+            }
+        }
+    }
+
+    // For now, we only support non-blocking poll (ignore timeout and sigmask)
+    // TODO: Implement blocking with timeout
+    let _ = (timeout_ptr, sigmask_ptr);
+    Ok(ready_count)
+}
+
 pub fn pselect(
-    fd: usize,
+    nfds: usize,
     read_fds: VirtAddr,
     write_fds: VirtAddr,
     except_fds: VirtAddr,
     timeout: UserPtr<timespec>,
     sigmask: UserPtr<sigset_t>,
 ) -> EResult<usize> {
-    let _ = (except_fds, sigmask, timeout, write_fds, read_fds, fd);
+    let _ = (except_fds, sigmask, timeout, write_fds, read_fds, nfds);
     // TODO
-    Ok(1)
+    Err(Errno::ENOSYS)
 }
 
 pub fn pipe(mut filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
