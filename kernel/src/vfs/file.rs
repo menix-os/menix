@@ -144,7 +144,7 @@ pub trait FileOps {
     }
 
     /// Polls this file with a mask.
-    fn poll(&self, file: &File, mask: u16) -> EResult<u16> {
+    fn poll(&self, file: &File, mask: i16) -> EResult<i16> {
         _ = (file, mask);
         Ok(mask)
     }
@@ -351,7 +351,7 @@ impl File {
         self.ops.write(self, buf, offset)
     }
 
-    pub fn poll(&self, mask: u16) -> EResult<u16> {
+    pub fn poll(&self, mask: i16) -> EResult<i16> {
         self.ops.poll(self, mask)
     }
 

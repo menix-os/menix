@@ -15,7 +15,7 @@ pub type nfds_t = isize;
 #[repr(C)]
 #[derive(Clone, Copy)]
 pub struct pollfd {
-    fd: i32,
-    events: i16,
-    revents: i16,
+    pub fd: i32,
+    pub events: i16,
+    pub revents: i16,
 }

@@ -132,8 +132,9 @@ impl FileOps for PipeBuffer {
         }
     }
 
-    fn poll(&self, _file: &File, _mask: u16) -> EResult<u16> {
-        todo!()
+    fn poll(&self, _file: &File, _mask: i16) -> EResult<i16> {
+        // TODO
+        Err(Errno::ENOSYS)
     }
 
     fn ioctl(&self, _file: &File, request: usize, argp: VirtAddr) -> EResult<usize> {

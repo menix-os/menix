@@ -152,7 +152,7 @@ impl<T: BlockDevice> FileOps for T {
         self.handle_ioctl(file, request, arg)
     }
 
-    fn poll(&self, file: &File, mask: u16) -> EResult<u16> {
+    fn poll(&self, file: &File, mask: i16) -> EResult<i16> {
         _ = (file, mask);
         Ok(mask)
     }
