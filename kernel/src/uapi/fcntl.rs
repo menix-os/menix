@@ -66,8 +66,7 @@ pub const AT_SYMLINK_NOFOLLOW: u32 = 1 << 8;
 pub const AT_REMOVEDIR: u32 = 1 << 9;
 pub const AT_SYMLINK_FOLLOW: u32 = 1 << 10;
 pub const AT_EACCESS: u32 = 1 << 11;
-pub const AT_NO_AUTOMOUNT: u32 = 1 << 12;
-pub const AT_EMPTY_PATH: u32 = 1 << 13;
+pub const AT_EMPTY_PATH: u32 = 1 << 12;
 
 #[repr(C)]
 #[derive(Clone, Copy)]
