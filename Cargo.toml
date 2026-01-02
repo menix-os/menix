@@ -1,6 +1,13 @@
 [workspace]
 resolver = "3"
-members = ["kernel", "bindings/*", "drivers/block/*", "drivers/serial/*"]
+members = [
+    "kernel",
+    "bindings/*",
+    "drivers/common/*",
+    "drivers/block/*",
+    "drivers/serial/*",
+    "drivers/video/*",
+]
 
 [workspace.dependencies]
 menix = { path = "kernel" }
