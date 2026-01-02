@@ -6,6 +6,7 @@ use crate::{
 use core::slice;
 
 mod console;
+pub mod drm;
 pub mod input;
 mod memfiles;
 
