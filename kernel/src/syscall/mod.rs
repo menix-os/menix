@@ -185,7 +185,7 @@ pub fn dispatch(
         numbers::CLOCK_GETRES => sys_unimp!("clock_getres", Err(Errno::ENOSYS)),
 
         // Scheduling
-        numbers::SLEEP => sys_unimp!("sleep", Err(Errno::ENOSYS)),
+        numbers::SLEEP => system::sleep(a0.into(), a1.into()),
         numbers::YIELD => sys_unimp!("yield", Ok(0)),
         numbers::GETPRIORITY => sys_unimp!("getpriority", Err(Errno::ENOSYS)),
         numbers::SETPRIORITY => sys_unimp!("setpriority", Err(Errno::ENOSYS)),
