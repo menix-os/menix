@@ -105,7 +105,7 @@ pub fn dispatch(
         numbers::UNLINKAT => sys_unimp!("unlinkat", Err(Errno::ENOSYS)),
         numbers::READLINKAT => sys_unimp!("readlinkat", Err(Errno::ENOSYS)),
         numbers::FLOCK => sys_unimp!("flock", Err(Errno::ENOSYS)),
-        numbers::PPOLL => sys_unimp!("ppoll", Ok(0)),
+        numbers::PPOLL => vfs::ppoll(a0.into(), a1, a2.into(), a3.into()),
         numbers::DUP => vfs::dup(a0),
         numbers::DUP3 => vfs::dup3(a0, a1, a2),
         numbers::SYNC => sys_unimp!("sync", Err(Errno::ENOSYS)),
