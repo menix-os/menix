@@ -3,13 +3,14 @@ use crate::{
     log::GLOBAL_LOGGERS,
     memory::{VirtAddr, user::UserPtr},
     posix::errno::{EResult, Errno},
-    process::{Identity, PROCESS_STAGE, Process},
+    process::PROCESS_STAGE,
     uapi,
     util::mutex::irq::IrqMutex,
     vfs::{
-        self, File, VFS_DEV_MOUNT_STAGE,
+        File,
         file::FileOps,
-        inode::{Mode, NodeType},
+        fs::devtmpfs::{self, DEVTMPFS_STAGE},
+        inode::Mode,
     },
 };
 use alloc::{string::String, sync::Arc};
@@ -55,20 +56,14 @@ impl CharDevice for Console {
 
 #[initgraph::task(
     name = "generic.device.console",
-    depends = [PROCESS_STAGE, VFS_DEV_MOUNT_STAGE]
+    depends = [PROCESS_STAGE, DEVTMPFS_STAGE]
 )]
 fn CONSOLE_STAGE() {
-    let proc = Process::get_kernel();
-    let root = proc.root_dir.lock();
-    let cwd = proc.working_dir.lock();
-    vfs::mknod(
-        root.clone(),
-        cwd.clone(),
-        b"/dev/console",
-        NodeType::CharacterDevice,
+    devtmpfs::register_device(
+        b"console",
+        Arc::new(Console),
         Mode::from_bits_truncate(0o666),
-        Some(Arc::new(Console)),
-        Identity::get_kernel(),
+        false,
     )
     .expect("Unable to create console");
 }

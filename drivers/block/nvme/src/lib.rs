@@ -8,12 +8,8 @@ use menix::{
     error, log,
     memory::{MmioView, PhysAddr},
     posix::errno::{EResult, Errno},
-    process::{Identity, Process},
     system::pci::{DeviceView, Driver, PciBar, PciVariant},
-    vfs::{
-        self,
-        inode::{Mode, NodeType},
-    },
+    vfs::{fs::devtmpfs::register_device, inode::Mode},
 };
 
 mod command;
@@ -72,17 +68,8 @@ fn probe(_: &PciVariant, view: DeviceView<'static>) -> EResult<()> {
 
     let nvme_id = NVME_COUNTER.fetch_add(1, Ordering::SeqCst);
     for ns in namespaces {
-        let kernel = Process::get_kernel();
-        let path = format!("/dev/nvme{}n{}", nvme_id, ns.get_id());
-        vfs::mknod(
-            kernel.root_dir.lock().clone(),
-            kernel.working_dir.lock().clone(),
-            path.as_bytes(),
-            NodeType::BlockDevice,
-            Mode::from_bits_truncate(0o666),
-            Some(ns),
-            Identity::get_kernel(),
-        )?;
+        let path = format!("nvme{}n{}", nvme_id, ns.get_id());
+        register_device(path.as_bytes(), ns, Mode::from_bits_truncate(0o660), true)?;
 
         log!(
             "Registered new block device: \"{}\" on {}",
