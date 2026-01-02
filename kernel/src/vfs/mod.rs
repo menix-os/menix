@@ -193,10 +193,10 @@ pub fn VFS_DEV_MOUNT_STAGE() {
     )
     .expect("Unable to create /dev");
 
-    // TODO
-    //*devtmpfs.mount_point.lock() = Some(PathNode {
-    //    mount: ,
-    //    entry: devdir,
-    //});
-    devdir.mounts.lock().push(devtmpfs);
+    devdir.mounts.lock().push(devtmpfs.clone());
+
+    *devtmpfs.mount_point.lock() = Some(PathNode {
+        mount: root.mount.clone(),
+        entry: devdir.clone(),
+    });
 }

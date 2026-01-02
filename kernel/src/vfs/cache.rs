@@ -148,7 +148,7 @@ impl PathNode {
 
         'again: loop {
             for child_mnt in entry.clone().mounts.lock().iter() {
-                if Arc::ptr_eq(child_mnt, &mount) {
+                if !Arc::ptr_eq(child_mnt, &mount) {
                     mount = child_mnt.clone();
                     entry = child_mnt.root.clone();
                     continue 'again;
