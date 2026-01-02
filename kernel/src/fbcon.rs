@@ -77,8 +77,6 @@ impl LoggerSink for FbCon {
     }
 }
 
-static BG_COLOR: u32 = 0x00111111;
-
 #[initgraph::task(
     name = "generic.fbcon",
     depends = [super::memory::MEMORY_STAGE],
@@ -87,6 +85,14 @@ pub fn FBCON_STAGE() {
     let Some(fb) = BootInfo::get().framebuffer.clone() else {
         return;
     };
+
+    if !BootInfo::get()
+        .command_line
+        .get_bool("fbcon")
+        .unwrap_or(false)
+    {
+        return;
+    }
 
     // Map the framebuffer in memory.
     let mem = PageTable::get_kernel()
@@ -123,7 +129,7 @@ pub fn FBCON_STAGE() {
             null_mut(),
             null_mut(),
             null_mut(),
-            (&raw const BG_COLOR) as *mut u32,
+            null_mut(),
             null_mut(),
             null_mut(),
             null_mut(),
