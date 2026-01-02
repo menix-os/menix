@@ -117,3 +117,13 @@ pub fn reboot(magic: u32, cmd: u32) -> EResult<usize> {
     }
     Ok(0)
 }
+
+pub fn sleep(request: VirtAddr, remainder: VirtAddr) -> EResult<usize> {
+    let request = UserPtr::<timespec>::new(request);
+    // TODO
+    let _remainder = UserPtr::<timespec>::new(remainder);
+
+    clock::block_ns(request.read().ok_or(Errno::EINVAL)?.tv_nsec as usize).unwrap();
+
+    Ok(0)
+}
