@@ -48,6 +48,12 @@ pub fn halt() -> ! {
     }
 }
 
+pub fn halt_others() {
+    loop {
+        wait_for_irq();
+    }
+}
+
 unsafe extern "C" {
     unsafe static LD_STACK_TOP: u8;
 }
