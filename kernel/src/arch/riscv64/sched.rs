@@ -4,10 +4,7 @@ use crate::{
     process::task::Task,
     util::mutex::irq::IrqGuard,
 };
-use core::{
-    arch::{asm, naked_asm},
-    mem::offset_of,
-};
+use core::{arch::naked_asm, mem::offset_of};
 
 #[repr(C)]
 #[derive(Debug, Default, Clone, Copy)]
@@ -150,6 +147,7 @@ pub unsafe extern "C" fn perform_switch(old_sp: *mut u64, new_sp: *mut u64) {
 }
 
 pub unsafe fn remote_reschedule(cpu: u32) {
+    let _ = cpu;
     todo!()
 }
 
@@ -167,7 +165,7 @@ pub fn init_task(
         (*frame).s0 = entry as u64;
         (*frame).s1 = arg1 as u64;
         (*frame).s2 = arg2 as u64;
-        (*frame).ra = task_entry_thunk as u64;
+        (*frame).ra = task_entry_thunk as *const () as u64;
         task.sp = frame as u64;
 
         if is_user {}
@@ -190,9 +188,11 @@ unsafe extern "C" fn task_entry_thunk() -> ! {
 }
 
 pub unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) {
+    let _ = (ip, sp);
     todo!()
 }
 
 pub unsafe fn jump_to_user_context(context: *mut Context) {
+    let _ = context;
     todo!()
 }
