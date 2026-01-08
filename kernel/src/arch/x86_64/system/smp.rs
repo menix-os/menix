@@ -8,7 +8,7 @@ use crate::{
                     DeliveryMode, DeliveryStatus, DestinationMode, IpiTarget, LAPIC, Level,
                     TriggerMode,
                 },
-                gdt::{GDT, Gdt},
+                gdt::{BASE_GDT, Gdt},
             },
         },
     },
@@ -263,7 +263,7 @@ fn start_ap(temp_cr3: u32, id: u32) {
 
     // Save our metadata to the trampoline.
     let info = InfoData {
-        gdt: GDT,
+        gdt: BASE_GDT,
         gdtr_limit: (size_of::<Gdt>() - 1) as u16,
         gdtr_base: (mem.value() + data_offset + offset_of!(InfoData, gdt)) as _,
         farjmp_offset: 0,

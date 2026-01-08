@@ -89,10 +89,8 @@ pub(super) fn setup_core(context: &'static CpuData) {
         super::asm::wrmsr(consts::MSR_FS_BASE, 0);
     }
 
-    let cpu = ARCH_DATA.get();
-
     // Load a GDT and TSS.
-    gdt::init(cpu);
+    gdt::init();
 
     // Load the IDT.
     // Note: The IDT itself is global, but still needs to be loaded for each CPU.
@@ -133,6 +131,8 @@ pub(super) fn setup_core(context: &'static CpuData) {
     cr0 &= !consts::CR0_EM; // Clear EM bit.
     cr0 |= consts::CR0_MP;
     cr4 |= consts::CR4_OSFXSR | consts::CR4_OSXMMEXCPT;
+
+    let cpu = ARCH_DATA.get();
 
     // XSAVE
     if cpuid1.ecx & consts::CPUID_1C_XSAVE != 0 {

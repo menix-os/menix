@@ -1,9 +1,7 @@
 use crate::{
-    arch::x86_64::{
-        ArchPerCpu,
-        consts::{CPL_KERNEL, CPL_USER, MSR_GS_BASE},
-    },
+    arch::x86_64::consts::{CPL_KERNEL, CPL_USER, MSR_GS_BASE},
     memory::virt::KERNEL_STACK_SIZE,
+    util::mutex::spin::SpinMutex,
 };
 use alloc::boxed::Box;
 use bitflags::bitflags;
@@ -251,7 +249,7 @@ impl TaskStateSegment {
     }
 }
 
-pub static GDT: Gdt = Gdt {
+pub const BASE_GDT: Gdt = Gdt {
     null: GdtDesc::new(0, 0, GdtAccess::None, GdtFlags::None),
     kernel32_code: GdtDesc::new(
         0xFFFFF,
@@ -329,9 +327,17 @@ pub static GDT: Gdt = Gdt {
     ),
 };
 
-pub fn init(cpu: &ArchPerCpu) {
-    let mut gdt = cpu.gdt.lock();
-    let mut tss = cpu.tss.lock();
+per_cpu! {
+    /// Processor local Global Descriptor Table.
+    /// The GDT refers to a different TSS every time, so unlike the IDT it has to exist for each processor.
+    pub static GDT: SpinMutex<Gdt> = SpinMutex::new(Gdt::new());
+
+    pub static TSS: SpinMutex<TaskStateSegment> = SpinMutex::new(TaskStateSegment::new());
+}
+
+pub fn init() {
+    let mut gdt = GDT.get().lock();
+    let mut tss = TSS.get().lock();
 
     // Allocate an initial stack for the TSS.
     // TODO: Use kernel stack struct.
@@ -339,8 +345,8 @@ pub fn init(cpu: &ArchPerCpu) {
     let val = Box::leak(stack).as_mut_ptr() as *mut u8 as u64 + KERNEL_STACK_SIZE as u64;
     tss.rsp0 = val;
 
-    *gdt = GDT;
-    gdt.tss.set_base(unsafe { cpu.tss.raw_inner() } as u64);
+    *gdt = BASE_GDT;
+    gdt.tss.set_base(unsafe { TSS.get().raw_inner() } as u64);
 
     // Construct a register to hold the GDT base and limit.
     let gdtr = GdtRegister {

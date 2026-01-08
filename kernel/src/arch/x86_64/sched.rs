@@ -9,7 +9,7 @@ use crate::{
         x86_64::{
             asm::{rdmsr, wrmsr},
             consts::{self},
-            system::apic::LAPIC,
+            system::{apic::LAPIC, gdt::TSS},
         },
     },
     memory::{
@@ -129,7 +129,7 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task, irq_gua
         let to_inner = (*to).inner.raw_inner().as_mut().unwrap();
 
         let cpu = ARCH_DATA.get();
-        cpu.tss.lock().rsp0 = (to_inner.kernel_stack + KERNEL_STACK_SIZE).value() as _;
+        TSS.get().lock().rsp0 = (to_inner.kernel_stack + KERNEL_STACK_SIZE).value() as _;
 
         if (*from).is_user() {
             let from_context = &mut from_inner.task_context;

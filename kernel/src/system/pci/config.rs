@@ -402,4 +402,5 @@ impl<'a> Capability<'a, MsiXCapability> {
     }
 }
 
+// TODO: Use a SpinMutex instead.
 pub static ACCESS: Once<Vec<Box<dyn Access>>> = Once::new();

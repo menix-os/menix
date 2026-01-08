@@ -1,3 +1,6 @@
+use crate::util::once::Once;
+use ::core::sync::atomic::AtomicBool;
+
 mod asm;
 mod consts;
 pub mod core;
@@ -6,24 +9,7 @@ pub mod sched;
 pub mod system;
 pub mod virt;
 
-use crate::{
-    arch::x86_64::system::idt::IDT_SIZE,
-    irq::IrqHandler,
-    util::{mutex::spin::SpinMutex, once::Once},
-};
-use ::core::sync::atomic::AtomicBool;
-use alloc::sync::Arc;
-use system::gdt::{Gdt, TaskStateSegment};
-
-#[derive(Debug)]
-#[repr(C)]
 pub struct ArchPerCpu {
-    /// Processor local Global Descriptor Table.
-    /// The GDT refers to a different TSS every time, so unlike the IDT it has to exist for each processor.
-    pub gdt: SpinMutex<Gdt>,
-    pub tss: SpinMutex<TaskStateSegment>,
-    /// IRQ mappings.
-    pub irq_handlers: SpinMutex<[Option<Arc<dyn IrqHandler>>; IDT_SIZE - 0x20]>,
     /// Size of the FPU.
     pub fpu_size: Once<usize>,
     /// Function called to save the FPU context.
@@ -31,17 +17,14 @@ pub struct ArchPerCpu {
     /// Function called to restore the FPU context.
     pub fpu_restore: Once<unsafe fn(*const u8)>,
     /// If this CPU supports the STAC/CLAC instructions.
-    pub can_smap: AtomicBool,
+    pub _can_smap: AtomicBool,
 }
 
 per_cpu!(
     pub(crate) static ARCH_DATA: ArchPerCpu = ArchPerCpu {
-        gdt: SpinMutex::new(Gdt::new()),
-        tss: SpinMutex::new(TaskStateSegment::new()),
-        irq_handlers: SpinMutex::new([const { None }; _]),
         fpu_size: Once::new(),
         fpu_save: Once::new(),
         fpu_restore: Once::new(),
-        can_smap: AtomicBool::new(false),
+        _can_smap: AtomicBool::new(false),
     };
 );
