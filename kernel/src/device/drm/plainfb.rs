@@ -1,4 +1,7 @@
-use super::object::{AtomicState, BufferObject, Connector, Crtc, Encoder, Plane};
+use super::{
+    DeviceState,
+    object::{AtomicState, BufferObject, Connector, Crtc, Encoder, Plane},
+};
 use crate::{
     arch,
     boot::BootInfo,
@@ -12,51 +15,31 @@ use crate::{
         DRM_FORMAT_XRGB8888, DRM_PLANE_TYPE_PRIMARY, drm_mode_connector_state,
         drm_mode_connector_type,
     },
-    util::mutex::spin::SpinMutex,
 };
 use alloc::{sync::Arc, vec::Vec};
 use core::any::Any;
 
 struct PlainDevice {
+    state: DeviceState,
     width: u32,
     height: u32,
     bpp: u32,
     stride: u32,
     addr: MmioView, // Shared DRM object storage (device-global)
-    crtcs: SpinMutex<Vec<Arc<Crtc>>>,
-    encoders: SpinMutex<Vec<Arc<Encoder>>>,
-    connectors: SpinMutex<Vec<Arc<Connector>>>,
-    planes: SpinMutex<Vec<Arc<Plane>>>,
-    framebuffers: SpinMutex<Vec<Arc<Framebuffer>>>,
     obj_counter: IdAllocator,
 }
 
 impl Device for PlainDevice {
+    fn state(&self) -> &DeviceState {
+        &self.state
+    }
+
     fn driver_version(&self) -> (u32, u32, u32) {
         (0, 1, 0)
     }
 
     fn driver_info(&self) -> (&str, &str, &str) {
         ("plainfb", "Plain Framebuffer", "0")
-    }
-    fn crtcs(&self) -> &SpinMutex<Vec<Arc<Crtc>>> {
-        &self.crtcs
-    }
-
-    fn encoders(&self) -> &SpinMutex<Vec<Arc<Encoder>>> {
-        &self.encoders
-    }
-
-    fn connectors(&self) -> &SpinMutex<Vec<Arc<Connector>>> {
-        &self.connectors
-    }
-
-    fn planes(&self) -> &SpinMutex<Vec<Arc<Plane>>> {
-        &self.planes
-    }
-
-    fn framebuffers(&self) -> &SpinMutex<Vec<Arc<Framebuffer>>> {
-        &self.framebuffers
     }
 
     fn create_dumb(
@@ -181,16 +164,12 @@ fn PLAINFB_STAGE() {
 
     // Create the shared device with empty object storage
     let device = Arc::new(PlainDevice {
+        state: DeviceState::new(),
         width: fb.width as _,
         height: fb.height as _,
         bpp: (fb.cpp * 8) as _,
         stride: fb.pitch as _,
         addr: unsafe { MmioView::new(fb.base, fb.pitch * fb.height) },
-        crtcs: SpinMutex::new(Vec::new()),
-        encoders: SpinMutex::new(Vec::new()),
-        connectors: SpinMutex::new(Vec::new()),
-        planes: SpinMutex::new(Vec::new()),
-        framebuffers: SpinMutex::new(Vec::new()),
         obj_counter: IdAllocator::new(),
     });
 
@@ -222,10 +201,10 @@ fn PLAINFB_STAGE() {
         drm_mode_connector_type::Virtual,
     ));
 
-    device.crtcs().lock().push(crtc);
-    device.encoders().lock().push(encoder);
-    device.connectors().lock().push(connector);
-    device.planes().lock().push(plane.clone());
+    device.state.crtcs.lock().push(crtc);
+    device.state.encoders.lock().push(encoder);
+    device.state.connectors.lock().push(connector);
+    device.state.planes.lock().push(plane.clone());
 
     super::register(DrmFile::new(device)).expect("Unable to create plainfb DRM card");
 }

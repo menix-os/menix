@@ -2,6 +2,7 @@ use core::any::Any;
 
 use crate::spec::*;
 use menix::alloc::vec;
+use menix::device::drm::DeviceState;
 use menix::uapi::drm::drm_mode_connector_type;
 use menix::{
     alloc::{sync::Arc, vec::Vec},
@@ -19,6 +20,7 @@ use menix::{
 };
 use virtio::{VirtQueue, VirtioDevice};
 pub struct VirtioGpuDevice {
+    state: DeviceState,
     virtio: SpinMutex<VirtioDevice>,
     ctrl_queue: SpinMutex<VirtQueue>,
     ctrl_notify_off: u16,
@@ -27,13 +29,6 @@ pub struct VirtioGpuDevice {
     resource_id_counter: AtomicU32,
     scanouts: SpinMutex<Vec<ScanoutInfo>>,
     active_resource: AtomicU32, // Track which resource is active
-
-    // DRM objects - shared across all FDs
-    crtcs: SpinMutex<Vec<Arc<Crtc>>>,
-    encoders: SpinMutex<Vec<Arc<Encoder>>>,
-    connectors: SpinMutex<Vec<Arc<Connector>>>,
-    planes: SpinMutex<Vec<Arc<Plane>>>,
-    framebuffers: SpinMutex<Vec<Arc<Framebuffer>>>,
     obj_counter: IdAllocator,
 }
 
@@ -53,6 +48,7 @@ impl VirtioGpuDevice {
         cursor_notify_off: u16,
     ) -> EResult<Self> {
         let device = Self {
+            state: DeviceState::new(),
             virtio: SpinMutex::new(virtio),
             ctrl_queue,
             ctrl_notify_off,
@@ -61,11 +57,6 @@ impl VirtioGpuDevice {
             resource_id_counter: AtomicU32::new(1),
             scanouts: SpinMutex::new(Vec::new()),
             active_resource: AtomicU32::new(0),
-            crtcs: SpinMutex::new(Vec::new()),
-            encoders: SpinMutex::new(Vec::new()),
-            connectors: SpinMutex::new(Vec::new()),
-            planes: SpinMutex::new(Vec::new()),
-            framebuffers: SpinMutex::new(Vec::new()),
             obj_counter: IdAllocator::new(),
         };
 
@@ -401,42 +392,26 @@ impl VirtioGpuDevice {
         }
 
         // Store objects in device
-        self.crtcs.lock().extend(crtcs);
-        self.encoders.lock().extend(all_encoders);
-        self.connectors.lock().extend(all_connectors);
-        self.planes.lock().extend(all_planes);
+        self.state.crtcs.lock().extend(crtcs);
+        self.state.encoders.lock().extend(all_encoders);
+        self.state.connectors.lock().extend(all_connectors);
+        self.state.planes.lock().extend(all_planes);
 
         Ok(())
     }
 }
 
 impl Device for VirtioGpuDevice {
+    fn state(&self) -> &DeviceState {
+        &self.state
+    }
+
     fn driver_version(&self) -> (u32, u32, u32) {
         (1, 0, 0)
     }
 
     fn driver_info(&self) -> (&str, &str, &str) {
         ("virtio-gpu", "VirtIO GPU Driver", "2026")
-    }
-
-    fn crtcs(&self) -> &SpinMutex<Vec<Arc<Crtc>>> {
-        &self.crtcs
-    }
-
-    fn encoders(&self) -> &SpinMutex<Vec<Arc<Encoder>>> {
-        &self.encoders
-    }
-
-    fn connectors(&self) -> &SpinMutex<Vec<Arc<Connector>>> {
-        &self.connectors
-    }
-
-    fn planes(&self) -> &SpinMutex<Vec<Arc<Plane>>> {
-        &self.planes
-    }
-
-    fn framebuffers(&self) -> &SpinMutex<Vec<Arc<Framebuffer>>> {
-        &self.framebuffers
     }
 
     fn create_dumb(

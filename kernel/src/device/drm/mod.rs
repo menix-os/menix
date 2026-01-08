@@ -44,7 +44,29 @@ impl IdAllocator {
     }
 }
 
+pub struct DeviceState {
+    pub crtcs: SpinMutex<Vec<Arc<Crtc>>>,
+    pub encoders: SpinMutex<Vec<Arc<Encoder>>>,
+    pub connectors: SpinMutex<Vec<Arc<Connector>>>,
+    pub planes: SpinMutex<Vec<Arc<Plane>>>,
+    pub framebuffers: SpinMutex<Vec<Arc<Framebuffer>>>,
+}
+
+impl DeviceState {
+    pub const fn new() -> Self {
+        Self {
+            crtcs: SpinMutex::new(Vec::new()),
+            encoders: SpinMutex::new(Vec::new()),
+            connectors: SpinMutex::new(Vec::new()),
+            planes: SpinMutex::new(Vec::new()),
+            framebuffers: SpinMutex::new(Vec::new()),
+        }
+    }
+}
+
 pub trait Device: Send + Sync {
+    fn state(&self) -> &DeviceState;
+
     /// Returns a tuple of (major, minor, patch).
     fn driver_version(&self) -> (u32, u32, u32);
 
@@ -77,13 +99,6 @@ pub trait Device: Send + Sync {
     }
 
     fn commit(&self, state: &AtomicState);
-
-    /// Access shared DRM objects (device-global, not per-file)
-    fn crtcs(&self) -> &SpinMutex<Vec<Arc<Crtc>>>;
-    fn encoders(&self) -> &SpinMutex<Vec<Arc<Encoder>>>;
-    fn connectors(&self) -> &SpinMutex<Vec<Arc<Connector>>>;
-    fn planes(&self) -> &SpinMutex<Vec<Arc<Plane>>>;
-    fn framebuffers(&self) -> &SpinMutex<Vec<Arc<Framebuffer>>>;
 }
 
 /// Represents a user-facing DRM card in form of a file.
@@ -183,8 +198,10 @@ impl FileOps for DrmFile {
                 let mut ptr = UserPtr::<drm::drm_mode_card_res>::new(arg);
                 let mut val = ptr.read().ok_or(Errno::EFAULT)?;
 
+                let state = self.device.state();
+
                 // Get CRTCs
-                let crtcs = self.device.crtcs().lock();
+                let crtcs = state.crtcs.lock();
                 val.count_crtcs = crtcs.len() as _;
                 let crtc_id_ptr = UserPtr::<u32>::new(val.crtc_id_ptr.into());
                 if val.crtc_id_ptr != 0 {
@@ -197,7 +214,7 @@ impl FileOps for DrmFile {
                 }
 
                 // Get Encoders
-                let encoders = self.device.encoders().lock();
+                let encoders = state.encoders.lock();
                 val.count_encoders = encoders.len() as _;
                 let encoder_id_ptr = UserPtr::<u32>::new(val.encoder_id_ptr.into());
                 if val.encoder_id_ptr != 0 {
@@ -210,7 +227,7 @@ impl FileOps for DrmFile {
                 }
 
                 // Get Framebuffers
-                let fbs = self.device.framebuffers().lock();
+                let fbs = state.framebuffers.lock();
                 val.count_fbs = fbs.len() as _;
                 let fb_id_ptr = UserPtr::<u32>::new(val.fb_id_ptr.into());
                 if val.fb_id_ptr != 0 {
@@ -220,7 +237,7 @@ impl FileOps for DrmFile {
                 }
 
                 // Get Connectors
-                let conns = self.device.connectors().lock();
+                let conns = state.connectors.lock();
                 val.count_connectors = conns.len() as _;
                 let connector_id_ptr = UserPtr::<u32>::new(val.connector_id_ptr.into());
                 if val.connector_id_ptr != 0 {
@@ -237,9 +254,10 @@ impl FileOps for DrmFile {
             drm::DRM_IOCTL_MODE_GETCONNECTOR => {
                 let mut ptr = UserPtr::<drm::drm_mode_get_connector>::new(arg);
                 let mut val = ptr.read().ok_or(Errno::EFAULT)?;
+                let state = self.device.state();
 
                 // Find the requested connector.
-                let connectors = self.device.connectors().lock();
+                let connectors = state.connectors.lock();
                 let connector = connectors
                     .iter()
                     .find(|&x| x.id() == val.connector_id)
@@ -281,8 +299,9 @@ impl FileOps for DrmFile {
             drm::DRM_IOCTL_MODE_GETENCODER => {
                 let mut ptr = UserPtr::<drm::drm_mode_get_encoder>::new(arg);
                 let mut val = ptr.read().ok_or(Errno::EFAULT)?;
+                let state = self.device.state();
 
-                let encoders = self.device.encoders().lock();
+                let encoders = state.encoders.lock();
                 let encoder = encoders
                     .iter()
                     .find(|&x| x.id() == val.encoder_id)
@@ -302,9 +321,10 @@ impl FileOps for DrmFile {
             drm::DRM_IOCTL_MODE_GETPLANE => {
                 let mut ptr = UserPtr::<drm::drm_mode_get_plane>::new(arg);
                 let mut val = ptr.read().ok_or(Errno::EFAULT)?;
+                let state = self.device.state();
 
                 // Find the requested plane
-                let planes = self.device.planes().lock();
+                let planes = state.planes.lock();
                 let plane = planes
                     .iter()
                     .find(|&x| x.id() == val.plane_id)
@@ -315,7 +335,7 @@ impl FileOps for DrmFile {
                 val.fb_id = 0; // Not currently displaying a framebuffer
 
                 // Create bitmask of possible CRTCs using indices
-                let crtcs = self.device.crtcs().lock();
+                let crtcs = state.crtcs.lock();
                 let mut possible_crtcs = 0u32;
                 for possible_crtc in plane.possible_crtcs.iter() {
                     // Find the index of this CRTC in the global CRTC list
@@ -342,8 +362,9 @@ impl FileOps for DrmFile {
             drm::DRM_IOCTL_MODE_GETPLANERESOURCES => {
                 let mut ptr = UserPtr::<drm::drm_mode_get_plane_res>::new(arg);
                 let mut val = ptr.read().ok_or(Errno::EFAULT)?;
+                let state = self.device.state();
 
-                let planes = self.device.planes().lock();
+                let planes = state.planes.lock();
                 val.count_planes = planes.len() as u32;
 
                 // Fill plane IDs if user provided a buffer
@@ -429,7 +450,7 @@ impl FileOps for DrmFile {
                     .create_fb(self, buffer, val.width, val.height, fourcc, val.pitch)?;
 
                 val.fb_id = framebuffer.id();
-                self.device.framebuffers().lock().push(framebuffer);
+                self.device.state().framebuffers.lock().push(framebuffer);
 
                 ptr.write(val).ok_or(Errno::EFAULT)?;
             }
@@ -454,6 +475,7 @@ impl FileOps for DrmFile {
             drm::DRM_IOCTL_MODE_SETCRTC => {
                 let mut ptr = UserPtr::<drm::drm_mode_crtc>::new(arg);
                 let val = ptr.read().ok_or(Errno::EFAULT)?;
+                let state = self.device.state();
 
                 // If fb_id is 0, this disables the CRTC
                 if val.fb_id == 0 {
@@ -464,7 +486,7 @@ impl FileOps for DrmFile {
 
                 // Validate CRTC exists
                 {
-                    let crtcs = self.device.crtcs().lock();
+                    let crtcs = state.crtcs.lock();
                     crtcs
                         .iter()
                         .find(|x| x.id() == val.crtc_id)
@@ -473,7 +495,7 @@ impl FileOps for DrmFile {
 
                 // Validate framebuffer exists
                 let fb = {
-                    let framebuffers = self.device.framebuffers().lock();
+                    let framebuffers = state.framebuffers.lock();
                     framebuffers
                         .iter()
                         .find(|x| x.id == val.fb_id)
@@ -609,6 +631,7 @@ impl FileOps for DrmFile {
             drm::DRM_IOCTL_MODE_OBJ_GETPROPERTIES => {
                 let mut ptr = UserPtr::<drm::drm_mode_obj_get_properties>::new(arg);
                 let mut val = ptr.read().ok_or(Errno::EFAULT)?;
+                let state = self.device.state();
 
                 // For now, return empty property lists since we don't have full property tracking yet
                 // This allows atomic modesetting clients to query properties without failing
@@ -616,7 +639,7 @@ impl FileOps for DrmFile {
                 match val.obj_type {
                     drm::DRM_MODE_OBJECT_CRTC => {
                         // Verify CRTC exists
-                        let crtcs = self.device.crtcs().lock();
+                        let crtcs = state.crtcs.lock();
                         let _crtc = crtcs
                             .iter()
                             .find(|x| x.id() == val.obj_id)
@@ -626,7 +649,7 @@ impl FileOps for DrmFile {
                     }
                     drm::DRM_MODE_OBJECT_CONNECTOR => {
                         // Verify connector exists
-                        let connectors = self.device.connectors().lock();
+                        let connectors = state.connectors.lock();
                         let _conn = connectors
                             .iter()
                             .find(|x| x.id() == val.obj_id)
@@ -636,7 +659,7 @@ impl FileOps for DrmFile {
                     }
                     drm::DRM_MODE_OBJECT_PLANE => {
                         // Verify plane exists
-                        let planes = self.device.planes().lock();
+                        let planes = state.planes.lock();
                         let plane = planes
                             .iter()
                             .find(|x| x.id() == val.obj_id)
@@ -666,7 +689,7 @@ impl FileOps for DrmFile {
                     }
                     drm::DRM_MODE_OBJECT_ENCODER => {
                         // Verify encoder exists
-                        let encoders = self.device.encoders().lock();
+                        let encoders = state.encoders.lock();
                         let _enc = encoders
                             .iter()
                             .find(|x| x.id() == val.obj_id)
@@ -697,9 +720,10 @@ impl FileOps for DrmFile {
             drm::DRM_IOCTL_MODE_PAGE_FLIP => {
                 let ptr = UserPtr::<drm::drm_mode_crtc_page_flip>::new(arg);
                 let val = ptr.read().ok_or(Errno::EFAULT)?;
+                let state = self.device.state();
 
                 // Find the framebuffer
-                let framebuffers = self.device.framebuffers().lock();
+                let framebuffers = state.framebuffers.lock();
                 let fb = framebuffers
                     .iter()
                     .find(|x| x.id == val.fb_id)
