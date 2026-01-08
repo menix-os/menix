@@ -1,86 +1,138 @@
-use alloc::sync::Arc;
+use crate::{
+    arch,
+    memory::PhysAddr,
+    util::mutex::{irq::IrqMutex, spin::SpinMutex},
+};
+use alloc::{boxed::Box, vec::Vec};
+use bitflags::bitflags;
 use core::{
     fmt::Debug,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicBool, Ordering},
 };
 
-mod msi;
-pub use msi::*;
-
 #[derive(Debug)]
-pub enum IrqStatus {
-    /// Interrupt was not handled.
+pub enum Status {
+    /// Interrupt was not handled (NACK).
     Ignored,
-    /// Handler completed the IRQ work.
+    /// Interrupt was handled (ACK).
     Handled,
-    /// Handler wants to wake up the handler thread.
-    Defer,
 }
 
+#[derive(PartialEq, Debug)]
 pub enum Polarity {
     Low,
     High,
 }
 
-pub enum Trigger {
+#[derive(PartialEq, Debug)]
+pub enum TriggerMode {
     Edge,
     Level,
 }
 
-pub trait IrqHandler: Debug {
-    /// Handles an interrupt when it first happens.
-    /// If it returns [`IrqStatus::Defer`], then [`IrqHandler::handle_threaded`] is called later.
-    fn handle_immediate(&self) -> IrqStatus;
-
-    /// Called to complete heavy interrupt work which isn't required to be done immediately.
-    fn handle_threaded(&self) -> IrqStatus {
-        IrqStatus::Handled
+bitflags! {
+    /// Describes how to handle an interrupt.
+    #[derive(Clone, Copy)]
+    pub struct IrqMode: u8 {
+        /// Should signal an EOI to the controller.
+        const EndOfInterrupt = 1 << 0;
+        /// Interrupt can be masked.
+        const Maskable = 1 << 1;
     }
 }
 
-pub type Irq = usize;
+pub struct IrqConfig {}
 
-/// Common functionality for an interrupt controller.
-pub trait IrqController {
-    /// Registers an IRQ handler for a specific IRQ.
-    /// If `thread` is [`Some`], a second handler will be run in a separate thread.
-    fn register(
-        &self,
-        name: &str,
-        handler: Arc<dyn IrqHandler>,
-        threaded_handler: Option<Arc<dyn IrqHandler>>,
-        line: u32,
-        polarity: Polarity,
-        trigger: Trigger,
-    ) -> Result<Irq, IrqError>;
-
-    /// Removes an IRQ handler.
-    fn remove(&self, irq: Irq) -> Result<(), IrqError>;
-
-    /// Masks an IRQ, preventing it from being triggered.
-    fn mask(&self, irq: Irq) -> Result<(), IrqError>;
-
-    /// Unmasks an IRQ, allowing it to be triggered.
-    fn unmask(&self, irq: Irq) -> Result<(), IrqError>;
+pub trait IrqHandler {
+    /// Handles an interrupt when it happens.
+    fn raise(&mut self) -> Status;
 }
 
-#[derive(Debug)]
-pub enum IrqError {
-    /// The interrupt controller does not support this operation.
-    OperationNotSupported,
-    /// There are no free IRQ slots left.
-    NoIrqsLeft,
-    /// The IRQ ID is invalid.
-    NoSuchIrq,
-    /// The IRQ is already registered.
-    AlreadyRegistered,
-    /// The IRQ ID is out of range for this controller.
-    LineOutOfRange,
+pub struct IrqLineState {
+    is_busy: AtomicBool,
+    handlers: SpinMutex<Vec<Box<dyn IrqHandler>>>,
+    mode: SpinMutex<IrqMode>,
 }
 
-static IRQ_COUNTER: AtomicUsize = AtomicUsize::new(0);
+impl IrqLineState {
+    pub const fn new() -> Self {
+        Self {
+            is_busy: AtomicBool::new(false),
+            handlers: SpinMutex::new(Vec::new()),
+            mode: SpinMutex::new(IrqMode::empty()),
+        }
+    }
+}
 
-/// Allocates a new IRQ handle.
-pub fn allocate_irq() -> Irq {
-    IRQ_COUNTER.fetch_add(1, Ordering::Acquire)
+/// Represents an interrupt line of an interrupt controller.
+pub trait IrqLine {
+    /// Returns a reference to internal state of this line.
+    fn state(&self) -> &IrqLineState;
+
+    /// Changes the current IRQ configuration and returns
+    fn set_config(&self, trigger: TriggerMode, polarity: Polarity) -> IrqMode;
+
+    /// Masks this line.
+    fn mask(&self);
+
+    /// Unmasks this line.
+    fn unmask(&self);
+
+    /// Called to signal the end of an interrupt. Optional.
+    fn end_of_interrupt(&self) {}
+}
+
+impl dyn IrqLine {
+    pub fn program(&self, cfg: Option<(TriggerMode, Polarity)>) {
+        let _ = IrqMutex::lock();
+        let mut mode = self.state().mode.lock();
+
+        if let Some((trigger, polarity)) = cfg {
+            *mode = self.set_config(trigger, polarity);
+        }
+    }
+
+    pub fn raise(&self) {
+        assert_eq!(arch::irq::get_irq_state(), false);
+
+        let _ = IrqMutex::lock();
+        let state = self.state();
+
+        state.is_busy.store(true, Ordering::Relaxed);
+        let mode = state.mode.lock().clone();
+
+        // TODO
+        log!("Handling IRQ");
+
+        let mut claimed = false;
+        for handler in state.handlers.lock().iter_mut() {
+            match handler.raise() {
+                Status::Ignored => (),
+                Status::Handled => {
+                    claimed = true;
+                }
+            }
+        }
+
+        if !claimed {
+            log!("Spurious interrupt");
+        }
+
+        if mode.contains(IrqMode::EndOfInterrupt) {
+            self.end_of_interrupt();
+        }
+
+        state.is_busy.store(false, Ordering::Relaxed);
+    }
+
+    /// Attaches a new handler to this line.
+    pub fn attach(&self, handler: Box<dyn IrqHandler>) {
+        self.state().handlers.lock().push(handler);
+    }
+}
+
+pub trait MsiLine: IrqLine {
+    fn msg_addr(&self) -> PhysAddr;
+
+    fn msg_data(&self) -> u32;
 }

@@ -1,16 +1,16 @@
 use super::{consts, sched::Context};
 use crate::{
     arch::x86_64::{
-        ARCH_DATA,
         consts::CPL_USER,
         core::halt,
         system::{apic::LAPIC, gdt::Gdt},
     },
-    irq::IrqStatus,
+    irq::IrqLine,
     memory::fault::PageFaultInfo,
     percpu::CpuData,
-    util::mutex::irq::IrqMutex,
+    util::mutex::{irq::IrqMutex, spin::SpinMutex},
 };
+use alloc::sync::Arc;
 use core::{
     arch::{asm, naked_asm},
     mem::offset_of,
@@ -41,72 +41,6 @@ pub(in crate::arch) fn wait_for_irq() {
     unsafe {
         asm!("hlt", options(nostack));
     }
-}
-
-/// Invoked by an interrupt stub.
-unsafe extern "C" fn idt_handler(context: *const Context) {
-    let old = IrqMutex::set_interrupted(true);
-    let context = unsafe { context.as_ref().unwrap() };
-    let isr = context.isr;
-
-    match isr as u8 {
-        // Exceptions.
-        consts::IDT_PF => {
-            page_fault_handler(context);
-        }
-        // Unhandled exceptions.
-        0x00..0x20 => {
-            error!("{:?}", context);
-            panic!("Got an exception {}", isr);
-        }
-        // IPIs
-        consts::IDT_IPI_PANIC => {
-            halt();
-        }
-        consts::IDT_IPI_RESCHED => {
-            unsafe { crate::arch::sched::preempt_disable() };
-            let cpu = CpuData::get();
-            if unsafe { crate::arch::sched::preempt_enable() } {
-                LAPIC.get().eoi();
-                cpu.scheduler.reschedule();
-            }
-        }
-        // Any other ISR is an IRQ with a dynamic handler.
-        _ => {
-            let status = match &ARCH_DATA.get().irq_handlers.lock()[isr as usize - 0x20] {
-                Some(x) => x.handle_immediate(),
-                None => panic!("Unhandled interrupt"),
-            };
-
-            match status {
-                IrqStatus::Ignored => todo!(),
-                IrqStatus::Handled => todo!(),
-                IrqStatus::Defer => todo!(),
-            }
-        }
-    }
-
-    IrqMutex::set_interrupted(old);
-}
-
-// /// Try to send a signal to the user-space program or panic if the interrupt is caused by the kernel.
-// fn try_signal_or_die(context: &Context, signal: u32, code: u32) {}
-
-fn page_fault_handler(context: &Context) {
-    let mut cr2: usize;
-    unsafe { asm!("mov {cr2}, cr2", cr2 = out(reg) cr2) };
-
-    let err = context.error;
-    let info = PageFaultInfo {
-        page_was_present: err & (1 << 0) != 0,
-        caused_by_write: err & (1 << 1) != 0,
-        caused_by_fetch: err & (1 << 4) != 0,
-        caused_by_user: context.cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
-        ip: (context.rip as usize).into(),
-        addr: cr2.into(),
-    };
-
-    crate::memory::virt::fault::handler(&info);
 }
 
 /// Handles a syscall via AMD64 syscall/sysret instructions.
@@ -289,4 +223,69 @@ pub unsafe extern "C" fn interrupt_return() {
         cs = const CS_OFFSET,
         kernel_cs = const offset_of!(Gdt, kernel64_code),
     );
+}
+
+per_cpu! {
+    /// On x86_64, interrupts don't go through the interrupt controller, but map directly to IDT vectors.
+    /// To emulate the concept of interrupt lines, we define an array of [`IrqLine`]s.
+    pub static IRQ_LINES: SpinMutex<[Option<Arc<dyn IrqLine>>; 128]> = SpinMutex::new([const { None }; _]);
+}
+
+/// Invoked by an interrupt stub.
+unsafe extern "C" fn idt_handler(context: *const Context) {
+    let old = IrqMutex::set_interrupted(true);
+    let context = unsafe { context.as_ref().unwrap() };
+    let isr = context.isr;
+
+    match isr as u8 {
+        // Exceptions.
+        consts::IDT_PF => {
+            page_fault_handler(context);
+        }
+        // Unhandled exceptions.
+        0x00..0x20 => {
+            error!("{:?}", context);
+            panic!("Got an exception {}", isr);
+        }
+        // IPIs
+        consts::IDT_IPI_PANIC => {
+            halt();
+        }
+        consts::IDT_IPI_RESCHED => {
+            unsafe { crate::arch::sched::preempt_disable() };
+            if unsafe { crate::arch::sched::preempt_enable() } {
+                LAPIC.get().eoi();
+                CpuData::get().scheduler.reschedule();
+            }
+        }
+        // Any other ISR is an IRQ with a dynamic handler.
+        _ => {
+            match &mut IRQ_LINES.get().lock()[isr as usize - 0x20] {
+                Some(x) => x.raise(),
+                None => panic!("Unhandled interrupt on ISR {}", isr),
+            };
+        }
+    }
+
+    IrqMutex::set_interrupted(old);
+}
+
+// /// Try to send a signal to the user-space program or panic if the interrupt is caused by the kernel.
+// fn try_signal_or_die(context: &Context, signal: u32, code: u32) {}
+
+fn page_fault_handler(context: &Context) {
+    let mut cr2: usize;
+    unsafe { asm!("mov {cr2}, cr2", cr2 = out(reg) cr2) };
+
+    let err = context.error;
+    let info = PageFaultInfo {
+        page_was_present: err & (1 << 0) != 0,
+        caused_by_write: err & (1 << 1) != 0,
+        caused_by_fetch: err & (1 << 4) != 0,
+        caused_by_user: context.cs & consts::CPL_USER as u64 == consts::CPL_USER as u64,
+        ip: (context.rip as usize).into(),
+        addr: cr2.into(),
+    };
+
+    crate::memory::virt::fault::handler(&info);
 }
