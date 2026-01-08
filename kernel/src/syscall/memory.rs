@@ -51,12 +51,7 @@ pub fn mmap(
         true => None,
         false => {
             // Look up the corresponding fd.
-            Some(
-                proc.open_files
-                    .lock()
-                    .get_fd(fd as usize)
-                    .ok_or(Errno::EBADF)?,
-            )
+            Some(proc.open_files.lock().get_fd(fd).ok_or(Errno::EBADF)?)
         }
     };
     crate::vfs::mmap(

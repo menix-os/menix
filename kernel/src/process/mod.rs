@@ -223,7 +223,7 @@ impl Process {
 #[repr(transparent)]
 #[derive(Clone, Debug)]
 pub struct FdTable {
-    inner: BTreeMap<usize, FileDescription>,
+    inner: BTreeMap<i32, FileDescription>,
 }
 
 impl FdTable {
@@ -234,13 +234,18 @@ impl FdTable {
     }
 
     /// Attempts to get the file corresponding to the given file descriptor.
-    /// Note that this does not handle special FDs like [`uapi::AT_FDCWD`].
-    pub fn get_fd(&self, fd: usize) -> Option<FileDescription> {
+    /// Note that this does not handle special FDs like [`uapi::fcntl::AT_FDCWD`].
+    pub fn get_fd(&self, fd: i32) -> Option<FileDescription> {
+        // Negative FDs are never valid.
+        if fd.is_negative() {
+            return None;
+        }
+
         self.inner.get(&fd).cloned()
     }
 
     /// Allocates a new descriptor for a file. Returns [`None`] if there are no more free FDs for this process.
-    pub fn open_file(&mut self, file: FileDescription, base: usize) -> Option<usize> {
+    pub fn open_file(&mut self, file: FileDescription, base: i32) -> Option<i32> {
         // TODO: OPEN_MAX
         // Find a free descriptor.
         let mut last = base;
@@ -255,7 +260,7 @@ impl FdTable {
         Some(last)
     }
 
-    pub fn close(&mut self, fd: usize) -> Option<()> {
+    pub fn close(&mut self, fd: i32) -> Option<()> {
         let desc = self.inner.remove(&fd);
         match desc {
             Some(desc) => {

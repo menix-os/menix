@@ -27,7 +27,7 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 
-pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
+pub fn read(fd: i32, addr: VirtAddr, len: usize) -> EResult<isize> {
     let mut user_ptr = UserSlice::new(addr, len);
     let slice = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
     let file = {
@@ -44,7 +44,7 @@ pub fn read(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     file.read(slice)
 }
 
-pub fn pread(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
+pub fn pread(fd: i32, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
     let mut user_ptr = UserSlice::new(addr, len);
     let slice = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
     let file = {
@@ -61,7 +61,7 @@ pub fn pread(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<is
     file.pread(slice, offset as _)
 }
 
-pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
+pub fn write(fd: i32, addr: VirtAddr, len: usize) -> EResult<isize> {
     let user_ptr = UserSlice::new(addr, len);
     let slice = user_ptr.as_slice().ok_or(Errno::EINVAL)?;
     let file = {
@@ -77,7 +77,7 @@ pub fn write(fd: usize, addr: VirtAddr, len: usize) -> EResult<isize> {
     file.write(slice)
 }
 
-pub fn pwrite(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
+pub fn pwrite(fd: i32, addr: VirtAddr, len: usize, offset: usize) -> EResult<isize> {
     let user_ptr = UserSlice::new(addr, len);
     let slice = user_ptr.as_slice().ok_or(Errno::EINVAL)?;
     let file = {
@@ -94,7 +94,7 @@ pub fn pwrite(fd: usize, addr: VirtAddr, len: usize, offset: usize) -> EResult<i
     file.pwrite(slice, offset as _)
 }
 
-pub fn openat(fd: usize, path: VirtAddr, oflag: usize /* mode */) -> EResult<usize> {
+pub fn openat(fd: i32, path: VirtAddr, oflag: usize /* mode */) -> EResult<i32> {
     // TODO: This should really be using UserPtr/a CStr abstraction.
     if path == VirtAddr::null() {
         return Err(Errno::EINVAL);
@@ -142,7 +142,7 @@ pub fn openat(fd: usize, path: VirtAddr, oflag: usize /* mode */) -> EResult<usi
         .ok_or(Errno::EMFILE)
 }
 
-pub fn seek(fd: usize, offset: usize, whence: usize) -> EResult<usize> {
+pub fn seek(fd: i32, offset: usize, whence: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let file = proc.open_files.lock().get_fd(fd).ok_or(Errno::EBADF)?.file;
     let anchor = match whence {
@@ -154,7 +154,7 @@ pub fn seek(fd: usize, offset: usize, whence: usize) -> EResult<usize> {
     file.seek(anchor).map(|x| x as _)
 }
 
-pub fn close(fd: usize) -> EResult<usize> {
+pub fn close(fd: i32) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let mut proc_inner = proc.open_files.lock();
 
@@ -162,7 +162,7 @@ pub fn close(fd: usize) -> EResult<usize> {
     Ok(0)
 }
 
-pub fn ioctl(fd: usize, request: usize, arg: VirtAddr) -> EResult<usize> {
+pub fn ioctl(fd: i32, request: usize, arg: VirtAddr) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.open_files.lock();
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?.file;
@@ -241,7 +241,7 @@ fn write_stat(inode: &Arc<INode>, mut statbuf: UserPtr<stat>) {
     });
 }
 
-pub fn fstat(fd: usize, statbuf: UserPtr<stat>) -> EResult<usize> {
+pub fn fstat(fd: i32, statbuf: UserPtr<stat>) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let proc_inner = proc.open_files.lock();
 
@@ -254,7 +254,7 @@ pub fn fstat(fd: usize, statbuf: UserPtr<stat>) -> EResult<usize> {
 }
 
 pub fn fstatat(
-    at: usize,
+    at: i32,
     path: VirtAddr,
     statbuf: UserPtr<stat>,
     _flags: usize, // TODO
@@ -294,14 +294,14 @@ pub fn fstatat(
     Ok(0)
 }
 
-pub fn dup(fd: usize) -> EResult<usize> {
+pub fn dup(fd: i32) -> EResult<i32> {
     let proc = Scheduler::get_current().get_process();
     let mut proc_inner = proc.open_files.lock();
     let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
     proc_inner.open_file(file, fd).ok_or(Errno::EMFILE)
 }
 
-pub fn dup3(fd1: usize, fd2: usize, flags: usize) -> EResult<usize> {
+pub fn dup3(fd1: i32, fd2: i32, flags: usize) -> EResult<i32> {
     if fd1 == fd2 {
         return Ok(fd1);
     }
@@ -322,7 +322,7 @@ pub fn dup3(fd1: usize, fd2: usize, flags: usize) -> EResult<usize> {
     proc_inner.open_file(file, fd2).ok_or(Errno::EMFILE)
 }
 
-pub fn mkdirat(fd: usize, path: VirtAddr, mode: mode_t) -> EResult<usize> {
+pub fn mkdirat(fd: i32, path: VirtAddr, mode: mode_t) -> EResult<i32> {
     let path = unsafe { CStr::from_ptr(path.as_ptr()) };
     let v = path.to_owned();
 
@@ -351,7 +351,7 @@ pub fn mkdirat(fd: usize, path: VirtAddr, mode: mode_t) -> EResult<usize> {
     Ok(0)
 }
 
-pub fn chdir(path: VirtAddr) -> EResult<usize> {
+pub fn chdir(path: VirtAddr) -> EResult<()> {
     let path = unsafe { CStr::from_ptr(path.as_ptr()) };
     let v = path.to_owned();
 
@@ -367,19 +367,19 @@ pub fn chdir(path: VirtAddr) -> EResult<usize> {
     )?;
     *cwd = node;
 
-    Ok(0)
+    Ok(())
 }
 
-pub fn fchdir(fd: usize) -> EResult<usize> {
+pub fn fchdir(fd: i32) -> EResult<()> {
     let proc = Scheduler::get_current().get_process();
     let mut cwd = proc.working_dir.lock();
     let dir = proc.open_files.lock().get_fd(fd).ok_or(Errno::EBADF)?;
     *cwd = dir.file.path.as_ref().cloned().ok_or(Errno::ENOTDIR)?;
 
-    Ok(0)
+    Ok(())
 }
 
-pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
+pub fn getdents(fd: i32, addr: VirtAddr, len: usize) -> EResult<usize> {
     let mut user_ptr = UserSlice::new(addr, len);
     let buf: &mut [u8] = user_ptr.as_mut_slice().ok_or(Errno::EINVAL)?;
 
@@ -406,19 +406,25 @@ pub fn getdents(fd: usize, addr: VirtAddr, len: usize) -> EResult<usize> {
     Ok(0) // TODO
 }
 
-pub fn fcntl(fd: usize, cmd: usize, arg: usize) -> EResult<usize> {
+pub fn fcntl(fd: i32, cmd: usize, arg: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
     let mut proc_inner = proc.open_files.lock();
 
     match cmd as _ {
         F_DUPFD => {
             let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
-            proc_inner.open_file(file, arg).ok_or(Errno::EMFILE)
+            proc_inner
+                .open_file(file, arg as i32)
+                .ok_or(Errno::EMFILE)
+                .map(|x| x as usize)
         }
         F_DUPFD_CLOEXEC => {
             let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
             file.close_on_exec.store(true, Ordering::Release);
-            proc_inner.open_file(file, arg).ok_or(Errno::EMFILE)
+            proc_inner
+                .open_file(file, arg as i32)
+                .ok_or(Errno::EMFILE)
+                .map(|x| x as usize)
         }
         F_GETFD => {
             let file = proc_inner.get_fd(fd).ok_or(Errno::EBADF)?;
@@ -511,7 +517,7 @@ pub fn ppoll(
         }
 
         // Get the file
-        let file_desc = match proc_inner.get_fd(fd as usize) {
+        let file_desc = match proc_inner.get_fd(fd) {
             Some(f) => f,
             None => {
                 // Invalid fd - set POLLNVAL
@@ -586,7 +592,7 @@ pub fn pipe(mut filedes: UserPtr<[i32; 2]>) -> EResult<usize> {
     Ok(0)
 }
 
-pub fn faccessat(fd: usize, path: VirtAddr, amode: usize, flag: usize) -> EResult<usize> {
+pub fn faccessat(fd: i32, path: VirtAddr, amode: usize, flag: usize) -> EResult<()> {
     if path == VirtAddr::null() {
         return Err(Errno::EINVAL);
     }
@@ -629,5 +635,23 @@ pub fn faccessat(fd: usize, path: VirtAddr, amode: usize, flag: usize) -> EResul
         return Err(Errno::EACCES);
     }
 
-    Ok(0)
+    Ok(())
+}
+
+pub fn unlinkat(fd: i32, path: VirtAddr, flags: usize) -> EResult<()> {
+    if path == VirtAddr::null() {
+        return Err(Errno::EINVAL);
+    }
+
+    let path = unsafe { CStr::from_ptr(path.as_ptr()) };
+    let v = path.to_owned();
+
+    warn!(
+        "unlinkat({}, \"{}\", {:#x}) is a stub!",
+        fd,
+        v.to_str().unwrap(),
+        flags
+    );
+
+    Ok(())
 }
