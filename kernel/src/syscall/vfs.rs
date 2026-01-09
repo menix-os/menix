@@ -102,6 +102,7 @@ pub fn openat(fd: i32, path: VirtAddr, oflag: usize /* mode */) -> EResult<i32> 
 
     let path = unsafe { CStr::from_ptr(path.as_ptr()) };
     let v = path.to_owned();
+    let oflag = OpenFlags::from_bits_truncate(oflag as _);
 
     let proc = Scheduler::get_current().get_process();
     let mut proc_inner = proc.open_files.lock();
@@ -124,7 +125,7 @@ pub fn openat(fd: i32, path: VirtAddr, oflag: usize /* mode */) -> EResult<i32> 
         v.to_bytes(),
         // O_CLOEXEC doesn't apply to a file, but rather its individual FD.
         // This means that dup'ing a file doesn't share this flag.
-        OpenFlags::from_bits_truncate(oflag as _) & !OpenFlags::CloseOnExec,
+        oflag & !OpenFlags::CloseOnExec,
         Mode::empty(),
         &proc.identity.lock(),
     )?;
@@ -133,9 +134,7 @@ pub fn openat(fd: i32, path: VirtAddr, oflag: usize /* mode */) -> EResult<i32> 
         .open_file(
             FileDescription {
                 file,
-                close_on_exec: AtomicBool::new(
-                    OpenFlags::from_bits_truncate(oflag as _).contains(OpenFlags::CloseOnExec),
-                ),
+                close_on_exec: AtomicBool::new(oflag.contains(OpenFlags::CloseOnExec)),
             },
             0,
         )
