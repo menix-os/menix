@@ -3,7 +3,6 @@
 use super::{MountFlags, SuperBlock};
 use crate::{
     arch,
-    device::CharDevice,
     memory::{AddressSpace, PagedMemoryObject, PhysAddr, VirtAddr, VmFlags, cache::MemoryObject},
     posix::errno::{EResult, Errno},
     process::Identity,

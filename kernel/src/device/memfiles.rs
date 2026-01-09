@@ -1,5 +1,4 @@
 use crate::{
-    device::CharDevice,
     posix::errno::{EResult, Errno},
     process::PROCESS_STAGE,
     vfs::{
@@ -24,12 +23,6 @@ impl FileOps for NullFile {
     }
 }
 
-impl CharDevice for NullFile {
-    fn name(&self) -> &str {
-        "null"
-    }
-}
-
 #[derive(Debug)]
 pub struct ZeroFile;
 
@@ -44,12 +37,6 @@ impl FileOps for ZeroFile {
     }
 }
 
-impl CharDevice for ZeroFile {
-    fn name(&self) -> &str {
-        "zero"
-    }
-}
-
 #[derive(Debug)]
 pub struct FullFile;
 
@@ -61,12 +48,6 @@ impl FileOps for FullFile {
 
     fn write(&self, _: &File, _: &[u8], _: u64) -> EResult<isize> {
         Err(Errno::ENOSPC)
-    }
-}
-
-impl CharDevice for FullFile {
-    fn name(&self) -> &str {
-        "full"
     }
 }
 

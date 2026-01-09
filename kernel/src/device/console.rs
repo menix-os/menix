@@ -1,10 +1,9 @@
 use crate::{
-    device::CharDevice,
     log::GLOBAL_LOGGERS,
     memory::{VirtAddr, user::UserPtr},
     posix::errno::{EResult, Errno},
     process::PROCESS_STAGE,
-    uapi,
+    uapi::{self, termios::winsize},
     util::mutex::irq::IrqMutex,
     vfs::{
         File,
@@ -35,7 +34,7 @@ impl FileOps for Console {
         match request as _ {
             uapi::ioctls::TIOCGWINSZ => {
                 let mut arg = UserPtr::new(arg);
-                arg.write(uapi::termios::winsize {
+                arg.write(winsize {
                     ws_row: 25,
                     ws_col: 80,
                     ..Default::default()
@@ -45,12 +44,6 @@ impl FileOps for Console {
             _ => return Err(Errno::ENOSYS),
         }
         Ok(0)
-    }
-}
-
-impl CharDevice for Console {
-    fn name(&self) -> &str {
-        "console"
     }
 }
 

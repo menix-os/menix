@@ -5,15 +5,11 @@ use crate::{
 };
 use core::slice;
 
-mod console;
+pub mod console;
 pub mod drm;
+pub mod fbcon;
 pub mod input;
-mod memfiles;
-
-/// Represents a generic character device.
-pub trait CharDevice: FileOps {
-    fn name(&self) -> &str;
-}
+pub mod memfiles;
 
 pub trait BlockDevice: FileOps {
     /// Gets the size of a sector in bytes.
