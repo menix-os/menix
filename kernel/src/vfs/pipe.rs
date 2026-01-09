@@ -45,9 +45,8 @@ impl PipeBuffer {
 }
 
 impl FileOps for PipeBuffer {
-    fn acquire(&self, file: &File) -> EResult<()> {
+    fn acquire(&self, _file: &File, flags: OpenFlags) -> EResult<()> {
         let mut inner = self.inner.lock();
-        let flags = *file.flags.lock();
 
         if flags.contains(OpenFlags::Read) {
             inner.readers += 1;

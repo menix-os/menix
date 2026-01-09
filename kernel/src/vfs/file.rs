@@ -111,8 +111,8 @@ impl Clone for FileDescription {
 /// Inputs have been sanitized when these functions are called.
 pub trait FileOps {
     /// Called when the file is being opened.
-    fn acquire(&self, file: &File) -> EResult<()> {
-        let _ = file;
+    fn acquire(&self, file: &File, flags: OpenFlags) -> EResult<()> {
+        let _ = (file, flags);
         Ok(())
     }
 
@@ -227,7 +227,7 @@ impl File {
                     flags: Mutex::new(flags),
                     offset: Mutex::new(0),
                 };
-                result.ops.acquire(&result)?;
+                result.ops.acquire(&result, flags)?;
                 Ok(Arc::try_new(result)?)
             }
         }
@@ -242,7 +242,7 @@ impl File {
             offset: Mutex::new(0),
         };
 
-        file.ops.acquire(&file)?;
+        file.ops.acquire(&file, flags)?;
         Ok(Arc::try_new(file)?)
     }
 
@@ -299,7 +299,7 @@ impl File {
             _ => return Err(Errno::ENOTSUP),
         };
 
-        file.ops.acquire(&file)?;
+        file.ops.acquire(&file, flags)?;
         Ok(file)
     }
 
