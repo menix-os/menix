@@ -1,5 +1,5 @@
 use super::{
-    fbcon::FrameBuffer,
+    device::fbcon::FrameBuffer,
     memory::VirtAddr,
     util::{mutex::spin::SpinMutex, once::Once},
 };

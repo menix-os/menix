@@ -27,7 +27,6 @@ pub mod boot;
 pub mod clock;
 pub mod cmdline;
 pub mod device;
-pub mod fbcon;
 pub mod init;
 pub mod irq;
 pub mod log;
@@ -39,11 +38,10 @@ pub mod posix;
 pub mod process;
 pub mod sched;
 pub mod syscall;
+pub mod system;
 pub mod uapi;
 pub mod util;
 pub mod vfs;
-
-pub mod system;
 
 use crate::{
     percpu::CpuData,
@@ -124,7 +122,7 @@ pub extern "C" fn main(_: usize, _: usize) {
         let console = File::open(
             init_proc.root_dir.lock().clone(),
             init_proc.working_dir.lock().clone(),
-            b"/dev/console",
+            b"/dev/fbcon",
             OpenFlags::ReadWrite,
             Mode::empty(),
             Identity::get_kernel(),

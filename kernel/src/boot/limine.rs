@@ -3,7 +3,7 @@
 use super::{BootFile, BootInfo, PhysMemory};
 use crate::{
     cmdline::CmdLine,
-    fbcon::{FbColorBits, FrameBuffer},
+    device::fbcon::{FbColorBits, FrameBuffer},
     util::mutex::spin::SpinMutex,
 };
 use limine::{BaseRevision, memory_map::EntryType, paging::Mode, request::*};
