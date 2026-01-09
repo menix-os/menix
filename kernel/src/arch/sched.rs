@@ -66,11 +66,11 @@ pub unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) {
     unsafe { internal::sched::jump_to_user(ip, sp) };
 }
 
-/// Transitions to user mode with a specified context.
+/// Transitions to a specified context.
 /// # Safety
 /// `context` has to be allocated on the stack.
-pub unsafe fn jump_to_user_context(context: *mut Context) {
-    unsafe { internal::sched::jump_to_user_context(context) };
+pub unsafe fn jump_to_context(context: *mut Context) {
+    unsafe { internal::sched::jump_to_context(context) };
 }
 
 // # Note

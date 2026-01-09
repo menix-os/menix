@@ -27,6 +27,7 @@ use core::{
     arch::{asm, naked_asm},
     fmt::Write,
     mem::offset_of,
+    sync::atomic::Ordering,
 };
 
 #[repr(C)]
@@ -124,15 +125,16 @@ struct TaskFrame {
 
 pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task, irq_guard: IrqGuard) {
     unsafe {
-        // Safety: We can do this here because we can guarantee that both tasks are not "running" here.
-        let from_inner = (*from).inner.raw_inner().as_mut().unwrap();
-        let to_inner = (*to).inner.raw_inner().as_mut().unwrap();
+        let from = from.as_ref().unwrap();
+        let to = to.as_ref().unwrap();
+
+        let mut from_context = from.task_context.lock();
+        let to_context = to.task_context.lock();
 
         let cpu = ARCH_DATA.get();
-        TSS.get().lock().rsp0 = (to_inner.kernel_stack + KERNEL_STACK_SIZE).value() as _;
+        TSS.get().lock().rsp0 = (to.kernel_stack.load(Ordering::Relaxed) + KERNEL_STACK_SIZE) as _;
 
-        if (*from).is_user() {
-            let from_context = &mut from_inner.task_context;
+        if from.is_user() {
             cpu.fpu_save.get()(from_context.fpu_region);
             from_context.ds = super::asm::read_ds();
             from_context.es = super::asm::read_es();
@@ -142,8 +144,7 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task, irq_gua
             from_context.gsbase = rdmsr(consts::MSR_KERNEL_GS_BASE);
         }
 
-        if (*to).is_user() {
-            let to_context = &to_inner.task_context;
+        if to.is_user() {
             cpu.fpu_restore.get()(to_context.fpu_region);
             super::asm::write_ds(to_context.ds);
             super::asm::write_es(to_context.es);
@@ -160,16 +161,18 @@ pub(in crate::arch) unsafe fn switch(from: *const Task, to: *const Task, irq_gua
             wrmsr(consts::MSR_KERNEL_GS_BASE, to_context.gsbase);
         }
 
-        let old_rsp = &raw mut from_inner.task_context.rsp;
-        let new_rsp = &raw mut to_inner.task_context.rsp;
+        let old_rsp = &raw mut from_context.rsp;
+        let new_rsp = to_context.rsp;
 
+        drop(from_context);
+        drop(to_context);
         drop(irq_guard);
         perform_switch(old_rsp, new_rsp);
     }
 }
 
 #[unsafe(naked)]
-unsafe extern "C" fn perform_switch(old_rsp: *mut u64, new_rsp: *mut u64) {
+unsafe extern "C" fn perform_switch(old_rsp: *mut u64, new_rsp: u64) {
     naked_asm!(
         "sub rsp, 0x30", // Make room for all regs (except RIP).
         "mov [rsp + {rbx}], rbx",
@@ -179,7 +182,7 @@ unsafe extern "C" fn perform_switch(old_rsp: *mut u64, new_rsp: *mut u64) {
         "mov [rsp + {r14}], r14",
         "mov [rsp + {r15}], r15",
         "mov [rdi], rsp", // rdi = old_rsp
-        "mov rsp, [rsi]", // rsi = new_rsp
+        "mov rsp, rsi", // rsi = new_rsp
         "mov rbx, [rsp + {rbx}]",
         "mov rbp, [rsp + {rbp}]",
         "mov r12, [rsp + {r12}]",
@@ -308,17 +311,12 @@ pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
         wrmsr(consts::MSR_KERNEL_GS_BASE, 0);
 
         drop(lock);
-        jump_to_user_context(&raw mut context);
+        jump_to_context(&raw mut context);
     }
 }
 
-pub(in crate::arch) unsafe fn jump_to_user_context(context: *mut Context) -> ! {
+pub(in crate::arch) unsafe fn jump_to_context(context: *mut Context) -> ! {
     unsafe {
-        assert!(
-            Scheduler::get_current().is_user(),
-            "Attempted to perform a user jump on a kernel task!"
-        );
-
         asm!(
             "mov rsp, {context}",
             "jmp {interrupt_return}",

@@ -76,8 +76,8 @@ impl Scheduler {
     fn next(&self) -> Option<Arc<Task>> {
         let mut queue = self.run_queue.lock();
         while let Some(x) = &queue.pop_front() {
-            let inner = x.inner.lock();
-            if inner.state == TaskState::Ready {
+            let inner = x.state.lock();
+            if *inner == TaskState::Ready {
                 return Some(x.clone());
             }
         }
@@ -130,17 +130,23 @@ impl Scheduler {
 
             let cpu = CPU_DATA.get();
 
-            // Save the current kernel and user stack pointers to the old task.
-            let from_inner = (*from).inner.raw_inner().as_mut().unwrap();
-            from_inner.kernel_stack = cpu.kernel_stack.load(Ordering::Acquire).into();
-            from_inner.user_stack = cpu.user_stack.load(Ordering::Acquire).into();
+            {
+                // Save the current kernel and user stack pointers to the old task.
+                (*from)
+                    .kernel_stack
+                    .store(cpu.kernel_stack.load(Ordering::Acquire), Ordering::Release);
+                (*from)
+                    .user_stack
+                    .store(cpu.user_stack.load(Ordering::Acquire), Ordering::Release);
 
-            // Get the kernel and user stack pointers from the new task and write them to the per-CPU data.
-            let to_inner = (*to).inner.raw_inner().as_mut().unwrap();
-            cpu.kernel_stack
-                .store(to_inner.kernel_stack.value(), Ordering::Release);
-            cpu.user_stack
-                .store(to_inner.user_stack.value(), Ordering::Release);
+                // Get the kernel and user stack pointers from the new task and write them to the per-CPU data.
+                cpu.kernel_stack.store(
+                    (*to).kernel_stack.load(Ordering::Acquire),
+                    Ordering::Release,
+                );
+                cpu.user_stack
+                    .store((*to).user_stack.load(Ordering::Acquire), Ordering::Release);
+            }
 
             arch::sched::switch(from, to, irq_guard);
         }
@@ -149,10 +155,7 @@ impl Scheduler {
     /// Kills the currently running task.
     pub fn kill_current() -> ! {
         let task = Scheduler::get_current();
-        {
-            let mut inner = task.inner.lock();
-            inner.state = TaskState::Dead;
-        }
+        *task.state.lock() = TaskState::Dead;
         CPU_DATA.get().scheduler.do_yield();
         unreachable!("The scheduler did not kill this task");
     }

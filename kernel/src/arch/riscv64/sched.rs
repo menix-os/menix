@@ -192,7 +192,7 @@ pub unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) {
     todo!()
 }
 
-pub unsafe fn jump_to_user_context(context: *mut Context) {
+pub unsafe fn jump_to_context(context: *mut Context) {
     let _ = context;
     todo!()
 }

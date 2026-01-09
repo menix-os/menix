@@ -206,8 +206,7 @@ impl Process {
 
             // Kill all threads.
             for thread in threads.iter() {
-                let mut thread_inner = thread.inner.lock();
-                thread_inner.state = task::TaskState::Dead;
+                *thread.state.lock() = task::TaskState::Dead;
             }
             threads.clear();
 
@@ -320,7 +319,7 @@ pub extern "C" fn to_user_context(context: usize, _: usize) {
     unsafe {
         let ctx: Box<Context> = Box::from_raw(context as _);
         let mut stack_ctx = Box::into_inner(ctx);
-        crate::arch::sched::jump_to_user_context(&raw mut stack_ctx)
+        crate::arch::sched::jump_to_context(&raw mut stack_ctx)
     };
 }
 
