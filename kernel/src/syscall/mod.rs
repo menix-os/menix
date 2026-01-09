@@ -100,7 +100,7 @@ pub fn dispatch(
         numbers::FCHMOD => sys_unimp!("fchmod", Err(Errno::ENOSYS)),
         numbers::FCHMODAT => sys_unimp!("fchmodat", Err(Errno::ENOSYS)),
         numbers::FCHOWNAT => sys_unimp!("fchownat", Err(Errno::ENOSYS)),
-        numbers::LINKAT => sys_unimp!("linkat", Err(Errno::ENOSYS)),
+        numbers::LINKAT => vfs::linkat(a0 as _, a1.into(), a2 as _, a3.into(), a4 as _).map(|_| 0),
         numbers::SYMLINKAT => sys_unimp!("symlinkat", Err(Errno::ENOSYS)),
         numbers::UNLINKAT => vfs::unlinkat(a0 as _, a1.into(), a2).map(|_| 0),
         numbers::READLINKAT => sys_unimp!("readlinkat", Err(Errno::ENOSYS)),

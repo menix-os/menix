@@ -654,3 +654,29 @@ pub fn unlinkat(fd: i32, path: VirtAddr, flags: usize) -> EResult<()> {
 
     Ok(())
 }
+
+pub fn linkat(
+    old_fd: i32,
+    old_path: VirtAddr,
+    new_fd: i32,
+    new_path: VirtAddr,
+    flags: usize,
+) -> EResult<()> {
+    if old_path == VirtAddr::null() || new_path == VirtAddr::null() {
+        return Err(Errno::EINVAL);
+    }
+
+    let old_path = unsafe { CStr::from_ptr(old_path.as_ptr()) };
+    let new_path = unsafe { CStr::from_ptr(new_path.as_ptr()) };
+
+    warn!(
+        "linkat({}, \"{}\", {}, \"{}\", {:#x}) is a stub!",
+        old_fd,
+        old_path.to_str().unwrap(),
+        new_fd,
+        new_path.to_str().unwrap(),
+        flags,
+    );
+
+    Ok(())
+}
