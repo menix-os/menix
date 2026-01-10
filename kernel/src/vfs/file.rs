@@ -222,7 +222,7 @@ impl File {
 
                 let result = File {
                     path: Some(file_path.clone()),
-                    ops: file_node.file_ops.clone(),
+                    ops: file_node.file_ops(),
                     inode: Some(file_node),
                     flags: Mutex::new(flags),
                     offset: Mutex::new(0),
@@ -262,10 +262,10 @@ impl File {
 
         inode.try_access(identity, flags, false)?;
         let file = match &inode.node_ops {
-            NodeOps::Regular(_) => {
+            NodeOps::Regular(x) => {
                 let result = File {
                     path: Some(file_path),
-                    ops: inode.file_ops.clone(),
+                    ops: x.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
                     offset: Mutex::new(0),
@@ -273,27 +273,27 @@ impl File {
                 Arc::try_new(result)?
             }
             NodeOps::Directory(dir) => dir.open(inode, file_path, flags, identity)?,
-            NodeOps::BlockDevice => {
+            NodeOps::BlockDevice(x) => {
                 let result = File {
                     path: Some(file_path),
-                    ops: inode.file_ops.clone(),
+                    ops: x.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
                     offset: Mutex::new(0),
                 };
                 Arc::try_new(result)?
             }
-            NodeOps::CharacterDevice => {
+            NodeOps::CharacterDevice(x) => {
                 let result = File {
                     path: Some(file_path),
-                    ops: inode.file_ops.clone(),
+                    ops: x.clone(),
                     inode: Some(inode.clone()),
                     flags: Mutex::new(flags),
                     offset: Mutex::new(0),
                 };
                 Arc::try_new(result)?
             }
-            NodeOps::FIFO => todo!(),
+            NodeOps::FIFO(_) => todo!(),
             NodeOps::SymbolicLink(_) => return Err(Errno::ELOOP),
             // Doesn't make sense to call open() on anything else.
             _ => return Err(Errno::ENOTSUP),
@@ -359,7 +359,7 @@ impl File {
         let mut position = self.offset.lock();
 
         match self.inode.as_ref().ok_or(Errno::ESPIPE)?.node_ops {
-            NodeOps::CharacterDevice | NodeOps::Socket | NodeOps::FIFO => {
+            NodeOps::CharacterDevice(_) | NodeOps::Socket(_) | NodeOps::FIFO(_) => {
                 return Err(Errno::ESPIPE);
             }
             _ => (),

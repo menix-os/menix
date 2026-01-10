@@ -1,6 +1,7 @@
 mod memory;
 mod numbers;
 mod process;
+mod socket;
 mod system;
 mod vfs;
 
@@ -97,7 +98,7 @@ pub fn dispatch(
         numbers::RMDIRAT => sys_unimp!("rmdirat", Err(Errno::ENOSYS)),
         numbers::GETDENTS => vfs::getdents(a0 as _, a1.into(), a2),
         numbers::RENAMEAT => sys_unimp!("renameat", Err(Errno::ENOSYS)),
-        numbers::FCHMOD => sys_unimp!("fchmod", Err(Errno::ENOSYS)),
+        numbers::FCHMOD => sys_unimp!("fchmod", Ok(0)),
         numbers::FCHMODAT => sys_unimp!("fchmodat", Err(Errno::ENOSYS)),
         numbers::FCHOWNAT => sys_unimp!("fchownat", Err(Errno::ENOSYS)),
         numbers::LINKAT => vfs::linkat(a0 as _, a1.into(), a2 as _, a3.into(), a4 as _).map(|_| 0),
@@ -117,21 +118,21 @@ pub fn dispatch(
         numbers::PIPE => vfs::pipe(a0.into()),
 
         // Sockets
-        numbers::SOCKET => sys_unimp!("socket", Err(Errno::ENOSYS)),
-        numbers::SOCKETPAIR => sys_unimp!("socketpair", Err(Errno::ENOSYS)),
-        numbers::SHUTDOWN => sys_unimp!("shutdown", Err(Errno::ENOSYS)),
-        numbers::BIND => sys_unimp!("bind", Err(Errno::ENOSYS)),
-        numbers::CONNECT => sys_unimp!("connect", Err(Errno::ENOSYS)),
-        numbers::ACCEPT => sys_unimp!("accept", Err(Errno::ENOSYS)),
-        numbers::LISTEN => sys_unimp!("listen", Err(Errno::ENOSYS)),
-        numbers::GETPEERNAME => sys_unimp!("getpeername", Err(Errno::ENOSYS)),
-        numbers::GETSOCKNAME => sys_unimp!("getsockname", Err(Errno::ENOSYS)),
-        numbers::GETSOCKOPT => sys_unimp!("getsockopt", Err(Errno::ENOSYS)),
-        numbers::SETSOCKOPT => sys_unimp!("setsockopt", Err(Errno::ENOSYS)),
-        numbers::SENDMSG => sys_unimp!("sendmsg", Err(Errno::ENOSYS)),
-        numbers::SENDTO => sys_unimp!("sendto", Err(Errno::ENOSYS)),
-        numbers::RECVMSG => sys_unimp!("recvmsg", Err(Errno::ENOSYS)),
-        numbers::RECVFROM => sys_unimp!("recvfrom", Err(Errno::ENOSYS)),
+        numbers::SOCKET => socket::socket(a0 as _, a1 as _, a2 as _).map(|x| x as _),
+        numbers::SOCKETPAIR => socket::socketpair(a0 as _, a1 as _, a2 as _).map(|x| x as _),
+        numbers::SHUTDOWN => socket::shutdown(a0 as _, a1 as _).map(|_| 0),
+        numbers::BIND => socket::bind(a0 as _, a1.into(), a2 as _).map(|_| 0),
+        numbers::CONNECT => socket::connect().map(|_| 0),
+        numbers::ACCEPT => socket::accept().map(|_| 0),
+        numbers::LISTEN => socket::listen(a0 as _, a1 as _).map(|_| 0),
+        numbers::GETPEERNAME => socket::getpeername().map(|_| 0),
+        numbers::GETSOCKNAME => socket::getsockname().map(|_| 0),
+        numbers::GETSOCKOPT => socket::getsockopt().map(|_| 0),
+        numbers::SETSOCKOPT => {
+            socket::setsockopt(a0 as _, a1 as _, a2 as _, a3.into(), a4 as _).map(|_| 0)
+        }
+        numbers::SENDMSG => socket::sendmsg().map(|_| 0),
+        numbers::RECVMSG => socket::recvmsg().map(|_| 0),
 
         // Identity
         numbers::GETGROUPS => sys_unimp!("getgroups", Ok(0)),

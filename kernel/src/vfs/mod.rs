@@ -4,6 +4,7 @@ pub mod file;
 pub mod fs;
 pub mod inode;
 pub mod pipe;
+pub mod socket;
 
 pub use cache::Entry;
 pub use cache::PathNode;

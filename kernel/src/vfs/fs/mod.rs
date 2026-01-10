@@ -10,7 +10,6 @@ use crate::{
     vfs::{
         PathNode,
         cache::Entry,
-        file::FileOps,
         inode::{Mode, NodeOps},
     },
 };
@@ -60,12 +59,7 @@ pub trait SuperBlock: Debug {
 
     /// Allocates a new inode on this super block.
     /// If `node_type` is a character or block device, a `device` must also be passed.
-    fn create_inode(
-        self: Arc<Self>,
-        node_ops: NodeOps,
-        file_ops: Arc<dyn FileOps>,
-        mode: Mode,
-    ) -> EResult<Arc<INode>>;
+    fn create_inode(self: Arc<Self>, node_ops: NodeOps, mode: Mode) -> EResult<Arc<INode>>;
 
     /// Deletes the inode.
     fn destroy_inode(self: Arc<Self>, inode: INode) -> EResult<()>;

@@ -38,11 +38,9 @@ impl FileSystem for TmpFs {
         })?;
 
         let dir = Arc::new(TmpDir::default());
-        let root_inode = super_block.clone().create_inode(
-            NodeOps::Directory(dir.clone()),
-            dir,
-            Mode::from_bits_truncate(0o755),
-        )?;
+        let root_inode = super_block
+            .clone()
+            .create_inode(NodeOps::Directory(dir), Mode::from_bits_truncate(0o755))?;
 
         Ok(Arc::try_new(Mount {
             flags,
@@ -68,17 +66,11 @@ impl SuperBlock for TmpSuper {
         todo!()
     }
 
-    fn create_inode(
-        self: Arc<Self>,
-        node_ops: NodeOps,
-        file_ops: Arc<dyn FileOps>,
-        mode: Mode,
-    ) -> EResult<Arc<INode>> {
+    fn create_inode(self: Arc<Self>, node_ops: NodeOps, mode: Mode) -> EResult<Arc<INode>> {
         Ok(Arc::try_new(INode {
             id: self.inode_counter.fetch_add(1, Ordering::Acquire),
             node_ops,
-            file_ops,
-            sb: self,
+            sb: Some(self),
             mode: SpinMutex::new(mode),
             atime: SpinMutex::default(),
             mtime: SpinMutex::default(),
@@ -118,7 +110,7 @@ impl DirectoryOps for TmpDir {
     ) -> EResult<Arc<File>> {
         let file = File {
             path: Some(path),
-            ops: node.file_ops.clone(),
+            ops: node.file_ops(),
             inode: Some(node.clone()),
             flags: Mutex::new(flags),
             offset: Mutex::new(0),
@@ -154,12 +146,11 @@ impl DirectoryOps for TmpDir {
     ) -> EResult<()> {
         let _ = identity; // TODO
         let reg = Arc::new(TmpSymlink::default());
-        let node_ops = NodeOps::SymbolicLink(reg.clone());
 
-        let sym_inode =
-            node.sb
-                .clone()
-                .create_inode(node_ops, reg.clone(), Mode::from_bits_truncate(0o777))?;
+        let sym_inode = node.sb.clone().unwrap().create_inode(
+            NodeOps::SymbolicLink(reg.clone()),
+            Mode::from_bits_truncate(0o777),
+        )?;
 
         *reg.target.lock() = target_path.to_vec();
         *sym_inode.size.lock() = target_path.len();
@@ -170,11 +161,11 @@ impl DirectoryOps for TmpDir {
     fn create(&self, self_node: &Arc<INode>, entry: Arc<Entry>, mode: Mode) -> EResult<()> {
         let mut children = entry.children.lock();
         let new_file = Arc::new(TmpRegular::new());
-        let new_node = self_node.sb.clone().create_inode(
-            NodeOps::Regular(new_file.clone()),
-            new_file,
-            mode,
-        )?;
+        let new_node = self_node
+            .sb
+            .clone()
+            .unwrap()
+            .create_inode(NodeOps::Regular(new_file), mode)?;
         entry.set_inode(new_node);
         Ok(())
     }
@@ -182,11 +173,11 @@ impl DirectoryOps for TmpDir {
     fn mkdir(&self, self_node: &Arc<INode>, entry: Arc<Entry>, mode: Mode) -> EResult<Arc<Entry>> {
         let mut children = entry.children.lock();
         let new_dir = Arc::new(TmpDir);
-        let new_dir_node = self_node.sb.clone().create_inode(
-            NodeOps::Directory(new_dir.clone()),
-            new_dir,
-            mode,
-        )?;
+        let new_dir_node = self_node
+            .sb
+            .clone()
+            .unwrap()
+            .create_inode(NodeOps::Directory(new_dir), mode)?;
         entry.set_inode(new_dir_node);
         Ok(entry.clone()) // TODO: This is wrong. Return the child entry instead.
     }
@@ -199,13 +190,12 @@ impl DirectoryOps for TmpDir {
         dev: Option<Arc<dyn FileOps>>,
     ) -> EResult<Arc<INode>> {
         let new_node = dev.ok_or(Errno::ENODEV)?;
-        self_node.sb.clone().create_inode(
+        self_node.sb.clone().unwrap().create_inode(
             match node_type {
-                NodeType::BlockDevice => NodeOps::BlockDevice,
-                NodeType::CharacterDevice => NodeOps::CharacterDevice,
+                NodeType::BlockDevice => NodeOps::BlockDevice(new_node),
+                NodeType::CharacterDevice => NodeOps::CharacterDevice(new_node),
                 _ => return Err(Errno::ENODEV),
             },
-            new_node,
             mode,
         )
     }

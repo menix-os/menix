@@ -10,6 +10,7 @@ pub mod drm;
 pub mod fbcon;
 pub mod input;
 pub mod memfiles;
+pub mod net;
 
 pub trait BlockDevice: FileOps {
     /// Gets the size of a sector in bytes.

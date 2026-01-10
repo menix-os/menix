@@ -31,12 +31,31 @@ impl<T: Sized + Copy> UserPtr<T> {
     }
 
     pub fn read(&self) -> Option<T> {
-        // TODO: Mark the start of a user pointer access that can be checked in the PF handler.
         Some(unsafe { self.addr.as_ptr::<T>().read_unaligned() })
     }
 
     pub fn write(&mut self, value: T) -> bool {
         unsafe { self.addr.as_ptr::<T>().write_unaligned(value) };
+        true
+    }
+
+    pub fn read_slice(&self, value: &mut [T]) -> bool {
+        unsafe {
+            self.addr.as_ptr::<u8>().copy_to_nonoverlapping(
+                value.as_mut_ptr() as *mut u8,
+                value.len() * size_of::<T>(),
+            );
+        }
+        true
+    }
+
+    pub fn write_slice(&mut self, value: &[T]) -> bool {
+        unsafe {
+            self.addr.as_ptr::<u8>().copy_from_nonoverlapping(
+                value.as_ptr() as *const u8,
+                value.len() * size_of::<T>(),
+            );
+        }
         true
     }
 }

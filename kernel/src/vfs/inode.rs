@@ -1,5 +1,6 @@
 use super::fs::SuperBlock;
 use crate::{
+    device::net::Socket,
     posix::errno::{EResult, Errno},
     process::Identity,
     uapi::{self, stat::*, time::timespec},
@@ -17,10 +18,8 @@ use core::{any::Any, fmt::Debug};
 pub struct INode {
     /// Operations that only work on a certain type of node.
     pub node_ops: NodeOps,
-    /// Operations that can be performed on an open file pointing to this node.
-    pub file_ops: Arc<dyn FileOps>,
     /// The super block which this node is located in.
-    pub sb: Arc<dyn SuperBlock>,
+    pub sb: Option<Arc<dyn SuperBlock>>,
 
     // The following fields make up `stat`.
     pub id: usize,
@@ -34,6 +33,21 @@ pub struct INode {
 }
 
 impl INode {
+    pub fn new(ops: NodeOps, super_block: Option<Arc<dyn SuperBlock>>) -> Self {
+        Self {
+            node_ops: ops,
+            sb: super_block,
+            id: 0,
+            size: SpinMutex::new(0),
+            uid: SpinMutex::new(0),
+            gid: SpinMutex::new(0),
+            atime: SpinMutex::new(timespec::default()),
+            mtime: SpinMutex::new(timespec::default()),
+            ctime: SpinMutex::new(timespec::default()),
+            mode: SpinMutex::new(Mode::empty()),
+        }
+    }
+
     /// Checks if the node can be accessed with the given identity.
     /// Returns [`Errno::EACCES`] if an access is not allowed.
     pub fn try_access(&self, ident: &Identity, flags: OpenFlags, use_real: bool) -> EResult<()> {
@@ -88,6 +102,18 @@ impl INode {
         *self.uid.lock() = uid;
         *self.gid.lock() = gid;
     }
+
+    pub fn file_ops(&self) -> Arc<dyn FileOps> {
+        match &self.node_ops {
+            NodeOps::Regular(x) => x.clone(),
+            NodeOps::Directory(x) => x.clone(),
+            NodeOps::SymbolicLink(x) => x.clone(),
+            NodeOps::FIFO(x) => x.clone(),
+            NodeOps::BlockDevice(x) => x.clone(),
+            NodeOps::CharacterDevice(x) => x.clone(),
+            NodeOps::Socket(x) => x.clone(),
+        }
+    }
 }
 
 /// Operations which work on any kind of [`INode`].
@@ -100,14 +126,14 @@ pub enum NodeOps {
     Regular(Arc<dyn RegularOps>),
     Directory(Arc<dyn DirectoryOps>),
     SymbolicLink(Arc<dyn SymlinkOps>),
-    FIFO,
-    BlockDevice,
-    CharacterDevice,
-    Socket,
+    FIFO(Arc<dyn FileOps>),
+    BlockDevice(Arc<dyn FileOps>),
+    CharacterDevice(Arc<dyn FileOps>),
+    Socket(Arc<dyn Socket>),
 }
 
 /// Operations for directory [`INode`]s.
-pub trait DirectoryOps: Any {
+pub trait DirectoryOps: FileOps + Any {
     /// Looks up all children in an `node` directory and caches them in `entry`.
     /// An implementation shall return [`Errno::ENOENT`] if a lookup fails and
     /// shall leave `entry` unchanged.
@@ -173,14 +199,14 @@ pub trait DirectoryOps: Any {
 }
 
 /// Operations for regular file [`INode`]s.
-pub trait RegularOps: Any {
+pub trait RegularOps: FileOps + Any {
     /// Truncates the node to a given new_length in bytes.
     /// `new_length` must be equal or less than the current node size.
     fn truncate(&self, node: &INode, new_length: u64) -> EResult<()>;
 }
 
 /// Operations for symbolic link [`INode`]s.
-pub trait SymlinkOps: Any {
+pub trait SymlinkOps: FileOps + Any {
     /// Reads the path of the symbolic link of the node.
     /// Returns amount of bytes read into the buffer.
     fn read_link(&self, node: &INode, buf: &mut [u8]) -> EResult<u64>;
@@ -214,5 +240,7 @@ bitflags::bitflags! {
 
         const SetUserId = S_ISUID;
         const SetGroupId = S_ISGID;
+
+        const Sticky = S_ISVTX;
     }
 }
