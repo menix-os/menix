@@ -3,6 +3,7 @@ use crate::{
         virt::{PageTableEntry, get_level_bits, get_max_leaf_level, get_page_bits},
         x86_64::{
             consts::{CR0_ET, CR0_PE, CR0_PG, CR4_PAE, MSR_EFER, MSR_EFER_LME, MSR_EFER_NXE},
+            core::IS_INIT,
             system::{
                 apic::{
                     DeliveryMode, DeliveryStatus, DestinationMode, IpiTarget, LAPIC, Level,
@@ -440,4 +441,6 @@ fn INIT_APS_STAGE() {
         KernelAlloc::dealloc(temp_table, 1);
         KernelAlloc::dealloc(temp_l3, 1);
     }
+
+    IS_INIT.store(true, Ordering::Relaxed)
 }

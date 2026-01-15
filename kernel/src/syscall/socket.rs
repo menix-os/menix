@@ -1,9 +1,12 @@
 use crate::{
     device::net::{Socket, create_socket},
-    memory::{UserSlice, VirtAddr},
+    memory::{UserPtr, VirtAddr},
     posix::errno::{EResult, Errno},
     sched::Scheduler,
-    uapi::socket::socklen_t,
+    uapi::{
+        socket::{msghdr, socklen_t},
+        uio::iovec,
+    },
     util::mutex::Mutex,
     vfs::{
         File,
@@ -11,22 +14,15 @@ use crate::{
         inode::{INode, NodeOps},
     },
 };
-use alloc::sync::Arc;
-use core::sync::atomic::AtomicBool;
+use alloc::{sync::Arc, vec::Vec};
+use core::{mem::size_of, sync::atomic::AtomicBool};
 
-pub fn socket(family: i32, typ: i32, protocol: i32) -> EResult<i32> {
-    let socket = create_socket(family as _, typ as _).ok_or(Errno::EAFNOSUPPORT)?;
-
-    warn!(
-        "socket({:#x}, {:#x}, {:#x}) is a stub!",
-        family, typ, protocol
-    );
-
+fn alloc_fd(socket: Arc<dyn Socket>) -> EResult<i32> {
     let node = INode::new(NodeOps::Socket(socket.clone()), None);
 
     let proc = Scheduler::get_current().get_process();
     let mut files = proc.open_files.lock();
-    let fd = files
+    files
         .open_file(
             FileDescription {
                 file: Arc::new(File {
@@ -40,11 +36,20 @@ pub fn socket(family: i32, typ: i32, protocol: i32) -> EResult<i32> {
             },
             0,
         )
-        .ok_or(Errno::EMFILE)?;
+        .ok_or(Errno::EMFILE)
+}
 
-    log!("Opened socket on FD {:?}", fd);
+pub fn socket(family: i32, typ: i32, protocol: i32) -> EResult<i32> {
+    let socket = create_socket(family as _, typ as _).ok_or(Errno::EAFNOSUPPORT)?;
 
-    Ok(fd)
+    if family != 1 {
+        warn!(
+            "socket({:#x}, {:#x}, {:#x}) is a stub!",
+            family, typ, protocol
+        );
+    }
+
+    alloc_fd(socket)
 }
 
 pub fn socketpair(family: i32, typ: i32, protocol: i32) -> EResult<u64> {
@@ -76,36 +81,80 @@ pub fn shutdown(fd: i32, how: i32) -> EResult<()> {
 
 pub fn bind(fd: i32, addr_ptr: VirtAddr, addr_length: socklen_t) -> EResult<()> {
     let socket = fd_to_socket(fd)?;
-    let buffer = UserSlice::new(addr_ptr, addr_length as _);
-    socket.bind(buffer.as_slice().ok_or(Errno::EFAULT)?)
+    let mut addr = vec![0u8; addr_length as _];
+    let buffer = UserPtr::new(addr_ptr);
+    buffer.read_slice(&mut addr).ok_or(Errno::EFAULT)?;
+    socket.bind(&addr)
 }
 
-pub fn connect() -> EResult<()> {
-    warn!("connect is a stub!");
-    Err(Errno::ENOSYS)
+pub fn connect(fd: i32, addr_ptr: VirtAddr, addr_length: socklen_t) -> EResult<()> {
+    let socket = fd_to_socket(fd)?;
+    let mut addr = vec![0u8; addr_length as _];
+    let buffer = UserPtr::new(addr_ptr);
+    buffer.read_slice(&mut addr).ok_or(Errno::EFAULT)?;
+    socket.connect(&addr)
 }
 
-pub fn accept() -> EResult<()> {
-    warn!("accept is a stub!");
-    Err(Errno::ENOSYS)
+pub fn accept(fd: i32, addr_ptr: VirtAddr, addr_len_ptr: VirtAddr) -> EResult<i32> {
+    let socket = fd_to_socket(fd)?;
+
+    let addr_len_ptr = UserPtr::<socklen_t>::new(addr_len_ptr);
+    let mut addr_buf = if !addr_ptr.is_null() && !addr_len_ptr.is_null() {
+        let len = addr_len_ptr.read().ok_or(Errno::EFAULT)?;
+        vec![0u8; len as usize]
+    } else {
+        Vec::new()
+    };
+
+    let new_sock = socket.accept(&mut addr_buf)?;
+
+    if !addr_ptr.is_null() && !addr_len_ptr.is_null() {
+        let len = addr_buf.len() as socklen_t;
+        let len_bytes = len.to_ne_bytes();
+
+        //let mut len_slice = UserPtr::new(addr_len_ptr);
+        //if let Some(user_len) = len_slice.as_mut_slice() {
+        //    user_len.copy_from_slice(&len_bytes);
+        //}
+
+        //let mut addr_user_slice = UserSlice::new(addr_ptr, len as usize);
+        //if let Some(user_addr) = addr_user_slice.as_mut_slice() {
+        //    user_addr.copy_from_slice(&addr_buf);
+        //}
+    }
+
+    alloc_fd(new_sock)
 }
 
 pub fn listen(fd: i32, backlog: i32) -> EResult<()> {
-    warn!("listen is a stub!");
-
     let socket = fd_to_socket(fd)?;
-
     socket.listen(backlog)
 }
 
-pub fn getpeername() -> EResult<()> {
-    warn!("getpeername is a stub!");
-    Err(Errno::ENOSYS)
+pub fn getpeername(fd: i32, addr: VirtAddr, addr_len: VirtAddr) -> EResult<()> {
+    if addr.is_null() || addr_len.is_null() {
+        return Err(Errno::EFAULT);
+    }
+    let socket = fd_to_socket(fd)?;
+
+    let addr_len = UserPtr::<socklen_t>::new(addr_len);
+    let mut buf = vec![0u8; addr_len.read().ok_or(Errno::EFAULT)? as usize];
+    socket.peer_name(&mut buf)?;
+
+    UserPtr::new(addr).write_slice(&buf).ok_or(Errno::EFAULT)
 }
 
-pub fn getsockname() -> EResult<()> {
-    warn!("getsockname is a stub!");
-    Err(Errno::ENOSYS)
+pub fn getsockname(fd: i32, addr: VirtAddr, addr_len: VirtAddr) -> EResult<()> {
+    if addr.is_null() || addr_len.is_null() {
+        return Err(Errno::EFAULT);
+    }
+    let socket = fd_to_socket(fd)?;
+
+    let addr_len = UserPtr::<socklen_t>::new(addr_len);
+    let mut buf = vec![0u8; addr_len.read().ok_or(Errno::EFAULT)? as usize];
+    socket.sock_name(&mut buf)?;
+
+    UserPtr::new(addr).write_slice(&buf).ok_or(Errno::EFAULT)
 }
 
 pub fn getsockopt() -> EResult<()> {
@@ -126,12 +175,14 @@ pub fn setsockopt(
     socket.set_opt()
 }
 
-pub fn sendmsg() -> EResult<()> {
-    warn!("sendmsg is a stub!");
+pub fn sendmsg(fd: i32, msg_ptr: VirtAddr, flags: i32) -> EResult<isize> {
+    warn!("sendmsg({}, {:?}, {:#x}) is a stub!", fd, msg_ptr, flags);
+
     Err(Errno::ENOSYS)
 }
 
-pub fn recvmsg() -> EResult<()> {
-    warn!("recvmsg is a stub!");
+pub fn recvmsg(fd: i32, msg_ptr: VirtAddr, flags: i32) -> EResult<isize> {
+    warn!("recvmsg({}, {:?}, {:#x}) is a stub!", fd, msg_ptr, flags);
+
     Err(Errno::ENOSYS)
 }

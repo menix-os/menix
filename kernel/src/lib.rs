@@ -46,9 +46,11 @@ pub mod vfs;
 use crate::{
     percpu::CpuData,
     process::{Identity, Process},
+    sched::Scheduler,
     util::{mutex::irq::IrqMutex, once::Once},
     vfs::{
-        File,
+        File, PathNode,
+        cache::LookupFlags,
         file::{FileDescription, OpenFlags},
         fs::initramfs,
         inode::Mode,
@@ -115,6 +117,25 @@ pub extern "C" fn main(_: usize, _: usize) {
         ))
     };
 
+    {
+        let proc = Scheduler::get_current().get_process();
+        let root = proc.root_dir.lock();
+        let cwd = proc.working_dir.lock();
+
+        let dev = PathNode::lookup(
+            root.clone(),
+            cwd.clone(),
+            b"/dev",
+            Identity::get_kernel(),
+            LookupFlags::MustExist,
+        )
+        .unwrap();
+
+        for mount in dev.entry.mounts.lock().iter() {
+            dbg!(mount.root.children.lock());
+        }
+    }
+
     let init_proc = INIT.get();
     // Open /dev/console for stdio for init.
     {
@@ -122,7 +143,11 @@ pub extern "C" fn main(_: usize, _: usize) {
         let console = File::open(
             init_proc.root_dir.lock().clone(),
             init_proc.working_dir.lock().clone(),
-            b"/dev/fbcon",
+            BootInfo::get()
+                .command_line
+                .get_string("console")
+                .unwrap_or("/dev/console")
+                .as_bytes(),
             OpenFlags::ReadWrite,
             Mode::empty(),
             Identity::get_kernel(),

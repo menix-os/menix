@@ -10,7 +10,7 @@ use crate::arch::sched::Context;
 
 macro_rules! sys_unimp {
     ($name: literal, $sc: expr) => {{
-        warn!("Call to unimplemented syscall {}", $name);
+        //warn!("Call to unimplemented syscall {}", $name);
         $sc
     }};
 }
@@ -79,8 +79,8 @@ pub fn dispatch(
         numbers::IOCTL => vfs::ioctl(a0 as _, a1, a2.into()),
         numbers::OPENAT => vfs::openat(a0 as _, a1.into(), a2).map(|x| x as _),
         numbers::CLOSE => vfs::close(a0 as _),
-        numbers::FSTAT => vfs::fstat(a0 as _, a1.into()),
-        numbers::FSTATAT => vfs::fstatat(a0 as _, a1.into(), a2.into(), a3),
+        numbers::FSTAT => vfs::fstat(a0 as _, a1.into()).map(|_| 0),
+        numbers::FSTATAT => vfs::fstatat(a0 as _, a1.into(), a2.into(), a3).map(|_| 0),
         numbers::STATVFS => sys_unimp!("statvfs", Err(Errno::ENOSYS)),
         numbers::FSTATVFS => sys_unimp!("fstatvfs", Err(Errno::ENOSYS)),
         numbers::FACCESSAT => vfs::faccessat(a0 as _, a1.into(), a2, a3).map(|_| 0),
@@ -104,7 +104,9 @@ pub fn dispatch(
         numbers::LINKAT => vfs::linkat(a0 as _, a1.into(), a2 as _, a3.into(), a4 as _).map(|_| 0),
         numbers::SYMLINKAT => sys_unimp!("symlinkat", Err(Errno::ENOSYS)),
         numbers::UNLINKAT => vfs::unlinkat(a0 as _, a1.into(), a2).map(|_| 0),
-        numbers::READLINKAT => sys_unimp!("readlinkat", Err(Errno::ENOSYS)),
+        numbers::READLINKAT => {
+            vfs::readlinkat(a0 as _, a1.into(), a2.into(), a3 as _).map(|x| x as _)
+        }
         numbers::FLOCK => sys_unimp!("flock", Err(Errno::ENOSYS)),
         numbers::PPOLL => vfs::ppoll(a0.into(), a1, a2.into(), a3.into()),
         numbers::DUP => vfs::dup(a0 as _).map(|x| x as _),
@@ -115,24 +117,24 @@ pub fn dispatch(
         numbers::CHROOT => sys_unimp!("chroot", Err(Errno::ENOSYS)),
         numbers::MOUNT => sys_unimp!("mount", Err(Errno::ENOSYS)),
         numbers::UMOUNT => sys_unimp!("umount", Err(Errno::ENOSYS)),
-        numbers::PIPE => vfs::pipe(a0.into()),
+        numbers::PIPE => vfs::pipe(a0.into()).map(|_| 0),
 
         // Sockets
         numbers::SOCKET => socket::socket(a0 as _, a1 as _, a2 as _).map(|x| x as _),
         numbers::SOCKETPAIR => socket::socketpair(a0 as _, a1 as _, a2 as _).map(|x| x as _),
         numbers::SHUTDOWN => socket::shutdown(a0 as _, a1 as _).map(|_| 0),
         numbers::BIND => socket::bind(a0 as _, a1.into(), a2 as _).map(|_| 0),
-        numbers::CONNECT => socket::connect().map(|_| 0),
-        numbers::ACCEPT => socket::accept().map(|_| 0),
+        numbers::CONNECT => socket::connect(a0 as _, a1.into(), a2 as _).map(|_| 0),
+        numbers::ACCEPT => socket::accept(a0 as _, a1.into(), a2.into()).map(|x| x as _),
         numbers::LISTEN => socket::listen(a0 as _, a1 as _).map(|_| 0),
-        numbers::GETPEERNAME => socket::getpeername().map(|_| 0),
-        numbers::GETSOCKNAME => socket::getsockname().map(|_| 0),
+        numbers::GETPEERNAME => socket::getpeername(a0 as _, a1.into(), a2.into()).map(|_| 0),
+        numbers::GETSOCKNAME => socket::getsockname(a0 as _, a1.into(), a2.into()).map(|_| 0),
         numbers::GETSOCKOPT => socket::getsockopt().map(|_| 0),
         numbers::SETSOCKOPT => {
             socket::setsockopt(a0 as _, a1 as _, a2 as _, a3.into(), a4 as _).map(|_| 0)
         }
-        numbers::SENDMSG => socket::sendmsg().map(|_| 0),
-        numbers::RECVMSG => socket::recvmsg().map(|_| 0),
+        numbers::SENDMSG => socket::sendmsg(a0 as _, a1.into(), a2 as _).map(|x| x as _),
+        numbers::RECVMSG => socket::recvmsg(a0 as _, a1.into(), a2 as _).map(|x| x as _),
 
         // Identity
         numbers::GETGROUPS => sys_unimp!("getgroups", Ok(0)),

@@ -84,10 +84,7 @@ pub struct File {
 
 impl Debug for File {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.debug_struct("File")
-            .field("path", &self.path)
-            .field("flags", &self.flags)
-            .finish()
+        f.debug_struct("File").field("flags", &self.flags).finish()
     }
 }
 
@@ -195,7 +192,7 @@ impl File {
             lookup_flags |= LookupFlags::FollowSymlinks;
         }
 
-        let file_path = PathNode::lookup(root, cwd, path, identity, lookup_flags)?;
+        let file_path = PathNode::lookup(root.clone(), cwd, path, identity, lookup_flags)?;
         match file_path.entry.get_inode() {
             Some(x) => Self::do_open_inode(file_path, &x, flags, identity),
             None => {
@@ -213,7 +210,15 @@ impl File {
                 parent.try_access(identity, flags, false)?;
 
                 match &parent.node_ops {
-                    NodeOps::Directory(x) => x.create(&parent, file_path.entry.clone(), mode)?,
+                    NodeOps::Directory(x) => {
+                        x.create(&parent, file_path.entry.clone(), mode, identity)?;
+                        file_path
+                            .lookup_parent()?
+                            .entry
+                            .children
+                            .lock()
+                            .insert(file_path.entry.name.clone(), file_path.entry.clone())
+                    }
                     _ => return Err(Errno::ENOTDIR),
                 };
 

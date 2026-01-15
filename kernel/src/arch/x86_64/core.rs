@@ -18,7 +18,7 @@ use core::{
     arch::{asm, naked_asm},
     mem::offset_of,
     ptr::null_mut,
-    sync::atomic::Ordering,
+    sync::atomic::{AtomicBool, Ordering},
 };
 
 unsafe extern "C" {
@@ -199,7 +199,13 @@ pub(super) fn setup_core(context: &'static CpuData) {
     context.online.store(true, Ordering::Release);
 }
 
+pub static IS_INIT: AtomicBool = AtomicBool::new(false);
+
 pub(in crate::arch) fn halt_others() {
+    if !IS_INIT.load(Ordering::Relaxed) {
+        return;
+    }
+
     LAPIC.get().send_ipi(
         apic::IpiTarget::AllButThisCpu,
         consts::IDT_IPI_PANIC,

@@ -12,7 +12,6 @@ pub use file::File;
 pub use fs::Mount;
 pub use fs::MountFlags;
 
-use crate::uapi;
 use crate::{
     memory::{
         PagedMemoryObject, VirtAddr,
@@ -20,6 +19,11 @@ use crate::{
     },
     posix::errno::{EResult, Errno},
     process::{Identity, PROCESS_STAGE, Process},
+    uapi::{
+        self,
+        dirent::{DT_DIR, dirent},
+        off_t,
+    },
     util::once::Once,
     vfs::{
         cache::LookupFlags,
@@ -46,8 +50,8 @@ pub fn mkdir(
     path: &[u8],
     mode: Mode,
     identity: &Identity,
-) -> EResult<Arc<Entry>> {
-    let path = PathNode::lookup(root, cwd, path, identity, LookupFlags::MustNotExist)?;
+) -> EResult<PathNode> {
+    let path = PathNode::lookup(root.clone(), cwd, path, identity, LookupFlags::MustNotExist)?;
 
     let parent_inode = path
         .lookup_parent()?
@@ -57,7 +61,10 @@ pub fn mkdir(
     parent_inode.try_access(identity, OpenFlags::Write, false)?;
 
     match &parent_inode.node_ops {
-        NodeOps::Directory(x) => x.mkdir(&parent_inode, path.entry, mode),
+        NodeOps::Directory(x) => {
+            x.mkdir(&parent_inode, path.clone(), mode, identity)?;
+            Ok(path)
+        }
         _ => Err(Errno::ENOTDIR),
     }
 }
@@ -70,7 +77,7 @@ pub fn symlink(
     target_path: &[u8],
     identity: &Identity,
 ) -> EResult<()> {
-    let path = PathNode::lookup(root, cwd, path, identity, LookupFlags::MustNotExist)?;
+    let path = PathNode::lookup(root.clone(), cwd, path, identity, LookupFlags::MustNotExist)?;
 
     let parent_inode = path
         .lookup_parent()?
@@ -106,7 +113,7 @@ pub fn mknod(
         }
     }
 
-    let path = PathNode::lookup(root, cwd, path, identity, LookupFlags::MustNotExist)?;
+    let path = PathNode::lookup(root.clone(), cwd, path, identity, LookupFlags::MustNotExist)?;
     let parent = path
         .lookup_parent()
         .and_then(|p| p.entry.get_inode().ok_or(Errno::ENOENT))
@@ -117,7 +124,7 @@ pub fn mknod(
         _ => return Err(Errno::ENOTDIR),
     };
 
-    let new_inode = dir.mknod(&parent, file_type, mode, device)?;
+    let new_inode = dir.mknod(&parent, file_type, mode, device, identity)?;
     path.entry.set_inode(new_inode);
 
     Ok(())
@@ -145,15 +152,74 @@ pub fn mmap(
     return Ok(addr);
 }
 
-// TODO
-pub fn mount() {}
-
 pub fn pipe() -> EResult<(Arc<File>, Arc<File>)> {
     let pipe = Arc::try_new(pipe::PipeBuffer::new())?;
     let endpoint1 = File::open_disconnected(pipe.clone(), OpenFlags::Read)?;
     let endpoint2 = File::open_disconnected(pipe, OpenFlags::Write)?;
 
     Ok((endpoint1, endpoint2))
+}
+
+pub fn get_dir_entries(
+    file: Arc<File>,
+    buffer: &mut [dirent],
+    identity: &Identity,
+) -> EResult<usize> {
+    if buffer.len() == 0 {
+        return Ok(0);
+    }
+
+    let inode = file.inode.clone().ok_or(Errno::EBADF)?;
+    let path = file.path.clone().unwrap();
+
+    let mut offset = file.offset.lock();
+    let mut num_read = 0;
+
+    // Read `.` and `..` entries.
+    if *offset == 0 {
+        buffer[0] = dirent {
+            d_ino: inode.id,
+            d_off: 0,
+            d_reclen: size_of::<dirent>() as _,
+            d_type: DT_DIR,
+            d_name: [0u8; _],
+        };
+        buffer[0].d_name[0] = b'.';
+        num_read += 1;
+    }
+
+    if *offset == 1 || num_read == 1 {
+        buffer[1] = dirent {
+            d_ino: inode.id,
+            d_off: 1,
+            d_reclen: size_of::<dirent>() as _,
+            d_type: DT_DIR,
+            d_name: [0u8; _],
+        };
+        buffer[1].d_name[0] = b'.';
+        buffer[1].d_name[1] = b'.';
+        num_read += 1;
+    }
+
+    // Read normal dir entries.
+    num_read += match &inode.node_ops {
+        NodeOps::Directory(x) => x.get_dir_entries(
+            &inode,
+            path.entry,
+            *offset as off_t,
+            &mut buffer[num_read..],
+            identity,
+        )?,
+        _ => return Err(Errno::ENOTDIR),
+    };
+
+    *offset += num_read as u64;
+
+    for (i, entry) in buffer.iter_mut().enumerate() {
+        entry.d_off = i as _;
+    }
+
+    Ok(num_read)
 }
 
 #[initgraph::task(
@@ -189,15 +255,15 @@ pub fn VFS_DEV_MOUNT_STAGE() {
         root.clone(),
         cwd.clone(),
         b"/dev",
-        Mode::UserRead | Mode::UserWrite,
+        Mode::from_bits_truncate(0o755),
         Identity::get_kernel(),
     )
     .expect("Unable to create /dev");
 
-    devdir.mounts.lock().push(devtmpfs.clone());
+    devdir.entry.mounts.lock().push(devtmpfs.clone());
 
     *devtmpfs.mount_point.lock() = Some(PathNode {
         mount: root.mount.clone(),
-        entry: devdir.clone(),
+        entry: devdir.entry.clone(),
     });
 }
