@@ -1,0 +1,13 @@
+option(
+    'build_kernel',
+    type: 'boolean',
+    value: true,
+    description: 'Build kernel',
+)
+
+option(
+    'build_utils',
+    type: 'boolean',
+    value: false,
+    description: 'Build utilities',
+)

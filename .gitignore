@@ -1,0 +1,16 @@
+# IDE Files
+.vscode/
+.idea/
+.cache/
+
+# Build artifacts
+*.o
+*.a
+*.so
+compile_commands.json
+
+# Default build dir
+build/
+
+# Generated files
+.config*
