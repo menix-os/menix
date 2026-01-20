@@ -1,5 +1,4 @@
-#ifndef MENIX_UAPI_DIRENT_H
-#define MENIX_UAPI_DIRENT_H
+#pragma once
 
 #include <uapi/types.h>
 #include <stdint.h>
@@ -21,5 +20,3 @@ struct dirent {
     uint8_t d_type;
     char d_name[256];
 };
-
-#endif

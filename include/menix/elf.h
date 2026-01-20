@@ -1,6 +1,6 @@
 #pragma once
 
-#include <menix/arch/elf.h>
+#include <bits/elf.h>
 #include <stdint.h>
 
 constexpr char ELF_MAG[4] = {0x7F, 'E', 'L', 'F'};

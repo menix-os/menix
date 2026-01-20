@@ -1,5 +1,4 @@
-#ifndef MENIX_UAPI_ERRNO_H
-#define MENIX_UAPI_ERRNO_H
+#pragma once
 
 #define EPERM           1
 #define ENOENT          2
@@ -134,5 +133,3 @@
 #define ERFKILL         132
 #define EHWPOISON       133
 #define EIEIO           4095
-
-#endif

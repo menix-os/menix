@@ -1,14 +1,14 @@
-#include <menix/arch/usercopy.h>
 #include <menix/compiler.h>
+#include <menix/usercopy.h>
 
-extern void arch_usercopy_read_start();
-extern void arch_usercopy_read_end();
-extern void arch_usercopy_read_fault();
+extern void x86_64_read_start();
+extern void x86_64_read_end();
+extern void x86_64_read_fault();
 
 static const struct usercopy_region read_region = {
-    .start_ip = arch_usercopy_read_start,
-    .end_ip = arch_usercopy_read_end,
-    .fault_ip = arch_usercopy_read_fault,
+    .start_ip = x86_64_read_start,
+    .end_ip = x86_64_read_end,
+    .fault_ip = x86_64_read_fault,
 };
 
 [[__naked]]
@@ -19,19 +19,19 @@ bool arch_usercopy_read(uint8_t* dst, const __user uint8_t* src, size_t len) {
         "mov rax, [rip + %0]\n"
         "mov [rdx], rax\n"
 
-        ".global arch_usercopy_read_start\n"
-        "arch_usercopy_read_start:\n"
+        ".global x86_64_read_start\n"
+        "x86_64_read_start:\n"
         "rep movsb\n"
 
-        ".global arch_usercopy_read_end\n"
-        "arch_usercopy_read_end:\n"
+        ".global x86_64_read_end\n"
+        "x86_64_read_end:\n"
         "xor rax, rax\n"
         "mov [rdx], rax\n"
         "mov rax, 1\n"
         "ret\n"
 
-        ".global arch_usercopy_read_fault\n"
-        "arch_usercopy_read_fault:\n"
+        ".global x86_64_read_fault\n"
+        "x86_64_read_fault:\n"
         "xor rax, rax\n"
         "mov [rdx], rax\n"
         "ret\n"
@@ -41,14 +41,14 @@ bool arch_usercopy_read(uint8_t* dst, const __user uint8_t* src, size_t len) {
     );
 }
 
-extern void arch_usercopy_write_start();
-extern void arch_usercopy_write_end();
-extern void arch_usercopy_write_fault();
+extern void x86_64_write_start();
+extern void x86_64_write_end();
+extern void x86_64_write_fault();
 
 static const struct usercopy_region write_region = {
-    .start_ip = arch_usercopy_write_start,
-    .end_ip = arch_usercopy_write_end,
-    .fault_ip = arch_usercopy_write_fault,
+    .start_ip = x86_64_write_start,
+    .end_ip = x86_64_write_end,
+    .fault_ip = x86_64_write_fault,
 };
 
 [[__naked]]
@@ -59,19 +59,19 @@ bool arch_usercopy_write(__user uint8_t* dst, const uint8_t* src, size_t len) {
         "mov rax, [rip + %0]\n"
         "mov [rdx], rax\n"
 
-        ".global arch_usercopy_write_start\n"
-        "arch_usercopy_write_start:\n"
+        ".global x86_64_write_start\n"
+        "x86_64_write_start:\n"
         "rep movsb\n"
 
-        ".global arch_usercopy_write_end\n"
-        "arch_usercopy_write_end:\n"
+        ".global x86_64_write_end\n"
+        "x86_64_write_end:\n"
         "xor rax, rax\n"
         "mov [rdx], rax\n"
         "mov rax, 1\n"
         "ret\n"
 
-        ".global arch_usercopy_write_fault\n"
-        "arch_usercopy_write_fault:\n"
+        ".global x86_64_write_fault\n"
+        "x86_64_write_fault:\n"
         "xor rax, rax\n"
         "mov [rdx], rax\n"
         "ret\n"
@@ -81,14 +81,14 @@ bool arch_usercopy_write(__user uint8_t* dst, const uint8_t* src, size_t len) {
     );
 }
 
-extern void arch_usercopy_strlen_start();
-extern void arch_usercopy_strlen_end();
-extern void arch_usercopy_strlen_fault();
+extern void x86_64_strlen_start();
+extern void x86_64_strlen_end();
+extern void x86_64_strlen_fault();
 
 static const struct usercopy_region strlen_region = {
-    .start_ip = arch_usercopy_strlen_start,
-    .end_ip = arch_usercopy_strlen_end,
-    .fault_ip = arch_usercopy_strlen_fault,
+    .start_ip = x86_64_strlen_start,
+    .end_ip = x86_64_strlen_end,
+    .fault_ip = x86_64_strlen_fault,
 };
 
 [[__naked]]
@@ -97,8 +97,8 @@ bool arch_usercopy_strlen(const __user uint8_t* str, size_t max, size_t* len) {
         "mov rax, [rip + %0]\n"
         "mov [rcx], rax\n"
 
-        ".global arch_usercopy_strlen_start\n"
-        "arch_usercopy_strlen_start:\n"
+        ".global x86_64_strlen_start\n"
+        "x86_64_strlen_start:\n"
         "xor r8, r8\n"
         ".Lloop:\n"
         "cmp byte ptr [rdi + r8], 0\n"
@@ -109,15 +109,15 @@ bool arch_usercopy_strlen(const __user uint8_t* str, size_t max, size_t* len) {
         ".Lleave:\n"
         "mov [rdx], r8\n"
 
-        ".global arch_usercopy_strlen_end\n"
-        "arch_usercopy_strlen_end:\n"
+        ".global x86_64_strlen_end\n"
+        "x86_64_strlen_end:\n"
         "xor rax, rax\n"
         "mov [rcx], rax\n"
         "mov rax, 1\n"
         "ret\n"
 
-        ".global arch_usercopy_strlen_fault\n"
-        "arch_usercopy_strlen_fault:\n"
+        ".global x86_64_strlen_fault\n"
+        "x86_64_strlen_fault:\n"
         "xor rax, rax\n"
         "mov [rcx], rax\n"
         "ret\n"

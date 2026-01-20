@@ -14,7 +14,7 @@ kernel_link_args = [
     '-T' + meson.current_source_dir() / 'kernel.ld',
 ]
 
-kernel_includes = [include_directories('arch' / target_machine.cpu_family())]
+kernel_includes = [include_directories('arch' / target_machine.cpu_family() / 'include')]
 
 kernel_sources = []
 
@@ -24,6 +24,7 @@ subdir('klibc')
 subdir('mem')
 subdir('core')
 subdir('syscalls')
+subdir('vfs')
 
 configure_file(configuration: common_cfg, output: 'config.h')
 

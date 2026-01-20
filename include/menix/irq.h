@@ -21,7 +21,10 @@ enum irq_trigger_mode : uint8_t {
     IRQ_TRIGGER_LEVEL,
 };
 
-typedef enum irq_status (*irq_handler_t)(void* self);
+struct irq_handler {
+    enum irq_status (*handler)(void* self);
+    SLIST_LINK(struct irq_handler*) next;
+};
 
 struct irq_line {
     int (*set_config)(enum irq_trigger_mode mode, enum irq_polarity polarity);
@@ -29,11 +32,11 @@ struct irq_line {
     void (*unmask)(struct irq_line* self);
     void (*eoi)(struct irq_line* self);
 
-    SLIST_HEAD(irq_handler_t) handlers;
+    SLIST_HEAD(struct irq_handler*) handlers;
     bool is_busy;
 };
 
-void irq_line_attach(struct irq_line* self, irq_handler_t handler);
+void irq_line_attach(struct irq_line* self, struct irq_handler* handler);
 
 struct irq_percpu {
     uint32_t level;

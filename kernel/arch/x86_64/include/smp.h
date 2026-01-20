@@ -1,7 +1,5 @@
 #pragma once
 
-#include <defs.h>
-
 #define SMP_GDTR_OFFSET       80
 #define SMP_FARJMP_OFFSET     90
 #define SMP_TEMP_STACK_OFFSET 98

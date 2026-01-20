@@ -34,4 +34,6 @@ struct percpu* percpu_new();
 // Initializes the bootstrap processor.
 void percpu_bsp_early_init();
 
-#define PERCPU_DEFINE(x) [[__section(".percpu")]]
+#define __percpu __used, __section(".percpu")
+
+#define PERCPU_GET(x) ({ uinptr_t _percpu = (uintptr_t)percpu_get(); })

@@ -22,4 +22,4 @@ struct cmdline_option {
 };
 
 // Parses the command line and invokes all options.
-void cmdline_parse(char* cmdline);
+void cmdline_parse(const char* cmdline);

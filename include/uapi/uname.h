@@ -1,5 +1,4 @@
-#ifndef MENIX_UAPI_UNAME_H
-#define MENIX_UAPI_UNAME_H
+#pragma once
 
 struct utsname {
     char sysname[65];
@@ -9,5 +8,3 @@ struct utsname {
     char machine[65];
     char domainname[65];
 };
-
-#endif

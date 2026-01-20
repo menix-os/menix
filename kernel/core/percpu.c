@@ -1,7 +1,7 @@
 #include <menix/compiler.h>
 #include <menix/percpu.h>
 
-[[__used, __section(".percpu")]]
+[[__used, __section(".percpu.init")]]
 struct percpu percpu_bsp = {
     .self = &percpu_bsp,
     .id = 0,

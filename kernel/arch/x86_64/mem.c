@@ -18,7 +18,7 @@ enum : pte_t {
     ARCH_PTE_ADDR_MASK = 0x000F'FFFF'FFFF'F000,
 };
 
-void arch_pte_clear(pte_t* pte) {
+void arch_mem_pte_clear(pte_t* pte) {
     *pte = 0;
 }
 

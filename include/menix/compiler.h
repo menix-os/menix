@@ -9,6 +9,7 @@
 #define __format(like, ...) gnu::format(like, __VA_ARGS__)
 #define __likely(x)         __builtin_expect(!!(x), 1)
 #define __unlikely(x)       __builtin_expect(!!(x), 0)
+#define __always_inline     gnu::always_inline
 #else
 #define __cold
 #define __hot
@@ -17,6 +18,7 @@
 #define __format(like, ...)
 #define __likely(x)   x
 #define __unlikely(x) x
+#define __always_inline
 #endif
 
 // Only clang has these hints, GCC will throw a warning here.
@@ -31,12 +33,11 @@
 
 // Attributes that affect data layout. Not optional.
 #if defined(__GNUC__) || defined(__clang__)
-#define __weak          gnu::weak
-#define __section(x)    gnu::section(x)
-#define __aligned(x)    gnu::aligned(x)
-#define __packed        gnu::packed
-#define __always_inline gnu::always_inline
-#define __naked         gnu::naked
+#define __weak       gnu::weak
+#define __section(x) gnu::section(x)
+#define __aligned(x) gnu::aligned(x)
+#define __packed     gnu::packed
+#define __naked      gnu::naked
 #else
 #error "Unsupported compiler!"
 #endif

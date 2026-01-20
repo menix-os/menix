@@ -1,4 +1,3 @@
-#include <config.h>
 #include <menix/assert.h>
 #include <menix/cmdline.h>
 #include <menix/compiler.h>
@@ -8,6 +7,7 @@
 #include <menix/mem.h>
 #include <menix/percpu.h>
 #include <menix/print.h>
+#include <config.h>
 
 const char menix_banner[] = "Menix " MENIX_VERSION " (" MENIX_ARCH ", " MENIX_COMPILER_ID ", " MENIX_LINKER_ID ")";
 
@@ -23,12 +23,12 @@ void kernel_init(struct boot_info* info) {
     cmdline_parse(info->cmdline);
     console_init();
     kprintf("%s\n", menix_banner); // Say hello!
+    kprintf("Command line: \"%s\"\n", info->cmdline);
+
     mem_init(info->mem_map, info->num_mem_maps, info->virt_base, info->phys_base, info->hhdm_base);
 
     sched_init();
     irq_unlock();
-
-    ASSERT(false, "");
 
     while (1) {}
 }

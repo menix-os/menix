@@ -1,7 +1,8 @@
 #ifndef MENIX_STDDEF_H
 #define MENIX_STDDEF_H
 
-typedef __SIZE_TYPE__ size_t;
+typedef unsigned long size_t;
+typedef signed long ssize_t;
 
 #define offsetof(type, member) __builtin_offsetof(type, member)
 

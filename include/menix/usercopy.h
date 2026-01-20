@@ -1,10 +1,16 @@
 #pragma once
 
-#include <menix/arch/usercopy.h>
 #include <menix/compiler.h>
 #include <menix/errno.h>
+#include <bits/usercopy.h>
 #include <stddef.h>
 #include <stdint.h>
+
+struct usercopy_region {
+    void (*start_ip)();
+    void (*end_ip)();
+    void (*fault_ip)();
+};
 
 // Copies a block of data from user to kernel memory.
 bool usercopy_read(uint8_t* dst, const __user uint8_t* src, size_t len) {

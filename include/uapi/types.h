@@ -1,5 +1,4 @@
-#ifndef MENIX_UAPI_TYPES_H
-#define MENIX_UAPI_TYPES_H
+#pragma once
 
 #include <stddef.h>
 #include <stdint.h>
@@ -20,5 +19,3 @@ typedef size_t uid_t;
 typedef size_t fsblkcnt_t;
 typedef size_t fsfilcnt_t;
 typedef size_t pthread_attr_t;
-
-#endif

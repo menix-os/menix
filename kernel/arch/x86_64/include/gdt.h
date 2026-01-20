@@ -2,7 +2,7 @@
 
 #include <menix/compiler.h>
 #include <stdint.h>
-#include <tss.h>
+#include "tss.h"
 
 struct [[__packed]] gdt {
     uint64_t null;

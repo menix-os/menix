@@ -66,6 +66,10 @@ struct page {
 static_assert(0x1000 % sizeof(struct page) == 0, "struct must be a multiple of the page size!");
 static_assert(sizeof(struct page) <= 64, "struct must be smaller than 64 bytes!");
 
+struct address_space {
+    // TODO
+};
+
 extern struct page_table mem_kernel_table;
 
 // Base address of the `struct page` array.
@@ -152,7 +156,7 @@ static inline size_t mem_num_levels() {
 
 // Clears out a page table entry.
 static inline void mem_pte_clear(pte_t* pte) {
-    return arch_pte_clear(pte);
+    return arch_mem_pte_clear(pte);
 }
 
 // Builds a page table entry from the given info.
