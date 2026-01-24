@@ -4,7 +4,6 @@ use crate::{
     posix::errno::{EResult, Errno},
     process::PROCESS_STAGE,
     uapi::{self, termios::winsize},
-    util::mutex::irq::IrqMutex,
     vfs::{
         File,
         file::FileOps,
@@ -24,7 +23,6 @@ impl FileOps for Console {
     }
 
     fn write(&self, _: &File, buffer: &[u8], _: u64) -> EResult<isize> {
-        let _lock = IrqMutex::lock();
         let mut writer = GLOBAL_LOGGERS.lock();
         _ = writer.write_str(&String::from_utf8_lossy(buffer));
         Ok(buffer.len() as _)

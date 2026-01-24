@@ -1,16 +1,12 @@
 use crate::{
     arch::{self},
-    {
-        percpu::{CPU_DATA, CpuData},
-        process::{
-            Process,
-            task::{Task, TaskState},
-        },
-        util::mutex::{
-            irq::{IrqGuard, IrqMutex},
-            spin::SpinMutex,
-        },
+    irq::lock::{IrqGuard, IrqLock},
+    percpu::{CPU_DATA, CpuData},
+    process::{
+        Process,
+        task::{Task, TaskState},
     },
+    util::mutex::spin::SpinMutex,
 };
 use alloc::{collections::vec_deque::VecDeque, sync::Arc};
 use core::{
@@ -86,7 +82,7 @@ impl Scheduler {
 
     /// Puts the current task back to the run queue and reschedules.
     pub fn reschedule(&self) {
-        let lock = IrqMutex::lock();
+        let lock = IrqLock::lock();
         let from = self.current.load(Ordering::Acquire);
 
         if from != self.idle_task.load(Ordering::Acquire) {
@@ -103,7 +99,7 @@ impl Scheduler {
 
     /// Reschedules without adding the current task back to the run queue.
     pub fn do_yield(&self) {
-        let lock = IrqMutex::lock();
+        let lock = IrqLock::lock();
         self.do_reschedule(lock);
     }
 

@@ -203,7 +203,6 @@ pub unsafe extern "C" fn free(ptr: *mut core::ffi::c_void, size: usize) {
 #[initgraph::task(
     name = "generic.memory",
     depends = [crate::arch::EARLY_INIT_STAGE],
-    entails = [crate::INIT_STAGE]
 )]
 pub fn MEMORY_STAGE() {
     let info = BootInfo::get();

@@ -327,6 +327,8 @@ pub fn load(data: &[u8]) -> EResult<()> {
             // Do the relocation.
             match typ {
                 elf::R_COMMON_NONE => (),
+                // Some ISAs have multiple relocation types with the same value.
+                #[allow(unreachable_patterns)]
                 elf::R_COMMON_64 | elf::R_COMMON_GLOB_DAT | elf::R_COMMON_JUMP_SLOT => {
                     // Check if this symbol has an associated section.
                     // If it does not, we need to look the symbol up in our own list.

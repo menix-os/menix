@@ -1,8 +1,8 @@
 use crate::{
+    irq::lock::IrqGuard,
     memory::{VirtAddr, virt::KERNEL_STACK_SIZE},
     posix::errno::EResult,
     process::task::Task,
-    util::mutex::irq::IrqGuard,
 };
 use core::{arch::naked_asm, mem::offset_of};
 
@@ -85,15 +85,22 @@ pub unsafe fn preempt_enable() -> bool {
 
 pub unsafe fn switch(from: *const Task, to: *const Task, irq_guard: IrqGuard) {
     unsafe {
-        let old_sp = &raw mut (*(*from).inner.raw_inner()).task_context.sp;
-        let new_sp = &raw mut (*(*to).inner.raw_inner()).task_context.sp;
+        let from = from.as_ref().unwrap();
+        let to = to.as_ref().unwrap();
+
+        let mut from_context = from.task_context.lock();
+        let to_context = to.task_context.lock();
+
+        let old_sp = &raw mut from_context.sp;
+        let new_sp = to_context.sp;
+
         drop(irq_guard);
         perform_switch(old_sp, new_sp);
     }
 }
 
 #[unsafe(naked)]
-pub unsafe extern "C" fn perform_switch(old_sp: *mut u64, new_sp: *mut u64) {
+pub unsafe extern "C" fn perform_switch(old_sp: *mut u64, new_sp: u64) {
     naked_asm!(
         "addi sp, sp, -{size}", // Make room for all regs.
         "sd ra, {ra}(sp)",
@@ -111,7 +118,7 @@ pub unsafe extern "C" fn perform_switch(old_sp: *mut u64, new_sp: *mut u64) {
         "sd s10, {s10}(sp)",
         "sd s11, {s11}(sp)",
         "sd sp, 0(a0)", // a0 = old_sp
-        "ld sp, 0(a1)", // a1 = new_sp
+        "mv sp, a1",    // a1 = new_sp
         "ld ra, {ra}(sp)",
         "ld gp, {gp}(sp)",
         "ld s0, {s0}(sp)",

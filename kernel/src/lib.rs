@@ -44,9 +44,10 @@ pub mod util;
 pub mod vfs;
 
 use crate::{
+    irq::lock::IrqLock,
     percpu::CpuData,
     process::{Identity, Process},
-    util::{mutex::irq::IrqMutex, once::Once},
+    util::once::Once,
     vfs::{
         File,
         file::{FileDescription, OpenFlags},
@@ -62,7 +63,7 @@ use core::sync::atomic::AtomicBool;
 /// This is invoked by the boot environment.
 pub fn init() -> ! {
     {
-        let _irq = IrqMutex::lock();
+        let _irq = IrqLock::lock();
         init::run();
     }
 
@@ -157,7 +158,3 @@ pub extern "C" fn main(_: usize, _: usize) {
         .fexecve(init_file, args, envs)
         .expect("Unable to start the init process");
 }
-
-/// This stage should be used to express that the system must be initialized at this point.
-#[initgraph::task(name = "system")]
-pub fn INIT_STAGE() {}

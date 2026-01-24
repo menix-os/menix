@@ -32,6 +32,5 @@ pub fn EARLY_INIT_STAGE() {}
 #[initgraph::task(
     name = "arch.init",
     depends = [EARLY_INIT_STAGE],
-    entails = [crate::INIT_STAGE]
 )]
 pub fn INIT_STAGE() {}

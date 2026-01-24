@@ -5,10 +5,10 @@ use crate::{
         core::halt,
         system::{apic::LAPIC, gdt::Gdt},
     },
-    irq::IrqLine,
+    irq::{IrqLine, lock::IrqLock},
     memory::fault::PageFaultInfo,
     percpu::CpuData,
-    util::mutex::{irq::IrqMutex, spin::SpinMutex},
+    util::mutex::spin::SpinMutex,
 };
 use alloc::sync::Arc;
 use core::{
@@ -233,7 +233,7 @@ per_cpu! {
 
 /// Invoked by an interrupt stub.
 unsafe extern "C" fn idt_handler(context: *const Context) {
-    let old = IrqMutex::set_interrupted(true);
+    let old = IrqLock::set_interrupted(true);
     let context = unsafe { context.as_ref().unwrap() };
     let isr = context.isr;
 
@@ -267,7 +267,7 @@ unsafe extern "C" fn idt_handler(context: *const Context) {
         }
     }
 
-    IrqMutex::set_interrupted(old);
+    IrqLock::set_interrupted(old);
 }
 
 // /// Try to send a signal to the user-space program or panic if the interrupt is caused by the kernel.

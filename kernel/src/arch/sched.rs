@@ -1,8 +1,8 @@
 use super::internal;
+use crate::irq::lock::IrqGuard;
 use crate::memory::VirtAddr;
 use crate::posix::errno::EResult;
 use crate::process::task::Task;
-use crate::util::mutex::irq::IrqGuard;
 use core::fmt::Debug;
 
 pub use internal::sched::Context;

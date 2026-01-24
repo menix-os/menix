@@ -1,14 +1,12 @@
-use crate::{
-    arch,
-    memory::PhysAddr,
-    util::mutex::{irq::IrqMutex, spin::SpinMutex},
-};
+use crate::{arch, irq::lock::IrqLock, memory::PhysAddr, util::mutex::spin::SpinMutex};
 use alloc::{boxed::Box, vec::Vec};
 use bitflags::bitflags;
 use core::{
     fmt::Debug,
     sync::atomic::{AtomicBool, Ordering},
 };
+
+pub mod lock;
 
 #[derive(Debug)]
 pub enum Status {
@@ -84,7 +82,7 @@ pub trait IrqLine {
 
 impl dyn IrqLine {
     pub fn program(&self, cfg: Option<(TriggerMode, Polarity)>) {
-        let _ = IrqMutex::lock();
+        let _ = IrqLock::lock();
         let mut mode = self.state().mode.lock();
 
         if let Some((trigger, polarity)) = cfg {
@@ -95,7 +93,7 @@ impl dyn IrqLine {
     pub fn raise(&self) {
         assert_eq!(arch::irq::get_irq_state(), false);
 
-        let _ = IrqMutex::lock();
+        let _ = IrqLock::lock();
         let state = self.state();
 
         state.is_busy.store(true, Ordering::Relaxed);

@@ -13,10 +13,7 @@ mod driver;
 pub use driver::*;
 
 /// Initializes the PCI subsystem.
-#[initgraph::task(
-    name = "system.pci",
-    entails = [crate::INIT_STAGE]
-)]
+#[initgraph::task(name = "system.pci")]
 #[cfg_attr(
     feature = "acpi",
     initgraph::task(depends = [super::acpi::INIT_STAGE])

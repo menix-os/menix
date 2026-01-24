@@ -1,6 +1,3 @@
-pub mod irq;
-pub mod spin;
-
 use crate::{percpu::CpuData, process::task::Task, sched::Scheduler, util::mutex::spin::SpinMutex};
 use alloc::sync::Arc;
 use core::{
@@ -10,6 +7,8 @@ use core::{
     sync::atomic::{AtomicBool, Ordering},
 };
 use intrusive_collections::{LinkedList, LinkedListAtomicLink, UnsafeRef, intrusive_adapter};
+
+pub mod spin;
 
 intrusive_adapter!(WaitersLinkAdapter = UnsafeRef<Waiter>: Waiter { waiters_link: LinkedListAtomicLink });
 

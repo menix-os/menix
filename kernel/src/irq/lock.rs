@@ -6,18 +6,18 @@ use core::{
 };
 
 per_cpu!(
-    static IRQ_MUTEX: IrqMutex = IrqMutex {
+    static IRQ_MUTEX: IrqLock = IrqLock {
         depth: AtomicUsize::new(0),
         in_interrupt: AtomicBool::new(false),
     };
 );
 
-pub struct IrqMutex {
+pub struct IrqLock {
     depth: AtomicUsize,
     in_interrupt: AtomicBool,
 }
 
-impl IrqMutex {
+impl IrqLock {
     pub fn lock<'a>() -> IrqGuard<'a> {
         let cpu = IRQ_MUTEX.get();
 

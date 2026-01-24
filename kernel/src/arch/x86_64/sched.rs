@@ -1,17 +1,14 @@
 use super::{
     ARCH_DATA,
+    asm::{rdmsr, wrmsr},
+    consts::{self},
     core::get_per_cpu,
     system::{apic, gdt::Gdt},
+    system::{apic::LAPIC, gdt::TSS},
 };
 use crate::{
-    arch::{
-        self,
-        x86_64::{
-            asm::{rdmsr, wrmsr},
-            consts::{self},
-            system::{apic::LAPIC, gdt::TSS},
-        },
-    },
+    arch,
+    irq::lock::{IrqGuard, IrqLock},
     memory::{
         VirtAddr,
         pmm::{AllocFlags, KernelAlloc, PageAllocator},
@@ -21,7 +18,6 @@ use crate::{
     posix::errno::EResult,
     process::task::Task,
     sched::Scheduler,
-    util::mutex::irq::{IrqGuard, IrqMutex},
 };
 use core::{
     arch::{asm, naked_asm},
@@ -300,7 +296,7 @@ pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
 
     // Clear segment registers. Because this also clears GSBASE, we have to restore it immediately.
     unsafe {
-        let lock = IrqMutex::lock();
+        let lock = IrqLock::lock();
         let percpu = get_per_cpu();
 
         let zero = 0u16;

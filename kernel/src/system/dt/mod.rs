@@ -362,7 +362,6 @@ pub static DEVICES: Once<Vec<&Node>> = Once::new();
 #[initgraph::task(
     name = "system.dt.parse-blob",
     depends = [crate::memory::MEMORY_STAGE],
-    entails = [crate::INIT_STAGE]
 )]
 fn TREE_STAGE() {
     let dt = match BootInfo::get().fdt_addr {
