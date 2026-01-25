@@ -94,7 +94,7 @@ impl VirtioGpuDevice {
         // Wait for response
         loop {
             let mut queue = self.ctrl_queue.lock();
-            if let Some(_) = queue.get_used() {
+            if queue.get_used().is_some() {
                 break;
             }
             drop(queue);
@@ -173,7 +173,7 @@ impl VirtioGpuDevice {
         // Allocate command buffer for header + memory entries
         let cmd_size = core::mem::size_of::<VirtioGpuResourceAttachBacking>()
             + pages.len() * core::mem::size_of::<VirtioGpuMemEntry>();
-        let cmd_pages = (cmd_size + page_size - 1) / page_size;
+        let cmd_pages = cmd_size.div_ceil(page_size);
         let cmd_phys =
             KernelAlloc::alloc(cmd_pages, AllocFlags::Zeroed).map_err(|_| Errno::ENOMEM)?;
         let cmd_ptr = cmd_phys.as_hhdm::<u8>();
@@ -423,11 +423,11 @@ impl Device for VirtioGpuDevice {
     ) -> EResult<(Arc<dyn BufferObject>, u32)> {
         log!("Creating dumb buffer {}x{} @ {}bpp", width, height, bpp);
         let page_size = arch::virt::get_page_size();
-        let bytes_per_pixel = (bpp + 7) / 8;
+        let bytes_per_pixel = bpp.div_ceil(8);
         let pitch = width * bytes_per_pixel;
         let size = (pitch * height) as usize;
 
-        let num_pages = (size + page_size - 1) / page_size;
+        let num_pages = size.div_ceil(page_size);
         log!("Allocating {} pages for buffer (size={})", num_pages, size);
         let base_addr =
             KernelAlloc::alloc(num_pages, AllocFlags::Zeroed).map_err(|_| Errno::ENOMEM)?;
@@ -480,10 +480,10 @@ impl Device for VirtioGpuDevice {
     ) -> EResult<Arc<Framebuffer>> {
         Ok(Arc::new(Framebuffer {
             id: self.obj_counter.alloc(),
-            format: format,
-            width: width,
-            height: height,
-            pitch: pitch,
+            format,
+            width,
+            height,
+            pitch,
             offset: 0,
             buffer,
         }))

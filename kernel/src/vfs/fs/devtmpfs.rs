@@ -63,6 +63,6 @@ pub fn register_device(
         },
         mode,
         Some(device),
-        &Identity::get_kernel(),
+        Identity::get_kernel(),
     )
 }

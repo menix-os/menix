@@ -170,16 +170,13 @@ fn IOAPIC_STAGE() {
             let entry_ptr = madt_ptr.byte_add(offset) as *const uacpi_sys::acpi_entry_hdr;
             let entry = entry_ptr.read_unaligned();
 
-            match entry.type_ as _ {
-                uacpi_sys::ACPI_MADT_ENTRY_TYPE_IOAPIC => {
-                    let entry = (entry_ptr as *const uacpi_sys::acpi_madt_ioapic).read_unaligned();
-                    IoApic::setup(
-                        entry.id,
-                        entry.gsi_base,
-                        PhysAddr::from(entry.address as usize),
-                    );
-                }
-                _ => (),
+            if entry.type_ as u32 == uacpi_sys::ACPI_MADT_ENTRY_TYPE_IOAPIC {
+                let entry = (entry_ptr as *const uacpi_sys::acpi_madt_ioapic).read_unaligned();
+                IoApic::setup(
+                    entry.id,
+                    entry.gsi_base,
+                    PhysAddr::from(entry.address as usize),
+                );
             }
 
             offset += entry.length as usize;

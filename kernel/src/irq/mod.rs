@@ -91,13 +91,13 @@ impl dyn IrqLine {
     }
 
     pub fn raise(&self) {
-        assert_eq!(arch::irq::get_irq_state(), false);
+        assert!(!arch::irq::get_irq_state());
 
         let _ = IrqLock::lock();
         let state = self.state();
 
         state.is_busy.store(true, Ordering::Relaxed);
-        let mode = state.mode.lock().clone();
+        let mode = *state.mode.lock();
 
         // TODO
         log!("Handling IRQ");

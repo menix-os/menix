@@ -1,14 +1,10 @@
-use crate::{
-    arch,
-    memory::{
-        PhysAddr, VirtAddr,
-        pmm::{AllocFlags, KernelAlloc, PageAllocator},
-        virt::{self, KERNEL_MMAP_BASE_ADDR, VmFlags, mmu::PageTable},
-    },
-    posix::errno::{EResult, Errno},
-    util::{align_down, align_up, mutex::spin::SpinMutex},
-    vfs::exec::elf::{self, ElfHashTable, ElfHdr, ElfPhdr, ElfRela, ElfSym},
-};
+use crate::arch;
+use crate::memory::pmm::{AllocFlags, KernelAlloc, PageAllocator};
+use crate::memory::virt::{self, KERNEL_MMAP_BASE_ADDR, VmFlags, mmu::PageTable};
+use crate::memory::{PhysAddr, VirtAddr};
+use crate::posix::errno::{EResult, Errno};
+use crate::util::{align_down, align_up, mutex::spin::SpinMutex};
+use crate::vfs::exec::elf::{self, ElfHashTable, ElfHdr, ElfPhdr, ElfRela, ElfSym};
 use alloc::{borrow::ToOwned, collections::btree_map::BTreeMap, string::String, vec::Vec};
 use core::{ffi::CStr, slice, sync::atomic::Ordering};
 
@@ -392,12 +388,14 @@ pub fn load(data: &[u8]) -> EResult<()> {
     // TODO: Call init array
 
     // Call the entry.
-    unsafe {
-        info.entry = Some(core::mem::transmute(load_base + elf_hdr.e_entry as usize));
+    info.entry = unsafe {
+        Some(core::mem::transmute::<usize, extern "C" fn()>(
+            load_base + elf_hdr.e_entry as usize,
+        ))
+    };
 
-        if let Some(entry_point) = info.entry {
-            (entry_point)();
-        }
+    if let Some(entry_point) = info.entry {
+        (entry_point)();
     }
 
     MODULE_TABLE.lock().insert(name.to_owned(), info);

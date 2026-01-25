@@ -67,6 +67,10 @@ impl<T: Sized + Copy> UserSlice<T> {
         self.len
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     pub fn as_slice(&self) -> Option<&[T]> {
         Some(unsafe { core::slice::from_raw_parts(self.addr.as_ptr::<T>(), self.len) })
     }

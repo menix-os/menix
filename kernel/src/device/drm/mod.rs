@@ -810,6 +810,6 @@ pub fn register(card: Arc<DrmFile>) -> EResult<()> {
         vfs::inode::NodeType::CharacterDevice,
         Mode::from_bits_truncate(0o660),
         Some(card),
-        &Identity::get_kernel(),
+        Identity::get_kernel(),
     )
 }

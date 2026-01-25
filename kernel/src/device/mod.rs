@@ -36,8 +36,7 @@ impl<T: BlockDevice> FileOps for T {
         }
 
         let lba_size_u64 = lba_size as u64;
-        let mut max_lbas_per_iter =
-            ((buffer.len() as u64 + lba_size_u64 - 1) / lba_size_u64).max(1);
+        let mut max_lbas_per_iter = (buffer.len() as u64).div_ceil(lba_size_u64).max(1);
         max_lbas_per_iter = max_lbas_per_iter.saturating_add(1);
 
         let tmp_bytes_u64 = max_lbas_per_iter
@@ -56,7 +55,7 @@ impl<T: BlockDevice> FileOps for T {
             let misalign = (progress + offset) % lba_size_u64;
             let page_index = (progress + offset) / lba_size_u64;
             let remaining = buffer.len() as u64 - progress;
-            let mut chunk_lbas = ((misalign + remaining + lba_size_u64 - 1) / lba_size_u64).max(1);
+            let mut chunk_lbas = (misalign + remaining).div_ceil(lba_size_u64).max(1);
             chunk_lbas = chunk_lbas.min(max_lbas_per_iter);
 
             let read_lbas = match self.read_lba(tmp_phys, chunk_lbas as usize, page_index) {

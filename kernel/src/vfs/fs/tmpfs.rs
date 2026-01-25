@@ -37,7 +37,7 @@ impl FileSystem for TmpFs {
             inode_counter: AtomicUsize::new(0),
         })?;
 
-        let dir = Arc::new(TmpDir::default());
+        let dir = Arc::new(TmpDir);
         let root_inode = super_block.clone().create_inode(
             NodeOps::Directory(dir.clone()),
             dir,
@@ -91,10 +91,7 @@ impl SuperBlock for TmpSuper {
 
     fn destroy_inode(self: Arc<Self>, inode: INode) -> EResult<()> {
         match Arc::into_inner(self) {
-            Some(x) => {
-                drop(x);
-                Ok(())
-            }
+            Some(x) => Ok(()),
             None => Err(Errno::EBUSY),
         }
     }
@@ -291,7 +288,7 @@ impl FileOps for TmpRegular {
         };
 
         let page_size = arch::virt::get_page_size();
-        let misalign = addr.value() as usize & (page_size - 1);
+        let misalign = addr.value() & (page_size - 1);
         let map_address = addr - misalign;
         let backed_map_size = (len.get() + misalign + page_size - 1) & !(page_size - 1);
 

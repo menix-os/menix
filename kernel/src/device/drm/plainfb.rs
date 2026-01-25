@@ -82,10 +82,10 @@ impl Device for PlainDevice {
     ) -> EResult<Arc<Framebuffer>> {
         Ok(Arc::new(Framebuffer {
             id: self.obj_counter.alloc(),
-            format: format,
-            width: width,
-            height: height,
-            pitch: pitch,
+            format,
+            width,
+            height,
+            pitch,
             offset: 0,
             buffer,
         }))
@@ -93,19 +93,18 @@ impl Device for PlainDevice {
 
     fn commit(&self, state: &AtomicState) {
         // Copy from each buffer to the framebuffer
-        for (_crtc_id, crtc_state) in &state.crtc_states {
-            if let Some(ref framebuffer) = crtc_state.framebuffer {
-                if let Some(buffer) =
+        for crtc_state in state.crtc_states.values() {
+            if let Some(ref framebuffer) = crtc_state.framebuffer
+                && let Some(buffer) =
                     (framebuffer.buffer.as_ref() as &dyn Any).downcast_ref::<PlainDumbBuffer>()
-                {
-                    // Copy from buffer to framebuffer
-                    let src = buffer.addr.as_hhdm::<u8>();
-                    let dst = self.addr.base() as _;
-                    let size = buffer.size.min(self.addr.len());
+            {
+                // Copy from buffer to framebuffer
+                let src = buffer.addr.as_hhdm::<u8>();
+                let dst = self.addr.base() as _;
+                let size = buffer.size.min(self.addr.len());
 
-                    unsafe {
-                        core::ptr::copy_nonoverlapping(src, dst, size);
-                    }
+                unsafe {
+                    core::ptr::copy_nonoverlapping(src, dst, size);
                 }
             }
         }

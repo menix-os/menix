@@ -28,22 +28,22 @@ pub fn getppid() -> usize {
 
 pub fn getuid() -> usize {
     let proc = Scheduler::get_current().get_process();
-    proc.identity.lock().user_id as usize
+    proc.identity.lock().user_id
 }
 
 pub fn geteuid() -> usize {
     let proc = Scheduler::get_current().get_process();
-    proc.identity.lock().effective_user_id as usize
+    proc.identity.lock().effective_user_id
 }
 
 pub fn getgid() -> usize {
     let proc = Scheduler::get_current().get_process();
-    proc.identity.lock().group_id as usize
+    proc.identity.lock().group_id
 }
 
 pub fn getegid() -> usize {
     let proc = Scheduler::get_current().get_process();
-    proc.identity.lock().effective_group_id as usize
+    proc.identity.lock().effective_group_id
 }
 
 pub fn getpgid(pid: usize) -> EResult<usize> {
@@ -145,7 +145,7 @@ pub fn waitpid(pid: uapi::pid_t, mut stat_loc: UserPtr<i32>, _options: i32) -> E
             _ => {
                 let mut waitee = None;
                 for (idx, child) in inner.iter().enumerate() {
-                    if child.get_pid() != pid as usize {
+                    if child.get_pid() != pid {
                         continue;
                     }
 

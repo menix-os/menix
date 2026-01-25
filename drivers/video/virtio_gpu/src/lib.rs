@@ -79,19 +79,19 @@ fn allocate_queue_memory(queue_size: u16) -> EResult<(PhysAddr, PhysAddr, PhysAd
 
     // Descriptor table: 16 bytes per entry
     let desc_size = queue_size_usize * 16;
-    let desc_pages = (desc_size + page_size - 1) / page_size;
+    let desc_pages = desc_size.div_ceil(page_size);
     let desc_addr =
         KernelAlloc::alloc(desc_pages, AllocFlags::Zeroed).map_err(|_| Errno::ENOMEM)?;
 
     // Available ring: 2 + 2 + 2*queue_size + 2 bytes (with padding)
     let avail_size = 6 + 2 * queue_size_usize;
-    let avail_pages = (avail_size + page_size - 1) / page_size;
+    let avail_pages = avail_size.div_ceil(page_size);
     let avail_addr =
         KernelAlloc::alloc(avail_pages, AllocFlags::Zeroed).map_err(|_| Errno::ENOMEM)?;
 
     // Used ring: 2 + 2 + 8*queue_size + 2 bytes (with padding)
     let used_size = 6 + 8 * queue_size_usize;
-    let used_pages = (used_size + page_size - 1) / page_size;
+    let used_pages = used_size.div_ceil(page_size);
     let used_addr =
         KernelAlloc::alloc(used_pages, AllocFlags::Zeroed).map_err(|_| Errno::ENOMEM)?;
 

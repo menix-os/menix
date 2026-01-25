@@ -254,6 +254,10 @@ impl MmioView {
         self.len
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+
     fn do_read_reg<T: PrimInt>(&self, reg: Register<T>, offset: usize) -> Option<BitValue<T>> {
         if reg.offset() + offset + size_of::<T>() > self.len {
             return None;
@@ -323,6 +327,10 @@ impl MmioSubView<'_> {
 
     pub fn len(&self) -> usize {
         self.parent.len() - self.offset
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.len() == 0
     }
 }
 

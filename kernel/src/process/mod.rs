@@ -102,7 +102,7 @@ impl Process {
             children: SpinMutex::new(Vec::new()),
             identity: SpinMutex::new(self.identity.lock().clone()),
             open_files: SpinMutex::new(self.open_files.lock().clone()),
-            mmap_head: SpinMutex::new(self.mmap_head.lock().clone()),
+            mmap_head: SpinMutex::new(*self.mmap_head.lock()),
         });
 
         // Create a heap allocated context that we can pass to the entry point.

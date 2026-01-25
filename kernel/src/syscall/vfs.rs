@@ -177,7 +177,7 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
     let proc = Scheduler::get_current().get_process();
 
     let mut buffer = vec![0u8; PATH_MAX as _];
-    let mut cursor = PATH_MAX as usize;
+    let mut cursor = PATH_MAX;
     let mut current = proc.working_dir.lock().clone();
 
     // Walk up until we reach the root
@@ -197,7 +197,7 @@ pub fn getcwd(buffer: VirtAddr, len: usize) -> EResult<usize> {
     }
 
     // Special case: root directory
-    if cursor == PATH_MAX as usize {
+    if cursor == PATH_MAX {
         cursor -= 1;
         buffer[cursor] = b'/';
     }
@@ -529,7 +529,7 @@ pub fn ppoll(
         // Call the file's poll method
         match file_desc.file.poll(poll_entry.events) {
             Ok(revents) => {
-                poll_entry.revents = revents as i16;
+                poll_entry.revents = revents;
                 if revents != 0 {
                     ready_count += 1;
                 }

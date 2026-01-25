@@ -208,7 +208,7 @@ pub(in crate::arch) fn init_task(
     // Prepare a dummy stack with an entry point function to return to.
     unsafe {
         let frame = ((stack_start.value() + KERNEL_STACK_SIZE) as *mut TaskFrame).sub(1);
-        (*frame).rbx = entry as u64;
+        (*frame).rbx = entry as *const () as u64;
         (*frame).r12 = arg1 as u64;
         (*frame).r13 = arg2 as u64;
         (*frame).rip = task_entry_thunk as *const () as u64;
@@ -287,12 +287,14 @@ pub(in crate::arch) unsafe fn jump_to_user(ip: VirtAddr, sp: VirtAddr) -> ! {
     );
 
     // Create a new context for the user jump.
-    let mut context = Context::default();
-    context.rip = ip.value() as u64;
-    context.rsp = sp.value() as u64;
-    context.rflags = 0x202;
-    context.cs = offset_of!(Gdt, user_code64) as u64 | consts::CPL_USER as u64;
-    context.ss = offset_of!(Gdt, user_data) as u64 | consts::CPL_USER as u64;
+    let mut context = Context {
+        rip: ip.value() as u64,
+        rsp: sp.value() as u64,
+        rflags: 0x202,
+        cs: offset_of!(Gdt, user_code64) as u64 | consts::CPL_USER as u64,
+        ss: offset_of!(Gdt, user_data) as u64 | consts::CPL_USER as u64,
+        ..Context::default()
+    };
 
     // Clear segment registers. Because this also clears GSBASE, we have to restore it immediately.
     unsafe {

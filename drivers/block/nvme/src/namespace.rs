@@ -55,7 +55,7 @@ impl BlockDevice for Namespace {
         ioq.submit_cmd(ReadWriteCommand {
             buffer,
             do_write: false,
-            start_lba: start_lba,
+            start_lba,
             num_lbas: read_count,
             bytes: read_count << self.lba_shift,
             control: 0,
