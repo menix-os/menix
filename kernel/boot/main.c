@@ -1,13 +1,13 @@
-#include <menix/assert.h>
-#include <menix/cmdline.h>
-#include <menix/compiler.h>
-#include <menix/console.h>
-#include <menix/init.h>
-#include <menix/irq.h>
-#include <menix/mem.h>
-#include <menix/percpu.h>
-#include <menix/print.h>
 #include <config.h>
+#include <kernel/assert.h>
+#include <kernel/cmdline.h>
+#include <kernel/compiler.h>
+#include <kernel/console.h>
+#include <kernel/init.h>
+#include <kernel/irq.h>
+#include <kernel/mem.h>
+#include <kernel/percpu.h>
+#include <kernel/print.h>
 
 const char menix_banner[] = "Menix " MENIX_VERSION " (" MENIX_ARCH ", " MENIX_COMPILER_ID ", " MENIX_LINKER_ID ")";
 
@@ -19,7 +19,7 @@ void kernel_early_init() {
 }
 
 [[noreturn]]
-void kernel_init(struct boot_info* info) {
+void kernel_main(struct boot_info* info) {
     cmdline_parse(info->cmdline);
     console_init();
     kprintf("%s\n", menix_banner); // Say hello!
@@ -34,7 +34,7 @@ void kernel_init(struct boot_info* info) {
 }
 
 [[noreturn]]
-void kernel_main() {
+void kernel_main_task() {
     while (1) {}
 
     ASSERT(false, "Nothing to do");

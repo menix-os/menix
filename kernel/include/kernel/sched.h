@@ -1,8 +1,8 @@
 #pragma once
 
-#include <menix/mem.h>
-#include <menix/types.h>
 #include <bits/sched.h>
+#include <kernel/mem.h>
+#include <kernel/types.h>
 #include <stddef.h>
 #include <stdint.h>
 

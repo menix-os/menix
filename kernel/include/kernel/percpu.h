@@ -1,9 +1,9 @@
 #pragma once
 
-#include <menix/compiler.h>
-#include <menix/irq.h>
-#include <menix/sched.h>
 #include <bits/percpu.h>
+#include <kernel/compiler.h>
+#include <kernel/irq.h>
+#include <kernel/sched.h>
 #include <stddef.h>
 
 ASSERT_TYPE(struct arch_percpu);

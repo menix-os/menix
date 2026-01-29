@@ -1,8 +1,8 @@
-#include <menix/compiler.h>
-#include <menix/errno.h>
-#include <menix/init.h>
-#include <menix/percpu.h>
-#include <uapi/archctl.h>
+#include <menix/archctl.h>
+#include <kernel/compiler.h>
+#include <kernel/errno.h>
+#include <kernel/init.h>
+#include <kernel/percpu.h>
 #include "asm.h"
 #include "defs.h"
 
@@ -28,7 +28,7 @@ void arch_panic() {
     __unreachable();
 }
 
-errno_t arch_archctl(menix_archctl_t op, uintptr_t arg) {
+menix_errno_t arch_archctl(menix_archctl_t op, uintptr_t arg) {
     switch (op) {
     case MENIX_ARCHCTL_SET_FSBASE:
         asm_wrmsr(MSR_FS_BASE, arg);

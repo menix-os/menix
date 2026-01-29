@@ -1,4 +1,4 @@
-#include <menix/panic.h>
+#include <kernel/panic.h>
 
 [[noreturn]]
 void panic() {

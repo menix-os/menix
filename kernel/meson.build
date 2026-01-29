@@ -7,14 +7,19 @@ kernel_c_args = [
     '-D__KERNEL__=1',
 ]
 
+kernel_lds = meson.current_source_dir() / 'kernel.ld'
+
 kernel_link_args = [
     '-nostdlib',
     '-Wl,-nostdlib',
     '-static',
-    '-T' + meson.current_source_dir() / 'kernel.ld',
+    '-T' + kernel_lds,
 ]
 
-kernel_includes = [include_directories('arch' / target_machine.cpu_family() / 'include')]
+kernel_includes = include_directories(
+    'arch' / target_machine.cpu_family() / 'include',
+    'include',
+)
 
 kernel_sources = []
 
@@ -24,7 +29,6 @@ subdir('klibc')
 subdir('mem')
 subdir('core')
 subdir('syscalls')
-subdir('vfs')
 
 configure_file(configuration: common_cfg, output: 'config.h')
 
@@ -33,6 +37,7 @@ executable(
     include_directories: [common_includes, kernel_includes],
     c_args: [common_c_args, kernel_c_args],
     link_args: [common_link_args, kernel_link_args],
+    link_depends: kernel_lds,
     sources: kernel_sources,
     install: true,
     install_dir: get_option('datadir') / 'menix',

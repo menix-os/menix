@@ -1,5 +1,5 @@
-#include <menix/mem.h>
-#include <menix/types.h>
+#include <kernel/mem.h>
+#include <kernel/types.h>
 
 enum : pte_t {
     ARCH_FLAG_PRESENT = 1 << 0,

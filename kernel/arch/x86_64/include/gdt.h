@@ -1,6 +1,6 @@
 #pragma once
 
-#include <menix/compiler.h>
+#include <kernel/compiler.h>
 #include <stdint.h>
 #include "tss.h"
 

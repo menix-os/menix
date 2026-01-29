@@ -1,5 +1,5 @@
-#include <menix/compiler.h>
-#include <menix/usercopy.h>
+#include <kernel/compiler.h>
+#include <kernel/usercopy.h>
 
 extern void x86_64_read_start();
 extern void x86_64_read_end();

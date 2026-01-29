@@ -1,7 +1,7 @@
 #pragma once
 
-#include <menix/common.h>
-#include <menix/compiler.h>
+#include <kernel/common.h>
+#include <kernel/compiler.h>
 #include <stddef.h>
 
 struct console {

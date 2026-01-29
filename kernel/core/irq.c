@@ -1,5 +1,5 @@
-#include <menix/irq.h>
-#include <menix/percpu.h>
+#include <kernel/irq.h>
+#include <kernel/percpu.h>
 
 void irq_lock() {
     irq_set_state(false);

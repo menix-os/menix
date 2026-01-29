@@ -1,10 +1,10 @@
 #pragma once
 
-#include <menix/compiler.h>
 #include <menix/errno.h>
-#include <menix/spin.h>
-#include <menix/types.h>
 #include <bits/mem.h>
+#include <kernel/compiler.h>
+#include <kernel/spin.h>
+#include <kernel/types.h>
 #include <stddef.h>
 
 ASSERT_TYPE(pte_t);
@@ -87,23 +87,23 @@ void mem_phys_init(struct phys_mem* map, size_t length);
 // Allocates a region of memory which can be smaller than the page size.
 // Returns `nullptr` if the allocator cannot provide an allocation for the
 // given `length` + `flags`. Always returns `nullptr` if `length` is 0.
-errno_t mem_alloc(size_t length, enum alloc_flags flags, void** out);
+menix_errno_t mem_alloc(size_t length, enum alloc_flags flags, void** out);
 
 // Frees an allocation created by `mem_alloc`.
 // Passing `nullptr` is a no-op.
-errno_t mem_free(void* mem);
+menix_errno_t mem_free(void* mem);
 
 // Allocates an amount of contiguous physical pages.
-errno_t mem_phys_alloc(size_t num_pages, enum alloc_flags flags, phys_t* out);
+menix_errno_t mem_phys_alloc(size_t num_pages, enum alloc_flags flags, phys_t* out);
 
 // Frees an allocated region of physical pages.
-errno_t mem_phys_free(phys_t start, size_t num_pages);
+menix_errno_t mem_phys_free(phys_t start, size_t num_pages);
 
 // Creates a new page table for the kernel.
-errno_t mem_pt_new_kernel(struct page_table* pt, enum alloc_flags flags);
+menix_errno_t mem_pt_new_kernel(struct page_table* pt, enum alloc_flags flags);
 
 // Creates a new page table for a user process.
-errno_t mem_pt_new_user(struct page_table* pt, enum alloc_flags flags);
+menix_errno_t mem_pt_new_user(struct page_table* pt, enum alloc_flags flags);
 
 // Sets a page table on the current processor.
 static inline void mem_pt_set(struct page_table* pt) {
@@ -111,13 +111,19 @@ static inline void mem_pt_set(struct page_table* pt) {
 }
 
 // Maps a single page to a virtual address in the given page table.
-errno_t mem_pt_map(struct page_table* pt, virt_t vaddr, phys_t paddr, enum pte_flags flags, enum cache_mode cache);
+menix_errno_t mem_pt_map(
+    struct page_table* pt,
+    virt_t vaddr,
+    phys_t paddr,
+    enum pte_flags flags,
+    enum cache_mode cache
+);
 
 // Changes the protection of a page.
-errno_t mem_pt_protect(struct page_table* pt, virt_t vaddr, enum pte_flags flags);
+menix_errno_t mem_pt_protect(struct page_table* pt, virt_t vaddr, enum pte_flags flags);
 
 // Unmaps a page.
-errno_t mem_pt_unmap(struct page_table* pt, virt_t vaddr);
+menix_errno_t mem_pt_unmap(struct page_table* pt, virt_t vaddr);
 
 // Base address used to access physical memory.
 static inline virt_t mem_hhdm_addr() {

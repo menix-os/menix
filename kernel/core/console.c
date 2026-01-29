@@ -1,6 +1,6 @@
-#include <menix/cmdline.h>
-#include <menix/console.h>
-#include <menix/print.h>
+#include <kernel/cmdline.h>
+#include <kernel/console.h>
+#include <kernel/print.h>
 #include <string.h>
 
 extern struct console* const __ld_console_start[];

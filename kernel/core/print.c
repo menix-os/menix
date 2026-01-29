@@ -1,6 +1,6 @@
-#include <menix/console.h>
-#include <menix/panic.h>
-#include <menix/print.h>
+#include <kernel/console.h>
+#include <kernel/panic.h>
+#include <kernel/print.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdint.h>

@@ -1,8 +1,8 @@
-#ifndef MENIX_TYPES_H
-#define MENIX_TYPES_H
+#ifndef MENIX_MEMORY_H
+#define MENIX_MEMORY_H
 
 #include <menix/errno.h>
-#include <stdint.h>
+#include <menix/handle.h>
 
 // Virtual memory flags.
 enum menix_vm_flags {
@@ -23,5 +23,12 @@ enum menix_cache_type {
 
 typedef uintptr_t menix_virt_t;
 typedef uintptr_t menix_phys_t;
+
+#ifndef __KERNEL__
+#include <stddef.h>
+
+menix_errno_t menix_mem_alloc(size_t length, menix_handle_t* out);
+
+#endif
 
 #endif

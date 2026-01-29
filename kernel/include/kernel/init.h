@@ -1,8 +1,8 @@
 #pragma once
 
-#include <menix/common.h>
-#include <menix/compiler.h>
-#include <menix/types.h>
+#include <kernel/common.h>
+#include <kernel/compiler.h>
+#include <kernel/types.h>
 #include <stddef.h>
 #include <stdint.h>
 
@@ -36,10 +36,8 @@ void kernel_entry();
 // Initializes the early parts of the kernel.
 void kernel_early_init();
 
-// Initializes the kernel.
 [[noreturn]]
-void kernel_init(struct boot_info* info);
+void kernel_main(struct boot_info* info);
 
-// Main thread.
 [[noreturn]]
-void kernel_main();
+void kernel_main_task();

@@ -1,8 +1,8 @@
 #pragma once
 
-#include <menix/compiler.h>
-#include <menix/panic.h>
-#include <menix/print.h>
+#include <kernel/compiler.h>
+#include <kernel/panic.h>
+#include <kernel/print.h>
 
 #define ASSERT(expr, msg, ...) \
     ({ \

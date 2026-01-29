@@ -1,7 +1,7 @@
 project(
     'menix',
     'c',
-    license: 'BSD-3',
+    license: 'MIT',
     license_files: ['LICENSE'],
     version: '0.0.1',
     meson_version: '>=1.1.0',
@@ -30,13 +30,9 @@ c_compiler = meson.get_compiler('c')
 common_cfg.set_quoted('MENIX_COMPILER_ID', c_compiler.get_id() + ' ' + c_compiler.version())
 common_cfg.set_quoted('MENIX_LINKER_ID', c_compiler.get_linker_id())
 
-
-if get_option('build_kernel')
+if get_option('kernel_only')
     subdir('kernel')
-    subdir('drivers')
+else
     subdir('vdso')
-endif
-
-if get_option('build_utils')
-    subdir('utils')
+    subdir('servers')
 endif

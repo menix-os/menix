@@ -1,9 +1,9 @@
-#include <menix/assert.h>
-#include <menix/cmdline.h>
-#include <menix/common.h>
-#include <menix/init.h>
-#include <menix/mem.h>
-#include <menix/print.h>
+#include <kernel/assert.h>
+#include <kernel/cmdline.h>
+#include <kernel/common.h>
+#include <kernel/init.h>
+#include <kernel/mem.h>
+#include <kernel/print.h>
 #include "limine.h"
 
 [[__initdata_sorted("limine.0")]]
@@ -81,5 +81,5 @@ void kernel_entry() {
     info.virt_base = (virt_t)exec_res->virtual_base;
     info.hhdm_base = (virt_t)hhdm_request.response->offset;
 
-    kernel_init(&info);
+    kernel_main(&info);
 }

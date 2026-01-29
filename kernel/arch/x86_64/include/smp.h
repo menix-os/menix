@@ -13,9 +13,9 @@
 
 #ifndef __ASSEMBLER__
 
-#include <menix/common.h>
-#include <menix/compiler.h>
 #include <gdt.h>
+#include <kernel/common.h>
+#include <kernel/compiler.h>
 #include <stddef.h>
 #include <stdint.h>
 

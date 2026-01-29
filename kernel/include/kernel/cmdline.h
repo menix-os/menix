@@ -1,7 +1,7 @@
 #pragma once
 
-#include <menix/common.h>
-#include <menix/compiler.h>
+#include <kernel/common.h>
+#include <kernel/compiler.h>
 
 #define CMDLINE_MAX 0x1000
 

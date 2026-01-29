@@ -1,6 +1,6 @@
 #pragma once
 
-#include <menix/compiler.h>
+#include <kernel/compiler.h>
 #include <stdint.h>
 
 struct [[__packed, __aligned(0x10)]] tss {

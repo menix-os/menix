@@ -1,6 +1,6 @@
 #pragma once
 
-#include <menix/types.h>
+#include <kernel/types.h>
 #include <stddef.h>
 #include <stdint.h>
 

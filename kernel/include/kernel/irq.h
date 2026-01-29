@@ -1,9 +1,9 @@
 #pragma once
 
-#include <menix/compiler.h>
-#include <menix/list.h>
-#include <menix/vector.h>
 #include <bits/irq.h>
+#include <kernel/compiler.h>
+#include <kernel/list.h>
+#include <kernel/vector.h>
 #include <stdint.h>
 
 enum irq_status : uint8_t {

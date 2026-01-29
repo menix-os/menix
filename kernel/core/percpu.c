@@ -1,5 +1,5 @@
-#include <menix/compiler.h>
-#include <menix/percpu.h>
+#include <kernel/compiler.h>
+#include <kernel/percpu.h>
 
 [[__used, __section(".percpu.init")]]
 struct percpu percpu_bsp = {

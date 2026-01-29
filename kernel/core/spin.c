@@ -1,4 +1,4 @@
-#include <menix/spin.h>
+#include <kernel/spin.h>
 #include <stdatomic.h>
 #include <stdint.h>
 

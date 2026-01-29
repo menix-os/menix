@@ -1,5 +1,5 @@
-#include <menix/cmdline.h>
-#include <menix/init.h>
+#include <kernel/cmdline.h>
+#include <kernel/init.h>
 #include <stddef.h>
 #include <string.h>
 

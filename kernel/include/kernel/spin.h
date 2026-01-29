@@ -5,7 +5,7 @@
 // Busy-waits in a loop until the lock is freed.
 // Does not put the CPU to sleep.
 struct spinlock {
-    atomic bool locked;
+    _Atomic(bool) locked;
 };
 
 void spin_lock(struct spinlock* spin);

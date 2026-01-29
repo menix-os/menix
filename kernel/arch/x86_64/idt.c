@@ -1,4 +1,4 @@
-#include <menix/compiler.h>
+#include <kernel/compiler.h>
 #include <stdint.h>
 
 struct [[__packed]] idtr {

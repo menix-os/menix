@@ -1,5 +1,5 @@
-#include <menix/compiler.h>
-#include <menix/types.h>
+#include <kernel/compiler.h>
+#include <kernel/types.h>
 #include <smp.h>
 
 extern uint8_t smp_trampoline_start[];

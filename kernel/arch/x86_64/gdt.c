@@ -1,7 +1,7 @@
-#include <menix/percpu.h>
 #include <asm.h>
 #include <defs.h>
 #include <gdt.h>
+#include <kernel/percpu.h>
 #include <stddef.h>
 #include <string.h>
 

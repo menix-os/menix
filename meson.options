@@ -1,13 +1,6 @@
 option(
-    'build_kernel',
+    'kernel_only',
     type: 'boolean',
     value: true,
-    description: 'Build kernel',
-)
-
-option(
-    'build_utils',
-    type: 'boolean',
-    value: false,
-    description: 'Build utilities',
+    description: 'Build only the kernel',
 )

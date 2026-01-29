@@ -1,7 +1,7 @@
 #pragma once
 
-#include <menix/compiler.h>
 #include <bits/usercopy.h>
+#include <kernel/compiler.h>
 #include <stddef.h>
 #include <stdint.h>
 

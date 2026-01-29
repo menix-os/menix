@@ -1,5 +1,5 @@
-#include <menix/console.h>
 #include <asm.h>
+#include <kernel/console.h>
 #include <stdint.h>
 
 constexpr uint16_t COM1_BASE = 0x3F8;

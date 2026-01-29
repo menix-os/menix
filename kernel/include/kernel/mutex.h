@@ -1,6 +1,6 @@
 #pragma once
 
-#include <menix/sched.h>
+#include <kernel/sched.h>
 #include <stdatomic.h>
 
 struct mutex {

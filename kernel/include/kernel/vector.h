@@ -1,6 +1,6 @@
 #pragma once
 
-#include <menix/mem.h>
+#include <kernel/mem.h>
 #include <stddef.h>
 #include <string.h>
 
